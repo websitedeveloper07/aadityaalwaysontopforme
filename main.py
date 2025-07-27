@@ -137,33 +137,33 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     usage_text = ""
     if command_name == "gen":
         usage_text = """*💳 Generate Cards*
-Usage: `/gen [bin]` or `\.gen [bin]`
+Usage: `/gen [bin]` or `\\.gen [bin]`
 Example: `/gen 453957`
-Generates 10 credit card numbers based on the provided BIN\.
-*Note:* This command works only in authorized groups\.
+Generates 10 credit card numbers based on the provided BIN\\.
+*Note:* This command works only in authorized groups\\.
 """
     elif command_name == "bin":
         usage_text = """*🔍 BIN Info*
-Usage: `/bin [bin]` or `\.bin [bin]`
+Usage: `/bin [bin]` or `\\.bin [bin]`
 Example: `/bin 518765`
-Provides detailed information about a given BIN\.
-*Note:* This command works only in authorized groups\.
+Provides detailed information about a given BIN\\.
+*Note:* This command works only in authorized groups\\.
 """
     elif command_name == "status":
         usage_text = """*📊 Bot Status*
 Usage: `/status`
-Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\.
-*Note:* This command works only in authorized groups\.
+Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.
+*Note:* This command works only in authorized groups\\.
 """
     elif command_name == "au":
         usage_text = """*🔐 Authorize Group*
 Usage: `/au [chat_id]`
-Example: `/au -100123456789`
-Authorizes a specific group to use the bot's features\.
+Example: `/au \-100123456789`
+Authorizes a specific group to use the bot's features\\.
 *Note:* This command can only be used by the bot owner\.
 """
     else:
-        usage_text = "Unknown command\. Please go back and select a valid command\."
+        usage_text = "Unknown command\\. Please go back and select a valid command\\."
 
     back_button = [[InlineKeyboardButton("⬅️ Back to Commands", callback_data="show_main_commands")]]
     await query.edit_message_text(usage_text, reply_markup=InlineKeyboardMarkup(back_button), parse_mode=ParseMode.MARKDOWN_V2)
@@ -193,16 +193,15 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bin_input = context.args[0]
     elif update.message.text: # For .gen [bin]
         # Split the message to get the part after the command (.gen)
-        # Ensure it's not just ".gen" without any argument
         command_text = update.message.text.split(maxsplit=1)
         if len(command_text) > 1:
             bin_input = command_text[1]
 
     if not bin_input:
-        return await update.message.reply_text("❌ Please provide a 6-digit BIN\. Usage: `/gen [bin]` or `\.gen [bin]`\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     if len(bin_input) < 6:
-        return await update.message.reply_text("⚠️ BIN should be at least 6 digits\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     # Fetch BIN data from the external API
     bin_data = await fetch_bin_info(bin_input[:6]) or {}
@@ -269,12 +268,12 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bin_input = command_text[1]
 
     if not bin_input:
-        return await update.message.reply_text("❌ Please provide a 6-digit BIN\. Usage: `/bin [bin]` or `\.bin [bin]`\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/bin [bin]` or `\\.bin [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_input = bin_input[:6] # Take only the first 6 digits for BIN lookup
     data = await fetch_bin_info(bin_input)
     if not data:
-        return await update.message.reply_text("❌ BIN not found in database or an error occurred\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text("❌ BIN not found in database or an error occurred\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     # Extract relevant information from the API response
     bank = data.get("bank", {}).get("name", "Unknown")
@@ -339,7 +338,7 @@ async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return await update.message.reply_text("🚫 You are not authorized to use this command.")
     if not context.args:
-        return await update.message.reply_text("Usage: `/au [chat_id]`\. Please provide a chat ID\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text("Usage: `/au [chat_id]`\\. Please provide a chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
     try:
         chat_id_to_authorize = int(context.args[0])
@@ -347,7 +346,7 @@ async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Escaping the dot at the end of the sentence for MarkdownV2
         await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
-        await update.message.reply_text("❌ Invalid chat ID\. Please provide a numeric chat ID\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
 # === MAIN APPLICATION SETUP ===
 def main():
@@ -376,8 +375,6 @@ def main():
     # Register Message Handlers for '.' commands using regex
     # The `^` ensures the dot command is at the beginning of the message.
     # `filters.Regex(r"^\.gen\b.*")` matches messages starting with ".gen" followed by a word boundary.
-    # The `pass_args=True` (implied by default for MessageHandler with regex) will put the matched groups
-    # into context.args, but we're doing manual parsing for robustness.
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
 
