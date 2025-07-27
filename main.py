@@ -87,17 +87,23 @@ async def enforce_cooldown(user_id):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Handles the /start command.
-    Sends a welcome message to the user with bot status and inline buttons.
-    This command works in both private and group chats.
+    Handles the /start command and the 'back_to_start' callback.
+    Sends/edits to the initial welcome message with bot status and inline buttons.
     """
     user = update.effective_user
     welcome = f"👋 Hi, welcome {user.full_name}!\n🤖 Bot Status: Active"
     buttons = [
         [InlineKeyboardButton("📜 Commands", callback_data="show_main_commands")],
-        [InlineKeyboardButton("👥 Group", url="https://t.me/your_group")] # IMPORTANT: Replace with your actual group link
+        [InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")] # Your group link
     ]
-    await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(buttons))
+    
+    query = update.callback_query
+    if query:
+        await query.answer()
+        await query.edit_message_text(welcome, reply_markup=InlineKeyboardMarkup(buttons))
+    else:
+        await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(buttons))
+
 
 async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -116,6 +122,7 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("📊 Bot Status (/status)", callback_data="cmd_status")],
         # Removed "Authorize Group" from this menu as it's owner-only and primarily for groups.
         # It's still accessible via the /au command for the owner.
+        [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")] # Added back button
     ]
     
     if query:
@@ -175,7 +182,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     # Check if the command is used in a group or supergroup
     if update.effective_chat.type not in ["group", "supergroup"]:
-        button = InlineKeyboardMarkup([[InlineKeyboardButton("👥 Group", url="https://t.me/your_group")]])
+        button = InlineKeyboardMarkup([[InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")]])
         return await update.message.reply_text("Join our official group to use this bot.", reply_markup=button)
 
     chat_id = update.effective_chat.id
@@ -251,7 +258,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     This command is restricted to authorized group chats and has a cooldown.
     """
     if update.effective_chat.type not in ["group", "supergroup"]:
-        button = InlineKeyboardMarkup([[InlineKeyboardButton("👥 Group", url="https://t.me/your_group")]])
+        button = InlineKeyboardMarkup([[InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")]])
         return await update.message.reply_text("Join our official group to use this bot.", reply_markup=button)
 
     if not await enforce_cooldown(update.effective_user.id):
@@ -281,15 +288,22 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_emoji = data.get("country", {}).get("emoji", '')
     country = f"{country_name} {country_emoji}".strip()
     scheme = data.get("scheme", "Unknown").capitalize()
+    card_type = data.get("type", "Unknown").capitalize() # e.g., debit, credit
+    level = data.get("brand", "Unknown") # Using 'brand' from binlist.net as 'level'
 
     # Construct the final response message with proper MarkdownV2 formatting
     result = (
-        f"> *💳 Brand*: `{scheme}`\n"
-        f"> *🏦 Bank*: `{bank}`\n"
-        f"> *🌍 Country*: `{country}`\n"
-        f"> *🧾 BIN*: `{bin_input}`\n"
-        f"> *🙋 Requested by \-*: `{update.effective_user.full_name}`\n" # Escaped hyphen
-        f"> *🤖 Bot by \-*: Your Friend" # Escaped hyphen
+        f"╔══════════════════════╗\n"
+        f"║ 💳 \\*\\*𝐁𝐈𝐍 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐓𝐈𝐎𝐍\\*\\* ║\n" # Escaped asterisks for bold within ASCII art
+        f"╚══════════════════════╝\n"
+        f"*💳 𝐁𝐫𝐚𝐧𝐝*: `{scheme}`\n"
+        f"*🏦 𝐁𝐚𝐧𝐤*: `{bank}`\n"
+        f"*🌐 𝐓𝐲𝐩𝐞*: `{card_type}`\n" # Added Type
+        f"*💠 𝐋𝐞𝐯𝐞𝐥*: `{level}`\n" # Added Level
+        f"*🌎 𝐂𝐨𝐮𝐧𝐭𝐫𝐲*: `{country}`\n"
+        f"*🧾 𝐁𝐢𝐧*: `{bin_input}`\n"
+        f"🙋 Requested by \- `{update.effective_user.full_name}`\n" # Escaped hyphen
+        f"🤖 Bot by \- Your Friend" # Escaped hyphen
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -381,6 +395,7 @@ def main():
     # Register Callback Query Handlers for inline buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
+    application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$")) # Handler for the new back button
 
     logger.info("Bot started polling...")
     # Start polling for updates from Telegram
