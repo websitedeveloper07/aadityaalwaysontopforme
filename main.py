@@ -147,31 +147,31 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
         usage_text = """*💳 Generate Cards*
 Usage: `/gen [bin]` or `\\.gen [bin]`
 Example: `/gen 453957`
-Generates 10 credit card numbers based on the provided BIN\\.
-*Note:* This command works only in authorized groups\\.
+Generates 10 credit card numbers based on the provided BIN\\.\\
+*Note:* This command works only in authorized groups\\.\\
 """
     elif command_name == "bin":
         usage_text = """*🔍 BIN Info*
 Usage: `/bin [bin]` or `\\.bin [bin]`
 Example: `/bin 518765`
-Provides detailed information about a given BIN\\.
-*Note:* This command works only in authorized groups\\.
+Provides detailed information about a given BIN\\.\\
+*Note:* This command works only in authorized groups\\.\\
 """
     elif command_name == "status":
         usage_text = """*📊 Bot Status*
 Usage: `/status`
-Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.
-*Note:* This command works only in authorized groups\\.
+Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\
+*Note:* This command works only in authorized groups\\.\\
 """
     elif command_name == "au":
         usage_text = """*🔐 Authorize Group*
 Usage: `/au [chat_id]`
 Example: `/au \-100123456789`
-Authorizes a specific group to use the bot's features\\.
-*Note:* This command can only be used by the bot owner\\.
+Authorizes a specific group to use the bot's features\\.\\
+*Note:* This command can only be used by the bot owner\\.\\
 """
     else:
-        usage_text = "Unknown command\\. Please go back and select a valid command\\."
+        usage_text = "Unknown command\\. Please go back and select a valid command\\.\\"
 
     back_button = [[InlineKeyboardButton("⬅️ Back to Commands", callback_data="show_main_commands")]]
     await query.edit_message_text(usage_text, reply_markup=InlineKeyboardMarkup(back_button), parse_mode=ParseMode.MARKDOWN_V2)
@@ -301,8 +301,8 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╚══════════════════════╝\n"
         f"**💳 Brand**: {scheme}\n"
         f"**🏦 Bank**: {bank}\n"
-        f"**🌐 Type**: {card_type}\n" # Added Type
-        f"**💠 Level**: {level}\n" # Added Level
+        f"**🌐 Type**: {card_type}\n"
+        f"**💠 Level**: {level}\n"
         f"**🌎 Country**: {country}\n"
         f"**🧾 Bin**: `{bin_input}`\n" # Only this line has monospace backticks
         f"🙋 Requested by \\- `{update.effective_user.full_name}`\n" # Escaped hyphen
