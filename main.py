@@ -464,8 +464,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     brand = bin_details["scheme"]
     bank = bin_details["bank"]
     country = f"{bin_details['country_name']} {bin_details['country_emoji']}".strip()
-    card_type = bin_details["card_type"]
-    level = bin_details["level"]
+    
+    # We remove card_type and level from the displayed info as per user request
+    # card_type = bin_details["card_type"]
+    # level = bin_details["level"]
     
     cards = []
     while len(cards) < 10:
@@ -487,29 +489,22 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country = escape_markdown_v2(country)
-    escaped_card_type = escape_markdown_v2(card_type)
-    escaped_level = escape_markdown_v2(level)
+    # escaped_card_type = escape_markdown_v2(card_type) # Not used in output
+    # escaped_level = escape_markdown_v2(level) # Not used in output
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # Construct the message:
-    # 1. Top quote box for "Generated 10 Cards"
-    # 2. Raw list of cards
-    # 3. Newline gap
-    # 4. Second quote box for BIN info
-    # 5. Final lines outside quote box
+    # Construct the message with precise quote box placement
     result = (
-        f"> Generated 10 Cards\n"
-        f"> \n" # One line gap inside the first quote box
+        f"> Generated 10 Cards\n" # Top quote box
+        f"\n" # Blank line after top quote box
         f"{cards_list}\n" # Cards list, NOT in quote box
-        f"\n" # One line gap between cards and info quote box
-        f"> * **Brand**: {escaped_brand}\n"
-        f"> * **Bank**: {escaped_bank}\n"
-        f"> * **Type**: {escaped_card_type}\n"
-        f"> * **Level**: {escaped_level}\n"
-        f"> * **Country**: {escaped_country}\n"
-        f"> * **BIN**: `{bin_input}`\n"
-        f"Requested by \\- {escaped_user_full_name}\n"
-        f"Bot by \\- Your Friend"
+        f"\n" # Blank line between cards and info quote box
+        f"> Brand: {escaped_brand}\n"
+        f"> Bank: {escaped_bank}\n"
+        f"> Country: {escaped_country}\n"
+        f"> BIN: `{bin_input}`\n"
+        f"> Requested by \\-: {escaped_user_full_name}\n"
+        f"> Bot by \\-: Your Friend"
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
