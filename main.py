@@ -297,12 +297,12 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Only the BIN number is in monospace, as requested
     result = (
         f"╔══════════════════════╗\n"
-        f"║ 💳 **BIN INFORMATION** ║\n" # Using standard bold **
+        f"║ 💳 \\*\\*𝐁𝐈𝐍 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐓𝐈𝐎𝐍\\*\\* ║\n" # Escaped asterisks for bold within ASCII art
         f"╚══════════════════════╝\n"
         f"**💳 Brand**: {scheme}\n"
         f"**🏦 Bank**: {bank}\n"
-        f"**🌐 Type**: {card_type}\n"
-        f"**💠 Level**: {level}\n"
+        f"**🌐 Type**: {card_type}\n" # Added Type
+        f"**💠 Level**: {level}\n" # Added Level
         f"**🌎 Country**: {country}\n"
         f"**🧾 Bin**: `{bin_input}`\n" # Only this line has monospace backticks
         f"🙋 Requested by \\- `{update.effective_user.full_name}`\n" # Escaped hyphen
@@ -391,6 +391,7 @@ def main():
 
     # Register Message Handlers for '.' commands using regex
     # The `^` ensures the dot command is at the beginning of the message.
+    # `filters.Regex(r"^\.gen\b.*")` matches messages starting with ".gen" followed by a word boundary.
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
 
