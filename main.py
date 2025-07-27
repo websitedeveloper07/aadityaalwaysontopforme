@@ -265,13 +265,19 @@ async def get_bin_details(bin_number):
     bintable_data = await fetch_bin_info_bintable(bin_number)
     
     if bintable_data:
-        logger.info(f"Bintable.com processed data for {bin_number}: {bintable_data}")
-        details["bank"] = bintable_data.get("bank_name", details["bank"])
-        details["country_name"] = bintable_data.get("country_name", details["country_name"])
-        details["country_emoji"] = bintable_data.get("country_emoji", details["country_emoji"]) 
-        details["scheme"] = bintable_data.get("card_brand", details["scheme"]).capitalize()
-        details["card_type"] = bintable_data.get("card_type", details["card_type"]).capitalize()
-        details["level"] = bintable_data.get("card_level", details["level"]).capitalize() 
+        logger.info(f"Bintable.com raw data for {bin_number}: {bintable_data}") # Log raw data for debugging
+        
+        # Extracting nested data from bintable_data
+        bank_info = bintable_data.get("bank", {})
+        country_info = bintable_data.get("country", {})
+        card_info = bintable_data.get("card", {})
+
+        details["bank"] = bank_info.get("name", details["bank"])
+        details["country_name"] = country_info.get("name", details["country_name"])
+        details["country_emoji"] = country_info.get("flag", details["country_emoji"]) 
+        details["scheme"] = card_info.get("scheme", details["scheme"]).capitalize()
+        details["card_type"] = card_info.get("type", details["card_type"]).capitalize()
+        details["level"] = card_info.get("category", details["level"]).capitalize() # 'category' is used for level in Bintable
         
         # If Bintable gives good data, return immediately.
         if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
