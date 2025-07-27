@@ -71,8 +71,7 @@ def get_short_country_name(full_name):
         "Viet Nam": "Vietnam",
         "Lao People's Democratic Republic": "Laos",
         "Democratic Republic of the Congo": "DR Congo",
-        "Congo (Democratic Republic of the)": "DR Congo",
-        "Congo (Republic of the)": "Congo",
+        "Congo (Democratic Republic of the)": "Congo",
         "Tanzania, United Republic of": "Tanzania",
         "Syrian Arab Republic": "Syria",
         "Bolivia (Plurinational State of)": "Bolivia",
@@ -395,7 +394,7 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "*💳 Generate Cards*\n"
             "Usage: `/gen [bin]` or `\\.gen [bin]`\n"
             "Example: `/gen 453957`\n"
-            "Generates 10 credit card numbers based on the provided BIN\\.\n"
+            "Generates 10 credit card numbers based on the provided BIN\\.\\\n"
             "*Note:* This command works only in authorized groups\\.\n"
         )
     elif command_name == "bin":
@@ -403,14 +402,14 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "*🔍 BIN Info*\n"
             "Usage: `/bin [bin]` or `\\.bin [bin]`\n"
             "Example: `/bin 518765`\n"
-            "Provides detailed information about a given BIN\\.\n"
+            "Provides detailed information about a given BIN\\.\\\n"
             "*Note:* This command works only in authorized groups\\.\n"
         )
     elif command_name == "status":
         usage_text = (
             "*📊 Bot Status*\n"
             "Usage: `/status`\n"
-            "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\n"
+            "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\\n"
             "*Note:* This command works only in authorized groups\\.\n"
         )
     elif command_name == "au":
@@ -418,7 +417,7 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "*🔐 Authorize Group*\n"
             "Usage: `/au [chat_id]`\n"
             "Example: `/au \\-100123456789`\n"
-            "Authorizes a specific group to use the bot's features\\.\n"
+            "Authorizes a specific group to use the bot's features\\.\\\n"
             "*Note:* This command can only be used by the bot owner\\.\n"
         )
     else:
