@@ -126,6 +126,7 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ]
     
     if query:
+        # Using ParseMode.MARKDOWN for this menu as it's less strict and doesn't require escaping for most characters
         await query.edit_message_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
     else:
         await update.message.reply_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
@@ -167,7 +168,7 @@ Displays the bot's current operational status, including user count, RAM/CPU usa
 Usage: `/au [chat_id]`
 Example: `/au \-100123456789`
 Authorizes a specific group to use the bot's features\\.
-*Note:* This command can only be used by the bot owner\.
+*Note:* This command can only be used by the bot owner\\.
 """
     else:
         usage_text = "Unknown command\\. Please go back and select a valid command\\."
@@ -239,15 +240,16 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cards_list = "\n".join(cards) # Join all cards with newlines
     
     # Construct the final response message with proper MarkdownV2 formatting
+    # Only card numbers and BIN are in monospace
     result = (
         f"Generated 10 Cards\n\n" # Header with a line space
         f"{cards_list}\n\n" # List of cards
-        f"> *💳 Brand*: `{brand}`\n"
-        f"> *🏦 Bank*: `{bank}`\n"
-        f"> *🌍 Country*: `{country}`\n"
+        f"> *💳 Brand*: {brand}\n"
+        f"> *🏦 Bank*: {bank}\n"
+        f"> *🌍 Country*: {country}\n"
         f"> *🧾 BIN*: `{bin_input}`\n"
-        f"> *🙋 Requested by \-*: `{update.effective_user.full_name}`\n" # Escaped hyphen
-        f"> *🤖 Bot by \-*: Your Friend" # Escaped hyphen
+        f"> *🙋 Requested by \\-*: `{update.effective_user.full_name}`\n" # Escaped hyphen
+        f"> *🤖 Bot by \\-*: Your Friend" # Escaped hyphen
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -292,18 +294,19 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     level = data.get("brand", "Unknown") # Using 'brand' from binlist.net as 'level'
 
     # Construct the final response message with proper MarkdownV2 formatting
+    # Only the BIN number is in monospace, as requested
     result = (
         f"╔══════════════════════╗\n"
-        f"║ 💳 \\*\\*𝐁𝐈𝐍 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐓𝐈𝐎𝐍\\*\\* ║\n" # Escaped asterisks for bold within ASCII art
+        f"║ 💳 **BIN INFORMATION** ║\n" # Using standard bold **
         f"╚══════════════════════╝\n"
-        f"*💳 𝐁𝐫𝐚𝐧𝐝*: `{scheme}`\n"
-        f"*🏦 𝐁𝐚𝐧𝐤*: `{bank}`\n"
-        f"*🌐 𝐓𝐲𝐩𝐞*: `{card_type}`\n" # Added Type
-        f"*💠 𝐋𝐞𝐯𝐞𝐥*: `{level}`\n" # Added Level
-        f"*🌎 𝐂𝐨𝐮𝐧𝐭𝐫𝐲*: `{country}`\n"
-        f"*🧾 𝐁𝐢𝐧*: `{bin_input}`\n"
-        f"🙋 Requested by \- `{update.effective_user.full_name}`\n" # Escaped hyphen
-        f"🤖 Bot by \- Your Friend" # Escaped hyphen
+        f"**💳 Brand**: {scheme}\n"
+        f"**🏦 Bank**: {bank}\n"
+        f"**🌐 Type**: {card_type}\n"
+        f"**💠 Level**: {level}\n"
+        f"**🌎 Country**: {country}\n"
+        f"**🧾 Bin**: `{bin_input}`\n" # Only this line has monospace backticks
+        f"🙋 Requested by \\- `{update.effective_user.full_name}`\n" # Escaped hyphen
+        f"🤖 Bot by \\- Your Friend" # Escaped hyphen
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -339,7 +342,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> 🧠 RAM Usage: `{ram_usage}`\n"
         f"> 🖥️ CPU Usage: `{cpu_usage}`\n"
         f"> ⏱️ Uptime: `{uptime_string}`\n"
-        f"> 🤖 Bot by \- Your Friend" # Escaped hyphen
+        f"> 🤖 Bot by \\- Your Friend" # Escaped hyphen
     )
     
     await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
@@ -388,7 +391,6 @@ def main():
 
     # Register Message Handlers for '.' commands using regex
     # The `^` ensures the dot command is at the beginning of the message.
-    # `filters.Regex(r"^\.gen\b.*")` matches messages starting with ".gen" followed by a word boundary.
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
 
