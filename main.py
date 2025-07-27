@@ -124,7 +124,6 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # it would reply. But for the current flow, it's always from a callback.
         await update.message.reply_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
 
-
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Displays detailed usage information for a specific command.
@@ -142,34 +141,33 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
 Usage: `/gen [bin]` or `.gen [bin]`
 Example: `/gen 453957`
 Generates 10 credit card numbers based on the provided BIN.
-*Note:* This command works only in authorized groups\.
+*Note:* This command works only in authorized groups.
 """
     elif command_name == "bin":
         usage_text = """*🔍 BIN Info*
 Usage: `/bin [bin]` or `.bin [bin]`
 Example: `/bin 518765`
-Provides detailed information about a given BIN\.
-*Note:* This command works only in authorized groups\.
+Provides detailed information about a given BIN.
+*Note:* This command works only in authorized groups.
 """
     elif command_name == "status":
         usage_text = """*📊 Bot Status*
 Usage: `/status`
-Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\.
-*Note:* This command works only in authorized groups\.
+Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime.
+*Note:* This command works only in authorized groups.
 """
     elif command_name == "au":
         usage_text = """*🔐 Authorize Group*
 Usage: `/au [chat_id]`
 Example: `/au -100123456789`
-Authorizes a specific group to use the bot's features\.
-*Note:* This command can only be used by the bot owner\.
+Authorizes a specific group to use the bot's features.
+*Note:* This command can only be used by the bot owner.
 """
     else:
-        usage_text = "Unknown command\. Please go back and select a valid command\."
+        usage_text = "Unknown command. Please go back and select a valid command."
 
     back_button = [[InlineKeyboardButton("⬅️ Back to Commands", callback_data="show_main_commands")]]
     await query.edit_message_text(usage_text, reply_markup=InlineKeyboardMarkup(back_button), parse_mode=ParseMode.MARKDOWN_V2)
-
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -350,19 +348,21 @@ def main():
     # Build the Telegram Application
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # Register Command Handlers
+    # Register Command Handlers for '/' commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
-    application.add_handler(CommandHandler(".gen", gen)) # Alias for /gen
     application.add_handler(CommandHandler("bin", bin_lookup))
-    application.add_handler(CommandHandler(".bin", bin_lookup)) # Alias for /bin
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("au", authorize_group))
 
+    # Register Message Handlers for '.' commands using regex
+    # The `^` ensures the dot command is at the beginning of the message.
+    # The `filters.COMMAND` is important to distinguish from regular text.
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*") & ~filters.COMMAND, gen))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*") & ~filters.COMMAND, bin_lookup))
+
     # Register Callback Query Handlers for inline buttons
-    # This handler responds to the initial 'Commands' button click
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
-    # This handler responds to clicks on individual command buttons (e.g., cmd_gen, cmd_bin)
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
 
     logger.info("Bot started polling...")
