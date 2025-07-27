@@ -70,8 +70,7 @@ def luhn_checksum(card_number):
 
 async def fetch_bin_info(bin_number):
     """
-    Asynchronously fetches BIN (Bank Identification Number) information
-    from the binlist.net API. This function makes an HTTP GET request.
+    Asynchronously fetches basic BIN information from the free binlist.net API.
     """
     url = f"https://lookup.binlist.net/{bin_number}"
     try:
@@ -81,13 +80,35 @@ async def fetch_bin_info(bin_number):
                     return await resp.json()
                 else:
                     logger.warning(f"BIN API returned status {resp.status} for BIN: {bin_number}")
-                    return None # Return None on non-200 status
+                    return None
     except aiohttp.ClientError as e:
         logger.error(f"Network error fetching BIN info for {bin_number}: {e}")
-        return None # Return None on network error
+        return None
     except Exception as e:
         logger.error(f"An unexpected error occurred fetching BIN info for {bin_number}: {e}")
-        return None # Return None on any other unexpected error
+        return None
+
+async def fetch_bin_level_info(bin_number):
+    """
+    Asynchronously fetches detailed BIN information, including card level, from a
+    more comprehensive (paid) API.
+    
+    NOTE: This is a placeholder function. You must replace the URL and API key
+    with your actual details from a service like Bincodes.com.
+    """
+    api_key = "YOUR_API_KEY_HERE"  # <-- REPLACE THIS WITH YOUR REAL API KEY
+    url = f"https://api.bincodes.com/v1/{bin_number}/json/{api_key}" # <-- REPLACE THIS WITH YOUR API'S URL
+    
+    # For demonstration purposes, we will return a hardcoded response.
+    # In a real bot, you would perform an aiohttp GET request here.
+    return {
+        "bin": bin_number,
+        "card_brand": "VISA",
+        "card_type": "DEBIT",
+        "card_category": "GOLD",
+        "country_name": "DENMARK",
+        "bank_name": "JYSKE BANK"
+    }
 
 async def enforce_cooldown(user_id):
     """
@@ -139,13 +160,10 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("💳 Generate Cards (/gen)", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Info (/bin)", callback_data="cmd_bin")],
         [InlineKeyboardButton("📊 Bot Status (/status)", callback_data="cmd_status")],
-        # Removed "Authorize Group" from this menu as it's owner-only and primarily for groups.
-        # It's still accessible via the /au command for the owner.
-        [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")] # Added back button
+        [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")]
     ]
     
     if query:
-        # Using ParseMode.MARKDOWN for this menu as it's less strict and doesn't require escaping for most characters
         await query.edit_message_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
     else:
         await update.message.reply_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
@@ -153,8 +171,6 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Displays detailed usage information for a specific command.
-    Triggered by inline buttons for individual commands (e.g., 'cmd_gen').
-    Includes a 'Back' button to return to the main command list.
     """
     query = update.callback_query
     await query.answer()
@@ -200,26 +216,21 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Generates credit card numbers based on a provided BIN.
     This command is restricted to authorized group chats and has a cooldown.
     """
-    # Check if the command is used in a group or supergroup
     if update.effective_chat.type not in ["group", "supergroup"]:
         button = InlineKeyboardMarkup([[InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")]])
         return await update.message.reply_text("Join our official group to use this bot.", reply_markup=button)
 
     chat_id = update.effective_chat.id
-    # Check if the current group is authorized to use the bot
     if chat_id not in AUTHORIZED_GROUPS:
         return await update.message.reply_text("🚫 This group is not authorized to use the bot.")
 
-    # Enforce cooldown to prevent command spamming
     if not await enforce_cooldown(update.effective_user.id):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying.")
 
     bin_input = None
-    # Robust argument parsing for both /command [bin] and .command [bin]
-    if context.args: # For /gen [bin]
+    if context.args:
         bin_input = context.args[0]
-    elif update.message.text: # For .gen [bin]
-        # Split the message to get the part after the command (.gen)
+    elif update.message.text:
         command_text = update.message.text.split(maxsplit=1)
         if len(command_text) > 1:
             bin_input = command_text[1]
@@ -230,53 +241,55 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(bin_input) < 6:
         return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Fetch BIN data from the external API
+    # Fetch BIN data from the free API (for scheme, bank, country)
     bin_data = await fetch_bin_info(bin_input[:6])
-    if not bin_data: # Check if bin_data is None (API call failed)
+    # Fetch detailed level info from the placeholder API
+    level_data = await fetch_bin_level_info(bin_input[:6])
+    
+    if not bin_data:
         return await update.message.reply_text("❌ Could not retrieve BIN information\\. Please try again later or check the BIN\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bank = bin_data.get("bank", {}).get("name", "Unknown")
     country_name = bin_data.get("country", {}).get("name", "Unknown")
     country_emoji = bin_data.get("country", {}).get("emoji", '')
     brand = bin_data.get("scheme", "Unknown").capitalize()
+    
+    # Get level from the more comprehensive API's data
+    level = level_data.get("card_category", "Unknown").capitalize()
 
     # Escape dynamic text for MarkdownV2
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country = escape_markdown_v2(f"{country_name} {country_emoji}".strip())
+    escaped_level = escape_markdown_v2(level)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
     cards = []
-    # Generate 10 unique, Luhn-valid card numbers
     while len(cards) < 10:
-        # Construct a 16-digit number starting with the BIN and random digits
         num = bin_input + ''.join(str(os.urandom(1)[0] % 10) for _ in range(16 - len(bin_input)))
-        if not luhn_checksum(num): # Validate using Luhn algorithm
+        if not luhn_checksum(num):
             continue
         
-        # Generate random month (01-12) and year (current year + up to 5 years)
         mm = str(os.urandom(1)[0] % 12 + 1).zfill(2)
         yyyy = str(datetime.now().year + os.urandom(1)[0] % 6)
         
-        # Generate CVV (3 digits for most cards, 4 for American Express)
         cvv_length = 4 if brand == 'American Express' else 3
         cvv = str(os.urandom(1)[0] % (10**cvv_length)).zfill(cvv_length)
         
-        cards.append(f"`{num}|{mm}|{yyyy[-2:]}|{cvv}`") # Format each card in monospace
+        cards.append(f"`{num}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    cards_list = "\n".join(cards) # Join all cards with newlines
+    cards_list = "\n".join(cards)
     
-    # Construct the final response message with proper MarkdownV2 formatting
-    # Only card numbers and BIN are in monospace
     result = (
-        f"Generated 10 Cards\n\n" # Header with a line space
-        f"{cards_list}\n\n" # List of cards
+        f"Generated 10 Cards\n\n"
+        f"{cards_list}\n\n"
         f"> *💳 Brand*: {escaped_brand}\n"
         f"> *🏦 Bank*: {escaped_bank}\n"
         f"> *🌍 Country*: {escaped_country}\n"
+        f"> *💠 Level*: {escaped_level}\n"
         f"> *🧾 BIN*: `{bin_input}`\n"
-        f"> *🙋 Requested by \\-*: {escaped_user_full_name}\n" # Escaped hyphen, and now escaped username
-        f"> *🤖 Bot by \\-*: Your Friend" # Escaped hyphen
+        f"> *🙋 Requested by \\-*: {escaped_user_full_name}\n"
+        f"> *🤖 Bot by \\-*: Your Friend"
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -284,7 +297,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Performs a BIN lookup using the external API and displays the information.
-    This command is restricted to authorized group chats and has a cooldown.
     """
     if update.effective_chat.type not in ["group", "supergroup"]:
         button = InlineKeyboardMarkup([[InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")]])
@@ -294,11 +306,9 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying.")
 
     bin_input = None
-    # Robust argument parsing for both /command [bin] and .command [bin]
-    if context.args: # For /bin [bin]
+    if context.args:
         bin_input = context.args[0]
-    elif update.message.text: # For .bin [bin]
-        # Split the message to get the part after the command (.bin)
+    elif update.message.text:
         command_text = update.message.text.split(maxsplit=1)
         if len(command_text) > 1:
             bin_input = command_text[1]
@@ -306,18 +316,25 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not bin_input:
         return await update.message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/bin [bin]` or `\\.bin [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    bin_input = bin_input[:6] # Take only the first 6 digits for BIN lookup
+    bin_input = bin_input[:6]
+    
+    # Fetch BIN data from the free API (for scheme, bank, country)
     bin_data = await fetch_bin_info(bin_input)
-    if not bin_data: # Check if bin_data is None (API call failed)
+    # Fetch detailed level info from the placeholder API
+    level_data = await fetch_bin_level_info(bin_input)
+
+    if not bin_data:
         return await update.message.reply_text("❌ Could not retrieve BIN information\\. Please try again later or check the BIN\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Extract relevant information from the API response
+    # Extract relevant information from the API responses
     bank = bin_data.get("bank", {}).get("name", "Unknown")
     country_name = bin_data.get("country", {}).get("name", "Unknown")
     country_emoji = bin_data.get("country", {}).get("emoji", '')
     scheme = bin_data.get("scheme", "Unknown").capitalize()
-    card_type = bin_data.get("type", "Unknown").capitalize() # e.g., debit, credit
-    level = bin_data.get("brand", "Unknown") # Using 'brand' from binlist.net as 'level'
+    card_type = bin_data.get("type", "Unknown").capitalize()
+    
+    # Get card level from the more comprehensive API data.
+    level = level_data.get("card_category", "Unknown").capitalize()
 
     # Escape dynamic text for MarkdownV2
     escaped_scheme = escape_markdown_v2(scheme)
@@ -328,19 +345,18 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
 
     # Construct the final response message with proper MarkdownV2 formatting
-    # Only the BIN number is in monospace, as requested
     result = (
         f"╔══════════════════════╗\n"
-        f"║ 💳 \\*\\*𝐁𝐈𝐍 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐓𝐈𝐎𝐍\\*\\* ║\n" # Escaped asterisks for bold within ASCII art
+        f"║ 💳 \\*\\*𝐁𝐈𝐍 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐓𝐈𝐎𝐍\\*\\* ║\n"
         f"╚══════════════════════╝\n"
         f"**💳 Brand**: {escaped_scheme}\n"
         f"**🏦 Bank**: {escaped_bank}\n"
         f"**🌐 Type**: {escaped_card_type}\n"
         f"**💠 Level**: {escaped_level}\n"
         f"**🌎 Country**: {escaped_country}\n"
-        f"**🧾 Bin**: `{bin_input}`\n" # Only this line has monospace backticks
-        f"🙋 Requested by \\- {escaped_user_full_name}\n" # Escaped hyphen, and now fully escaped username
-        f"🤖 Bot by \\- Your Friend" # Escaped hyphen
+        f"**🧾 Bin**: `{bin_input}`\n"
+        f"🙋 Requested by \\- {escaped_user_full_name}\n"
+        f"🤖 Bot by \\- Your Friend"
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -348,43 +364,36 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Displays the bot's current operational status (users, RAM, CPU, uptime).
-    This command is restricted to group chats.
     """
     if update.effective_chat.type not in ["group", "supergroup"]:
         return await update.message.reply_text("🔒 This command can only be used in the group.")
 
     total_users = len(user_last_command)
     
-    # Calculate RAM usage in MB
     ram_mb = psutil.virtual_memory().used / (1024 * 1024)
     ram_usage = f"{ram_mb:.0f} MB"
     
-    # Get CPU usage percentage. This can be a float (e.g. 12.3).
     cpu_usage_percent = psutil.cpu_percent()
-    # First, format the number and then escape it, then add the escaped percent sign.
     escaped_cpu_usage_text = escape_markdown_v2(str(cpu_usage_percent)) + "\\%"
     
-    # Calculate bot uptime in hours and minutes
     uptime_seconds = int(time.time() - psutil.boot_time())
     uptime_delta = timedelta(seconds=uptime_seconds)
     hours, remainder = divmod(uptime_delta.seconds, 3600)
     minutes, _ = divmod(remainder, 60)
     uptime_string = f"{hours} hours {minutes} minutes"
 
-    # Escape all other dynamic variables for MarkdownV2
     escaped_total_users = escape_markdown_v2(str(total_users))
     escaped_ram_usage = escape_markdown_v2(ram_usage)
     escaped_uptime_string = escape_markdown_v2(uptime_string)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
 
-    # Construct the final response message with proper MarkdownV2 formatting, with no monospace.
     status_msg = (
         f"> 📊 Bot Status\n"
         f"> 👥 Total Users: {escaped_total_users}\n"
         f"> 🧠 RAM Usage: {escaped_ram_usage}\n"
         f"> 🖥️ CPU Usage: {escaped_cpu_usage_text}\n"
         f"> ⏱️ Uptime: {escaped_uptime_string}\n"
-        f"> 🤖 Bot by \\- Your Friend" # Escaped hyphen
+        f"> 🤖 Bot by \\- Your Friend"
     )
     
     await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
@@ -402,7 +411,6 @@ async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         chat_id_to_authorize = int(context.args[0])
         AUTHORIZED_GROUPS.add(chat_id_to_authorize)
-        # Escaping the dot at the end of the sentence for MarkdownV2
         await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
         await update.message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
@@ -411,9 +419,7 @@ async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     """
     Main function to build and run the Telegram bot application.
-    Initializes the bot, registers all command and callback handlers, and starts polling for updates.
     """
-    # Validate environment variables before starting the bot
     if TOKEN is None:
         logger.error("BOT_TOKEN environment variable is not set. Please set it before running the bot.")
         exit(1)
@@ -421,29 +427,22 @@ def main():
         logger.error("OWNER_ID environment variable is not set. Please set it before running the bot.")
         exit(1)
     
-    # Build the Telegram Application
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # Register Command Handlers for '/' commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("au", authorize_group))
 
-    # Register Message Handlers for '.' commands using regex
-    # The `^` ensures the dot command is at the beginning of the message.
-    # `filters.Regex(r"^\.gen\b.*")` matches messages starting with ".gen" followed by a word boundary.
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
 
-    # Register Callback Query Handlers for inline buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
-    application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$")) # Handler for the new back button
+    application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$"))
 
     logger.info("Bot started polling...")
-    # Start polling for updates from Telegram
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
