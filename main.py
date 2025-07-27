@@ -55,26 +55,104 @@ def escape_markdown_v2(text):
 def get_short_country_name(full_name):
     """
     Extracts a shorter, more common name from a full country name string.
+    Handles common long forms and parenthetical suffixes.
     """
     if not full_name:
         return "Unknown"
     
-    # Remove common parenthetical suffixes and "of" phrases
-    full_name = full_name.replace("(the)", "").replace("of Great Britain and Northern Ireland", "").strip()
-    
-    # Split by common delimiters and take the first part
-    parts = full_name.split(',')
-    short_name = parts[0].strip()
+    # Common mappings for very long or formal names
+    name_map = {
+        "United States of America": "United States",
+        "Russian Federation": "Russia",
+        "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
+        "Republic of Korea": "South Korea",
+        "Islamic Republic of Iran": "Iran",
+        "Venezuela (Bolivarian Republic of)": "Venezuela",
+        "Viet Nam": "Vietnam",
+        "Lao People's Democratic Republic": "Laos",
+        "Democratic Republic of the Congo": "DR Congo",
+        "Congo (Democratic Republic of the)": "DR Congo",
+        "Congo (Republic of the)": "Congo",
+        "Tanzania, United Republic of": "Tanzania",
+        "Syrian Arab Republic": "Syria",
+        "Bolivia (Plurinational State of)": "Bolivia",
+        "Brunei Darussalam": "Brunei",
+        "Cabo Verde": "Cape Verde",
+        "Central African Republic": "Central African Republic",
+        "Comoros": "Comoros",
+        "Côte d'Ivoire": "Ivory Coast",
+        "Democratic People's Republic of Korea": "North Korea",
+        "Dominican Republic": "Dominican Republic",
+        "Equatorial Guinea": "Equatorial Guinea",
+        "Eswatini": "Eswatini",
+        "Falkland Islands (Malvinas)": "Falkland Islands",
+        "Gambia (the)": "Gambia",
+        "Guinea-Bissau": "Guinea-Bissau",
+        "Holy See": "Vatican City",
+        "Iran (Islamic Republic of)": "Iran",
+        "Lao People's Democratic Republic": "Laos",
+        "Libya": "Libya",
+        "Macedonia (the former Yugoslav Republic of)": "North Macedonia",
+        "Micronesia (Federated States of)": "Micronesia",
+        "Moldova (Republic of)": "Moldova",
+        "Mozambique": "Mozambique",
+        "Myanmar": "Myanmar",
+        "Niger (the)": "Niger",
+        "Palestine, State of": "Palestine",
+        "Saint Helena, Ascension and Tristan da Cunha": "Saint Helena",
+        "Sao Tome and Principe": "Sao Tome and Principe",
+        "Serbia": "Serbia",
+        "Slovakia": "Slovakia",
+        "Slovenia": "Slovenia",
+        "Somalia": "Somalia",
+        "South Georgia and the South Sandwich Islands": "South Georgia",
+        "South Sudan": "South Sudan",
+        "Sudan (the)": "Sudan",
+        "Svalbard and Jan Mayen": "Svalbard",
+        "Timor-Leste": "Timor-Leste",
+        "Togo": "Togo",
+        "Tokelau": "Tokelau",
+        "Tonga": "Tonga",
+        "Trinidad and Tobago": "Trinidad and Tobago",
+        "Tunisia": "Tunisia",
+        "Turkey": "Turkey",
+        "Turkmenistan": "Turkmenistan",
+        "Turks and Caicos Islands (the)": "Turks and Caicos",
+        "Tuvalu": "Tuvalu",
+        "Uganda": "Uganda",
+        "Ukraine": "Ukraine",
+        "United Arab Emirates (the)": "United Arab Emirates",
+        "United States Minor Outlying Islands (the)": "US Outlying Islands",
+        "Uruguay": "Uruguay",
+        "Uzbekistan": "Uzbekistan",
+        "Vanuatu": "Vanuatu",
+        "Venezuela (Bolivarian Republic of)": "Venezuela",
+        "Wallis and Futuna": "Wallis and Futuna",
+        "Western Sahara": "Western Sahara",
+        "Yemen": "Yemen",
+        "Zambia": "Zambia",
+        "Zimbabwe": "Zimbabwe",
+    }
 
-    # Specific common short forms
-    if short_name == "United States of America":
-        return "United States"
-    if short_name == "Russian Federation":
-        return "Russia"
-    if short_name == "United Kingdom":
-        return "United Kingdom" # Already good
+    # Check for direct mapping first
+    if full_name in name_map:
+        return name_map[full_name]
+
+    # Remove common parenthetical suffixes like "(the)", "(Bolivarian Republic of)"
+    # This regex removes anything in parentheses and then trailing "of X" phrases
+    import re
+    cleaned_name = re.sub(r'\s*\(.*\)\s*', '', full_name).strip()
+    cleaned_name = re.sub(r'\s*of\s+.*$', '', cleaned_name).strip()
     
-    return short_name.strip() # Return cleaned full name if no specific mapping
+    # If still long, take the first word or first few words
+    words = cleaned_name.split()
+    if len(words) > 2 and words[1].lower() in ["republic", "kingdom", "states", "federation"]:
+        return " ".join(words[:2]) # e.g., "United States"
+    elif len(words) > 1 and words[0].lower() == "the":
+        return " ".join(words[1:]) # e.g., "Bahamas" instead of "The Bahamas"
+    
+    return cleaned_name # Return cleaned name if no specific mapping or further shortening needed
+
 
 def luhn_checksum(card_number):
     """
@@ -139,10 +217,56 @@ async def fetch_bin_info_bincheckio(bin_number):
         logger.error(f"An unexpected error occurred fetching from Bincheck.io for {bin_number}: {e}")
         return None
 
+async def fetch_premium_bin_info(bin_number):
+    """
+    Asynchronously fetches detailed BIN information, including card level, from a
+    more comprehensive (paid) API.
+    
+    IMPORTANT NOTE: This is a placeholder function. To get real card levels
+    (e.g., "Gold", "Platinum", "Classic", "Infinite") and more reliable data,
+    you MUST replace this with an actual API call to a service that provides this data.
+    
+    Examples of such services include:
+    - Bincodes.com (often provides 'category' or 'level')
+    - Stripe's BIN API (if you have a payment gateway setup, but may not expose 'level' directly)
+    - Other specialized BIN lookup APIs.
+    
+    These services usually require an API key and may have usage limits.
+    
+    Example of how you might implement a real call (e.g., for Bincodes.com):
+    api_key = "YOUR_BINCODES_API_KEY" # <-- REPLACE THIS WITH YOUR REAL API KEY
+    url = f"https://api.bincodes.com/v1/{bin_number}/json/{api_key}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    # Map Bincodes.com fields to our internal keys
+                    return {
+                        "bank": data.get("bank_name", "Unknown"),
+                        "country_name": data.get("country_name", "Unknown"),
+                        "country_emoji": "", # Bincodes might not have emoji
+                        "scheme": data.get("card_brand", "Unknown"),
+                        "card_type": data.get("card_type", "Unknown"),
+                        "level": data.get("card_category", "N/A") # This is where 'Gold', 'Platinum' comes from
+                    }
+                else:
+                    logger.warning(f"Premium API returned status {resp.status} for BIN: {bin_number}")
+                    return None
+    except aiohttp.ClientError as e:
+        logger.error(f"Network error fetching from Premium API for {bin_number}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"An unexpected error occurred fetching from Premium API for {bin_number}: {e}")
+        return None
+
+    # Default placeholder if no real API is integrated or if the call fails
+    return None
+
 async def get_bin_details(bin_number):
     """
     Attempts to fetch BIN details from multiple APIs with fallback.
-    Prioritizes binlist.net, then falls back to bincheck.io.
+    Prioritizes a premium API (if implemented), then binlist.net, then bincheck.io.
     """
     # Initialize with defaults
     details = {
@@ -151,10 +275,24 @@ async def get_bin_details(bin_number):
         "country_emoji": "",
         "scheme": "Unknown",
         "card_type": "Unknown",
-        "level": "N/A" # Default for level as it's not reliably available from free APIs
+        "level": "N/A" # Default for level
     }
 
-    # Try Binlist.net first
+    # 1. Try Premium API first (if implemented and provides data)
+    premium_data = await fetch_premium_bin_info(bin_number)
+    if premium_data:
+        details["bank"] = premium_data.get("bank", details["bank"])
+        details["country_name"] = premium_data.get("country_name", details["country_name"])
+        details["country_emoji"] = premium_data.get("country_emoji", details["country_emoji"])
+        details["scheme"] = premium_data.get("scheme", details["scheme"]).capitalize()
+        details["card_type"] = premium_data.get("card_type", details["card_type"]).capitalize()
+        details["level"] = premium_data.get("level", details["level"]).capitalize()
+        # If premium API gives good data, we might not need to check others for core fields
+        if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
+            details["country_name"] = get_short_country_name(details["country_name"])
+            return details
+
+    # 2. Fallback to Binlist.net
     binlist_data = await fetch_bin_info_binlist(bin_number)
     if binlist_data:
         details["bank"] = binlist_data.get("bank", {}).get("name", details["bank"])
@@ -162,20 +300,18 @@ async def get_bin_details(bin_number):
         details["country_emoji"] = binlist_data.get("country", {}).get("emoji", details["country_emoji"])
         details["scheme"] = binlist_data.get("scheme", details["scheme"]).capitalize()
         details["card_type"] = binlist_data.get("type", details["card_type"]).capitalize()
+        # binlist.net doesn't provide 'level'
     
-    # If key details are still "Unknown" or not fully populated, try bincheck.io
-    # Or if binlist_data was None, always try fallback
-    if not binlist_data or details["bank"] == "Unknown" or details["country_name"] == "Unknown":
+    # 3. Fallback to Bincheck.io if still missing key info
+    if details["bank"] == "Unknown" or details["country_name"] == "Unknown" or details["scheme"] == "Unknown":
         bincheck_data = await fetch_bin_info_bincheckio(bin_number)
         if bincheck_data:
-            # bincheck.io uses different keys, map them
             details["bank"] = bincheck_data.get("bank", {}).get("name", details["bank"])
             details["country_name"] = bincheck_data.get("country", {}).get("name", details["country_name"])
-            details["country_emoji"] = bincheck_data.get("country", {}).get("emoji", details["country_emoji"]) # bincheck.io might not have emoji
-            details["scheme"] = bincheck_data.get("brand", details["scheme"]).capitalize() # bincheck.io uses 'brand'
+            details["country_emoji"] = bincheck_data.get("country", {}).get("emoji", details["country_emoji"])
+            details["scheme"] = bincheck_data.get("brand", details["scheme"]).capitalize()
             details["card_type"] = bincheck_data.get("type", details["card_type"]).capitalize()
-            # bincheck.io might have a "level" or "category" field, but it varies.
-            # For this example, let's assume it has a 'level' field.
+            # bincheck.io might have a "level" field, but it varies.
             details["level"] = bincheck_data.get("level", details["level"]).capitalize()
 
     # Shorten country name after getting from all sources
