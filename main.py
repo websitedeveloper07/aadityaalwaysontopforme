@@ -52,23 +52,31 @@ def escape_markdown_v2(text):
             escaped_text += char
     return escaped_text
 
-def luhn_checksum(card_number):
+def get_short_country_name(full_name):
     """
-    Validates a credit card number using the Luhn algorithm (Mod 10 algorithm).
-    This algorithm is commonly used to validate credit card numbers and other
-    identification numbers.
+    Extracts a shorter, more common name from a full country name string.
     """
-    def digits_of(n): return [int(d) for d in str(n)]
-    digits = digits_of(card_number)
-    odd_digits = digits[-1::-2]  # Digits at odd positions from the right (1st, 3rd, etc.)
-    even_digits = digits[-2::-2] # Digits at even positions from the right (2nd, 4th, etc.)
+    if not full_name:
+        return "Unknown"
+    
+    # Remove common parenthetical suffixes and "of" phrases
+    full_name = full_name.replace("(the)", "").replace("of Great Britain and Northern Ireland", "").strip()
+    
+    # Split by common delimiters and take the first part
+    parts = full_name.split(',')
+    short_name = parts[0].strip()
 
-    checksum = sum(odd_digits)
-    for d in even_digits:
-        checksum += sum(digits_of(d * 2)) # Double even digits and sum their individual digits
-    return checksum % 10 == 0 # Returns True if checksum is a multiple of 10, False otherwise.
+    # Specific common short forms
+    if short_name == "United States of America":
+        return "United States"
+    if short_name == "Russian Federation":
+        return "Russia"
+    if short_name == "United Kingdom":
+        return "United Kingdom" # Already good
+    
+    return short_name
 
-async def fetch_bin_info(bin_number):
+async def fetch_bin_info_binlist(bin_number):
     """
     Asynchronously fetches basic BIN information from the free binlist.net API.
     """
@@ -79,48 +87,86 @@ async def fetch_bin_info(bin_number):
                 if resp.status == 200:
                     return await resp.json()
                 else:
-                    logger.warning(f"BIN API returned status {resp.status} for BIN: {bin_number}")
-                    return None # Return None on non-200 status
+                    logger.warning(f"Binlist API returned status {resp.status} for BIN: {bin_number}")
+                    return None
     except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching BIN info for {bin_number}: {e}")
-        return None # Return None on network error
+        logger.error(f"Network error fetching from Binlist for {bin_number}: {e}")
+        return None
     except Exception as e:
-        logger.error(f"An unexpected error occurred fetching BIN info for {bin_number}: {e}")
-        return None # Return None on any other unexpected error
+        logger.error(f"An unexpected error occurred fetching from Binlist for {bin_number}: {e}")
+        return None
 
-async def fetch_bin_level_info(bin_number):
+async def fetch_bin_info_binlookupio(bin_number):
     """
-    Asynchronously fetches detailed BIN information, including card level, from a
-    more comprehensive (paid) API.
+    Asynchronously fetches BIN information from binlookup.io.
+    This is a free API, but may have rate limits or less comprehensive data.
+    """
+    url = f"https://api.binlookup.io/v2/{bin_number}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                else:
+                    logger.warning(f"Binlookup.io API returned status {resp.status} for BIN: {bin_number}")
+                    return None
+    except aiohttp.ClientError as e:
+        logger.error(f"Network error fetching from Binlookup.io for {bin_number}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"An unexpected error occurred fetching from Binlookup.io for {bin_number}: {e}")
+        return None
+
+async def get_bin_details(bin_number):
+    """
+    Attempts to fetch BIN details from multiple APIs with fallback.
+    Prioritizes binlist.net, then falls back to binlookup.io.
+    """
+    # Try Binlist.net first (often good for basic info)
+    data = await fetch_bin_info_binlist(bin_number)
     
-    NOTE: This is a placeholder function. To get real card levels (Gold, Platinum, etc.),
-    you MUST replace this with an actual API call to a service that provides this data
-    (e.g., Bincodes.com, Stripe's BIN API if you have a payment gateway setup, etc.).
-    These services usually require an API key and may have usage limits.
-    """
-    # Example placeholder for a real API call:
-    # api_key = "YOUR_API_KEY_HERE"
-    # url = f"https://api.example.com/bin_lookup?bin={bin_number}&api_key={api_key}"
-    # try:
-    #     async with aiohttp.ClientSession() as session:
-    #         async with session.get(url) as resp:
-    #             if resp.status == 200:
-    #                 data = await resp.json()
-    #                 # Assuming the real API returns something like:
-    #                 # {"bin": "...", "card_category": "GOLD", "card_type": "CREDIT", ...}
-    #                 return {"card_category": data.get("card_category", "Unknown")}
-    #             else:
-    #                 logger.warning(f"Level API returned status {resp.status} for BIN: {bin_number}")
-    #                 return {"card_category": "N/A (API Error)"}
-    # except aiohttp.ClientError as e:
-    #     logger.error(f"Network error fetching BIN level info for {bin_number}: {e}")
-    #     return {"card_category": "N/A (Network Error)"}
-    # except Exception as e:
-    #     logger.error(f"An unexpected error occurred fetching BIN level info for {bin_number}: {e}")
-    #     return {"card_category": "N/A (Internal Error)"}
+    # Initialize with defaults
+    bank = "Unknown"
+    country_name = "Unknown"
+    country_emoji = ""
+    scheme = "Unknown"
+    card_type = "Unknown"
+    level = "N/A" # Default for level as it's not in binlist.net
 
-    # For now, return a placeholder indicating real API is needed
-    return {"card_category": "N/A (Requires external API)"}
+    if data:
+        bank = data.get("bank", {}).get("name", bank)
+        country_name = data.get("country", {}).get("name", country_name)
+        country_emoji = data.get("country", {}).get("emoji", country_emoji)
+        scheme = data.get("scheme", scheme).capitalize()
+        card_type = data.get("type", card_type).capitalize()
+        # binlist.net doesn't provide 'level'
+    
+    # If primary API failed or returned limited info, try fallback for more details
+    # Note: binlookup.io also might not have a direct 'level' field like Gold/Platinum.
+    # For accurate levels, a dedicated paid API is usually required.
+    fallback_data = await fetch_bin_info_binlookupio(bin_number)
+    if fallback_data:
+        # Update fields if fallback provides better info or fills gaps
+        bank = fallback_data.get("bank", {}).get("name", bank)
+        country_name = fallback_data.get("country", {}).get("name", country_name)
+        country_emoji = fallback_data.get("country", {}).get("emoji", country_emoji)
+        scheme = fallback_data.get("scheme", scheme).capitalize()
+        card_type = fallback_data.get("type", card_type).capitalize()
+        # binlookup.io might have a "level" or "category" field, but it varies.
+        # For this example, let's assume it has a 'category' field.
+        level = fallback_data.get("category", level).capitalize() # Use 'category' or similar if available
+
+    # Shorten country name after getting from all sources
+    country_display_name = get_short_country_name(country_name)
+    
+    return {
+        "bank": bank,
+        "country_name": country_display_name,
+        "country_emoji": country_emoji,
+        "scheme": scheme,
+        "card_type": card_type,
+        "level": level
+    }
 
 async def enforce_cooldown(user_id):
     """
@@ -172,11 +218,10 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("💳 Generate Cards (/gen)", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Info (/bin)", callback_data="cmd_bin")],
         [InlineKeyboardButton("📊 Bot Status (/status)", callback_data="cmd_status")],
-        [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")] # Added back button
+        [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")]
     ]
     
     if query:
-        # Using ParseMode.MARKDOWN for this menu as it's less strict and doesn't require escaping for most characters
         await query.edit_message_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
     else:
         await update.message.reply_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
@@ -184,8 +229,6 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Displays detailed usage information for a specific command.
-    Triggered by inline buttons for individual commands (e.g., 'cmd_gen').
-    Includes a 'Back' button to return to the main command list.
     """
     query = update.callback_query
     await query.answer()
@@ -256,24 +299,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(bin_input) < 6:
         return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    bin_data = await fetch_bin_info(bin_input[:6])
-    level_data = await fetch_bin_level_info(bin_input[:6]) # Fetch level info
+    # Get BIN details from multiple sources
+    bin_details = await get_bin_details(bin_input[:6])
 
-    if not bin_data:
-        return await update.message.reply_text("❌ Could not retrieve BIN information\\. Please try again later or check the BIN\\.", parse_mode=ParseMode.MARKDOWN_V2)
-
-    bank = bin_data.get("bank", {}).get("name", "Unknown")
-    country_name = bin_data.get("country", {}).get("name", "Unknown")
-    country_emoji = bin_data.get("country", {}).get("emoji", '')
-    brand = bin_data.get("scheme", "Unknown").capitalize()
-    level = level_data.get("card_category", "N/A").capitalize() # Get level from level_data
-
-    # Escape dynamic text for MarkdownV2
-    escaped_brand = escape_markdown_v2(brand)
-    escaped_bank = escape_markdown_v2(bank)
-    escaped_country = escape_markdown_v2(f"{country_name} {country_emoji}".strip())
-    escaped_level = escape_markdown_v2(level)
-    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
+    brand = bin_details["scheme"]
+    bank = bin_details["bank"]
+    country = f"{bin_details['country_name']} {bin_details['country_emoji']}".strip()
+    level = bin_details["level"]
     
     cards = []
     while len(cards) < 10:
@@ -291,16 +323,26 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cards_list = "\n".join(cards)
     
+    # Escape dynamic text for MarkdownV2
+    escaped_brand = escape_markdown_v2(brand)
+    escaped_bank = escape_markdown_v2(bank)
+    escaped_country = escape_markdown_v2(country)
+    escaped_level = escape_markdown_v2(level)
+    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
+    
+    # Construct the entire message within a single quote block
     result = (
-        f"Generated 10 Cards\n\n"
-        f"{cards_list}\n\n"
-        f"> *💳 Brand*: {escaped_brand}\n"
-        f"> *🏦 Bank*: {escaped_bank}\n"
-        f"> *🌍 Country*: {escaped_country}\n"
-        f"> *💠 Level*: {escaped_level}\n" # Included Level
-        f"> *🧾 BIN*: `{bin_input}`\n"
-        f"> *🙋 Requested by \\-*: {escaped_user_full_name}\n"
-        f"> *🤖 Bot by \\-*: Your Friend"
+        f"> Generated 10 Cards\n"
+        f"> \n"
+        f"> {cards_list.replace('\n', '\n> ')}\n" # Apply quote to each line of cards
+        f"> \n"
+        f"> * **Brand**: {escaped_brand}\n"
+        f"> * **Bank**: {escaped_bank}\n"
+        f"> * **Country**: {escaped_country}\n"
+        f"> * **Level**: {escaped_level}\n"
+        f"> * **BIN**: `{bin_input}`\n"
+        f"> Requested by \\- {escaped_user_full_name}\n"
+        f"> Bot by \\- Your Friend"
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -329,23 +371,20 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     bin_input = bin_input[:6]
     
-    bin_data = await fetch_bin_info(bin_input)
-    level_data = await fetch_bin_level_info(bin_input) # Fetch level info
+    # Get BIN details from multiple sources
+    bin_details = await get_bin_details(bin_input)
 
-    if not bin_data:
-        return await update.message.reply_text("❌ Could not retrieve BIN information\\. Please try again later or check the BIN\\.", parse_mode=ParseMode.MARKDOWN_V2)
-
-    bank = bin_data.get("bank", {}).get("name", "Unknown")
-    country_name = bin_data.get("country", {}).get("name", "Unknown")
-    country_emoji = bin_data.get("country", {}).get("emoji", '')
-    scheme = bin_data.get("scheme", "Unknown").capitalize()
-    card_type = bin_data.get("type", "Unknown").capitalize()
-    level = level_data.get("card_category", "N/A").capitalize() # Get level from level_data
+    # Extract details, using "Unknown" or "N/A" if not found
+    scheme = bin_details["scheme"]
+    bank = bin_details["bank"]
+    card_type = bin_details["card_type"]
+    level = bin_details["level"]
+    country = f"{bin_details['country_name']} {bin_details['country_emoji']}".strip()
 
     # Escape dynamic text for MarkdownV2
     escaped_scheme = escape_markdown_v2(scheme)
     escaped_bank = escape_markdown_v2(bank)
-    escaped_country = escape_markdown_v2(f"{country_name} {country_emoji}".strip())
+    escaped_country = escape_markdown_v2(country)
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_level = escape_markdown_v2(level)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
@@ -393,6 +432,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_uptime_string = escape_markdown_v2(uptime_string)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
 
+    # Construct the entire message within a single quote block
     status_msg = (
         f"> 📊 Bot Status\n"
         f"> 👥 Total Users: {escaped_total_users}\n"
