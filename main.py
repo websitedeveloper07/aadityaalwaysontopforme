@@ -491,18 +491,23 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_level = escape_markdown_v2(level)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # Construct the message: Quote for cards, then regular text for BIN info
+    # Construct the message:
+    # 1. Top quote box for "Generated 10 Cards"
+    # 2. Raw list of cards
+    # 3. Newline gap
+    # 4. Second quote box for BIN info
+    # 5. Final lines outside quote box
     result = (
         f"> Generated 10 Cards\n"
-        f"> \n"
-        f"> {cards_list.replace('\n', '\n> ')}\n" # Apply quote to each line of cards
-        f"\n" # Newline to break the quote block
-        f"* **Brand**: {escaped_brand}\n"
-        f"* **Bank**: {escaped_bank}\n"
-        f"* **Type**: {escaped_card_type}\n"
-        f"* **Level**: {escaped_level}\n"
-        f"* **Country**: {escaped_country}\n"
-        f"* **BIN**: `{bin_input}`\n"
+        f"> \n" # One line gap inside the first quote box
+        f"{cards_list}\n" # Cards list, NOT in quote box
+        f"\n" # One line gap between cards and info quote box
+        f"> * **Brand**: {escaped_brand}\n"
+        f"> * **Bank**: {escaped_bank}\n"
+        f"> * **Type**: {escaped_card_type}\n"
+        f"> * **Level**: {escaped_level}\n"
+        f"> * **Country**: {escaped_country}\n"
+        f"> * **BIN**: `{bin_input}`\n"
         f"Requested by \\- {escaped_user_full_name}\n"
         f"Bot by \\- Your Friend"
     )
