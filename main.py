@@ -188,17 +188,18 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying.")
 
     bin_input = None
-    # Robust argument parsing for both /command and .command
+    # Robust argument parsing for both /command [bin] and .command [bin]
     if context.args: # For /gen [bin]
         bin_input = context.args[0]
     elif update.message.text: # For .gen [bin]
         # Split the message to get the part after the command (.gen)
-        parts = update.message.text.split(maxsplit=1)
-        if len(parts) > 1:
-            bin_input = parts[1]
+        # Ensure it's not just ".gen" without any argument
+        command_text = update.message.text.split(maxsplit=1)
+        if len(command_text) > 1:
+            bin_input = command_text[1]
 
     if not bin_input:
-        return await update.message.reply_text("Usage: `/gen [bin]` or `\.gen [bin]`\. Please provide a BIN\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text("❌ Please provide a 6-digit BIN\. Usage: `/gen [bin]` or `\.gen [bin]`\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     if len(bin_input) < 6:
         return await update.message.reply_text("⚠️ BIN should be at least 6 digits\.", parse_mode=ParseMode.MARKDOWN_V2)
@@ -239,8 +240,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> *🏦 Bank*: `{bank}`\n"
         f"> *🌍 Country*: `{country}`\n"
         f"> *🧾 BIN*: `{bin_input}`\n"
-        f"> *🙋 Requested by -*: `{update.effective_user.full_name}`\n"
-        f"> *🤖 Bot by -*: Your Friend"
+        f"> *🙋 Requested by \-*: `{update.effective_user.full_name}`\n" # Escaped hyphen
+        f"> *🤖 Bot by \-*: Your Friend" # Escaped hyphen
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -258,17 +259,17 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying.")
 
     bin_input = None
-    # Robust argument parsing for both /command and .command
+    # Robust argument parsing for both /command [bin] and .command [bin]
     if context.args: # For /bin [bin]
         bin_input = context.args[0]
     elif update.message.text: # For .bin [bin]
         # Split the message to get the part after the command (.bin)
-        parts = update.message.text.split(maxsplit=1)
-        if len(parts) > 1:
-            bin_input = parts[1]
+        command_text = update.message.text.split(maxsplit=1)
+        if len(command_text) > 1:
+            bin_input = command_text[1]
 
     if not bin_input:
-        return await update.message.reply_text("Usage: `/bin [bin]` or `\.bin [bin]`\. Please provide a BIN\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text("❌ Please provide a 6-digit BIN\. Usage: `/bin [bin]` or `\.bin [bin]`\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_input = bin_input[:6] # Take only the first 6 digits for BIN lookup
     data = await fetch_bin_info(bin_input)
@@ -288,8 +289,8 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> *🏦 Bank*: `{bank}`\n"
         f"> *🌍 Country*: `{country}`\n"
         f"> *🧾 BIN*: `{bin_input}`\n"
-        f"> *🙋 Requested by -*: `{update.effective_user.full_name}`\n"
-        f"> *🤖 Bot by -*: Your Friend"
+        f"> *🙋 Requested by \-*: `{update.effective_user.full_name}`\n" # Escaped hyphen
+        f"> *🤖 Bot by \-*: Your Friend" # Escaped hyphen
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -325,7 +326,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> 🧠 RAM Usage: `{ram_usage}`\n"
         f"> 🖥️ CPU Usage: `{cpu_usage}`\n"
         f"> ⏱️ Uptime: `{uptime_string}`\n"
-        f"> 🤖 Bot by - Your Friend"
+        f"> 🤖 Bot by \- Your Friend" # Escaped hyphen
     )
     
     await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
@@ -375,8 +376,8 @@ def main():
     # Register Message Handlers for '.' commands using regex
     # The `^` ensures the dot command is at the beginning of the message.
     # `filters.Regex(r"^\.gen\b.*")` matches messages starting with ".gen" followed by a word boundary.
-    # `~filters.COMMAND` is NOT needed here, as CommandHandler handles / commands.
-    # We use MessageHandler for text that *starts* with a dot.
+    # The `pass_args=True` (implied by default for MessageHandler with regex) will put the matched groups
+    # into context.args, but we're doing manual parsing for robustness.
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
 
