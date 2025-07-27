@@ -182,11 +182,12 @@ async def fetch_bin_info_bintable(bin_number):
             async with session.get(url) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    # Check for a 'success' or 'status' field if the API indicates it
-                    if data.get("success") is False:
-                        logger.warning(f"Bintable API reported an error for BIN {bin_number}: {data.get('message', 'Unknown error')}")
+                    # Bintable API wraps its data in a 'data' key, and has a 'success' status
+                    if data.get("success") is True and data.get("data"):
+                        return data["data"]
+                    else:
+                        logger.warning(f"Bintable API reported an error or no data for BIN {bin_number}: {data.get('message', 'Unknown error')}")
                         return None
-                    return data
                 else:
                     logger.warning(f"Bintable API returned status {resp.status} for BIN: {bin_number}")
                     return None
@@ -260,34 +261,45 @@ async def get_bin_details(bin_number):
     }
     
     # 1. Try Bintable.com first
+    logger.info(f"Attempting BIN lookup with Bintable.com for BIN: {bin_number}")
     bintable_data = await fetch_bin_info_bintable(bin_number)
+    
     if bintable_data:
+        logger.info(f"Bintable.com response for {bin_number}: {bintable_data}")
         details["bank"] = bintable_data.get("bank_name", details["bank"])
         details["country_name"] = bintable_data.get("country_name", details["country_name"])
-        details["country_emoji"] = bintable_data.get("country_emoji", details["country_emoji"]) # Bintable might have emoji
+        details["country_emoji"] = bintable_data.get("country_emoji", details["country_emoji"]) 
         details["scheme"] = bintable_data.get("card_brand", details["scheme"]).capitalize()
         details["card_type"] = bintable_data.get("card_type", details["card_type"]).capitalize()
-        details["level"] = bintable_data.get("card_level", details["level"]).capitalize() # Get card level here
+        details["level"] = bintable_data.get("card_level", details["level"]).capitalize() 
         
         # If Bintable gives good data, return immediately.
         if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
             details["country_name"] = get_short_country_name(details["country_name"])
             return details
+    else:
+        logger.info(f"Bintable.com did not return valid data for BIN: {bin_number}. Falling back...")
 
     # 2. Fallback to Binlist.net
+    logger.info(f"Attempting BIN lookup with Binlist.net for BIN: {bin_number}")
     binlist_data = await fetch_bin_info_binlist(bin_number)
     if binlist_data:
+        logger.info(f"Binlist.net response for {bin_number}: {binlist_data}")
         details["bank"] = binlist_data.get("bank", {}).get("name", details["bank"])
         details["country_name"] = binlist_data.get("country", {}).get("name", details["country_name"])
         details["country_emoji"] = binlist_data.get("country", {}).get("emoji", details["country_emoji"])
         details["scheme"] = binlist_data.get("scheme", details["scheme"]).capitalize()
         details["card_type"] = binlist_data.get("type", details["card_type"]).capitalize()
         # binlist.net doesn't provide 'level'
+    else:
+        logger.info(f"Binlist.net did not return valid data for BIN: {bin_number}. Falling back...")
     
     # 3. Fallback to Bincheck.io if still missing key info
     if details["bank"] == "Unknown" or details["country_name"] == "Unknown" or details["scheme"] == "Unknown":
+        logger.info(f"Attempting BIN lookup with Bincheck.io for BIN: {bin_number}")
         bincheck_data = await fetch_bin_info_bincheckio(bin_number)
         if bincheck_data:
+            logger.info(f"Bincheck.io response for {bin_number}: {bincheck_data}")
             details["bank"] = bincheck_data.get("bank", {}).get("name", details["bank"])
             details["country_name"] = bincheck_data.get("country", {}).get("name", details["country_name"])
             details["country_emoji"] = bincheck_data.get("country", {}).get("emoji", details["country_emoji"])
@@ -295,6 +307,8 @@ async def get_bin_details(bin_number):
             details["card_type"] = bincheck_data.get("type", details["card_type"]).capitalize()
             # bincheck.io might have a "level" field, but it varies.
             details["level"] = bincheck_data.get("level", details["level"]).capitalize()
+        else:
+            logger.info(f"Bincheck.io did not return valid data for BIN: {bin_number}.")
 
     # Shorten country name after getting from all sources
     details["country_name"] = get_short_country_name(details["country_name"])
