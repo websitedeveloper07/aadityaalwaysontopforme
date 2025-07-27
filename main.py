@@ -138,7 +138,7 @@ def get_short_country_name(full_name):
     if full_name in name_map:
         return name_map[full_name]
 
-    # Remove common parenthetical suffixes like "(the)", "(Bolivarian Republic of)"
+    # Remove common parenthetical suffixes and "of" phrases
     # This regex removes anything in parentheses and then trailing "of X" phrases
     import re
     cleaned_name = re.sub(r'\s*\(.*\)\s*', '', full_name).strip()
@@ -234,31 +234,31 @@ async def fetch_premium_bin_info(bin_number):
     These services usually require an API key and may have usage limits.
     
     Example of how you might implement a real call (e.g., for Bincodes.com):
-    api_key = "YOUR_BINCODES_API_KEY" # <-- REPLACE THIS WITH YOUR REAL API KEY
-    url = f"https://api.bincodes.com/v1/{bin_number}/json/{api_key}"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    # Map Bincodes.com fields to our internal keys
-                    return {
-                        "bank": data.get("bank_name", "Unknown"),
-                        "country_name": data.get("country_name", "Unknown"),
-                        "country_emoji": "", # Bincodes might not have emoji
-                        "scheme": data.get("card_brand", "Unknown"),
-                        "card_type": data.get("card_type", "Unknown"),
-                        "level": data.get("card_category", "N/A") # This is where 'Gold', 'Platinum' comes from
-                    }
-                else:
-                    logger.warning(f"Premium API returned status {resp.status} for BIN: {bin_number}")
-                    return None
-    except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching from Premium API for {bin_number}: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"An unexpected error occurred fetching from Premium API for {bin_number}: {e}")
-        return None
+    # api_key = "YOUR_BINCODES_API_KEY" # <-- REPLACE THIS WITH YOUR REAL API KEY
+    # url = f"https://api.bincodes.com/v1/{bin_number}/json/{api_key}"
+    # try:
+    #     async with aiohttp.ClientSession() as session:
+    #         async with session.get(url) as resp:
+    #             if resp.status == 200:
+    #                 data = await resp.json()
+    #                 # Map Bincodes.com fields to our internal keys
+    #                 return {
+    #                     "bank": data.get("bank_name", "Unknown"),
+    #                     "country_name": data.get("country_name", "Unknown"),
+    #                     "country_emoji": "", # Bincodes might not have emoji
+    #                     "scheme": data.get("card_brand", "Unknown"),
+    #                     "card_type": data.get("card_type", "Unknown"),
+    #                     "level": data.get("card_category", "N/A") # This is where 'Gold', 'Platinum' comes from
+    #                 }
+    #             else:
+    #                 logger.warning(f"Premium API returned status {resp.status} for BIN: {bin_number}")
+    #                 return None
+    # except aiohttp.ClientError as e:
+    #     logger.error(f"Network error fetching from Premium API for {bin_number}: {e}")
+    #     return None
+    # except Exception as e:
+    #     logger.error(f"An unexpected error occurred fetching from Premium API for {bin_number}: {e}")
+    #     return None
 
     # Default placeholder if no real API is integrated or if the call fails
     return None
@@ -381,6 +381,8 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Displays detailed usage information for a specific command.
+    Triggered by inline buttons for individual commands (e.g., 'cmd_gen').
+    Includes a 'Back' button to return to the main command list.
     """
     query = update.callback_query
     await query.answer()
