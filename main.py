@@ -391,32 +391,36 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     
     usage_text = ""
     if command_name == "gen":
-        usage_text = """*💳 Generate Cards*
-Usage: `/gen [bin]` or `\\.gen [bin]`
-Example: `/gen 453957`
-Generates 10 credit card numbers based on the provided BIN\\.\\
-*Note:* This command works only in authorized groups\\.\\
-"""
+        usage_text = (
+            "*💳 Generate Cards*\n"
+            "Usage: `/gen [bin]` or `\\.gen [bin]`\n"
+            "Example: `/gen 453957`\n"
+            "Generates 10 credit card numbers based on the provided BIN\\.\n"
+            "*Note:* This command works only in authorized groups\\.\n"
+        )
     elif command_name == "bin":
-        usage_text = """*🔍 BIN Info*
-Usage: `/bin [bin]` or `\\.bin [bin]`
-Example: `/bin 518765`
-Provides detailed information about a given BIN\\.\\
-*Note:* This command works only in authorized groups\\.\\
-"""
+        usage_text = (
+            "*🔍 BIN Info*\n"
+            "Usage: `/bin [bin]` or `\\.bin [bin]`\n"
+            "Example: `/bin 518765`\n"
+            "Provides detailed information about a given BIN\\.\n"
+            "*Note:* This command works only in authorized groups\\.\n"
+        )
     elif command_name == "status":
-        usage_text = """*📊 Bot Status*
-Usage: `/status`
-Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\
-*Note:* This command works only in authorized groups\\.\\
-"""
+        usage_text = (
+            "*📊 Bot Status*\n"
+            "Usage: `/status`\n"
+            "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\n"
+            "*Note:* This command works only in authorized groups\\.\n"
+        )
     elif command_name == "au":
-        usage_text = """*🔐 Authorize Group*
-Usage: `/au [chat_id]`
-Example: `/au \-100123456789`
-Authorizes a specific group to use the bot's features\\.\\
-*Note:* This command can only be used by the bot owner\\.\\
-"""
+        usage_text = (
+            "*🔐 Authorize Group*\n"
+            "Usage: `/au [chat_id]`\n"
+            "Example: `/au \\-100123456789`\n"
+            "Authorizes a specific group to use the bot's features\\.\n"
+            "*Note:* This command can only be used by the bot owner\\.\n"
+        )
     else:
         usage_text = "Unknown command\\. Please go back and select a valid command\\.\\"
 
