@@ -182,14 +182,14 @@ async def fetch_bin_info_bintable(bin_number):
             async with session.get(url) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    # Bintable API wraps its data in a 'data' key, and has a 'success' status
-                    if data.get("success") is True and data.get("data"):
+                    # Corrected check: Bintable API uses "result": 200 for success and wraps data in 'data' key
+                    if data.get("result") == 200 and data.get("data"):
                         return data["data"]
                     else:
-                        logger.warning(f"Bintable API reported an error or no data for BIN {bin_number}: {data.get('message', 'Unknown error')}")
+                        logger.warning(f"Bintable API reported an error or no data for BIN {bin_number}. Response: {data}")
                         return None
                 else:
-                    logger.warning(f"Bintable API returned status {resp.status} for BIN: {bin_number}")
+                    logger.warning(f"Bintable API returned HTTP status {resp.status} for BIN: {bin_number}")
                     return None
     except aiohttp.ClientError as e:
         logger.error(f"Network error fetching from Bintable for {bin_number}: {e}")
@@ -265,7 +265,7 @@ async def get_bin_details(bin_number):
     bintable_data = await fetch_bin_info_bintable(bin_number)
     
     if bintable_data:
-        logger.info(f"Bintable.com response for {bin_number}: {bintable_data}")
+        logger.info(f"Bintable.com processed data for {bin_number}: {bintable_data}")
         details["bank"] = bintable_data.get("bank_name", details["bank"])
         details["country_name"] = bintable_data.get("country_name", details["country_name"])
         details["country_emoji"] = bintable_data.get("country_emoji", details["country_emoji"]) 
