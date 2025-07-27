@@ -258,17 +258,21 @@ async def get_bin_details(bin_number):
     
     # 1. Try API Ninjas first
     api_ninjas_data = await fetch_bin_info_api_ninjas(bin_number)
-    if api_ninjas_data and api_ninjas_data.get('country') is not None:
-        details["bank"] = api_ninjas_data.get("bank", details["bank"])
-        details["country_name"] = api_ninjas_data.get("country", details["country_name"])
-        details["scheme"] = api_ninjas_data.get("brand", details["scheme"]).capitalize()
-        details["card_type"] = api_ninjas_data.get("type", details["card_type"]).capitalize()
-        details["level"] = "N/A" # API Ninjas does not provide card level
-        
-        # If API Ninjas gives good data, we might not need to check others for core fields
-        if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
-            details["country_name"] = get_short_country_name(details["country_name"])
-            return details
+    # The API Ninjas response is a list of dictionaries. Check if the list is not empty.
+    if api_ninjas_data and isinstance(api_ninjas_data, list) and len(api_ninjas_data) > 0:
+        ninjas_result = api_ninjas_data[0]
+        if ninjas_result.get('country') is not None:
+            details["bank"] = ninjas_result.get("bank", details["bank"])
+            details["country_name"] = ninjas_result.get("country", details["country_name"])
+            details["scheme"] = ninjas_result.get("brand", details["scheme"]).capitalize()
+            details["card_type"] = ninjas_result.get("type", details["card_type"]).capitalize()
+            # API Ninjas does not provide card level
+            details["level"] = "N/A" 
+            
+            # If API Ninjas gives good data, return immediately.
+            if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
+                details["country_name"] = get_short_country_name(details["country_name"])
+                return details
 
     # 2. Fallback to Binlist.net
     binlist_data = await fetch_bin_info_binlist(bin_number)
