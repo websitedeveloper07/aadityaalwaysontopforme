@@ -19,9 +19,9 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Messa
 TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 
-# API KEY for api-ninjas.com
-API_NINJAS_KEY = "rTon06AXcvnrQ6SruCbIsQ==U45J7gBTvdEgcWq1"
-API_NINJAS_URL = "https://api.api-ninjas.com/v1/bin"
+# API KEY and URL for api.bintable.com
+BINTABLE_API_KEY = "2504e1938a63e931f65c90cee460c7ef8c418252"
+BINTABLE_URL = "https://api.bintable.com/v1"
 
 # A set to store chat IDs of groups authorized to use the bot's commands.
 # The official group chat ID is pre-authorized here.
@@ -143,7 +143,6 @@ def get_short_country_name(full_name):
         return name_map[full_name]
 
     # Remove common parenthetical suffixes and "of" phrases
-    # This regex removes anything in parentheses and then trailing "of X" phrases
     cleaned_name = re.sub(r'\s*\(.*\)\s*', '', full_name).strip()
     cleaned_name = re.sub(r'\s*of\s+.*$', '', cleaned_name).strip()
     
@@ -172,26 +171,30 @@ def luhn_checksum(card_number):
         checksum += sum(digits_of(d * 2)) # Double even digits and sum their individual digits
     return checksum % 10 == 0 # Returns True if checksum is a multiple of 10, False otherwise.
 
-async def fetch_bin_info_api_ninjas(bin_number):
+async def fetch_bin_info_bintable(bin_number):
     """
-    Asynchronously fetches BIN information from api-ninjas.com.
+    Asynchronously fetches BIN information from api.bintable.com.
     """
-    headers = {'X-Api-Key': API_NINJAS_KEY}
-    url = f"{API_NINJAS_URL}?bin={bin_number}"
+    url = f"{BINTABLE_URL}/{bin_number}?api_key={BINTABLE_API_KEY}"
     
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as resp:
+            async with session.get(url) as resp:
                 if resp.status == 200:
-                    return await resp.json()
+                    data = await resp.json()
+                    # Check for a 'success' or 'status' field if the API indicates it
+                    if data.get("success") is False:
+                        logger.warning(f"Bintable API reported an error for BIN {bin_number}: {data.get('message', 'Unknown error')}")
+                        return None
+                    return data
                 else:
-                    logger.warning(f"API Ninjas returned status {resp.status} for BIN: {bin_number}")
+                    logger.warning(f"Bintable API returned status {resp.status} for BIN: {bin_number}")
                     return None
     except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching from API Ninjas for {bin_number}: {e}")
+        logger.error(f"Network error fetching from Bintable for {bin_number}: {e}")
         return None
     except Exception as e:
-        logger.error(f"An unexpected error occurred fetching from API Ninjas for {bin_number}: {e}")
+        logger.error(f"An unexpected error occurred fetching from Bintable for {bin_number}: {e}")
         return None
 
 async def fetch_bin_info_binlist(bin_number):
@@ -244,7 +247,7 @@ async def fetch_bin_info_bincheckio(bin_number):
 async def get_bin_details(bin_number):
     """
     Attempts to fetch BIN details from multiple APIs with fallback.
-    Prioritizes the API Ninjas, then binlist.net, then bincheck.io.
+    Prioritizes api.bintable.com, then binlist.net, then bincheck.io.
     """
     # Initialize with defaults
     details = {
@@ -256,23 +259,20 @@ async def get_bin_details(bin_number):
         "level": "N/A" # Default for level
     }
     
-    # 1. Try API Ninjas first
-    api_ninjas_data = await fetch_bin_info_api_ninjas(bin_number)
-    # The API Ninjas response is a list of dictionaries. Check if the list is not empty.
-    if api_ninjas_data and isinstance(api_ninjas_data, list) and len(api_ninjas_data) > 0:
-        ninjas_result = api_ninjas_data[0]
-        if ninjas_result.get('country') is not None:
-            details["bank"] = ninjas_result.get("bank", details["bank"])
-            details["country_name"] = ninjas_result.get("country", details["country_name"])
-            details["scheme"] = ninjas_result.get("brand", details["scheme"]).capitalize()
-            details["card_type"] = ninjas_result.get("type", details["card_type"]).capitalize()
-            # API Ninjas does not provide card level
-            details["level"] = "N/A" 
-            
-            # If API Ninjas gives good data, return immediately.
-            if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
-                details["country_name"] = get_short_country_name(details["country_name"])
-                return details
+    # 1. Try Bintable.com first
+    bintable_data = await fetch_bin_info_bintable(bin_number)
+    if bintable_data:
+        details["bank"] = bintable_data.get("bank_name", details["bank"])
+        details["country_name"] = bintable_data.get("country_name", details["country_name"])
+        details["country_emoji"] = bintable_data.get("country_emoji", details["country_emoji"]) # Bintable might have emoji
+        details["scheme"] = bintable_data.get("card_brand", details["scheme"]).capitalize()
+        details["card_type"] = bintable_data.get("card_type", details["card_type"]).capitalize()
+        details["level"] = bintable_data.get("card_level", details["level"]).capitalize() # Get card level here
+        
+        # If Bintable gives good data, return immediately.
+        if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
+            details["country_name"] = get_short_country_name(details["country_name"])
+            return details
 
     # 2. Fallback to Binlist.net
     binlist_data = await fetch_bin_info_binlist(bin_number)
@@ -414,8 +414,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     This command is restricted to authorized group chats and has a cooldown.
     """
     if update.effective_chat.type not in ["group", "supergroup"]:
-        button = InlineKeyboardMarkup([[InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")]])
-        return await update.message.reply_text("Join our official group to use this bot.", reply_markup=button)
+        button = InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")
+        return await update.message.reply_text("Join our official group to use this bot.", reply_markup=InlineKeyboardMarkup([[button]]))
 
     chat_id = update.effective_chat.id
     if chat_id not in AUTHORIZED_GROUPS:
@@ -494,8 +494,8 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Performs a BIN lookup using the external API and displays the information.
     """
     if update.effective_chat.type not in ["group", "supergroup"]:
-        button = InlineKeyboardMarkup([[InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")]])
-        return await update.message.reply_text("Join our official group to use this bot.", reply_markup=button)
+        button = InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")
+        return await update.message.reply_text("Join our official group to use this bot.", reply_markup=InlineKeyboardMarkup([[button]]))
 
     if not await enforce_cooldown(update.effective_user.id):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying.")
