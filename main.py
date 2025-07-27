@@ -33,6 +33,39 @@ logger = logging.getLogger(__name__)
 
 # === HELPER FUNCTIONS ===
 
+def _escape_markdown_v2_text(text: str) -> str:
+    """
+    Escapes characters that have special meaning in MarkdownV2.
+    This is crucial for dynamic text that might contain these characters.
+    """
+    # List of characters that need to be escaped in MarkdownV2
+    # This list covers all characters that can be problematic.
+    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    
+    # Use a regular expression to find and escape each special character
+    # `re.sub` replaces occurrences of characters in `escape_chars` with their escaped version.
+    # The `|` creates an OR condition for the regex, and `\` escapes the character itself.
+    # Example: `r'([_*\[\]()~`>#+\-=|{}.!])'` will match any of these characters literally.
+    # The `r''` prefix makes it a raw string, which is good for regex patterns.
+    # The `\` before each special char in `escape_chars` in the regex pattern is to
+    # treat them as literal characters for the regex engine itself.
+    # The `\` in the replacement string `\\` is to ensure a literal backslash is inserted.
+    
+    # The pattern needs to be built carefully to escape the regex special characters themselves
+    # before they are used in the regex to match the Markdown special characters.
+    import re
+    
+    # Escape characters that are special in regex itself
+    regex_special_chars = r'[\^$.|?*+(){}\[\]]'
+    escaped_for_regex = ''.join([f'\\{c}' if c in regex_special_chars else c for c in escape_chars])
+    
+    # Create the final regex pattern to match MarkdownV2 special characters
+    pattern = f"([{re.escape(escape_chars)}])"
+    
+    # Replace matched characters with their escaped version
+    return re.sub(pattern, r'\\\1', text)
+
+
 def luhn_checksum(card_number):
     """
     Validates a credit card number using the Luhn algorithm (Mod 10 algorithm).
@@ -216,12 +249,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bank = bin_data.get("bank", {}).get("name", "Unknown")
     country_name = bin_data.get("country", {}).get("name", "Unknown")
     country_emoji = bin_data.get("country", {}).get("emoji", '')
-    country = f"{country_name} {country_emoji}".strip()
     brand = bin_data.get("scheme", "Unknown").capitalize()
 
-    # Escape parentheses in variables that might contain them
-    escaped_bank = bank.replace('(', '\\(').replace(')', '\\)')
-    escaped_country = country.replace('(', '\\(').replace(')', '\\)')
+    # Escape dynamic text for MarkdownV2
+    escaped_brand = _escape_markdown_v2_text(brand)
+    escaped_bank = _escape_markdown_v2_text(bank)
+    escaped_country = _escape_markdown_v2_text(f"{country_name} {country_emoji}".strip())
+    escaped_user_full_name = _escape_markdown_v2_text(update.effective_user.full_name)
     
     cards = []
     # Generate 10 unique, Luhn-valid card numbers
@@ -248,11 +282,11 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = (
         f"Generated 10 Cards\n\n" # Header with a line space
         f"{cards_list}\n\n" # List of cards
-        f"> *💳 Brand*: {brand}\n"
+        f"> *💳 Brand*: {escaped_brand}\n"
         f"> *🏦 Bank*: {escaped_bank}\n"
         f"> *🌍 Country*: {escaped_country}\n"
         f"> *🧾 BIN*: `{bin_input}`\n"
-        f"> *🙋 Requested by \\-*: `{update.effective_user.full_name}`\n" # Escaped hyphen
+        f"> *🙋 Requested by \\-*: {escaped_user_full_name}\n" # Escaped hyphen, and now escaped username
         f"> *🤖 Bot by \\-*: Your Friend" # Escaped hyphen
     )
     
@@ -292,15 +326,17 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bank = data.get("bank", {}).get("name", "Unknown")
     country_name = data.get("country", {}).get("name", "Unknown")
     country_emoji = data.get("country", {}).get("emoji", '')
-    country = f"{country_name} {country_emoji}".strip()
     scheme = data.get("scheme", "Unknown").capitalize()
     card_type = data.get("type", "Unknown").capitalize() # e.g., debit, credit
     level = data.get("brand", "Unknown") # Using 'brand' from binlist.net as 'level'
 
-    # Escape parentheses in variables that might contain them
-    escaped_bank = bank.replace('(', '\\(').replace(')', '\\)')
-    escaped_country = country.replace('(', '\\(').replace(')', '\\)')
-    escaped_card_type = card_type.replace('(', '\\(').replace(')', '\\)')
+    # Escape dynamic text for MarkdownV2
+    escaped_scheme = _escape_markdown_v2_text(scheme)
+    escaped_bank = _escape_markdown_v2_text(bank)
+    escaped_country = _escape_markdown_v2_text(f"{country_name} {country_emoji}".strip())
+    escaped_card_type = _escape_markdown_v2_text(card_type)
+    escaped_level = _escape_markdown_v2_text(level)
+    escaped_user_full_name = _escape_markdown_v2_text(update.effective_user.full_name)
 
     # Construct the final response message with proper MarkdownV2 formatting
     # Only the BIN number is in monospace, as requested
@@ -308,13 +344,13 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╔══════════════════════╗\n"
         f"║ 💳 \\*\\*𝐁𝐈𝐍 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐓𝐈𝐎𝐍\\*\\* ║\n" # Escaped asterisks for bold within ASCII art
         f"╚══════════════════════╝\n"
-        f"**💳 Brand**: {scheme}\n"
+        f"**💳 Brand**: {escaped_scheme}\n"
         f"**🏦 Bank**: {escaped_bank}\n"
         f"**🌐 Type**: {escaped_card_type}\n"
-        f"**💠 Level**: {level}\n"
+        f"**💠 Level**: {escaped_level}\n"
         f"**🌎 Country**: {escaped_country}\n"
         f"**🧾 Bin**: `{bin_input}`\n" # Only this line has monospace backticks
-        f"🙋 Requested by \\- `{update.effective_user.full_name}`\n" # Escaped hyphen
+        f"🙋 Requested by \\- {escaped_user_full_name}\n" # Escaped hyphen, and now fully escaped username
         f"🤖 Bot by \\- Your Friend" # Escaped hyphen
     )
     
@@ -345,6 +381,9 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     minutes, _ = divmod(remainder, 60)
     uptime_string = f"{hours} hours {minutes} minutes"
 
+    # Escape the user's full name for MarkdownV2
+    escaped_user_full_name = _escape_markdown_v2_text(update.effective_user.full_name)
+
     # Construct the final response message with proper MarkdownV2 formatting, with no monospace.
     status_msg = (
         f"> 📊 Bot Status\n"
@@ -352,7 +391,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> 🧠 RAM Usage: {ram_usage}\n"
         f"> 🖥️ CPU Usage: {cpu_usage_text}\n"
         f"> ⏱️ Uptime: {uptime_string}\n"
-        f"> 🤖 Bot by \\- Your Friend"
+        f"> 🤖 Bot by \\- Your Friend" # Escaped hyphen
     )
     
     await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
