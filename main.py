@@ -74,7 +74,23 @@ def get_short_country_name(full_name):
     if short_name == "United Kingdom":
         return "United Kingdom" # Already good
     
-    return short_name
+    return short_name.strip() # Return cleaned full name if no specific mapping
+
+def luhn_checksum(card_number):
+    """
+    Validates a credit card number using the Luhn algorithm (Mod 10 algorithm).
+    This algorithm is commonly used to validate credit card numbers and other
+    identification numbers.
+    """
+    def digits_of(n): return [int(d) for d in str(n)]
+    digits = digits_of(card_number)
+    odd_digits = digits[-1::-2]  # Digits at odd positions from the right (1st, 3rd, etc.)
+    even_digits = digits[-2::-2] # Digits at even positions from the right (2nd, 4th, etc.)
+
+    checksum = sum(odd_digits)
+    for d in even_digits:
+        checksum += sum(digits_of(d * 2)) # Double even digits and sum their individual digits
+    return checksum % 10 == 0 # Returns True if checksum is a multiple of 10, False otherwise.
 
 async def fetch_bin_info_binlist(bin_number):
     """
@@ -96,77 +112,76 @@ async def fetch_bin_info_binlist(bin_number):
         logger.error(f"An unexpected error occurred fetching from Binlist for {bin_number}: {e}")
         return None
 
-async def fetch_bin_info_binlookupio(bin_number):
+async def fetch_bin_info_bincheckio(bin_number):
     """
-    Asynchronously fetches BIN information from binlookup.io.
+    Asynchronously fetches BIN information from bincheck.io.
     This is a free API, but may have rate limits or less comprehensive data.
     """
-    url = f"https://api.binlookup.io/v2/{bin_number}"
+    url = f"https://api.bincheck.io/bin/{bin_number}"
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 if resp.status == 200:
-                    return await resp.json()
+                    data = await resp.json()
+                    # bincheck.io returns a 'status' field. Only proceed if status is 'ok'.
+                    if data.get("status") == "ok":
+                        return data
+                    else:
+                        logger.warning(f"Bincheck.io API returned status '{data.get('status')}' for BIN: {bin_number}")
+                        return None
                 else:
-                    logger.warning(f"Binlookup.io API returned status {resp.status} for BIN: {bin_number}")
+                    logger.warning(f"Bincheck.io API returned HTTP status {resp.status} for BIN: {bin_number}")
                     return None
     except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching from Binlookup.io for {bin_number}: {e}")
+        logger.error(f"Network error fetching from Bincheck.io for {bin_number}: {e}")
         return None
     except Exception as e:
-        logger.error(f"An unexpected error occurred fetching from Binlookup.io for {bin_number}: {e}")
+        logger.error(f"An unexpected error occurred fetching from Bincheck.io for {bin_number}: {e}")
         return None
 
 async def get_bin_details(bin_number):
     """
     Attempts to fetch BIN details from multiple APIs with fallback.
-    Prioritizes binlist.net, then falls back to binlookup.io.
+    Prioritizes binlist.net, then falls back to bincheck.io.
     """
-    # Try Binlist.net first (often good for basic info)
-    data = await fetch_bin_info_binlist(bin_number)
-    
     # Initialize with defaults
-    bank = "Unknown"
-    country_name = "Unknown"
-    country_emoji = ""
-    scheme = "Unknown"
-    card_type = "Unknown"
-    level = "N/A" # Default for level as it's not in binlist.net
+    details = {
+        "bank": "Unknown",
+        "country_name": "Unknown",
+        "country_emoji": "",
+        "scheme": "Unknown",
+        "card_type": "Unknown",
+        "level": "N/A" # Default for level as it's not reliably available from free APIs
+    }
 
-    if data:
-        bank = data.get("bank", {}).get("name", bank)
-        country_name = data.get("country", {}).get("name", country_name)
-        country_emoji = data.get("country", {}).get("emoji", country_emoji)
-        scheme = data.get("scheme", scheme).capitalize()
-        card_type = data.get("type", card_type).capitalize()
-        # binlist.net doesn't provide 'level'
+    # Try Binlist.net first
+    binlist_data = await fetch_bin_info_binlist(bin_number)
+    if binlist_data:
+        details["bank"] = binlist_data.get("bank", {}).get("name", details["bank"])
+        details["country_name"] = binlist_data.get("country", {}).get("name", details["country_name"])
+        details["country_emoji"] = binlist_data.get("country", {}).get("emoji", details["country_emoji"])
+        details["scheme"] = binlist_data.get("scheme", details["scheme"]).capitalize()
+        details["card_type"] = binlist_data.get("type", details["card_type"]).capitalize()
     
-    # If primary API failed or returned limited info, try fallback for more details
-    # Note: binlookup.io also might not have a direct 'level' field like Gold/Platinum.
-    # For accurate levels, a dedicated paid API is usually required.
-    fallback_data = await fetch_bin_info_binlookupio(bin_number)
-    if fallback_data:
-        # Update fields if fallback provides better info or fills gaps
-        bank = fallback_data.get("bank", {}).get("name", bank)
-        country_name = fallback_data.get("country", {}).get("name", country_name)
-        country_emoji = fallback_data.get("country", {}).get("emoji", country_emoji)
-        scheme = fallback_data.get("scheme", scheme).capitalize()
-        card_type = fallback_data.get("type", card_type).capitalize()
-        # binlookup.io might have a "level" or "category" field, but it varies.
-        # For this example, let's assume it has a 'category' field.
-        level = fallback_data.get("category", level).capitalize() # Use 'category' or similar if available
+    # If key details are still "Unknown" or not fully populated, try bincheck.io
+    # Or if binlist_data was None, always try fallback
+    if not binlist_data or details["bank"] == "Unknown" or details["country_name"] == "Unknown":
+        bincheck_data = await fetch_bin_info_bincheckio(bin_number)
+        if bincheck_data:
+            # bincheck.io uses different keys, map them
+            details["bank"] = bincheck_data.get("bank", {}).get("name", details["bank"])
+            details["country_name"] = bincheck_data.get("country", {}).get("name", details["country_name"])
+            details["country_emoji"] = bincheck_data.get("country", {}).get("emoji", details["country_emoji"]) # bincheck.io might not have emoji
+            details["scheme"] = bincheck_data.get("brand", details["scheme"]).capitalize() # bincheck.io uses 'brand'
+            details["card_type"] = bincheck_data.get("type", details["card_type"]).capitalize()
+            # bincheck.io might have a "level" or "category" field, but it varies.
+            # For this example, let's assume it has a 'level' field.
+            details["level"] = bincheck_data.get("level", details["level"]).capitalize()
 
     # Shorten country name after getting from all sources
-    country_display_name = get_short_country_name(country_name)
+    details["country_name"] = get_short_country_name(details["country_name"])
     
-    return {
-        "bank": bank,
-        "country_name": country_display_name,
-        "country_emoji": country_emoji,
-        "scheme": scheme,
-        "card_type": card_type,
-        "level": level
-    }
+    return details
 
 async def enforce_cooldown(user_id):
     """
@@ -222,6 +237,7 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ]
     
     if query:
+        # Using ParseMode.MARKDOWN for this menu as it's less strict and doesn't require escaping for most characters
         await query.edit_message_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
     else:
         await update.message.reply_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
@@ -305,6 +321,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     brand = bin_details["scheme"]
     bank = bin_details["bank"]
     country = f"{bin_details['country_name']} {bin_details['country_emoji']}".strip()
+    card_type = bin_details["card_type"]
     level = bin_details["level"]
     
     cards = []
@@ -327,6 +344,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country = escape_markdown_v2(country)
+    escaped_card_type = escape_markdown_v2(card_type)
     escaped_level = escape_markdown_v2(level)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
@@ -338,8 +356,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> \n"
         f"> * **Brand**: {escaped_brand}\n"
         f"> * **Bank**: {escaped_bank}\n"
-        f"> * **Country**: {escaped_country}\n"
+        f"> * **Type**: {escaped_card_type}\n"
         f"> * **Level**: {escaped_level}\n"
+        f"> * **Country**: {escaped_country}\n"
         f"> * **BIN**: `{bin_input}`\n"
         f"> Requested by \\- {escaped_user_full_name}\n"
         f"> Bot by \\- Your Friend"
