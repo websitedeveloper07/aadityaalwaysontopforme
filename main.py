@@ -80,35 +80,47 @@ async def fetch_bin_info(bin_number):
                     return await resp.json()
                 else:
                     logger.warning(f"BIN API returned status {resp.status} for BIN: {bin_number}")
-                    return None
+                    return None # Return None on non-200 status
     except aiohttp.ClientError as e:
         logger.error(f"Network error fetching BIN info for {bin_number}: {e}")
-        return None
+        return None # Return None on network error
     except Exception as e:
         logger.error(f"An unexpected error occurred fetching BIN info for {bin_number}: {e}")
-        return None
+        return None # Return None on any other unexpected error
 
 async def fetch_bin_level_info(bin_number):
     """
     Asynchronously fetches detailed BIN information, including card level, from a
     more comprehensive (paid) API.
     
-    NOTE: This is a placeholder function. You must replace the URL and API key
-    with your actual details from a service like Bincodes.com.
+    NOTE: This is a placeholder function. To get real card levels (Gold, Platinum, etc.),
+    you MUST replace this with an actual API call to a service that provides this data
+    (e.g., Bincodes.com, Stripe's BIN API if you have a payment gateway setup, etc.).
+    These services usually require an API key and may have usage limits.
     """
-    api_key = "YOUR_API_KEY_HERE"  # <-- REPLACE THIS WITH YOUR REAL API KEY
-    url = f"https://api.bincodes.com/v1/{bin_number}/json/{api_key}" # <-- REPLACE THIS WITH YOUR API'S URL
-    
-    # For demonstration purposes, we will return a hardcoded response.
-    # In a real bot, you would perform an aiohttp GET request here.
-    return {
-        "bin": bin_number,
-        "card_brand": "VISA",
-        "card_type": "DEBIT",
-        "card_category": "GOLD",
-        "country_name": "DENMARK",
-        "bank_name": "JYSKE BANK"
-    }
+    # Example placeholder for a real API call:
+    # api_key = "YOUR_API_KEY_HERE"
+    # url = f"https://api.example.com/bin_lookup?bin={bin_number}&api_key={api_key}"
+    # try:
+    #     async with aiohttp.ClientSession() as session:
+    #         async with session.get(url) as resp:
+    #             if resp.status == 200:
+    #                 data = await resp.json()
+    #                 # Assuming the real API returns something like:
+    #                 # {"bin": "...", "card_category": "GOLD", "card_type": "CREDIT", ...}
+    #                 return {"card_category": data.get("card_category", "Unknown")}
+    #             else:
+    #                 logger.warning(f"Level API returned status {resp.status} for BIN: {bin_number}")
+    #                 return {"card_category": "N/A (API Error)"}
+    # except aiohttp.ClientError as e:
+    #     logger.error(f"Network error fetching BIN level info for {bin_number}: {e}")
+    #     return {"card_category": "N/A (Network Error)"}
+    # except Exception as e:
+    #     logger.error(f"An unexpected error occurred fetching BIN level info for {bin_number}: {e}")
+    #     return {"card_category": "N/A (Internal Error)"}
+
+    # For now, return a placeholder indicating real API is needed
+    return {"card_category": "N/A (Requires external API)"}
 
 async def enforce_cooldown(user_id):
     """
@@ -160,10 +172,11 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("💳 Generate Cards (/gen)", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Info (/bin)", callback_data="cmd_bin")],
         [InlineKeyboardButton("📊 Bot Status (/status)", callback_data="cmd_status")],
-        [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")]
+        [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")] # Added back button
     ]
     
     if query:
+        # Using ParseMode.MARKDOWN for this menu as it's less strict and doesn't require escaping for most characters
         await query.edit_message_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
     else:
         await update.message.reply_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
@@ -171,6 +184,8 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Displays detailed usage information for a specific command.
+    Triggered by inline buttons for individual commands (e.g., 'cmd_gen').
+    Includes a 'Back' button to return to the main command list.
     """
     query = update.callback_query
     await query.answer()
@@ -241,11 +256,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(bin_input) < 6:
         return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Fetch BIN data from the free API (for scheme, bank, country)
     bin_data = await fetch_bin_info(bin_input[:6])
-    # Fetch detailed level info from the placeholder API
-    level_data = await fetch_bin_level_info(bin_input[:6])
-    
+    level_data = await fetch_bin_level_info(bin_input[:6]) # Fetch level info
+
     if not bin_data:
         return await update.message.reply_text("❌ Could not retrieve BIN information\\. Please try again later or check the BIN\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -253,9 +266,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_name = bin_data.get("country", {}).get("name", "Unknown")
     country_emoji = bin_data.get("country", {}).get("emoji", '')
     brand = bin_data.get("scheme", "Unknown").capitalize()
-    
-    # Get level from the more comprehensive API's data
-    level = level_data.get("card_category", "Unknown").capitalize()
+    level = level_data.get("card_category", "N/A").capitalize() # Get level from level_data
 
     # Escape dynamic text for MarkdownV2
     escaped_brand = escape_markdown_v2(brand)
@@ -286,7 +297,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> *💳 Brand*: {escaped_brand}\n"
         f"> *🏦 Bank*: {escaped_bank}\n"
         f"> *🌍 Country*: {escaped_country}\n"
-        f"> *💠 Level*: {escaped_level}\n"
+        f"> *💠 Level*: {escaped_level}\n" # Included Level
         f"> *🧾 BIN*: `{bin_input}`\n"
         f"> *🙋 Requested by \\-*: {escaped_user_full_name}\n"
         f"> *🤖 Bot by \\-*: Your Friend"
@@ -318,23 +329,18 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     bin_input = bin_input[:6]
     
-    # Fetch BIN data from the free API (for scheme, bank, country)
     bin_data = await fetch_bin_info(bin_input)
-    # Fetch detailed level info from the placeholder API
-    level_data = await fetch_bin_level_info(bin_input)
+    level_data = await fetch_bin_level_info(bin_input) # Fetch level info
 
     if not bin_data:
         return await update.message.reply_text("❌ Could not retrieve BIN information\\. Please try again later or check the BIN\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Extract relevant information from the API responses
     bank = bin_data.get("bank", {}).get("name", "Unknown")
     country_name = bin_data.get("country", {}).get("name", "Unknown")
     country_emoji = bin_data.get("country", {}).get("emoji", '')
     scheme = bin_data.get("scheme", "Unknown").capitalize()
     card_type = bin_data.get("type", "Unknown").capitalize()
-    
-    # Get card level from the more comprehensive API data.
-    level = level_data.get("card_category", "Unknown").capitalize()
+    level = level_data.get("card_category", "N/A").capitalize() # Get level from level_data
 
     # Escape dynamic text for MarkdownV2
     escaped_scheme = escape_markdown_v2(scheme)
@@ -349,14 +355,14 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╔══════════════════════╗\n"
         f"║ 💳 \\*\\*𝐁𝐈𝐍 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐓𝐈𝐎𝐍\\*\\* ║\n"
         f"╚══════════════════════╝\n"
-        f"**💳 Brand**: {escaped_scheme}\n"
-        f"**🏦 Bank**: {escaped_bank}\n"
-        f"**🌐 Type**: {escaped_card_type}\n"
-        f"**💠 Level**: {escaped_level}\n"
-        f"**🌎 Country**: {escaped_country}\n"
-        f"**🧾 Bin**: `{bin_input}`\n"
-        f"🙋 Requested by \\- {escaped_user_full_name}\n"
-        f"🤖 Bot by \\- Your Friend"
+        f"* **Brand**: {escaped_scheme}\n"
+        f"* **Bank**: {escaped_bank}\n"
+        f"* **Type**: {escaped_card_type}\n"
+        f"* **Level**: {escaped_level}\n" # Included Level with bullet
+        f"* **Country**: {escaped_country}\n"
+        f"* **Bin**: `{bin_input}`\n"
+        f"Requested by \\- {escaped_user_full_name}\n"
+        f"Bot by \\- Your Friend"
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
