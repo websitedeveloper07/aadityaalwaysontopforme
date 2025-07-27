@@ -219,6 +219,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country = f"{country_name} {country_emoji}".strip()
     brand = bin_data.get("scheme", "Unknown").capitalize()
 
+    # Escape parentheses in variables that might contain them
+    escaped_bank = bank.replace('(', '\\(').replace(')', '\\)')
+    escaped_country = country.replace('(', '\\(').replace(')', '\\)')
+    
     cards = []
     # Generate 10 unique, Luhn-valid card numbers
     while len(cards) < 10:
@@ -245,8 +249,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Generated 10 Cards\n\n" # Header with a line space
         f"{cards_list}\n\n" # List of cards
         f"> *💳 Brand*: {brand}\n"
-        f"> *🏦 Bank*: {bank}\n"
-        f"> *🌍 Country*: {country}\n"
+        f"> *🏦 Bank*: {escaped_bank}\n"
+        f"> *🌍 Country*: {escaped_country}\n"
         f"> *🧾 BIN*: `{bin_input}`\n"
         f"> *🙋 Requested by \\-*: `{update.effective_user.full_name}`\n" # Escaped hyphen
         f"> *🤖 Bot by \\-*: Your Friend" # Escaped hyphen
@@ -293,6 +297,11 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     card_type = data.get("type", "Unknown").capitalize() # e.g., debit, credit
     level = data.get("brand", "Unknown") # Using 'brand' from binlist.net as 'level'
 
+    # Escape parentheses in variables that might contain them
+    escaped_bank = bank.replace('(', '\\(').replace(')', '\\)')
+    escaped_country = country.replace('(', '\\(').replace(')', '\\)')
+    escaped_card_type = card_type.replace('(', '\\(').replace(')', '\\)')
+
     # Construct the final response message with proper MarkdownV2 formatting
     # Only the BIN number is in monospace, as requested
     result = (
@@ -300,10 +309,10 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"║ 💳 \\*\\*𝐁𝐈𝐍 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐓𝐈𝐎𝐍\\*\\* ║\n" # Escaped asterisks for bold within ASCII art
         f"╚══════════════════════╝\n"
         f"**💳 Brand**: {scheme}\n"
-        f"**🏦 Bank**: {bank}\n"
-        f"**🌐 Type**: {card_type}\n"
+        f"**🏦 Bank**: {escaped_bank}\n"
+        f"**🌐 Type**: {escaped_card_type}\n"
         f"**💠 Level**: {level}\n"
-        f"**🌎 Country**: {country}\n"
+        f"**🌎 Country**: {escaped_country}\n"
         f"**🧾 Bin**: `{bin_input}`\n" # Only this line has monospace backticks
         f"🙋 Requested by \\- `{update.effective_user.full_name}`\n" # Escaped hyphen
         f"🤖 Bot by \\- Your Friend" # Escaped hyphen
@@ -325,8 +334,9 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ram_mb = psutil.virtual_memory().used / (1024 * 1024)
     ram_usage = f"{ram_mb:.0f} MB"
     
-    # Get CPU usage percentage
-    cpu_usage = f"{psutil.cpu_percent()}%"
+    # Get CPU usage percentage and escape the '%' character
+    cpu_usage_percent = psutil.cpu_percent()
+    cpu_usage_text = f"{cpu_usage_percent}\\%"
     
     # Calculate bot uptime in hours and minutes
     uptime_seconds = int(time.time() - psutil.boot_time())
@@ -335,14 +345,14 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     minutes, _ = divmod(remainder, 60)
     uptime_string = f"{hours} hours {minutes} minutes"
 
-    # Construct the final response message with proper MarkdownV2 formatting
+    # Construct the final response message with proper MarkdownV2 formatting, with no monospace.
     status_msg = (
         f"> 📊 Bot Status\n"
-        f"> 👥 Total Users: `{total_users}`\n"
-        f"> 🧠 RAM Usage: `{ram_usage}`\n"
-        f"> 🖥️ CPU Usage: `{cpu_usage}`\n"
-        f"> ⏱️ Uptime: `{uptime_string}`\n"
-        f"> 🤖 Bot by \\- Your Friend" # Escaped hyphen
+        f"> 👥 Total Users: {total_users}\n"
+        f"> 🧠 RAM Usage: {ram_usage}\n"
+        f"> 🖥️ CPU Usage: {cpu_usage_text}\n"
+        f"> ⏱️ Uptime: {uptime_string}\n"
+        f"> 🤖 Bot by \\- Your Friend"
     )
     
     await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
