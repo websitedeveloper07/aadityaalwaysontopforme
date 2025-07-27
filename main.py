@@ -265,7 +265,7 @@ async def get_bin_details(bin_number):
     bintable_data = await fetch_bin_info_bintable(bin_number)
     
     if bintable_data:
-        logger.info(f"Bintable.com raw data for {bin_number}: {bintable_data}") # Log raw data for debugging
+        logger.info(f"Bintable.com processed data for {bin_number}: {bintable_data}") # Log raw data for debugging
         
         # Extracting nested data from bintable_data
         bank_info = bintable_data.get("bank", {})
@@ -491,20 +491,20 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_level = escape_markdown_v2(level)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # Construct the entire message within a single quote block
+    # Construct the message: Quote for cards, then regular text for BIN info
     result = (
         f"> Generated 10 Cards\n"
         f"> \n"
         f"> {cards_list.replace('\n', '\n> ')}\n" # Apply quote to each line of cards
-        f"> \n"
-        f"> * **Brand**: {escaped_brand}\n"
-        f"> * **Bank**: {escaped_bank}\n"
-        f"> * **Type**: {escaped_card_type}\n"
-        f"> * **Level**: {escaped_level}\n"
-        f"> * **Country**: {escaped_country}\n"
-        f"> * **BIN**: `{bin_input}`\n"
-        f"> Requested by \\- {escaped_user_full_name}\n"
-        f"> Bot by \\- Your Friend"
+        f"\n" # Newline to break the quote block
+        f"* **Brand**: {escaped_brand}\n"
+        f"* **Bank**: {escaped_bank}\n"
+        f"* **Type**: {escaped_card_type}\n"
+        f"* **Level**: {escaped_level}\n"
+        f"* **Country**: {escaped_country}\n"
+        f"* **BIN**: `{bin_input}`\n"
+        f"Requested by \\- {escaped_user_full_name}\n"
+        f"Bot by \\- Your Friend"
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
