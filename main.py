@@ -19,7 +19,8 @@ TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 
 # A set to store chat IDs of groups authorized to use the bot's commands.
-AUTHORIZED_GROUPS = set()
+# The official group chat ID is pre-authorized here.
+AUTHORIZED_GROUPS = {-1002675283650} # Your specified official group chat ID
 
 # Dictionary to store the last command execution time for each user,
 # used to implement a global cooldown.
@@ -93,7 +94,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     welcome = f"👋 Hi, welcome {user.full_name}!\n🤖 Bot Status: Active"
     buttons = [
-        [InlineKeyboardButton("📜 Commands", callback_data="show_main_commands")], # Changed callback_data
+        [InlineKeyboardButton("📜 Commands", callback_data="show_main_commands")],
         [InlineKeyboardButton("👥 Group", url="https://t.me/your_group")] # IMPORTANT: Replace with your actual group link
     ]
     await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(buttons))
@@ -106,22 +107,20 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """
     query = update.callback_query
     if query:
-        await query.answer() # Acknowledge the callback query to remove loading state
+        await query.answer()
 
     commands_text = "📜 *Bot Commands:*\nSelect a command to learn more:"
     buttons = [
         [InlineKeyboardButton("💳 Generate Cards (/gen)", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Info (/bin)", callback_data="cmd_bin")],
         [InlineKeyboardButton("📊 Bot Status (/status)", callback_data="cmd_status")],
-        [InlineKeyboardButton("🔐 Authorize Group (/au)", callback_data="cmd_au")]
+        # Removed "Authorize Group" from this menu as it's owner-only and primarily for groups.
+        # It's still accessible via the /au command for the owner.
     ]
     
     if query:
         await query.edit_message_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
     else:
-        # This case handles direct message /commands if it were a command, but it's a callback now.
-        # For robustness, if somehow this is called without a query (e.g., if it were a CommandHandler),
-        # it would reply. But for the current flow, it's always from a callback.
         await update.message.reply_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
 
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -327,7 +326,8 @@ async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         chat_id_to_authorize = int(context.args[0])
         AUTHORIZED_GROUPS.add(chat_id_to_authorize)
-        await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot.", parse_mode=ParseMode.MARKDOWN_V2)
+        # Escaping the dot in "bot." for MarkdownV2
+        await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
         await update.message.reply_text("❌ Invalid chat ID. Please provide a numeric chat ID.")
 
@@ -357,9 +357,10 @@ def main():
 
     # Register Message Handlers for '.' commands using regex
     # The `^` ensures the dot command is at the beginning of the message.
-    # The `filters.COMMAND` is important to distinguish from regular text.
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*") & ~filters.COMMAND, gen))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*") & ~filters.COMMAND, bin_lookup))
+    # `filters.Regex(r"^\.gen\b.*")` matches messages starting with ".gen" followed by a word boundary.
+    # `~filters.COMMAND` ensures it doesn't accidentally catch a /command if it were misparsed.
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
 
     # Register Callback Query Handlers for inline buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
