@@ -4,6 +4,7 @@ import logging
 import asyncio
 import aiohttp
 import psutil
+import re
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -17,6 +18,10 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Messa
 # export OWNER_ID="YOUR_TELEGRAM_USER_ID"
 TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
+
+# API KEY for api-ninjas.com
+API_NINJAS_KEY = "rTon06AXcvnrQ6SruCbIsQ==U45J7gBTvdEgcWq1"
+API_NINJAS_URL = "https://api.api-ninjas.com/v1/bin"
 
 # A set to store chat IDs of groups authorized to use the bot's commands.
 # The official group chat ID is pre-authorized here.
@@ -139,7 +144,6 @@ def get_short_country_name(full_name):
 
     # Remove common parenthetical suffixes and "of" phrases
     # This regex removes anything in parentheses and then trailing "of X" phrases
-    import re
     cleaned_name = re.sub(r'\s*\(.*\)\s*', '', full_name).strip()
     cleaned_name = re.sub(r'\s*of\s+.*$', '', cleaned_name).strip()
     
@@ -151,7 +155,6 @@ def get_short_country_name(full_name):
         return " ".join(words[1:]) # e.g., "Bahamas" instead of "The Bahamas"
     
     return cleaned_name # Return cleaned name if no specific mapping or further shortening needed
-
 
 def luhn_checksum(card_number):
     """
@@ -168,6 +171,28 @@ def luhn_checksum(card_number):
     for d in even_digits:
         checksum += sum(digits_of(d * 2)) # Double even digits and sum their individual digits
     return checksum % 10 == 0 # Returns True if checksum is a multiple of 10, False otherwise.
+
+async def fetch_bin_info_api_ninjas(bin_number):
+    """
+    Asynchronously fetches BIN information from api-ninjas.com.
+    """
+    headers = {'X-Api-Key': API_NINJAS_KEY}
+    url = f"{API_NINJAS_URL}?bin={bin_number}"
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                else:
+                    logger.warning(f"API Ninjas returned status {resp.status} for BIN: {bin_number}")
+                    return None
+    except aiohttp.ClientError as e:
+        logger.error(f"Network error fetching from API Ninjas for {bin_number}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"An unexpected error occurred fetching from API Ninjas for {bin_number}: {e}")
+        return None
 
 async def fetch_bin_info_binlist(bin_number):
     """
@@ -216,56 +241,10 @@ async def fetch_bin_info_bincheckio(bin_number):
         logger.error(f"An unexpected error occurred fetching from Bincheck.io for {bin_number}: {e}")
         return None
 
-async def fetch_premium_bin_info(bin_number):
-    """
-    Asynchronously fetches detailed BIN information, including card level, from a
-    more comprehensive (paid) API.
-    
-    IMPORTANT NOTE: This is a placeholder function. To get real card levels
-    (e.g., "Gold", "Platinum", "Classic", "Infinite") and more reliable data,
-    you MUST replace this with an actual API call to a service that provides this data.
-    
-    Examples of such services include:
-    - Bincodes.com (often provides 'category' or 'level')
-    - Stripe's BIN API (if you have a payment gateway setup, but may not expose 'level' directly)
-    - Other specialized BIN lookup APIs.
-    
-    These services usually require an API key and may have usage limits.
-    
-    Example of how you might implement a real call (e.g., for Bincodes.com):
-    # api_key = "YOUR_BINCODES_API_KEY" # <-- REPLACE THIS WITH YOUR REAL API KEY
-    # url = f"https://api.bincodes.com/v1/{bin_number}/json/{api_key}"
-    # try:
-    #     async with aiohttp.ClientSession() as session:
-    #         async with session.get(url) as resp:
-    #             if resp.status == 200:
-    #                 data = await resp.json()
-    #                 # Map Bincodes.com fields to our internal keys
-    #                 return {
-    #                     "bank": data.get("bank_name", "Unknown"),
-    #                     "country_name": data.get("country_name", "Unknown"),
-    #                     "country_emoji": "", # Bincodes might not have emoji
-    #                     "scheme": data.get("card_brand", "Unknown"),
-    #                     "card_type": data.get("card_type", "Unknown"),
-    #                     "level": data.get("card_category", "N/A") # This is where 'Gold', 'Platinum' comes from
-    #                 }
-    #             else:
-    #                 logger.warning(f"Premium API returned status {resp.status} for BIN: {bin_number}")
-    #                 return None
-    # except aiohttp.ClientError as e:
-    #     logger.error(f"Network error fetching from Premium API for {bin_number}: {e}")
-    #     return None
-    # except Exception as e:
-    #     logger.error(f"An unexpected error occurred fetching from Premium API for {bin_number}: {e}")
-    #     return None
-
-    # Default placeholder if no real API is integrated or if the call fails
-    return None
-
 async def get_bin_details(bin_number):
     """
     Attempts to fetch BIN details from multiple APIs with fallback.
-    Prioritizes a premium API (if implemented), then binlist.net, then bincheck.io.
+    Prioritizes the API Ninjas, then binlist.net, then bincheck.io.
     """
     # Initialize with defaults
     details = {
@@ -276,17 +255,17 @@ async def get_bin_details(bin_number):
         "card_type": "Unknown",
         "level": "N/A" # Default for level
     }
-
-    # 1. Try Premium API first (if implemented and provides data)
-    premium_data = await fetch_premium_bin_info(bin_number)
-    if premium_data:
-        details["bank"] = premium_data.get("bank", details["bank"])
-        details["country_name"] = premium_data.get("country_name", details["country_name"])
-        details["country_emoji"] = premium_data.get("country_emoji", details["country_emoji"])
-        details["scheme"] = premium_data.get("scheme", details["scheme"]).capitalize()
-        details["card_type"] = premium_data.get("card_type", details["card_type"]).capitalize()
-        details["level"] = premium_data.get("level", details["level"]).capitalize()
-        # If premium API gives good data, we might not need to check others for core fields
+    
+    # 1. Try API Ninjas first
+    api_ninjas_data = await fetch_bin_info_api_ninjas(bin_number)
+    if api_ninjas_data and api_ninjas_data.get('country') is not None:
+        details["bank"] = api_ninjas_data.get("bank", details["bank"])
+        details["country_name"] = api_ninjas_data.get("country", details["country_name"])
+        details["scheme"] = api_ninjas_data.get("brand", details["scheme"]).capitalize()
+        details["card_type"] = api_ninjas_data.get("type", details["card_type"]).capitalize()
+        details["level"] = "N/A" # API Ninjas does not provide card level
+        
+        # If API Ninjas gives good data, we might not need to check others for core fields
         if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
             details["country_name"] = get_short_country_name(details["country_name"])
             return details
@@ -351,7 +330,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(welcome, reply_markup=InlineKeyboardMarkup(buttons))
     else:
         await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(buttons))
-
 
 async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -557,7 +535,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"* **Brand**: {escaped_scheme}\n"
         f"* **Bank**: {escaped_bank}\n"
         f"* **Type**: {escaped_card_type}\n"
-        f"* **Level**: {escaped_level}\n" # Included Level with bullet
+        f"* **Level**: {escaped_level}\n"
         f"* **Country**: {escaped_country}\n"
         f"* **Bin**: `{bin_input}`\n"
         f"Requested by \\- {escaped_user_full_name}\n"
