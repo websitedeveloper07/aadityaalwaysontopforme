@@ -81,13 +81,13 @@ async def fetch_bin_info(bin_number):
                     return await resp.json()
                 else:
                     logger.warning(f"BIN API returned status {resp.status} for BIN: {bin_number}")
-                    return None
+                    return None # Return None on non-200 status
     except aiohttp.ClientError as e:
         logger.error(f"Network error fetching BIN info for {bin_number}: {e}")
-        return None
+        return None # Return None on network error
     except Exception as e:
         logger.error(f"An unexpected error occurred fetching BIN info for {bin_number}: {e}")
-        return None
+        return None # Return None on any other unexpected error
 
 async def enforce_cooldown(user_id):
     """
@@ -231,7 +231,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     # Fetch BIN data from the external API
-    bin_data = await fetch_bin_info(bin_input[:6]) or {}
+    bin_data = await fetch_bin_info(bin_input[:6])
+    if not bin_data: # Check if bin_data is None (API call failed)
+        return await update.message.reply_text("❌ Could not retrieve BIN information\\. Please try again later or check the BIN\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
     bank = bin_data.get("bank", {}).get("name", "Unknown")
     country_name = bin_data.get("country", {}).get("name", "Unknown")
     country_emoji = bin_data.get("country", {}).get("emoji", '')
@@ -304,17 +307,17 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/bin [bin]` or `\\.bin [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_input = bin_input[:6] # Take only the first 6 digits for BIN lookup
-    data = await fetch_bin_info(bin_input)
-    if not data:
-        return await update.message.reply_text("❌ BIN not found in database or an error occurred\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    bin_data = await fetch_bin_info(bin_input)
+    if not bin_data: # Check if bin_data is None (API call failed)
+        return await update.message.reply_text("❌ Could not retrieve BIN information\\. Please try again later or check the BIN\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     # Extract relevant information from the API response
-    bank = data.get("bank", {}).get("name", "Unknown")
-    country_name = data.get("country", {}).get("name", "Unknown")
-    country_emoji = data.get("country", {}).get("emoji", '')
-    scheme = data.get("scheme", "Unknown").capitalize()
-    card_type = data.get("type", "Unknown").capitalize() # e.g., debit, credit
-    level = data.get("brand", "Unknown") # Using 'brand' from binlist.net as 'level'
+    bank = bin_data.get("bank", {}).get("name", "Unknown")
+    country_name = bin_data.get("country", {}).get("name", "Unknown")
+    country_emoji = bin_data.get("country", {}).get("emoji", '')
+    scheme = bin_data.get("scheme", "Unknown").capitalize()
+    card_type = bin_data.get("type", "Unknown").capitalize() # e.g., debit, credit
+    level = bin_data.get("brand", "Unknown") # Using 'brand' from binlist.net as 'level'
 
     # Escape dynamic text for MarkdownV2
     escaped_scheme = escape_markdown_v2(scheme)
