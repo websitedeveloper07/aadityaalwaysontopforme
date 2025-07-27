@@ -33,38 +33,24 @@ logger = logging.getLogger(__name__)
 
 # === HELPER FUNCTIONS ===
 
-def _escape_markdown_v2_text(text: str) -> str:
+def escape_markdown_v2(text):
     """
-    Escapes characters that have special meaning in MarkdownV2.
-    This is crucial for dynamic text that might contain these characters.
+    Helper function to escape special characters for MarkdownV2.
+    This is crucial for dynamic content that might contain Markdown special characters.
     """
-    # List of characters that need to be escaped in MarkdownV2
-    # This list covers all characters that can be problematic.
-    escape_chars = r'_*[]()~`>#+-=|{}.!'
-    
-    # Use a regular expression to find and escape each special character
-    # `re.sub` replaces occurrences of characters in `escape_chars` with their escaped version.
-    # The `|` creates an OR condition for the regex, and `\` escapes the character itself.
-    # Example: `r'([_*\[\]()~`>#+\-=|{}.!])'` will match any of these characters literally.
-    # The `r''` prefix makes it a raw string, which is good for regex patterns.
-    # The `\` before each special char in `escape_chars` in the regex pattern is to
-    # treat them as literal characters for the regex engine itself.
-    # The `\` in the replacement string `\\` is to ensure a literal backslash is inserted.
-    
-    # The pattern needs to be built carefully to escape the regex special characters themselves
-    # before they are used in the regex to match the Markdown special characters.
-    import re
-    
-    # Escape characters that are special in regex itself
-    regex_special_chars = r'[\^$.|?*+(){}\[\]]'
-    escaped_for_regex = ''.join([f'\\{c}' if c in regex_special_chars else c for c in escape_chars])
-    
-    # Create the final regex pattern to match MarkdownV2 special characters
-    pattern = f"([{re.escape(escape_chars)}])"
-    
-    # Replace matched characters with their escaped version
-    return re.sub(pattern, r'\\\1', text)
-
+    if text is None:
+        return "Unknown"
+    text = str(text)
+    # List of special characters in MarkdownV2 that need to be escaped
+    # See: https://core.telegram.org/bots/api#markdownv2-style
+    special_chars = '_*[]()~`>#+-=|{}.!'
+    escaped_text = ""
+    for char in text:
+        if char in special_chars:
+            escaped_text += '\\' + char
+        else:
+            escaped_text += char
+    return escaped_text
 
 def luhn_checksum(card_number):
     """
@@ -252,10 +238,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     brand = bin_data.get("scheme", "Unknown").capitalize()
 
     # Escape dynamic text for MarkdownV2
-    escaped_brand = _escape_markdown_v2_text(brand)
-    escaped_bank = _escape_markdown_v2_text(bank)
-    escaped_country = _escape_markdown_v2_text(f"{country_name} {country_emoji}".strip())
-    escaped_user_full_name = _escape_markdown_v2_text(update.effective_user.full_name)
+    escaped_brand = escape_markdown_v2(brand)
+    escaped_bank = escape_markdown_v2(bank)
+    escaped_country = escape_markdown_v2(f"{country_name} {country_emoji}".strip())
+    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
     cards = []
     # Generate 10 unique, Luhn-valid card numbers
@@ -331,12 +317,12 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     level = data.get("brand", "Unknown") # Using 'brand' from binlist.net as 'level'
 
     # Escape dynamic text for MarkdownV2
-    escaped_scheme = _escape_markdown_v2_text(scheme)
-    escaped_bank = _escape_markdown_v2_text(bank)
-    escaped_country = _escape_markdown_v2_text(f"{country_name} {country_emoji}".strip())
-    escaped_card_type = _escape_markdown_v2_text(card_type)
-    escaped_level = _escape_markdown_v2_text(level)
-    escaped_user_full_name = _escape_markdown_v2_text(update.effective_user.full_name)
+    escaped_scheme = escape_markdown_v2(scheme)
+    escaped_bank = escape_markdown_v2(bank)
+    escaped_country = escape_markdown_v2(f"{country_name} {country_emoji}".strip())
+    escaped_card_type = escape_markdown_v2(card_type)
+    escaped_level = escape_markdown_v2(level)
+    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
 
     # Construct the final response message with proper MarkdownV2 formatting
     # Only the BIN number is in monospace, as requested
@@ -364,15 +350,16 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type not in ["group", "supergroup"]:
         return await update.message.reply_text("🔒 This command can only be used in the group.")
 
-    total_users = len(user_last_command) # Simple count of users who have used a command
+    total_users = len(user_last_command)
     
     # Calculate RAM usage in MB
     ram_mb = psutil.virtual_memory().used / (1024 * 1024)
     ram_usage = f"{ram_mb:.0f} MB"
     
-    # Get CPU usage percentage and escape the '%' character
+    # Get CPU usage percentage. This can be a float (e.g. 12.3).
     cpu_usage_percent = psutil.cpu_percent()
-    cpu_usage_text = f"{cpu_usage_percent}\\%"
+    # First, format the number and then escape it, then add the escaped percent sign.
+    escaped_cpu_usage_text = escape_markdown_v2(str(cpu_usage_percent)) + "\\%"
     
     # Calculate bot uptime in hours and minutes
     uptime_seconds = int(time.time() - psutil.boot_time())
@@ -381,16 +368,19 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     minutes, _ = divmod(remainder, 60)
     uptime_string = f"{hours} hours {minutes} minutes"
 
-    # Escape the user's full name for MarkdownV2
-    escaped_user_full_name = _escape_markdown_v2_text(update.effective_user.full_name)
+    # Escape all other dynamic variables for MarkdownV2
+    escaped_total_users = escape_markdown_v2(str(total_users))
+    escaped_ram_usage = escape_markdown_v2(ram_usage)
+    escaped_uptime_string = escape_markdown_v2(uptime_string)
+    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
 
     # Construct the final response message with proper MarkdownV2 formatting, with no monospace.
     status_msg = (
         f"> 📊 Bot Status\n"
-        f"> 👥 Total Users: {total_users}\n"
-        f"> 🧠 RAM Usage: {ram_usage}\n"
-        f"> 🖥️ CPU Usage: {cpu_usage_text}\n"
-        f"> ⏱️ Uptime: {uptime_string}\n"
+        f"> 👥 Total Users: {escaped_total_users}\n"
+        f"> 🧠 RAM Usage: {escaped_ram_usage}\n"
+        f"> 🖥️ CPU Usage: {escaped_cpu_usage_text}\n"
+        f"> ⏱️ Uptime: {escaped_uptime_string}\n"
         f"> 🤖 Bot by \\- Your Friend" # Escaped hyphen
     )
     
