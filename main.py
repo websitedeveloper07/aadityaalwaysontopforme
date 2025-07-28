@@ -431,13 +431,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # BIN info block content for /gen, using "=>" and no bolding, with escaped hyphen
+    # BIN info block content for /gen, using "=>" and no bolding, with escaped hyphen and equals sign
     bin_info_block_content = (
         f"BIN\\-LOOKUP\n" # Escaped hyphen
-        f"BIN => `{bin_input}`\n"
-        f"Country => {escaped_country_name} {escaped_country_emoji}\n"
-        f"Type => {escaped_card_type}\n"
-        f"Bank => {escaped_bank}"
+        f"BIN \\=\\> `{bin_input}`\n" # Escaped equals sign
+        f"Country \\=\\> {escaped_country_name} {escaped_country_emoji}\n" # Escaped equals sign
+        f"Type \\=\\> {escaped_card_type}\n" # Escaped equals sign
+        f"Bank \\=\\> {escaped_bank}" # Escaped equals sign
     )
 
     user_info_block_content = (
