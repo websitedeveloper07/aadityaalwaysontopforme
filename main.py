@@ -33,7 +33,7 @@ user_last_command = {}
 
 # === VBV CHECKER BOT CONFIGURATION ===
 VBV_CHECKER_BOT_USERNAME = "lfcchek_bot" # Username without '@' for internal use
-VBV_CHECK_CHAT_ID = -1002804744593 # Corrected chat ID based on user's confirmation
+VBV_CHECK_CHAT_ID = -1002804744593 # Updated chat ID based on user's confirmation
 VBV_CHECK_COMMAND_PREFIX = "/bin"
 
 # === GLOBAL CACHE FOR VBV STATUS ===
@@ -295,12 +295,12 @@ async def get_vbv_status_from_external_bot(bin_number, context: ContextTypes.DEF
     vbv_results_cache[bin_number] = {'event': asyncio.Event(), 'status': 'N/A'}
 
     try:
-        # Send the command to the VBV checker bot in the private group
+        # Send the command to the VBV checker bot in the private group, explicitly mentioning its username
         await context.bot.send_message(
             chat_id=VBV_CHECK_CHAT_ID,
-            text=f"{VBV_CHECK_COMMAND_PREFIX} {bin_number}"
+            text=f"{VBV_CHECK_COMMAND_PREFIX}@{VBV_CHECKER_BOT_USERNAME} {bin_number}"
         )
-        logger.info(f"Sent command to VBV checker bot: {VBV_CHECK_COMMAND_PREFIX} {bin_number} in chat {VBV_CHECK_CHAT_ID}")
+        logger.info(f"Sent command to VBV checker bot: {VBV_CHECK_COMMAND_PREFIX}@{VBV_CHECKER_BOT_USERNAME} {bin_number} in chat {VBV_CHECK_CHAT_ID}")
 
         # Wait for the VBV response handler to set the event (with a timeout)
         try:
@@ -322,12 +322,14 @@ async def vbv_response_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     Handles messages received from the VBV checker bot in the designated private chat.
     Parses the VBV status and updates the global cache.
     """
+    # Ensure it's a message and from the correct bot in the correct chat
     if update.message and update.message.from_user and update.message.from_user.username == VBV_CHECKER_BOT_USERNAME:
         if update.message.chat_id == VBV_CHECK_CHAT_ID:
             text = update.message.text
             logger.info(f"Received message from VBV checker bot: {text}")
 
-            # Extract BIN from the VBV checker bot's response (e.g., "BIN ➜ 486732")
+            # Extract BIN from the VBV checker bot's response (e.g., "🍀 BIN ➜ 486732")
+            # Using a more flexible regex for BIN extraction
             bin_match = re.search(r"BIN\s*➜\s*(\d+)", text)
             if not bin_match:
                 logger.warning(f"Could not extract BIN from VBV bot response: {text}")
@@ -356,11 +358,10 @@ async def vbv_response_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             else:
                 logger.info(f"Received VBV status for BIN {extracted_bin} but no pending request found in cache.")
 
-async def get_bin_details(bin_number, context: ContextTypes.DEFAULT_TYPE):
+async def get_bin_details(bin_number, context: ContextTypes.DEFAULT_TYPE, fetch_vbv: bool = True):
     """
     Attempts to fetch BIN details from multiple APIs with fallback.
-    Prioritizes api.bintable.com, then binlist.net, then bincheck.io.
-    Also fetches VBV status from external bot.
+    Also fetches VBV status from external bot if fetch_vbv is True.
     """
     # Initialize with defaults
     details = {
@@ -392,11 +393,12 @@ async def get_bin_details(bin_number, context: ContextTypes.DEFAULT_TYPE):
         details["card_type"] = card_info.get("type", details["card_type"]).capitalize()
         details["level"] = card_info.get("category", details["level"]).capitalize() # 'category' is used for level in Bintable
         
-        # If Bintable gives good data, we can proceed to fetch VBV
+        # If Bintable gives good data, we can proceed.
         if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
             details["country_name"] = get_short_country_name(details["country_name"])
-            # Fetch VBV status from external bot after getting primary BIN details
-            details["vbv_status"] = await get_vbv_status_from_external_bot(bin_number, context)
+            # Fetch VBV status from external bot ONLY if requested
+            if fetch_vbv:
+                details["vbv_status"] = await get_vbv_status_from_external_bot(bin_number, context)
             return details
     else:
         logger.info(f"Bintable.com did not return valid data for BIN: {bin_number}. Falling back...")
@@ -434,8 +436,9 @@ async def get_bin_details(bin_number, context: ContextTypes.DEFAULT_TYPE):
     # Shorten country name after getting from all sources
     details["country_name"] = get_short_country_name(details["country_name"])
     
-    # Always fetch VBV status, even if primary BIN lookups failed or fell back
-    details["vbv_status"] = await get_vbv_status_from_external_bot(bin_number, context)
+    # Fetch VBV status from external bot ONLY if requested
+    if fetch_vbv:
+        details["vbv_status"] = await get_vbv_status_from_external_bot(bin_number, context)
 
     return details
 
@@ -576,16 +579,18 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(bin_input) < 6:
         return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Get BIN details from multiple sources
-    bin_details = await get_bin_details(bin_input[:6], context) # Pass context to get_bin_details
+    # Get BIN details from multiple sources (do NOT fetch VBV for /gen)
+    bin_details = await get_bin_details(bin_input[:6], context, fetch_vbv=False) 
 
     brand = bin_details["scheme"]
     bank = bin_details["bank"]
     country_name = bin_details['country_name']
     country_emoji = bin_details['country_emoji']
-    card_type = bin_details["card_type"] # Keep for internal logic, not necessarily displayed
-    level = bin_details["level"]
-    vbv_status = bin_details["vbv_status"] # Get VBV status
+    card_type = bin_details["card_type"] 
+    # For /gen, VBV status is always N/A as per request
+    vbv_status = "N/A" 
+    # For /gen, level is not told as per request, but we need it for card generation logic
+    level = bin_details["level"] 
     
     cards = []
     while len(cards) < 10:
@@ -609,12 +614,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
     escaped_card_type = escape_markdown_v2(card_type)
-    escaped_level = escape_markdown_v2(level)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
 
-    # Get emojis for status and level
+    # Get emojis for status (level emoji is not used for /gen output)
     status_display = get_vbv_status_display(vbv_status)
-    level_emoji = get_level_emoji(escaped_level)
     
     # Construct the message with precise quote box placement
     result = (
@@ -627,7 +630,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✦ Status : {status_display}\n"
         f"✦ Brand\\s\\s : {escaped_brand}\n"
         f"✦ Type\\s\\s\\s\\s : {escaped_card_type}\n"
-        f"✦ Level\\s\\s : {level_emoji} {escaped_level}\n"
         f"✦ Bank\\s\\s\\s\\s : {escaped_bank}\n"
         f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n"
         f"╚════════════════════════╝\n"
@@ -661,8 +663,8 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     bin_input = bin_input[:6]
     
-    # Get BIN details from multiple sources
-    bin_details = await get_bin_details(bin_input, context) # Pass context to get_bin_details
+    # Get BIN details from multiple sources (DO fetch VBV for /bin)
+    bin_details = await get_bin_details(bin_input, context, fetch_vbv=True) 
 
     # Extract details, using "Unknown" or "N/A" if not found
     scheme = bin_details["scheme"]
