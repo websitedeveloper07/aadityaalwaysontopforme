@@ -387,7 +387,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(bin_input) < 6:
         return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Get BIN details (only to get 'brand' for CVV length and other info for the new format)
     bin_details = await get_bin_details(bin_input[:6])
 
     brand = bin_details["scheme"]
@@ -419,27 +418,30 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # New simplified and bolded info block for /gen
-    generated_info_block = (
-        f"**BIN:** `{bin_input}`\n"
-        f"**Brand:** {escaped_brand}\n"
-        f"**Type:** {escaped_card_type}\n"
-        f"**Country:** {escaped_country_name} {escaped_country_emoji}\n"
-        f"**Issuer:** {escaped_bank}"
+    # Nested quote box structure to match the image
+    bin_info_block = (
+        f"BIN: `{bin_input}`\n"
+        f"Brand: {escaped_brand}\n"
+        f"Type: {escaped_card_type}\n"
+        f"Country: {escaped_country_name} {escaped_country_emoji}\n"
+        f"Issuer: {escaped_bank}"
     )
 
-    # Combine all parts within a single quote block
+    user_info_block = (
+        f"Requested by -: {escaped_user_full_name}\n"
+        f"Bot by -: Your Friend"
+    )
+
     result = (
         f"> Generated 10 Cards\n"
         f"\n"
         f"{cards_list}\n"
         f"\n"
-        f"> {generated_info_block.replace('\n', '\n> ')}\n" # Add '>' to each line of the info block
+        f"> {bin_info_block.replace('\n', '\n> ')}\n"
         f"\n"
-        f"> Requested by \\-: {escaped_user_full_name}\n"
-        f"> Bot by \\-: Your Friend"
+        f"> {user_info_block.replace('\n', '\n> ')}"
     )
-    
+
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -485,8 +487,8 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
     
-    # Updated /bin output with removed \s and user info inside box
-    result = (
+    # Main BIN info box
+    bin_info_box = (
         f"╔═══════ BIN INFO ═══════╗\n"
         f"✦ BIN : `{bin_input}`\n"
         f"✦ Status : {status_display}\n"
@@ -495,10 +497,16 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✦ Level : {level_emoji} {escaped_level}\n"
         f"✦ Bank : {escaped_bank}\n"
         f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n"
-        f"Requested by \\-: {escaped_user_full_name}\n"
-        f"Bot by \\-: Your Friend\n"
         f"╚════════════════════════╝"
     )
+
+    # User info in a separate quote box
+    user_info_quote_box = (
+        f"> Requested by \\-: {escaped_user_full_name}\n"
+        f"> Bot by \\-: Your Friend"
+    )
+
+    result = f"{bin_info_box}\n\n{user_info_quote_box}"
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
