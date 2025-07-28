@@ -25,6 +25,17 @@ user_last_command = {}
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# === ERROR HANDLER ===
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log the error and send a message to the user."""
+    logger.error("Exception while handling an update:", exc_info=context.error)
+
+    # Try to send a message back to the user
+    if update.effective_message:
+        await update.effective_message.reply_text(
+            "An error occurred while processing your request. Please try again later."
+        )
+
 # === HELPER FUNCTIONS ===
 
 def escape_markdown_v2(text):
@@ -488,7 +499,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
     
-    # Main BIN info box - made narrower
+    # Main BIN info box - made narrower for mobile
     bin_info_box = (
         f"╔═══════ BIN INFO ═══════╗\n"
         f"✦ BIN    : `{bin_input}`\n"
