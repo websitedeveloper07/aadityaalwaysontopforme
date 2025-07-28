@@ -249,7 +249,7 @@ async def get_bin_details(bin_number):
         details["country_name"] = country_info.get("name", details["country_name"])
         details["country_emoji"] = country_info.get("flag", details["country_emoji"]) 
         details["scheme"] = card_info.get("scheme", details["scheme"]).capitalize()
-        details["card_type"] = card_info.get("type", details["type"]).capitalize()
+        details["card_type"] = card_info.get("type", details["card_type"]).capitalize() # Fixed: was details["type"]
         details["level"] = card_info.get("category", details["level"]).capitalize()
     else:
         binlist_data = await fetch_bin_info_binlist(bin_number)
@@ -343,6 +343,7 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
         usage_text = (
             "*📊 Bot Status*\n" +
             "Usage: `/status`\n" +
+            "Example: `/status`\n" + # Added example for consistency
             "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\\n" +
             "*Note:* This command works only in authorized groups\\.\n"
         ).strip()
@@ -409,6 +410,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
+    # Simplified output for /gen command
     result = (
         f"> Generated 10 Cards\n"
         f"\n"
