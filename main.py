@@ -343,32 +343,28 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "*💳 Generate Cards*\n" +
             "Usage: `/gen [bin]` or `\\.gen [bin]`\n" +
             "Example: `/gen 453957`\n" +
-            "Generates 10 credit card numbers based on the provided BIN\\.\\\n" +
-            "*Note:* This command works only in authorized groups\\.\n"
+            "Generates 10 credit card numbers based on the provided BIN\\.\\\n" 
         ).strip()
     elif command_name == "bin":
         usage_text = (
             "*🔍 BIN Info*\n" +
             "Usage: `/bin [bin]` or `\\.bin [bin]`\n" +
             "Example: `/bin 518765`\n" +
-            "Provides detailed information about a given BIN\\.\\\n" +
-            "*Note:* This command works only in authorized groups\\.\n"
+            "Provides detailed information about a given BIN\\.\\\n" 
         ).strip()
     elif command_name == "status":
         usage_text = (
             "*📊 Bot Status*\n" +
             "Usage: `/status`\n" +
             "Example: `/status`\n" +
-            "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\\n" +
-            "*Note:* This command works only in authorized groups\\.\n"
+            "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\\n" 
         ).strip()
     elif command_name == "au":
         usage_text = (
             "*🔐 Authorize Group*\n" +
             "Usage: `/au [chat_id]`\n" +
             "Example: `/au \\-100123456789`\n" +
-            "Authorizes a specific group to use the bot's features\\.\\\n" +
-            "*Note:* This command can only be used by the bot owner\\.\n"
+            "Authorizes a specific group to use the bot's features\\.\\\n" 
         ).strip()
     else:
         usage_text = "Unknown command\\. Please go back and select a valid command\\.\\"
@@ -449,7 +445,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     result = (
-        f"Generated 10 Cards 💳\n"
+        f"> Generated 10 Cards 💳\n"
         f"\n"
         f"{cards_list}\n"
         f"\n"
