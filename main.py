@@ -17,7 +17,9 @@ OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 BINTABLE_API_KEY = "2504e1938a63e931f65c90cee460c7ef8c418252"
 BINTABLE_URL = "https://api.bintable.com/v1"
 
-AUTHORIZED_GROUPS = {-1002675283650}
+# AUTHORIZED_GROUPS is no longer needed for general bot functionality
+# It's kept for potential future owner-specific group management, but not used for command access.
+# AUTHORIZED_GROUPS = {-1002675283650}
 
 user_last_command = {}
 
@@ -375,13 +377,14 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.edit_message_text(usage_text, reply_markup=InlineKeyboardMarkup(back_button), parse_mode=ParseMode.MARKDOWN_V2)
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type not in ["group", "supergroup"]:
-        button = InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")
-        return await update.message.reply_text("Join our official group to use this bot.", reply_markup=InlineKeyboardMarkup([[button]]))
+    # Removed group authorization check
+    # if update.effective_chat.type not in ["group", "supergroup"]:
+    #     button = InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")
+    #     return await update.message.reply_text("Join our official group to use this bot.", reply_markup=InlineKeyboardMarkup([[button]]))
 
-    chat_id = update.effective_chat.id
-    if chat_id not in AUTHORIZED_GROUPS:
-        return await update.message.reply_text("🚫 This group is not authorized to use the bot.")
+    # chat_id = update.effective_chat.id
+    # if chat_id not in AUTHORIZED_GROUPS:
+    #     return await update.message.reply_text("🚫 This group is not authorized to use the bot.")
 
     if not await enforce_cooldown(update.effective_user.id):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying.")
@@ -431,18 +434,18 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # BIN info block content for /gen, using "=>" and no bolding, with escaped hyphen and equals sign
+    # BIN info block content for /gen, using ">>" as separator and escaped hyphen
     bin_info_block_content = (
-        f"✦ BIN\\-LOOKUP\n" # Escaped hyphen
-        f"✦ BIN     : `{bin_input}`\n" # Escaped equals sign
-        f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n" # Escaped equals sign
-        f"✦ Type    : {escaped_card_type}\n" # Escaped equals sign
-        f"✦ Bank    : {escaped_bank}" # Escaped equals sign
+        f"✦ BIN\\-LOOKUP\n"
+        f"✦ BIN     : `{bin_input}`\n"
+        f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
+        f"✦ Type    : {escaped_card_type}\n"
+        f"✦ Bank    : {escaped_bank}"
     )
 
     user_info_block_content = (
         f"Requested by : {escaped_user_full_name}\n"
-        f"Bot by  :  𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
+        f"Bot by : 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
     )
 
     result = (
@@ -458,9 +461,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type not in ["group", "supergroup"]:
-        button = InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")
-        return await update.message.reply_text("Join our official group to use this bot.", reply_markup=InlineKeyboardMarkup([[button]]))
+    # Removed group authorization check
+    # if update.effective_chat.type not in ["group", "supergroup"]:
+    #     button = InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")
+    #     return await update.message.reply_text("Join our official group to use this bot.", reply_markup=InlineKeyboardMarkup([[button]]))
 
     if not await enforce_cooldown(update.effective_user.id):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying.")
@@ -523,8 +527,9 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type not in ["group", "supergroup"]:
-        return await update.message.reply_text("🔒 This command can only be used in the group.")
+    # Removed group authorization check
+    # if update.effective_chat.type not in ["group", "supergroup"]:
+    #     return await update.message.reply_text("🔒 This command can only be used in the group.")
 
     total_users = len(user_last_command)
     
@@ -573,7 +578,7 @@ async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         chat_id_to_authorize = int(context.args[0])
-        AUTHORIZED_GROUPS.add(chat_id_to_authorize)
+        # AUTHORIZED_GROUPS.add(chat_id_to_authorize) # This line is commented out as AUTHORIZED_GROUPS is no longer used for general access
         await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
         await update.message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
