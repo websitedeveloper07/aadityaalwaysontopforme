@@ -33,7 +33,7 @@ user_last_command = {}
 
 # === VBV CHECKER BOT CONFIGURATION ===
 VBV_CHECKER_BOT_USERNAME = "lfcchek_bot" # Username without '@' for internal use
-VBV_CHECK_CHAT_ID = -4710018074 # Corrected chat ID based on user's confirmation
+VBV_CHECK_CHAT_ID = -1002804744593 # Corrected chat ID based on user's confirmation
 VBV_CHECK_COMMAND_PREFIX = "/bin"
 
 # === LOGGING SETUP ===
