@@ -31,6 +31,8 @@ def escape_markdown_v2(text):
     if text is None:
         return "Unknown"
     text = str(text)
+    # List of special characters in MarkdownV2 that need to be escaped
+    # See: https://core.telegram.org/bots/api#markdownv2-style
     special_chars = '_*[]()~`>#+-=|{}.!'
     escaped_text = ""
     for char in text:
@@ -418,25 +420,23 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # New BIN info block for /gen matching image_934ae4.png style
+    # BIN info block content for /gen, using "=>" and no bolding
     bin_info_block_content = (
         f"BIN-LOOKUP\n"
         f"BIN => `{bin_input}`\n"
-        f"Brand => {escaped_brand}\n"
-        f"Type => {escaped_card_type}\n"
         f"Country => {escaped_country_name} {escaped_country_emoji}\n"
-        f"Issuer => {escaped_bank}"
+        f"Type => {escaped_card_type}\n"
+        f"Bank => {escaped_bank}"
     )
 
     user_info_block_content = (
-        f"Requested by \\-\\: {escaped_user_full_name}\n"
-        f"Bot by \\-\\: Your Friend"
+        f"Requested by \\-\\> {escaped_user_full_name}\n" # Escaped hyphen and added '>'
+        f"Bot by \\-\\> Your Friend" # Escaped hyphen and added '>'
     )
 
-    # Combine all parts. The BIN info and user info will be in the same quote block.
-    # The "Generated 10 Cards" header is outside the quote block.
+    # Combine all parts. The "Generated 10 Cards" header is outside the quote block.
     result = (
-        f"Generated 10 Cards 💳\n" # Added emoji
+        f"Generated 10 Cards 💳\n"
         f"\n"
         f"{cards_list}\n"
         f"\n"
@@ -468,7 +468,6 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     bin_input = bin_input[:6]
     
-    # Get BIN details (VBV status will be N/A, level will be displayed)
     bin_details = await get_bin_details(bin_input)
 
     scheme = bin_details["scheme"]
@@ -477,7 +476,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     level = bin_details["level"]
     country_name = bin_details['country_name']
     country_emoji = bin_details['country_emoji']
-    vbv_status = bin_details["vbv_status"] # This will now always be N/A
+    vbv_status = bin_details["vbv_status"]
 
     escaped_scheme = escape_markdown_v2(scheme)
     escaped_bank = escape_markdown_v2(bank)
@@ -490,17 +489,17 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
     
-    # Main BIN info box
+    # Main BIN info box - made narrower
     bin_info_box = (
-        f"╔═══════ BIN INFO ═══════╗\n"
-        f"✦ BIN : `{bin_input}`\n"
-        f"✦ Status : {status_display}\n"
-        f"✦ Brand : {escaped_scheme}\n"
-        f"✦ Type : {escaped_card_type}\n"
-        f"✦ Level : {level_emoji} {escaped_level}\n"
-        f"✦ Bank : {escaped_bank}\n"
-        f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n"
-        f"╚════════════════════════╝"
+        f"╔═══════ BIN INFO ═══════╗\n" # Adjusted length
+        f"✦ BIN    : `{bin_input}`\n" # Adjusted spacing
+        f"✦ Status : {status_display}\n" # Adjusted spacing
+        f"✦ Brand  : {escaped_scheme}\n" # Adjusted spacing
+        f"✦ Type   : {escaped_card_type}\n" # Adjusted spacing
+        f"✦ Level  : {level_emoji} {escaped_level}\n" # Adjusted spacing
+        f"✦ Bank   : {escaped_bank}\n" # Adjusted spacing
+        f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n" # Adjusted spacing
+        f"╚════════════════════════╝" # Adjusted length
     )
 
     # User info in a separate quote box
