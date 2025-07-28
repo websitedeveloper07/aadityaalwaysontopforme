@@ -420,9 +420,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # BIN info block content for /gen, using "=>" and no bolding
+    # BIN info block content for /gen, using "=>" and no bolding, with escaped hyphen
     bin_info_block_content = (
-        f"BIN-LOOKUP\n"
+        f"BIN\\-LOOKUP\n" # Escaped hyphen
         f"BIN => `{bin_input}`\n"
         f"Country => {escaped_country_name} {escaped_country_emoji}\n"
         f"Type => {escaped_card_type}\n"
@@ -430,19 +430,18 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     user_info_block_content = (
-        f"Requested by \\-\\> {escaped_user_full_name}\n" # Escaped hyphen and added '>'
-        f"Bot by \\-\\> Your Friend" # Escaped hyphen and added '>'
+        f"Requested by \\-\\> {escaped_user_full_name}\n"
+        f"Bot by \\-\\> Your Friend"
     )
 
-    # Combine all parts. The "Generated 10 Cards" header is outside the quote block.
     result = (
         f"Generated 10 Cards 💳\n"
         f"\n"
         f"{cards_list}\n"
         f"\n"
-        f"> {bin_info_block_content.replace('\n', '\n> ')}\n" # Apply quote to each line
-        f"> \n" # Blank line within the quote block
-        f"> {user_info_block_content.replace('\n', '\n> ')}" # Apply quote to each line
+        f"> {bin_info_block_content.replace('\n', '\n> ')}\n"
+        f"> \n"
+        f"> {user_info_block_content.replace('\n', '\n> ')}"
     )
 
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -491,15 +490,15 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Main BIN info box - made narrower
     bin_info_box = (
-        f"╔═══════ BIN INFO ═══════╗\n" # Adjusted length
-        f"✦ BIN    : `{bin_input}`\n" # Adjusted spacing
-        f"✦ Status : {status_display}\n" # Adjusted spacing
-        f"✦ Brand  : {escaped_scheme}\n" # Adjusted spacing
-        f"✦ Type   : {escaped_card_type}\n" # Adjusted spacing
-        f"✦ Level  : {level_emoji} {escaped_level}\n" # Adjusted spacing
-        f"✦ Bank   : {escaped_bank}\n" # Adjusted spacing
-        f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n" # Adjusted spacing
-        f"╚════════════════════════╝" # Adjusted length
+        f"╔═══════ BIN INFO ═══════╗\n"
+        f"✦ BIN    : `{bin_input}`\n"
+        f"✦ Status : {status_display}\n"
+        f"✦ Brand  : {escaped_scheme}\n"
+        f"✦ Type   : {escaped_card_type}\n"
+        f"✦ Level  : {level_emoji} {escaped_level}\n"
+        f"✦ Bank   : {escaped_bank}\n"
+        f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n"
+        f"╚════════════════════════╝"
     )
 
     # User info in a separate quote box
@@ -591,6 +590,9 @@ def main():
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
     application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$"))
+
+    # Add the error handler
+    application.add_error_handler(error_handler)
 
     logger.info("Bot started polling...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
