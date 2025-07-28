@@ -418,28 +418,31 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # Nested quote box structure to match the image
-    bin_info_block = (
-        f"BIN: `{bin_input}`\n"
-        f"Brand: {escaped_brand}\n"
-        f"Type: {escaped_card_type}\n"
-        f"Country: {escaped_country_name} {escaped_country_emoji}\n"
-        f"Issuer: {escaped_bank}"
+    # New BIN info block for /gen matching image_934ae4.png style
+    bin_info_block_content = (
+        f"BIN-LOOKUP\n"
+        f"BIN => `{bin_input}`\n"
+        f"Brand => {escaped_brand}\n"
+        f"Type => {escaped_card_type}\n"
+        f"Country => {escaped_country_name} {escaped_country_emoji}\n"
+        f"Issuer => {escaped_bank}"
     )
 
-    user_info_block = (
-        f"Requested by -: {escaped_user_full_name}\n"
-        f"Bot by -: Your Friend"
+    user_info_block_content = (
+        f"Requested by \\-\\: {escaped_user_full_name}\n"
+        f"Bot by \\-\\: Your Friend"
     )
 
+    # Combine all parts. The BIN info and user info will be in the same quote block.
+    # The "Generated 10 Cards" header is outside the quote block.
     result = (
-        f"> Generated 10 Cards\n"
+        f"Generated 10 Cards 💳\n" # Added emoji
         f"\n"
         f"{cards_list}\n"
         f"\n"
-        f"> {bin_info_block.replace('\n', '\n> ')}\n"
-        f"\n"
-        f"> {user_info_block.replace('\n', '\n> ')}"
+        f"> {bin_info_block_content.replace('\n', '\n> ')}\n" # Apply quote to each line
+        f"> \n" # Blank line within the quote block
+        f"> {user_info_block_content.replace('\n', '\n> ')}" # Apply quote to each line
     )
 
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
