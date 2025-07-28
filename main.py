@@ -433,16 +433,16 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # BIN info block content for /gen, using "=>" and no bolding, with escaped hyphen and equals sign
     bin_info_block_content = (
-        f"BIN\\-LOOKUP\n" # Escaped hyphen
-        f"BIN \\=\\> `{bin_input}`\n" # Escaped equals sign
-        f"Country \\=\\> {escaped_country_name} {escaped_country_emoji}\n" # Escaped equals sign
-        f"Type \\=\\> {escaped_card_type}\n" # Escaped equals sign
-        f"Bank \\=\\> {escaped_bank}" # Escaped equals sign
+        f"✦ BIN\\-LOOKUP\n" # Escaped hyphen
+        f"✦ BIN     : `{bin_input}`\n" # Escaped equals sign
+        f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n" # Escaped equals sign
+        f"✦ Type    : {escaped_card_type}\n" # Escaped equals sign
+        f"✦ Bank    : {escaped_bank}" # Escaped equals sign
     )
 
     user_info_block_content = (
-        f"Requested by \\-\\> {escaped_user_full_name}\n"
-        f"Bot by \\-\\> Your Friend"
+        f"Requested by : {escaped_user_full_name}\n"
+        f"Bot by  :  𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
     )
 
     result = (
@@ -515,7 +515,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # User info in a separate quote box
     user_info_quote_box = (
         f"> Requested by \\-: {escaped_user_full_name}\n"
-        f"> Bot by \\-: Your Friend"
+        f"> Bot by \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
     )
 
     result = f"{bin_info_box}\n\n{user_info_quote_box}"
@@ -560,7 +560,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> 🧠 RAM Usage: {escaped_ram_usage}\n"
         f"> 🖥️ CPU Usage: {escaped_cpu_usage_text}\n"
         f"> ⏱️ Uptime: {escaped_uptime_string}\n"
-        f"> 🤖 Bot by \\- Your Friend"
+        f"> 🤖 Bot by \\- 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
     )
     
     await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
