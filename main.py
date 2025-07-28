@@ -421,13 +421,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # New BIN info block for /gen
     bin_info_block = (
-        f"╔═══════ BIN INFO ═══════╗\n"
         f"✦ BIN : `{bin_input}`\n"
         f"✦ Brand : {escaped_brand}\n"
         f"✦ Type : {escaped_card_type}\n"
         f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
         f"✦ Issuer : {escaped_bank}\n"
-        f"╚════════════════════════╝"
+        
     )
 
     # Combine all parts within a single quote block
