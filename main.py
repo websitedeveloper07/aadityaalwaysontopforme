@@ -343,7 +343,7 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
         usage_text = (
             "*📊 Bot Status*\n" +
             "Usage: `/status`\n" +
-            "Example: `/status`\n" + # Added example for consistency
+            "Example: `/status`\n" +
             "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\\n" +
             "*Note:* This command works only in authorized groups\\.\n"
         ).strip()
@@ -387,10 +387,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(bin_input) < 6:
         return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Get BIN details (only to get 'brand' for CVV length, other details not used for output)
-    bin_details = await get_bin_details(bin_input[:6]) # No context needed here as no VBV check
+    # Get BIN details to extract brand for CVV length and other info for the new box
+    bin_details = await get_bin_details(bin_input[:6])
 
-    brand = bin_details["scheme"] # Used for CVV length calculation
+    brand = bin_details["scheme"]
+    bank = bin_details["bank"]
+    country_name = bin_details['country_name']
+    country_emoji = bin_details['country_emoji']
+    card_type = bin_details["card_type"]
     
     cards = []
     while len(cards) < 10:
@@ -408,16 +412,34 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cards_list = "\n".join(cards)
     
+    escaped_brand = escape_markdown_v2(brand)
+    escaped_bank = escape_markdown_v2(bank)
+    escaped_country_name = escape_markdown_v2(country_name)
+    escaped_country_emoji = escape_markdown_v2(country_emoji)
+    escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
     
-    # Simplified output for /gen command
+    # New BIN info block for /gen
+    bin_info_block = (
+        f"╔═══════ BIN INFO ═══════╗\n"
+        f"✦ BIN : `{bin_input}`\n"
+        f"✦ Brand : {escaped_brand}\n"
+        f"✦ Type : {escaped_card_type}\n"
+        f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
+        f"✦ Issuer : {escaped_bank}\n"
+        f"╚════════════════════════╝"
+    )
+
+    # Combine all parts within a single quote block
     result = (
         f"> Generated 10 Cards\n"
         f"\n"
         f"{cards_list}\n"
         f"\n"
-        f"Requested by \\-: {escaped_user_full_name}\n"
-        f"Bot by \\-: Your Friend"
+        f"> {bin_info_block.replace('\n', '\n> ')}\n" # Add '>' to each line of the BIN info block
+        f"\n"
+        f"> Requested by \\-: {escaped_user_full_name}\n"
+        f"> Bot by \\-: Your Friend"
     )
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -467,12 +489,12 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     result = (
         f"╔═══════ BIN INFO ═══════╗\n"
-        f"✦ BIN\\s\\s\\s\\s\\s\\s : `{bin_input}`\n"
+        f"✦ BIN    : `{bin_input}`\n"
         f"✦ Status : {status_display}\n" # Always N/A now
-        f"✦ Brand\\s\\s : {escaped_scheme}\n"
-        f"✦ Type\\s\\s\\s\\s : {escaped_card_type}\n"
-        f"✦ Level\\s\\s : {level_emoji} {escaped_level}\n"
-        f"✦ Bank\\s\\s\\s\\s : {escaped_bank}\n"
+        f"✦ Brand  : {escaped_scheme}\n"
+        f"✦ Type   : {escaped_card_type}\n"
+        f"✦ Level  : {level_emoji} {escaped_level}\n"
+        f"✦ Bank   : {escaped_bank}\n"
         f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n"
         f"╚════════════════════════╝\n"
         f"Requested by \\-: {escaped_user_full_name}\n"
