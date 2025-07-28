@@ -3,9 +3,9 @@ import time
 import logging
 import asyncio
 import aiohttp
-import psutil
 import re
-from datetime import datetime, timedelta
+import psutil # For status command
+from datetime import datetime, timedelta # For status command
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
@@ -35,6 +35,12 @@ user_last_command = {}
 VBV_CHECKER_BOT_USERNAME = "lfcchek_bot" # Username without '@' for internal use
 VBV_CHECK_CHAT_ID = -1002804744593 # Corrected chat ID based on user's confirmation
 VBV_CHECK_COMMAND_PREFIX = "/bin"
+
+# === GLOBAL CACHE FOR VBV STATUS ===
+# This dictionary will store asyncio.Event objects and VBV status for pending requests.
+# Key: bin_number (str)
+# Value: {'event': asyncio.Event, 'status': str}
+vbv_results_cache = {}
 
 # === LOGGING SETUP ===
 # Configure basic logging to output informational messages to the console.
@@ -282,62 +288,73 @@ async def fetch_bin_info_bincheckio(bin_number):
 
 async def get_vbv_status_from_external_bot(bin_number, context: ContextTypes.DEFAULT_TYPE):
     """
-    Sends a BIN to the external VBV checker bot and attempts to parse its response.
+    Sends a BIN to the external VBV checker bot and waits for its response.
+    Uses a global cache and asyncio.Event for synchronization.
     """
+    # Initialize the cache entry for this BIN
+    vbv_results_cache[bin_number] = {'event': asyncio.Event(), 'status': 'N/A'}
+
     try:
         # Send the command to the VBV checker bot in the private group
-        sent_message = await context.bot.send_message(
+        await context.bot.send_message(
             chat_id=VBV_CHECK_CHAT_ID,
             text=f"{VBV_CHECK_COMMAND_PREFIX} {bin_number}"
         )
         logger.info(f"Sent command to VBV checker bot: {VBV_CHECK_COMMAND_PREFIX} {bin_number} in chat {VBV_CHECK_CHAT_ID}")
 
-        # Wait a short period for the other bot to respond
-        await asyncio.sleep(3) # Give the other bot some time to process and respond
-
-        # Fetch recent updates from the chat to find the response
-        # This is a simplified approach. A more robust solution for production
-        # would involve storing the `sent_message.message_id` and then
-        # listening for updates *after* that ID, or using a dedicated
-        # `MessageHandler` with a `filters.REPLY` filter if the other bot replies directly.
-        
-        # For now, we'll fetch recent updates and try to find a message
-        # from the VBV bot in the specified chat.
-        
-        # Get the highest update_id seen so far to set offset
-        last_update_id = sent_message.update_id if hasattr(sent_message, 'update_id') else None
-        
-        # Fetch updates starting from just after our sent message
-        updates = await context.bot.get_updates(
-            offset=last_update_id + 1 if last_update_id else None,
-            timeout=5, # Increased timeout to wait for response
-            allowed_updates=Update.ALL_TYPES # Get all types to ensure we don't miss message updates
-        )
-        
-        vbv_status = "N/A" # Default if not found
-
-        for update in updates:
-            if update.message and update.message.chat_id == VBV_CHECK_CHAT_ID:
-                # Check if the message is from the VBV checker bot
-                if update.message.from_user and update.message.from_user.username == VBV_CHECKER_BOT_USERNAME:
-                    text = update.message.text
-                    logger.info(f"Received message from VBV checker bot: {text}")
-                    # Parse the VBV status from the response
-                    # Expected format from image: "🍀 VBV Status ➜ ❌ Vbv ❌" or "🍀 VBV Status ➜ ✅ Non-Vbv ✅"
-                    match = re.search(r"VBV Status ➜ (?:❌|✅)\s*(Vbv|Non-Vbv)\s*(?:❌|✅)", text, re.IGNORECASE)
-                    if match:
-                        extracted_status = match.group(1).lower()
-                        if "non-vbv" in extracted_status:
-                            vbv_status = "Non-VBV"
-                        elif "vbv" in extracted_status:
-                            vbv_status = "VBV"
-                        break # Found the status, exit loop
-        return vbv_status
-
+        # Wait for the VBV response handler to set the event (with a timeout)
+        try:
+            await asyncio.wait_for(vbv_results_cache[bin_number]['event'].wait(), timeout=10) # Wait up to 10 seconds
+            return vbv_results_cache[bin_number]['status']
+        except asyncio.TimeoutError:
+            logger.warning(f"Timeout waiting for VBV status from {VBV_CHECKER_BOT_USERNAME} for BIN: {bin_number}")
+            return "N/A (Timeout)"
     except Exception as e:
-        logger.error(f"Error communicating with VBV checker bot: {e}")
-        return "N/A" # Return N/A on error
+        logger.error(f"Error sending command to VBV checker bot: {e}")
+        return "N/A (Error)"
+    finally:
+        # Clean up the cache entry after processing or timeout
+        if bin_number in vbv_results_cache:
+            del vbv_results_cache[bin_number]
 
+async def vbv_response_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles messages received from the VBV checker bot in the designated private chat.
+    Parses the VBV status and updates the global cache.
+    """
+    if update.message and update.message.from_user and update.message.from_user.username == VBV_CHECKER_BOT_USERNAME:
+        if update.message.chat_id == VBV_CHECK_CHAT_ID:
+            text = update.message.text
+            logger.info(f"Received message from VBV checker bot: {text}")
+
+            # Extract BIN from the VBV checker bot's response (e.g., "BIN ➜ 486732")
+            bin_match = re.search(r"BIN\s*➜\s*(\d+)", text)
+            if not bin_match:
+                logger.warning(f"Could not extract BIN from VBV bot response: {text}")
+                return # Cannot process without a BIN
+
+            extracted_bin = bin_match.group(1)
+
+            # Parse the VBV status from the response
+            # Expected format from image: "🍀 VBV Status ➜ ❌ Vbv ❌" or "🍀 VBV Status ➜ ✅ Non-Vbv ✅"
+            status_match = re.search(r"VBV Status ➜ (?:❌|✅)\s*(Vbv|Non-Vbv)\s*(?:❌|✅)", text, re.IGNORECASE)
+            
+            if extracted_bin in vbv_results_cache:
+                if status_match:
+                    extracted_status = status_match.group(1).lower()
+                    if "non-vbv" in extracted_status:
+                        vbv_results_cache[extracted_bin]['status'] = "Non-VBV"
+                    elif "vbv" in extracted_status:
+                        vbv_results_cache[extracted_bin]['status'] = "VBV"
+                    else:
+                        vbv_results_cache[extracted_bin]['status'] = "Unknown" # Fallback if regex matches but status is unexpected
+                else:
+                    vbv_results_cache[extracted_bin]['status'] = "N/A (Parse Error)" # If status not found in response
+                
+                # Set the event to unblock the waiting command handler
+                vbv_results_cache[extracted_bin]['event'].set()
+            else:
+                logger.info(f"Received VBV status for BIN {extracted_bin} but no pending request found in cache.")
 
 async def get_bin_details(bin_number, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -374,7 +391,6 @@ async def get_bin_details(bin_number, context: ContextTypes.DEFAULT_TYPE):
         details["scheme"] = card_info.get("scheme", details["scheme"]).capitalize()
         details["card_type"] = card_info.get("type", details["card_type"]).capitalize()
         details["level"] = card_info.get("category", details["level"]).capitalize() # 'category' is used for level in Bintable
-        # VBV status will be fetched separately
         
         # If Bintable gives good data, we can proceed to fetch VBV
         if details["bank"] != "Unknown" and details["country_name"] != "Unknown" and details["scheme"] != "Unknown":
@@ -756,18 +772,29 @@ def main():
     
     application = ApplicationBuilder().token(TOKEN).build()
 
+    # Command Handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("au", authorize_group))
 
+    # Message Handlers for dot commands
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
 
+    # Callback Query Handlers for inline buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
     application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$"))
+
+    # IMPORTANT: Add the VBV response handler BEFORE run_polling
+    # This handler specifically listens for messages from the VBV_CHECKER_BOT_USERNAME
+    # in the VBV_CHECK_CHAT_ID.
+    application.add_handler(MessageHandler(
+        filters.Chat(VBV_CHECK_CHAT_ID) & filters.User(username=VBV_CHECKER_BOT_USERNAME) & filters.TEXT,
+        vbv_response_handler
+    ))
 
     logger.info("Bot started polling...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
