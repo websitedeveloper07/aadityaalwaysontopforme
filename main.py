@@ -5,6 +5,7 @@ import asyncio
 import aiohttp
 import re
 import psutil
+import random # Added for random kill time
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -16,10 +17,6 @@ OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 
 BINTABLE_API_KEY = "2504e1938a63e931f65c90cee460c7ef8c418252"
 BINTABLE_URL = "https://api.bintable.com/v1"
-
-# AUTHORIZED_GROUPS is no longer needed for general bot functionality
-# It's kept for potential future owner-specific group management, but not used for command access.
-# AUTHORIZED_GROUPS = {-1002675283650}
 
 user_last_command = {}
 
@@ -323,6 +320,7 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("💳 Generate Cards (/gen)", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Info (/bin)", callback_data="cmd_bin")],
         [InlineKeyboardButton("📊 Bot Status (/status)", callback_data="cmd_status")],
+        [InlineKeyboardButton("💀 Kill Card (/kill)", callback_data="cmd_kill")], # Added kill command to menu
         [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")]
     ]
     
@@ -343,28 +341,36 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "*💳 Generate Cards*\n" +
             "Usage: `/gen [bin]` or `\\.gen [bin]`\n" +
             "Example: `/gen 453957`\n" +
-            "Generates 10 credit card numbers based on the provided BIN\\.\\\n" 
+            "Generates 10 credit card numbers based on the provided BIN\\.\\\n"
         ).strip()
     elif command_name == "bin":
         usage_text = (
             "*🔍 BIN Info*\n" +
             "Usage: `/bin [bin]` or `\\.bin [bin]`\n" +
             "Example: `/bin 518765`\n" +
-            "Provides detailed information about a given BIN\\.\\\n" 
+            "Provides detailed information about a given BIN\\.\\\n"
         ).strip()
     elif command_name == "status":
         usage_text = (
             "*📊 Bot Status*\n" +
             "Usage: `/status`\n" +
             "Example: `/status`\n" +
-            "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\\n" 
+            "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\\n"
+        ).strip()
+    elif command_name == "kill": # Added kill command details
+        usage_text = (
+            "*💀 Kill Card*\n" +
+            "Usage: Reply to a message with card details using `/kill` or `\\.kill`\\.\n" +
+            "Example: Reply to a message like `1234567890123456|12|25|123` with `/kill`\\.\n" +
+            "Simulates the 'killing' of a card with a random delay, then provides details and time taken\\.\n"
         ).strip()
     elif command_name == "au":
         usage_text = (
             "*🔐 Authorize Group*\n" +
             "Usage: `/au [chat_id]`\n" +
             "Example: `/au \\-100123456789`\n" +
-            "Authorizes a specific group to use the bot's features\\.\\\n" 
+            "Authorizes a specific group to use the bot's features\\.\\\n" +
+            "*Note:* This command can only be used by the bot owner\\.\n"
         ).strip()
     else:
         usage_text = "Unknown command\\. Please go back and select a valid command\\.\\"
@@ -373,17 +379,8 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.edit_message_text(usage_text, reply_markup=InlineKeyboardMarkup(back_button), parse_mode=ParseMode.MARKDOWN_V2)
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Removed group authorization check
-    # if update.effective_chat.type not in ["group", "supergroup"]:
-    #     button = InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")
-    #     return await update.message.reply_text("Join our official group to use this bot.", reply_markup=InlineKeyboardMarkup([[button]]))
-
-    # chat_id = update.effective_chat.id
-    # if chat_id not in AUTHORIZED_GROUPS:
-    #     return await update.message.reply_text("🚫 This group is not authorized to use the bot.")
-
     if not await enforce_cooldown(update.effective_user.id):
-        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying.")
+        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_input = None
     if context.args:
@@ -409,15 +406,30 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     cards = []
     while len(cards) < 10:
-        num = bin_input + ''.join(str(os.urandom(1)[0] % 10) for _ in range(16 - len(bin_input)))
+        # Ensure the generated card number is exactly 16 digits if possible, or matches standard lengths.
+        # Most common card lengths are 16, but Amex is 15, Diners is 14.
+        # For simplicity, sticking to 16-digit generation unless scheme implies otherwise.
+        # Binlist/Bintable don't provide length, so assume 16 for random fill.
+        num_len = 16
+        if brand.lower() == 'american express': # Common Amex length
+            num_len = 15 
+        elif brand.lower() == 'diners club': # Common Diners length
+            num_len = 14
+
+        num_suffix_len = num_len - len(bin_input)
+        if num_suffix_len < 0: # If BIN is longer than expected card length
+            num = bin_input[:num_len] # Truncate BIN
+        else:
+            num = bin_input + ''.join(str(random.randint(0, 9)) for _ in range(num_suffix_len))
+        
         if not luhn_checksum(num):
             continue
         
-        mm = str(os.urandom(1)[0] % 12 + 1).zfill(2)
-        yyyy = str(datetime.now().year + os.urandom(1)[0] % 6)
+        mm = str(random.randint(1, 12)).zfill(2)
+        yyyy = str(datetime.now().year + random.randint(1, 5)) # Expires within 1 to 5 years
         
-        cvv_length = 4 if brand == 'American Express' else 3
-        cvv = str(os.urandom(1)[0] % (10**cvv_length)).zfill(cvv_length)
+        cvv_length = 4 if brand.lower() == 'american express' else 3
+        cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
         
         cards.append(f"`{num}|{mm}|{yyyy[-2:]}|{cvv}`")
 
@@ -433,10 +445,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # BIN info block content for /gen, using ">>" as separator and escaped hyphen
     bin_info_block_content = (
         f"✦ BIN\\-LOOKUP\n"
-        f"✦ BIN     : `{bin_input}`\n"
+        f"✦ BIN : `{escape_markdown_v2(bin_input)}`\n" # Escape bin_input
         f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
-        f"✦ Type    : {escaped_card_type}\n"
-        f"✦ Bank    : {escaped_bank}"
+        f"✦ Type : {escaped_card_type}\n"
+        f"✦ Bank : {escaped_bank}"
     )
 
     user_info_block_content = (
@@ -457,13 +469,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Removed group authorization check
-    # if update.effective_chat.type not in ["group", "supergroup"]:
-    #     button = InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")
-    #     return await update.message.reply_text("Join our official group to use this bot.", reply_markup=InlineKeyboardMarkup([[button]]))
-
     if not await enforce_cooldown(update.effective_user.id):
-        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying.")
+        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_input = None
     if context.args:
@@ -502,7 +509,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Main BIN info box - made narrower for mobile
     bin_info_box = (
         f"╔═══════ BIN INFO ═══════╗\n"
-        f"✦ BIN    : `{bin_input}`\n"
+        f"✦ BIN    : `{escape_markdown_v2(bin_input)}`\n" # Escape bin_input
         f"✦ Status : {status_display}\n"
         f"✦ Brand  : {escaped_scheme}\n"
         f"✦ Type   : {escaped_card_type}\n"
@@ -522,11 +529,68 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Removed group authorization check
-    # if update.effective_chat.type not in ["group", "supergroup"]:
-    #     return await update.message.reply_text("🔒 This command can only be used in the group.")
+async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    replied_message = update.message.reply_to_message
+    if not replied_message or not replied_message.text:
+        return await update.message.reply_text("❌ Please reply to a message containing the card details \\(CC\\|MM\\|YY\\|CVV\\) to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
+    # Regex to find card details in `CC|MM|YY|CVV` format, allowing for 13-19 digits for CC.
+    # It also handles if the backticks are missing around the card string.
+    card_match = re.search(r"(\d{13,19})\|(\d{2})\|(\d{2})\|(\d{3,4})", replied_message.text)
+    if not card_match:
+        return await update.message.reply_text("❌ Could not find card details \\(CC\\|MM\\|YY\\|CVV\\) in the replied message\\. Make sure it's in the format `CC|MM|YY|CVV`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    cc = card_match.group(1)
+    mm = card_match.group(2)
+    yy = card_match.group(3)
+    cvv = card_match.group(4)
+    
+    full_card_str = f"{cc}|{mm}|{yy}|{cvv}"
+    
+    if not await enforce_cooldown(update.effective_user.id):
+        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    initial_message = await update.message.reply_text(
+        f"Card: `{escape_markdown_v2(full_card_str)}`\n"
+        f"🔪 Killing\\.\\.\\."
+    , parse_mode=ParseMode.MARKDOWN_V2)
+
+    # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
+    kill_time = random.uniform(30, 78) 
+    start_time = time.time()
+    await asyncio.sleep(kill_time)
+    end_time = time.time()
+    time_taken = round(end_time - start_time)
+
+    # Get BIN details for stylish info
+    bin_number = cc[:6]
+    bin_details = await get_bin_details(bin_number)
+
+    # Escape all parts that are dynamically inserted into MarkdownV2 string
+    bank_name = escape_markdown_v2(bin_details["bank"])
+    country_name = escape_markdown_v2(bin_details["country_name"])
+    country_emoji = escape_markdown_v2(bin_details["country_emoji"])
+    level = escape_markdown_v2(bin_details["level"])
+    level_emoji = get_level_emoji(level) # get_level_emoji returns static strings/emojis, no need to re-escape if source is already safe.
+
+    # Construct the final message using MarkdownV2 formatting
+    final_message_text_parts = [
+        f"Card: `{escape_markdown_v2(full_card_str)}`",
+        f"✅ Card killed successfully\\!",
+        "", # Newline for spacing
+        # User requested "issuer / country/level" in "small stylish font"
+        f"_{escape_markdown_v2('Issuer')}: *{bank_name}* / {escape_markdown_v2('Country')}: *{country_name}* {country_emoji} / {escape_markdown_v2('Level')}: {level_emoji} *{level}*_",
+        # User requested "time taken to kill"
+        f"_{escape_markdown_v2('Time Taken')}: `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`_",
+        # User requested "Bot by"
+        f"_{escape_markdown_v2('Bot by')}: *𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎*_"
+    ]
+    final_message_text_formatted = "\n".join(final_message_text_parts)
+
+    await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
+
+
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_users = len(user_last_command)
     
     ram_mb = psutil.virtual_memory().used / (1024 * 1024)
@@ -574,7 +638,6 @@ async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         chat_id_to_authorize = int(context.args[0])
-        # AUTHORIZED_GROUPS.add(chat_id_to_authorize) # This line is commented out as AUTHORIZED_GROUPS is no longer used for general access
         await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
         await update.message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
@@ -594,10 +657,12 @@ def main():
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
+    application.add_handler(CommandHandler("kill", kill)) # Added kill command handler
     application.add_handler(CommandHandler("au", authorize_group))
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*"), kill)) # Added .kill command handler
 
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
