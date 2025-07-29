@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
+from telegram.error import BadRequest # Import BadRequest for specific error handling
 
 # === CONFIGURATION ===
 TOKEN = os.getenv("BOT_TOKEN")
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # === ERROR HANDLER ===
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Log the error and send a message to the user."""
+    """Log the error and and send a message to the user."""
     logger.error("Exception while handling an update:", exc_info=context.error)
 
     # Try to send a message back to the user
@@ -583,7 +584,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     initial_message = await update.message.reply_text(
-        f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+        f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n" # Changed "Card:" to "Card No.:"
         f"Kɪʟʟɪɴɢ ⚡" # Initial message without dots for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -593,12 +594,12 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Animation frames for "Killing..."
     animation_states = [
-        "Kɪʟʟɪɴɢ ⚡",
-        "Kɪʟʟɪɴɢ ⚡.",
-        "Kɪʟʟɪɴɢ ⚡..",
-        "Kɪʟʟɪɴɢ ⚡...",
-        "Kɪʟʟɪɴɢ ⚡..",
-        "Kɪʟʟɪɴɢ ⚡."
+        "Killing",
+        "Killing.",
+        "Killing..",
+        "Killing...",
+        "Killing..",
+        "Killing."
     ]
     frame_interval = 1.0 # seconds per frame update
 
@@ -611,11 +612,19 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await initial_message.edit_text(
                 f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-                f"Kɪʟʟɪɴɢ ⚡ {current_frame}"
+                f"⚡ {current_frame}"
             , parse_mode=ParseMode.MARKDOWN_V2)
+        except BadRequest as e:
+            # This specific error means content is identical, so we just log and continue.
+            if "Message is not modified" in str(e):
+                logger.debug(f"Message not modified during animation: {e}")
+            else:
+                # Other BadRequest errors might be critical, so log and break.
+                logger.warning(f"Failed to edit message during animation (BadRequest): {e}")
+                break
         except Exception as e:
-            logger.warning(f"Failed to edit message during animation: {e}")
-            # If editing fails (e.g., message deleted), break the loop
+            logger.warning(f"Failed to edit message during animation (General Error): {e}")
+            # For any other unexpected error, break the loop
             break
         
         # Calculate remaining time for sleep to ensure total kill_time is met
@@ -654,9 +663,9 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     final_message_text_formatted = (
         f"╭───[ {header_title} ]───╮\n"
         f"\n"
-        f"• 𝗕𝗿𝗮𝗻𝗱       : {brand}\n"
+        f"• 𝗕𝗿𝗮𝗻𝗱        : {brand}\n"
         f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : {bank_name}\n"
-        f"• 𝗟𝗲𝘃𝗲𝗹       : {level_emoji} {level}\n"
+        f"• 𝗟𝗲𝘃𝗲𝗹        : {level_emoji} {level}\n"
         f"• 𝗞𝗶𝗹𝗹𝗲𝗿       : 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
         f"• 𝗕𝒐𝒕 𝒃𝒚      : 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎\n"
         f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
