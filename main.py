@@ -544,13 +544,13 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
 
     # Animation frames for "Killing..." using ⚡ emoji
     animation_states = [
-        "Killing⚡",
-        "Killing⚡⚡",
-        "Killing⚡⚡⚡",
-        "Killing⚡⚡",
-        "Killing⚡"
+        "Kɪʟʟɪɴɢ ⚡",
+        "Kɪʟʟɪɴɢ ⚡⚡",
+        "Kɪʟʟɪɴɢ ⚡⚡⚡",
+        "Kɪʟʟɪɴɢ ⚡⚡",
+        "Kɪʟʟɪɴɢ ⚡"
     ]
-    frame_interval = 2.0 # seconds per frame update (Increased to reduce API calls)
+    frame_interval = 4.0 # seconds per frame update (Increased to reduce API calls)
 
     elapsed_animation_time = 0
     frame_index = 0
@@ -601,11 +601,11 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     brand = escape_markdown_v2(bin_details["scheme"])
 
     # Determine header based on card scheme
-    header_title = "⚡ 𝑪𝑨𝑹𝑫 𝑲𝑰𝑳𝑳𝑬𝑫"
+    header_title = "⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
     if bin_details["scheme"].lower() == 'mastercard':
         # Generate random percentage > 67%
         percentage = random.randint(68, 100) 
-        header_title = f"⚡𝑪𝑨𝑹𝑫 𝑲𝑰𝑳𝑳𝑬𝑫 \\- {percentage}\\%" # Escaping - and % for MarkdownV2
+        header_title = f"⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%" # Escaping - and % for MarkdownV2
 
     # Construct the final message using a single f-string for easy modification
     # Manual padding for visual alignment of colons
@@ -616,9 +616,9 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
         f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
         f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
-        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       : `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      : `𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎`\n"
-        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      :  𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎\n"
+        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : {escape_markdown_v2(f'{time_taken:.0f} seconds')}\n"
         f"\n"
         f"╰────────────────────╯"
     )
@@ -679,7 +679,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Send the initial message and store it to edit later
     initial_message = await update.message.reply_text(
         f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-        f"🔪 Killing" # Initial message without emojis for animation
+        f"🔪Kɪʟʟɪɴɢ ⚡" # Initial message without emojis for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
 
     # Create a separate task for the long-running kill process
