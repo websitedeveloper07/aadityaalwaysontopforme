@@ -584,22 +584,21 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     initial_message = await update.message.reply_text(
-        f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n" # Changed "Card:" to "Card No.:"
-        f"Kɪʟʟɪɴɢ ⚡" # Initial message without dots for animation
+        f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+        f"🔪 Killing" # Initial message without dots for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
 
     # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
     kill_time = random.uniform(30, 78) 
     start_time = time.time()
 
-    # Animation frames for "Killing..."
+    # Animation frames for "Killing..." using ⚡ emoji
     animation_states = [
-        "Killing",
-        "Killing.",
-        "Killing..",
-        "Killing...",
-        "Killing..",
-        "Killing."
+        "Killing⚡",
+        "Killing⚡⚡",
+        "Killing⚡⚡⚡",
+        "Killing⚡⚡",
+        "Killing⚡"
     ]
     frame_interval = 1.0 # seconds per frame update
 
@@ -612,20 +611,20 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await initial_message.edit_text(
                 f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-                f"⚡ {current_frame}"
+                f"🔪 {current_frame}"
             , parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
             # This specific error means content is identical, so we just log and continue.
             if "Message is not modified" in str(e):
                 logger.debug(f"Message not modified during animation: {e}")
             else:
-                # Other BadRequest errors might be critical, so log and break.
-                logger.warning(f"Failed to edit message during animation (BadRequest): {e}")
-                break
+                # Other BadRequest errors might be critical, so log but DO NOT BREAK.
+                # We need the sleep to continue to ensure the full kill_time is met.
+                logger.warning(f"Failed to edit message during animation (BadRequest, non-modified): {e}")
         except Exception as e:
             logger.warning(f"Failed to edit message during animation (General Error): {e}")
-            # For any other unexpected error, break the loop
-            break
+            # For any other unexpected error, log but DO NOT BREAK.
+            # We need the sleep to continue to ensure the full kill_time is met.
         
         # Calculate remaining time for sleep to ensure total kill_time is met
         sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
@@ -663,11 +662,11 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     final_message_text_formatted = (
         f"╭───[ {header_title} ]───╮\n"
         f"\n"
-        f"• 𝗕𝗿𝗮𝗻𝗱        : {brand}\n"
-        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : {bank_name}\n"
-        f"• 𝗟𝗲𝘃𝗲𝗹        : {level_emoji} {level}\n"
-        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       : 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      : 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎\n"
+        f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
+        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
+        f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       : `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      : `𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎`\n"
         f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
         f"\n"
         f"╰────────────────────╯"
