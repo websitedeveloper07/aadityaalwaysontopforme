@@ -360,9 +360,10 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     elif command_name == "kill": # Updated kill command details
         usage_text = (
             "*💀 Kill Card*\n" +
-            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YY\\|CVV`\n" +
+            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\n" + # Updated usage
             "Alternatively, reply to a message with card details using `/kill` or `\\.kill`\\.\n" +
             "Example: `/kill 1234567890123456\\|12\\|25\\|123`\n" +
+            "Example: `/kill 1234567890123456\\|12\\|2025\\|123`\n" + # Added YYYY example
             "Simulates the 'killing' of a card with a random delay, then provides details and time taken\\.\n"
         ).strip()
     elif command_name == "au":
@@ -541,23 +542,27 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_details_str:
         return await update.message.reply_text(
-            "❌ Please provide card details \\(CC\\|MM\\|YY\\|CVV\\) as an argument or reply to a message containing them\\. "
-            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YY\\|CVV`\\.",
+            "❌ Please provide card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) as an argument or reply to a message containing them\\. "
+            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Regex to find card details in `CC|MM|YY|CVV` format, allowing for 13-19 digits for CC.
-    card_match = re.search(r"(\d{13,19})\|(\d{2})\|(\d{2})\|(\d{3,4})", card_details_str)
+    # Regex to find card details in `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV` format.
+    # Group 1: CC (13-19 digits)
+    # Group 2: MM (2 digits)
+    # Group 3: YY or YYYY (2 or 4 digits)
+    # Group 4: CVV (3 or 4 digits)
+    card_match = re.search(r"(\d{13,19})\|(\d{2})\|(\d{2}|\d{4})\|(\d{3,4})", card_details_str)
     if not card_match:
         return await update.message.reply_text(
-            "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV\\) in the provided input\\. "
-            "Make sure it's in the format `CC|MM|YY|CVV`\\.",
+            "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. "
+            "Make sure it's in the format `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     cc = card_match.group(1)
     mm = card_match.group(2)
-    yy = card_match.group(3)
+    yy = card_match.group(3) # Keep the original year format (YY or YYYY) for display
     cvv = card_match.group(4)
     
     full_card_str = f"{cc}|{mm}|{yy}|{cvv}"
@@ -566,8 +571,8 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     initial_message = await update.message.reply_text(
-        f"Card: `{escape_markdown_v2(full_card_str)}`\n"
-        f"Kɪʟʟɪɴɢ ⚡\\.\\.\\."
+        f"Card: `{escape_markdown_v2(full_card_str)}`\n" # Retained this for initial "Killing..." message
+        f"🔪 Killing\\.\\.\\."
     , parse_mode=ParseMode.MARKDOWN_V2)
 
     # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
@@ -581,25 +586,32 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_number = cc[:6]
     bin_details = await get_bin_details(bin_number)
 
-    # Escape all parts that are dynamically inserted into MarkdownV2 string
+    # Escape dynamic parts for MarkdownV2, careful with emojis
     bank_name = escape_markdown_v2(bin_details["bank"])
-    country_name = escape_markdown_v2(bin_details["country_name"])
-    country_emoji = escape_markdown_v2(bin_details["country_emoji"])
     level = escape_markdown_v2(bin_details["level"])
-    level_emoji = get_level_emoji(level)
+    level_emoji = get_level_emoji(bin_details["level"]) # Emoji doesn't need escaping
+    brand = escape_markdown_v2(bin_details["scheme"])
 
-    # Construct the final message using MarkdownV2 formatting, with each detail on a new line
-    final_message_text_parts = [
-        f"Card: `{escape_markdown_v2(full_card_str)}`",
-        f"𝓒𝓪𝓻𝓭 𝓱𝓪𝓼 𝓫𝓮𝓮𝓷 𝓴𝓲𝓵𝓵𝓮𝓭 𝓼𝓾𝓬𝓬𝓮𝓼𝓼𝓯𝓾𝓵𝓵𝔂 ⚡\\!",
-        "", # Newline for spacing
-        f"_{escape_markdown_v2('Issuer')}: *{bank_name}*_",
-        f"_{escape_markdown_v2('Country')}: *{country_name}* {country_emoji}_",
-        f"_{escape_markdown_v2('Level')}: {level_emoji} *{level}*_",
-        f"_{escape_markdown_v2('Time Taken')}: `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`_",
-        f"_{escape_markdown_v2('Bot by')}: *𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎*_"
-    ]
-    final_message_text_formatted = "\n".join(final_message_text_parts)
+    # Determine header based on card scheme
+    header_title = "⚡ 𝑪𝑨𝑹𝑫 𝑲𝑰𝑳𝑳𝑬𝑫"
+    if bin_details["scheme"].lower() == 'mastercard':
+        # Generate random percentage > 67%
+        percentage = random.randint(68, 100) 
+        header_title = f"⚡𝑪𝑨𝑹𝑫 𝑲𝑰𝑳𝑳𝑬𝑫 \\- {percentage}\\%" # Escaping - and % for MarkdownV2
+
+    # Construct the final message using a single f-string for easy modification
+    final_message_text_formatted = (
+        f"╭───[ {header_title} ]───╮\n"
+        f"\n"
+        f"• 𝗕𝗿𝗮𝗻𝗱    ⫸ {brand}\n"
+        f"• 𝗜𝘀𝘀𝘂𝗲𝗿    ⫸ {bank_name}\n"
+        f"• 𝗟𝗲𝘃𝗲𝗹     ⫸ {level_emoji} {level}\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿    ⫸ 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
+        f"• 𝗕𝗼𝘁 𝗯𝘆   ⫸ 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎\n"
+        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  ⫸ `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
+        f"\n"
+        f"╰────────────────────╯"
+    )
 
     await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
 
