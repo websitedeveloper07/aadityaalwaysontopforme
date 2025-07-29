@@ -5,7 +5,7 @@ import asyncio
 import aiohttp
 import re
 import psutil
-import random # Added for random kill time
+import random
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -357,11 +357,12 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "Example: `/status`\n" +
             "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\\n"
         ).strip()
-    elif command_name == "kill": # Added kill command details
+    elif command_name == "kill": # Updated kill command details
         usage_text = (
             "*💀 Kill Card*\n" +
-            "Usage: Reply to a message with card details using `/kill` or `\\.kill`\\.\n" +
-            "Example: Reply to a message like `1234567890123456|12|25|123` with `/kill`\\.\n" +
+            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YY\\|CVV`\n" +
+            "Alternatively, reply to a message with card details using `/kill` or `\\.kill`\\.\n" +
+            "Example: `/kill 1234567890123456\\|12\\|25\\|123`\n" +
             "Simulates the 'killing' of a card with a random delay, then provides details and time taken\\.\n"
         ).strip()
     elif command_name == "au":
@@ -406,27 +407,26 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     cards = []
     while len(cards) < 10:
-        # Ensure the generated card number is exactly 16 digits if possible, or matches standard lengths.
-        # Most common card lengths are 16, but Amex is 15, Diners is 14.
-        # For simplicity, sticking to 16-digit generation unless scheme implies otherwise.
-        # Binlist/Bintable don't provide length, so assume 16 for random fill.
+        # Determine card number length based on brand, default to 16
         num_len = 16
-        if brand.lower() == 'american express': # Common Amex length
+        if brand.lower() == 'american express':
             num_len = 15 
-        elif brand.lower() == 'diners club': # Common Diners length
+        elif brand.lower() == 'diners club':
             num_len = 14
 
         num_suffix_len = num_len - len(bin_input)
-        if num_suffix_len < 0: # If BIN is longer than expected card length
-            num = bin_input[:num_len] # Truncate BIN
+        if num_suffix_len < 0:
+            num = bin_input[:num_len] # Truncate BIN if it's too long for the card type
         else:
             num = bin_input + ''.join(str(random.randint(0, 9)) for _ in range(num_suffix_len))
         
         if not luhn_checksum(num):
             continue
         
+        # Generate MM (01-12)
         mm = str(random.randint(1, 12)).zfill(2)
-        yyyy = str(datetime.now().year + random.randint(1, 5)) # Expires within 1 to 5 years
+        # Generate YYYY (current year + 1 to 5 years)
+        yyyy = str(datetime.now().year + random.randint(1, 5))
         
         cvv_length = 4 if brand.lower() == 'american express' else 3
         cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
@@ -445,7 +445,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # BIN info block content for /gen, using ">>" as separator and escaped hyphen
     bin_info_block_content = (
         f"✦ BIN\\-LOOKUP\n"
-        f"✦ BIN : `{escape_markdown_v2(bin_input)}`\n" # Escape bin_input
+        f"✦ BIN : `{escape_markdown_v2(bin_input)}`\n"
         f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
         f"✦ Type : {escaped_card_type}\n"
         f"✦ Bank : {escaped_bank}"
@@ -509,7 +509,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Main BIN info box - made narrower for mobile
     bin_info_box = (
         f"╔═══════ BIN INFO ═══════╗\n"
-        f"✦ BIN    : `{escape_markdown_v2(bin_input)}`\n" # Escape bin_input
+        f"✦ BIN    : `{escape_markdown_v2(bin_input)}`\n"
         f"✦ Status : {status_display}\n"
         f"✦ Brand  : {escaped_scheme}\n"
         f"✦ Type   : {escaped_card_type}\n"
@@ -530,15 +530,30 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    replied_message = update.message.reply_to_message
-    if not replied_message or not replied_message.text:
-        return await update.message.reply_text("❌ Please reply to a message containing the card details \\(CC\\|MM\\|YY\\|CVV\\) to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    card_details_str = None
+
+    # 1. Try to get card details from command arguments
+    if context.args:
+        card_details_str = " ".join(context.args)
+    # 2. If no arguments, try to get from replied message
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        card_details_str = update.message.reply_to_message.text
+
+    if not card_details_str:
+        return await update.message.reply_text(
+            "❌ Please provide card details \\(CC\\|MM\\|YY\\|CVV\\) as an argument or reply to a message containing them\\. "
+            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YY\\|CVV`\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
     # Regex to find card details in `CC|MM|YY|CVV` format, allowing for 13-19 digits for CC.
-    # It also handles if the backticks are missing around the card string.
-    card_match = re.search(r"(\d{13,19})\|(\d{2})\|(\d{2})\|(\d{3,4})", replied_message.text)
+    card_match = re.search(r"(\d{13,19})\|(\d{2})\|(\d{2})\|(\d{3,4})", card_details_str)
     if not card_match:
-        return await update.message.reply_text("❌ Could not find card details \\(CC\\|MM\\|YY\\|CVV\\) in the replied message\\. Make sure it's in the format `CC|MM|YY|CVV`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text(
+            "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV\\) in the provided input\\. "
+            "Make sure it's in the format `CC|MM|YY|CVV`\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
     cc = card_match.group(1)
     mm = card_match.group(2)
@@ -552,7 +567,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     initial_message = await update.message.reply_text(
         f"Card: `{escape_markdown_v2(full_card_str)}`\n"
-        f"🔪 Killing\\.\\.\\."
+        f"Kɪʟʟɪɴɢ ⚡\\.\\.\\."
     , parse_mode=ParseMode.MARKDOWN_V2)
 
     # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
@@ -571,18 +586,17 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_name = escape_markdown_v2(bin_details["country_name"])
     country_emoji = escape_markdown_v2(bin_details["country_emoji"])
     level = escape_markdown_v2(bin_details["level"])
-    level_emoji = get_level_emoji(level) # get_level_emoji returns static strings/emojis, no need to re-escape if source is already safe.
+    level_emoji = get_level_emoji(level)
 
-    # Construct the final message using MarkdownV2 formatting
+    # Construct the final message using MarkdownV2 formatting, with each detail on a new line
     final_message_text_parts = [
         f"Card: `{escape_markdown_v2(full_card_str)}`",
-        f"✅ Card killed successfully\\!",
+        f"𝓒𝓪𝓻𝓭 𝓱𝓪𝓼 𝓫𝓮𝓮𝓷 𝓴𝓲𝓵𝓵𝓮𝓭 𝓼𝓾𝓬𝓬𝓮𝓼𝓼𝓯𝓾𝓵𝓵𝔂 ⚡\\!",
         "", # Newline for spacing
-        # User requested "issuer / country/level" in "small stylish font"
-        f"_{escape_markdown_v2('Issuer')}: *{bank_name}* / {escape_markdown_v2('Country')}: *{country_name}* {country_emoji} / {escape_markdown_v2('Level')}: {level_emoji} *{level}*_",
-        # User requested "time taken to kill"
+        f"_{escape_markdown_v2('Issuer')}: *{bank_name}*_",
+        f"_{escape_markdown_v2('Country')}: *{country_name}* {country_emoji}_",
+        f"_{escape_markdown_v2('Level')}: {level_emoji} *{level}*_",
         f"_{escape_markdown_v2('Time Taken')}: `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`_",
-        # User requested "Bot by"
         f"_{escape_markdown_v2('Bot by')}: *𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎*_"
     ]
     final_message_text_formatted = "\n".join(final_message_text_parts)
@@ -657,12 +671,12 @@ def main():
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
-    application.add_handler(CommandHandler("kill", kill)) # Added kill command handler
+    application.add_handler(CommandHandler("kill", kill))
     application.add_handler(CommandHandler("au", authorize_group))
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*"), kill)) # Added .kill command handler
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*"), kill))
 
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
