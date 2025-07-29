@@ -262,7 +262,7 @@ async def get_bin_details(bin_number):
         details["country_name"] = country_info.get("name", details["country_name"])
         details["country_emoji"] = country_info.get("flag", details["country_emoji"]) 
         details["scheme"] = card_info.get("scheme", details["scheme"]).capitalize()
-        details["card_type"] = card_info.get("type", details["card_type"]).capitalize()
+        details["card_type"] = card_info.get("type", details["type"]).capitalize() # Corrected to 'type'
         details["level"] = card_info.get("category", details["level"]).capitalize()
     else:
         binlist_data = await fetch_bin_info_binlist(bin_number)
@@ -585,7 +585,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     initial_message = await update.message.reply_text(
         f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-        f"🔪 Killing" # Initial message without dots for animation
+        f"🔪 Kɪʟʟɪɴɢ ⚡" # Initial message without emojis for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
 
     # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
@@ -594,11 +594,11 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Animation frames for "Killing..." using ⚡ emoji
     animation_states = [
-        "Killing⚡",
-        "Killing⚡⚡",
-        "Killing⚡⚡⚡",
-        "Killing⚡⚡",
-        "Killing⚡"
+        " Kɪʟʟɪɴɢ ⚡",
+        " Kɪʟʟɪɴɢ ⚡⚡",
+        " Kɪʟʟɪɴɢ ⚡⚡⚡",
+        " Kɪʟʟɪɴɢ ⚡⚡",
+        " Kɪʟʟɪɴɢ ⚡"
     ]
     frame_interval = 1.0 # seconds per frame update
 
@@ -649,24 +649,23 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     brand = escape_markdown_v2(bin_details["scheme"])
 
     # Determine header based on card scheme
-    header_title = "⚡ 𝑪𝑨𝑹𝑫 𝑲𝑰𝑳𝑳𝑬𝑫"
+    header_title = "⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
     if bin_details["scheme"].lower() == 'mastercard':
         # Generate random percentage > 67%
         percentage = random.randint(68, 100) 
-        header_title = f"⚡𝑪𝑨𝑹𝑫 𝑲𝑰𝑳𝑳𝑬𝑫 \\- {percentage}\\%" # Escaping - and % for MarkdownV2
+        header_title = f"⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%" # Escaping - and % for MarkdownV2
 
     # Construct the final message using a single f-string for easy modification
-    # Use a fixed width for the labels for straight alignment
-    # The unicode bold characters are wider, so visual alignment might differ from char count.
-    # Using a fixed padding that visually works well with these specific unicode bold characters.
+    # Manual padding for visual alignment of colons
     final_message_text_formatted = (
         f"╭───[ {header_title} ]───╮\n"
         f"\n"
+        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n" # Added Card No. line
         f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
         f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
         f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
-        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       : `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      : `𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎`\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      :  𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎\n"
         f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
         f"\n"
         f"╰────────────────────╯"
