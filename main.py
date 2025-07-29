@@ -16,7 +16,7 @@ from telegram.error import BadRequest # Import BadRequest for specific error han
 TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 
-BINTABLE_API_KEY = "2504e1938a63e931f65c90cee460c7ef8c418252"
+BINTABLE_API_KEY = "d1359fe2b305160dd9b9d895a07b4438794ea1f6"
 BINTABLE_URL = "https://api.bintable.com/v1"
 
 user_last_command = {}
