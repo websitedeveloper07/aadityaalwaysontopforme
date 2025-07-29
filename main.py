@@ -6,14 +6,12 @@ import aiohttp
 import re
 import psutil
 import random
-import uuid # Added for idempotency key generation
+import uuid # Added for idempotency key generation, if you're adding Stripe checker back
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
 from telegram.error import BadRequest # Import BadRequest for specific error handling
-
-import stripe # Added for Stripe API interaction
 
 # === CONFIGURATION ===
 TOKEN = os.getenv("BOT_TOKEN")
@@ -22,17 +20,15 @@ OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 BINTABLE_API_KEY = "d1359fe2b305160dd9b9d895a07b4438794ea1f6"
 BINTABLE_URL = "https://api.bintable.com/v1"
 
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY") # Added for Stripe API key
-
 user_last_command = {}
 
-# Initialize Stripe API client
+# Initialize Stripe API client (if you're adding it back)
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 if STRIPE_SECRET_KEY:
+    import stripe
     stripe.api_key = STRIPE_SECRET_KEY
 else:
-    # Log a warning if the key is not set, the bot will still run but Stripe checker won't work
-    print("STRIPE_SECRET_KEY environment variable is not set\\. Stripe checker will not function\\.")
-    logger.warning("STRIPE_SECRET_KEY environment variable is not set\\. Stripe checker will not function\\.")
+    logger.warning("STRIPE_SECRET_KEY environment variable is not set. Stripe checker will not function.")
 
 
 # === LOGGING SETUP ===
@@ -47,210 +43,280 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Try to send a message back to the user
     if update.effective_message:
         await update.effective_message.reply_text(
-            "An error occurred while processing your request\\. Please try again later\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "An error occurred while processing your request. Please try again later.",
+            parse_mode=ParseMode.MARKDOWN_V2 # Ensure parse_mode is set for error messages too
         )
 
 # === HELPER FUNCTIONS ===
+
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for MarkdownV2 formatting."""
-    # List of characters to escape: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
-    # The backslash itself must be escaped first.
-    # FIXED: Changed to a regular string and escaped the backslash properly.
-    escape_chars = '_*[]()~`>#+-=|{}.!\\' 
-    return re.sub(r'([%s])' % re.escape(escape_chars), r'\\\1', text)
+    if text is None:
+        return "Unknown"
+    text = str(text)
+    # List of special characters in MarkdownV2 that need to be escaped, including '\'
+    # The order matters for re.escape: '\' should be handled first.
+    # The official Telegram documentation for MarkdownV2 lists:
+    # _ * [ ] ( ) ~ ` > # + - = | { } . ! \
+    special_chars = r'_*[]()~`>#+-=|{}.!\\' # Added backslash to the list
+    return re.sub(r'([%s])' % re.escape(special_chars), r'\\\1', text)
 
 def get_short_country_name(full_name: str) -> str:
-    """Converts a full country name to a shorter, more common one."""
-    country_map = {
+    # ... (rest of your get_short_country_name function, no changes needed here)
+    if not full_name:
+        return "Unknown"
+    
+    name_map = {
         "United States of America": "United States",
-        "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
         "Russian Federation": "Russia",
-        "Korea, Republic of": "South Korea",
-        "Iran, Islamic Republic of": "Iran",
-        "Venezuela, Bolivarian Republic of": "Venezuela",
+        "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
+        "Republic of Korea": "South Korea",
+        "Islamic Republic of Iran": "Iran",
+        "Venezuela (Bolivarian Republic of)": "Venezuela",
         "Viet Nam": "Vietnam",
-        "Bolivia, Plurinational State of": "Bolivia",
-        "Congo, The Democratic Republic of the": "DR Congo",
+        "Lao People's Democratic Republic": "Laos",
+        "Democratic Republic of the Congo": "DR Congo",
+        "Congo (Democratic Republic of the)": "Congo",
         "Tanzania, United Republic of": "Tanzania",
-        "Syrian Arab Republic": "Syria"
+        "Syrian Arab Republic": "Syria",
+        "Bolivia (Plurinational State of)": "Bolivia",
+        "Brunei Darussalam": "Brunei",
+        "Cabo Verde": "Cape Verde",
+        "Central African Republic": "Central African Republic",
+        "Comoros": "Comoros",
+        "Côte d'Ivoire": "Ivory Coast",
+        "Democratic People's Republic of Korea": "North Korea",
+        "Dominican Republic": "Dominican Republic",
+        "Equatorial Guinea": "Equatorial Guinea",
+        "Eswatini": "Eswatini",
+        "Falkland Islands (Malvinas)": "Falkland Islands",
+        "Gambia (the)": "Gambia",
+        "Guinea-Bissau": "Guinea-Bissau",
+        "Holy See": "Vatican City",
+        "Iran (Islamic Republic of)": "Iran",
+        "Lao People's Democratic Republic": "Laos",
+        "Libya": "Libya",
+        "Macedonia (the former Yugoslav Republic of)": "North Macedonia",
+        "Micronesia (Federated States of)": "Micronesia",
+        "Moldova (Republic of)": "Moldova",
+        "Mozambique": "Mozambique",
+        "Myanmar": "Myanmar",
+        "Niger (the)": "Niger",
+        "Palestine, State of": "Palestine",
+        "Saint Helena, Ascension and Tristan da Cunha": "Saint Helena",
+        "Sao Tome and Principe": "Sao Tome and Principe",
+        "Serbia": "Serbia",
+        "Slovakia": "Slovakia",
+        "Slovenia": "Slovenia",
+        "Somalia": "Somalia",
+        "South Georgia and the South Sandwich Islands": "South Georgia",
+        "South Sudan": "South Sudan",
+        "Sudan (the)": "Sudan",
+        "Svalbard and Jan Mayen": "Svalbard",
+        "Timor-Leste": "Timor-Leste",
+        "Togo": "Togo",
+        "Tokelau": "Tokelau",
+        "Tonga": "Tonga",
+        "Trinidad and Tobago": "Trinidad and Tobago",
+        "Tunisia": "Tunisia",
+        "Turkey": "Turkey",
+        "Turkmenistan": "Turkmenistan",
+        "Turks and Caicos Islands (the)": "Turks and Caicos",
+        "Tuvalu": "Tuvalu",
+        "Uganda": "Uganda",
+        "Ukraine": "Ukraine",
+        "United Arab Emirates (the)": "United Arab Emirates",
+        "United States Minor Outlying Islands (the)": "US Outlying Islands",
+        "Uruguay": "Uruguay",
+        "Uzbekistan": "Uzbekistan",
+        "Vanuatu": "Vanuatu",
+        "Venezuela (Bolivarian Republic of)": "Venezuela",
+        "Wallis and Futuna": "Wallis and Futuna",
+        "Western Sahara": "Western Sahara",
+        "Yemen": "Yemen",
+        "Zambia": "Zambia",
+        "Zimbabwe": "Zimbabwe",
     }
-    return country_map.get(full_name, full_name)
 
-def luhn_checksum(card_number: str) -> bool:
-    """Implements the Luhn algorithm to validate a credit card number."""
-    digits = [int(d) for d in card_number if d.isdigit()]
-    total = 0
-    num_digits = len(digits)
-    parity = num_digits % 2
+    if full_name in name_map:
+        return name_map[full_name]
 
-    for i, digit in enumerate(digits):
-        if i % 2 == parity:
-            digit *= 2
-            if digit > 9:
-                digit -= 9
-        total += digit
-    return total % 10 == 0
+    cleaned_name = re.sub(r'\s*\(.*\)\s*', '', full_name).strip()
+    cleaned_name = re.sub(r'\s*of\s+.*$', '', cleaned_name).strip()
+    
+    words = cleaned_name.split()
+    if len(words) > 2 and words[1].lower() in ["republic", "kingdom", "states", "federation"]:
+        return " ".join(words[:2])
+    elif len(words) > 1 and words[0].lower() == "the":
+        return " ".join(words[1:])
+    
+    return cleaned_name
 
-def get_level_emoji(level: str) -> str:
-    """Returns an emoji based on card level."""
-    level = level.lower()
-    if "gold" in level:
-        return "✨"
-    elif "platinum" in level:
-        return "💎"
-    elif "infinite" in level or "world elite" in level:
-        return "👑"
-    elif "classic" in level:
-        return "💳"
-    else:
-        return "📄"
+def luhn_checksum(card_number):
+    def digits_of(n): return [int(d) for d in str(n)]
+    digits = digits_of(card_number)
+    odd_digits = digits[-1::-2]
+    even_digits = digits[-2::-2]
 
-def get_vbv_status_display(status: str) -> str:
-    """Provides a display string for VBV status."""
-    # VBV checking logic was removed, always show N/A
-    return "❓ N/A"
+    checksum = sum(odd_digits)
+    for d in even_digits:
+        checksum += sum(digits_of(d * 2))
+    return checksum % 10 == 0
 
-async def fetch_bin_info_bintable(bin_number: str) -> dict | None:
-    """Fetches BIN information from Bintable API."""
+def get_level_emoji(level):
+    level_map = {
+        "Classic": "💳",
+        "Gold": "✨",
+        "Platinum": "💎",
+        "Infinite": "♾️",
+        "Signature": "✍️",
+        "Business": "💼",
+        "Corporate": "🏢",
+        "Prepaid": "🎁",
+        "Debit": "💸",
+        "Credit": "💰",
+        "Standard": "🌟"
+    }
+    return level_map.get(level, "❓")
+
+def get_vbv_status_display(status):
+    # Since VBV bot logic is removed, status will always be N/A
+    return f"❓ {escape_markdown_v2(status)}"
+
+async def fetch_bin_info_bintable(bin_number):
+    url = f"{BINTABLE_URL}/{bin_number}?api_key={BINTABLE_API_KEY}"
+    
     try:
         async with aiohttp.ClientSession() as session:
-            headers = {"Authorization": f"Bearer {BINTABLE_API_KEY}"}
-            async with session.get(f"{BINTABLE_URL}/{bin_number}", headers=headers) as resp:
+            async with session.get(url) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    if data and data.get("status") == "success" and data.get("data"):
-                        b = data["data"]
-                        return {
-                            "scheme": b.get("scheme"),
-                            "type": b.get("type"),
-                            "level": b.get("level"),
-                            "bank_name": b.get("bank", {}).get("name"),
-                            "country_name": b.get("country", {}).get("name"),
-                            "country_iso": b.get("country", {}).get("iso"),
-                            "currency": b.get("country", {}).get("currency"),
-                            "website": b.get("bank", {}).get("website"),
-                            "phone": b.get("bank", {}).get("phone"),
-                            "vbv": "N/A" # Bintable might have it, but for consistency with other sources, keeping N/A
-                        }
-                elif resp.status == 404:
-                    logger.info(f"BIN {bin_number} not found on Bintable.")
+                    if data.get("result") == 200 and data.get("data"):
+                        return data["data"]
+                    else:
+                        logger.warning(f"Bintable API reported an error or no data for BIN {bin_number}. Response: {data}")
+                        return None
                 else:
-                    logger.warning(f"Bintable API error for BIN {bin_number}: {resp.status} \\- {await resp.text()}")
+                    logger.warning(f"Bintable API returned HTTP status {resp.status} for BIN: {bin_number}")
+                    return None
     except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching Bintable info: {e}")
+        logger.error(f"Network error fetching from Bintable for {bin_number}: {e}")
+        return None
     except Exception as e:
-        logger.error(f"Error processing Bintable response: {e}")
-    return None
-
-async def fetch_bin_info_binlist(bin_number: str) -> dict | None:
-    """Fetches BIN information from Binlist API (fallback)."""
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"https://api.binlist.net/v1/{bin_number}") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return {
-                        "scheme": data.get("scheme"),
-                        "type": data.get("type"),
-                        "level": data.get("brand"), # Binlist uses 'brand' for level
-                        "bank_name": data.get("bank", {}).get("name"),
-                        "country_name": data.get("country", {}).get("name"),
-                        "country_iso": data.get("country", {}).get("iso"),
-                        "currency": data.get("country", {}).get("currency"),
-                        "website": data.get("bank", {}).get("url"),
-                        "phone": data.get("bank", {}).get("phone"),
-                        "vbv": "N/A"
-                    }
-                elif resp.status == 404:
-                    logger.info(f"BIN {bin_number} not found on Binlist.")
-                else:
-                    logger.warning(f"Binlist API error for BIN {bin_number}: {resp.status} \\- {await resp.text()}")
-    except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching Binlist info: {e}")
-    except Exception as e:
-        logger.error(f"Error processing Binlist response: {e}")
-    return None
-
-async def fetch_bin_info_bincheckio(bin_number: str) -> dict | None:
-    """Fetches BIN information from Bincheck.io API (fallback)."""
-    try:
-        async with aiohttp.ClientSession() as session:
-            # Note: Bincheck.io might require an API key or have rate limits.
-            # Using the free endpoint for demonstration.
-            async with session.get(f"https://api.bincheck.io/v2/{bin_number}") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data and data.get("code") == 200:
-                        return {
-                            "scheme": data.get("scheme"),
-                            "type": data.get("type"),
-                            "level": data.get("level"),
-                            "bank_name": data.get("bank_name"),
-                            "country_name": data.get("country_name"),
-                            "country_iso": data.get("country_iso"),
-                            "currency": data.get("currency"),
-                            "website": data.get("bank_url"),
-                            "phone": data.get("bank_phone"),
-                            "vbv": "N/A"
-                        }
-                elif resp.status == 404:
-                    logger.info(f"BIN {bin_number} not found on Bincheck.io.")
-                else:
-                    logger.warning(f"Bincheck.io API error for BIN {bin_number}: {resp.status} \\- {await resp.text()}")
-    except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching Bincheck.io info: {e}")
-    except Exception as e:
-        logger.error(f"Error processing Bincheck.io response: {e}")
-    return None
-
-async def get_bin_details(bin_number: str) -> dict | None:
-    """Attempts to get BIN details from multiple sources."""
-    if not bin_number or not bin_number.isdigit() or len(bin_number) < 6:
+        logger.error(f"An unexpected error occurred fetching from Bintable for {bin_number}: {e}")
         return None
 
-    # Try Bintable first
-    details = await fetch_bin_info_bintable(bin_number)
-    if details:
-        return details
+async def fetch_bin_info_binlist(bin_number):
+    url = f"https://lookup.binlist.net/{bin_number}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                else:
+                    logger.warning(f"Binlist API returned status {resp.status} for BIN: {bin_number}")
+                    return None
+    except aiohttp.ClientError as e:
+        logger.error(f"Network error fetching from Binlist for {bin_number}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"An unexpected error occurred fetching from Binlist for {bin_number}: {e}")
+        return None
 
-    # Fallback to Binlist
-    details = await fetch_bin_info_binlist(bin_number)
-    if details:
-        return details
+async def fetch_bin_info_bincheckio(bin_number):
+    url = f"https://api.bincheck.io/bin/{bin_number}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if data.get("status") == "ok":
+                        return data
+                    else:
+                        logger.warning(f"Bincheck.io API returned status '{data.get('status')}' for BIN: {bin_number}")
+                        return None
+                else:
+                    logger.warning(f"Bincheck.io API returned HTTP status {resp.status} for BIN: {bin_number}")
+                    return None
+    except aiohttp.ClientError as e:
+        logger.error(f"Network error fetching from Bincheck.io for {bin_number}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"An unexpected error occurred fetching from Bincheck.io for {bin_number}: {e}")
+        return None
 
-    # Fallback to Bincheck.io
-    details = await fetch_bin_info_bincheckio(bin_number)
-    if details:
-        return details
+async def get_bin_details(bin_number):
+    """
+    Attempts to fetch BIN details from multiple APIs with fallback.
+    VBV status will always be N/A.
+    """
+    details = {
+        "bank": "Unknown",
+        "country_name": "Unknown",
+        "country_emoji": "",
+        "scheme": "Unknown",
+        "card_type": "Unknown",
+        "level": "N/A",
+        "vbv_status": "N/A" # Always N/A
+    }
+    
+    bintable_data = await fetch_bin_info_bintable(bin_number)
+    
+    if bintable_data:
+        bank_info = bintable_data.get("bank", {})
+        country_info = bintable_data.get("country", {})
+        card_info = bintable_data.get("card", {})
 
-    return None
+        details["bank"] = bank_info.get("name", details["bank"])
+        details["country_name"] = country_info.get("name", details["country_name"])
+        details["country_emoji"] = country_info.get("flag", details["country_emoji"]) 
+        details["scheme"] = card_info.get("scheme", details["scheme"]).capitalize()
+        details["card_type"] = card_info.get("type", details["card_type"]).capitalize()
+        details["level"] = card_info.get("category", details["level"]).capitalize()
+    else:
+        binlist_data = await fetch_bin_info_binlist(bin_number)
+        if binlist_data:
+            details["bank"] = binlist_data.get("bank", {}).get("name", details["bank"])
+            details["country_name"] = binlist_data.get("country", {}).get("name", details["country_name"])
+            details["country_emoji"] = binlist_data.get("country", {}).get("emoji", details["country_emoji"])
+            details["scheme"] = binlist_data.get("scheme", details["scheme"]).capitalize()
+            details["card_type"] = binlist_data.get("type", details["card_type"]).capitalize()
+        else:
+            bincheck_data = await fetch_bin_info_bincheckio(bin_number)
+            if bincheck_data:
+                details["bank"] = bincheck_data.get("bank", {}).get("name", details["bank"])
+                details["country_name"] = bincheck_data.get("country", {}).get("name", details["country_name"])
+                details["country_emoji"] = bincheck_data.get("country", {}).get("emoji", details["country_emoji"])
+                details["scheme"] = bincheck_data.get("brand", details["scheme"]).capitalize()
+                details["card_type"] = bincheck_data.get("type", details["card_type"]).capitalize()
+                details["level"] = bincheck_data.get("level", details["level"]).capitalize()
 
-async def enforce_cooldown(user_id: int) -> bool:
-    """Enforces a 5-second cooldown per user."""
-    current_time = time.time()
-    if user_id in user_last_command:
-        time_since_last_command = current_time - user_last_command[user_id]
-        if time_since_last_command < 5:
-            return False
-    user_last_command[user_id] = current_time
+    details["country_name"] = get_short_country_name(details["country_name"])
+    
+    return details
+
+async def enforce_cooldown(user_id):
+    now = time.time()
+    last_time = user_last_command.get(user_id, 0)
+    if now - last_time < 5:
+        return False
+    user_last_command[user_id] = now
     return True
 
+# Add Stripe checker if you plan to re-introduce it
 async def check_card_with_stripe_live(card_number: str, exp_month: str, exp_year: str, cvc: str) -> dict:
     """
     Attempts a small authorization ($0.50 USD) and immediately refunds it
     to check if a card is live using Stripe.
     """
-    if not stripe.api_key:
-        return {"status": "error", "message": "Stripe API key not configured\\. Contact bot owner\\."}
+    if not STRIPE_SECRET_KEY:
+        return {"status": "error", "message": "Stripe API key not configured. Contact bot owner."}
 
     # Use a unique ID for idempotency to prevent duplicate charges
     idempotency_key = f"auth_check_{uuid.uuid4()}"
 
     try:
         # Step 1: Create a PaymentMethod
-        # This is primarily for getting the PaymentMethod ID.
-        # It performs basic validation but doesn't interact with the bank yet.
         payment_method = await asyncio.to_thread(
             stripe.PaymentMethod.create,
             type="card",
@@ -260,96 +326,95 @@ async def check_card_with_stripe_live(card_number: str, exp_month: str, exp_year
                 "exp_year": exp_year,
                 "cvc": cvc,
             },
-            idempotency_key=f"{idempotency_key}_pm" # Separate idempotency for PM creation
+            idempotency_key=f"{idempotency_key}_pm"
         )
 
         # Step 2: Create a PaymentIntent for a small amount
-        # This will attempt to authorize the amount with the bank.
         payment_intent = await asyncio.to_thread(
             stripe.PaymentIntent.create,
-            amount=50,  # $0.50 USD (Stripe amounts are in cents)
+            amount=50,  # $0.50 USD
             currency="usd",
             payment_method=payment_method.id,
-            confirm=True, # Automatically confirms the intent
-            off_session=True, # Indicates this is happening without customer presence
+            confirm=True,
+            off_session=True,
             metadata={"check_type": "card_auth_validation"},
-            idempotency_key=f"{idempotency_key}_pi" # Idempotency for PI creation
+            idempotency_key=f"{idempotency_key}_pi"
         )
 
-        # Step 3: Check PaymentIntent status
         if payment_intent.status == 'succeeded':
-            # Card is live and authorized. Now refund immediately.
             try:
                 refund = await asyncio.to_thread(
                     stripe.Refund.create,
                     payment_intent=payment_intent.id,
-                    idempotency_key=f"{idempotency_key}_refund" # Idempotency for refund
+                    idempotency_key=f"{idempotency_key}_refund"
                 )
                 logger.info(f"Successfully authorized and refunded card: {card_number[:6]}...{card_number[-4:]}")
-                return {"status": "success", "message": "Card is LIVE and refunded\\.", "stripe_status": payment_intent.status, "refund_status": refund.status}
+                return {"status": "success", "message": "Card is LIVE and refunded.", "stripe_status": payment_intent.status, "refund_status": refund.status}
             except stripe.error.StripeError as e:
-                logger.error(f"Stripe Refund Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} \\(Code: {e.code}\\)")
-                # Even if refund fails, the card was likely live.
-                return {"status": "success", "message": f"Card is LIVE but refund failed: {escape_markdown_v2(e.user_message)}\\. Manual refund may be needed\\.", "stripe_status": payment_intent.status}
+                logger.error(f"Stripe Refund Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} (Code: {e.code})")
+                return {"status": "success", "message": f"Card is LIVE but refund failed: {e.user_message}. Manual refund may be needed.", "stripe_status": payment_intent.status}
         else:
-            # PaymentIntent failed or requires further action (e.g., 3D Secure)
-            # For a simple checker, anything not 'succeeded' is usually considered dead.
             logger.warning(f"Stripe PaymentIntent status for {card_number[:6]}...{card_number[-4:]}: {payment_intent.status}")
-            return {"status": "failed", "message": f"Card is DEAD\\. Status: {escape_markdown_v2(payment_intent.status)}", "stripe_status": payment_intent.status}
+            return {"status": "failed", "message": f"Card is DEAD. Status: {payment_intent.status}", "stripe_status": payment_intent.status}
 
     except stripe.error.CardError as e:
-        # A decline or card-related error occurred
-        logger.warning(f"Stripe Card Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} \\(Code: {e.code}\\)")
-        return {"status": "failed", "message": f"Card is DEAD\\. Reason: {escape_markdown_v2(e.user_message)}", "code": e.code, "stripe_status": e.code}
+        logger.warning(f"Stripe Card Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} (Code: {e.code})")
+        return {"status": "failed", "message": f"Card is DEAD. Reason: {e.user_message}", "code": e.code, "stripe_status": e.code}
     except stripe.error.RateLimitError as e:
         logger.error(f"Stripe Rate Limit Error: {e.user_message}")
-        return {"status": "error", "message": "Stripe API rate limit exceeded\\.\\ Please try again later\\."}
+        return {"status": "error", "message": "Stripe API rate limit exceeded. Please try again later."}
     except stripe.error.AuthenticationError as e:
-        logger.error(f"Stripe Authentication Error: {e.user_message}\\. Check your API key\\.")
-        return {"status": "error", "message": "Stripe API authentication failed\\. Contact bot owner\\."}
+        logger.error(f"Stripe Authentication Error: {e.user_message}. Check your API key.")
+        return {"status": "error", "message": "Stripe API authentication failed. Contact bot owner."}
     except stripe.error.StripeError as e:
-        # Other Stripe API errors (e.g., network, invalid request)
-        logger.error(f"General Stripe API Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} \\(Type: {e.error.type}\\)")
-        return {"status": "error", "message": f"An error occurred with Stripe: {escape_markdown_v2(e.user_message)}"}
+        logger.error(f"General Stripe API Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} (Type: {e.error.type})")
+        return {"status": "error", "message": f"An error occurred with Stripe: {e.user_message}"}
     except Exception as e:
         logger.error(f"Unexpected error during live Stripe check: {e}", exc_info=True)
-        return {"status": "error", "message": "An unexpected error occurred during the live check\\."}
+        return {"status": "error", "message": "An unexpected error occurred during the live check."}
 
 # === COMMAND HANDLERS ===
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    welcome_message = (
-        f"👋 Hello, {escape_markdown_v2(user.first_name)}!\n\n"
-        "I'm your all\\-in\\-one Card Utility Bot\\.\n"
-        "I can generate cards, provide BIN info, and check card status\\.\n\n"
-        "Press the 'Commands' button to see what I can do\\."
-    )
-    keyboard = [
-        [InlineKeyboardButton("📚 Commands", callback_data="show_main_commands")],
-        [InlineKeyboardButton("📢 Group", url="https://t.me/BlockStormOP")] # Example group link
+    # Ensure all parts of the message are escaped if they might contain special characters
+    welcome = f"👋 Hi, welcome {escape_markdown_v2(user.full_name)}!\n🤖 Bot Status: Active"
+    buttons = [
+        [InlineKeyboardButton("📜 Commands", callback_data="show_main_commands")],
+        [InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")]
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+    
+    query = update.callback_query
+    if query:
+        await query.answer()
+        # Ensure parse_mode is consistently MARKDOWN_V2 for edit_message_text
+        await query.edit_message_text(welcome, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN_V2)
+    else:
+        # Ensure parse_mode is consistently MARKDOWN_V2 for reply_text
+        await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN_V2)
 
 async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query:
         await query.answer()
 
-    commands_text = "📜 *Bot Commands:*\nSelect a command to learn more:"
+    commands_text = "*📜 Bot Commands:*\nSelect a command to learn more:"
     buttons = [
         [InlineKeyboardButton("💳 Generate Cards (/gen)", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Info (/bin)", callback_data="cmd_bin")],
         [InlineKeyboardButton("📊 Bot Status (/status)", callback_data="cmd_status")],
         [InlineKeyboardButton("💀 Kill Card (/kill)", callback_data="cmd_kill")],
-        [InlineKeyboardButton("✅ Stripe Auth (/chk)", callback_data="cmd_chk")], # Added for Stripe Auth Checker
+        [InlineKeyboardButton("✅ Stripe Auth (/chk)", callback_data="cmd_chk")], # Re-added for Stripe Checker
         [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")]
     ]
-
+    
     if query:
+        # Changed parse_mode to MARKDOWN_V2 as per bot's consistent usage
         await query.edit_message_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN_V2)
     else:
+        # Changed parse_mode to MARKDOWN_V2 as per bot's consistent usage
         await update.message.reply_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN_V2)
+
 
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -360,31 +425,31 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     usage_text = ""
     if command_name == "gen":
         usage_text = (
-            "*💳 Card Generator*\n" +
-            "Usage: `/gen <BIN>` or `\\.gen <BIN>`\n" +
+            "*💳 Card Generator*\n" + # Updated title
+            "Usage: `/gen <BIN>` or `\\.gen <BIN>`\n" + # Consistent usage example
             "Example: `/gen 400000`\n" +
-            "Generates 10 credit card numbers based on the provided 6\\-digit BIN\\. " +
-            "Includes expiry date \\(MM\\|YY\\) and CVV\\.\n"
+            "Generates 10 credit card numbers based on the provided 6\\-digit BIN\\. " + # Corrected punctuation
+            "Includes expiry date \\(MM\\|YY\\) and CVV\\.\n" # Corrected punctuation
         ).strip()
     elif command_name == "bin":
         usage_text = (
-            "*🔍 BIN Lookup*\n" +
-            "Usage: `/bin <BIN>` or `\\.bin <BIN>`\n" +
+            "*🔍 BIN Lookup*\n" + # Updated title
+            "Usage: `/bin <BIN>` or `\\.bin <BIN>`\n" + # Consistent usage example
             "Example: `/bin 400000`\n" +
             "Provides detailed information about a given Bank Identification Number \\(BIN\\), " +
             "including card scheme, type, level, bank name, and country\\.\n"
         ).strip()
     elif command_name == "status":
         usage_text = (
-            "*📊 Bot Status*\n" +
+            "*📊 Bot Status*\n" + # Updated title
             "Usage: `/status`\n" +
             "Displays the bot's current operational statistics, " +
             "including uptime, RAM usage, and CPU usage\\.\n"
         ).strip()
     elif command_name == "kill":
         usage_text = (
-            "*💀 Card Killer \\(Simulation\\)*\n" +
-            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YY\\|CVV`\n" +
+            "*💀 Card Killer \\(Simulation\\)*\n" + # Updated title
+            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\n" +
             "Alternatively, reply to a message containing card details with `/kill` or `\\.kill`\\.\n" +
             "Example: `/kill 4000001234567890\\|12\\|25\\|123`\n" +
             "Simulates a card 'killing' process with an animation\\. " +
@@ -418,342 +483,351 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    if not context.args or len(context.args[0]) < 6:
-        return await update.message.reply_text(
-            "❌ Please provide a 6\\-digit BIN\\. Usage: `/gen <BIN>`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    bin_input = None
+    if context.args:
+        bin_input = context.args[0]
+    elif update.message.text:
+        command_text = update.message.text.split(maxsplit=1)
+        if len(command_text) > 1:
+            bin_input = command_text[1]
 
-    bin_number = context.args[0][:6]
-    if not bin_number.isdigit():
-        return await update.message.reply_text(
-            "❌ Invalid BIN\\. Please provide a numeric 6\\-digit BIN\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    if not bin_input:
+        return await update.message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    status_message = await update.message.reply_text(
-        f"⚙️ Generating 10 cards for BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n_This may take a moment\\._",
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+    if len(bin_input) < 6:
+        return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    bin_details = await get_bin_details(bin_number)
+    bin_details = await get_bin_details(bin_input[:6])
 
-    if not bin_details:
-        await status_message.edit_text(
-            f"❌ Could not retrieve details for BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n"
-            "Please check the BIN or try again later\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
+    if not bin_details: # Added check for bin_details
+        return await update.message.reply_text(f"❌ Could not retrieve details for BIN: `{escape_markdown_v2(bin_input)}`\\.\\nPlease check the BIN or try again later\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    generated_cards = []
-    card_count = 0
-    max_attempts_per_card = 100 # To prevent infinite loops for rare BINs
+
+    brand = bin_details["scheme"]
+    bank = bin_details["bank"]
+    country_name = bin_details['country_name']
+    country_emoji = bin_details['country_emoji']
+    card_type = bin_details["card_type"]
     
-    # Determine card length based on scheme
-    card_scheme = bin_details.get("scheme", "").lower()
-    card_length = 16 # Default for most cards
-    if card_scheme == "american express":
-        card_length = 15
-    elif card_scheme == "diners club":
-        card_length = 14
+    cards = []
+    while len(cards) < 10:
+        # Determine card number length based on brand, default to 16
+        num_len = 16
+        if brand.lower() == 'american express':
+            num_len = 15 
+        elif brand.lower() == 'diners club':
+            num_len = 14
 
-    while card_count < 10:
-        attempts = 0
-        while attempts < max_attempts_per_card:
-            temp_card_number = bin_number + ''.join(random.choices('0123456789', k=card_length - len(bin_number)))
-            if luhn_checksum(temp_card_number):
-                
-                # Generate MM/YY
-                current_year = datetime.now().year
-                current_month = datetime.now().month
-                
-                # Random year between current year and +5 years
-                exp_year_full = random.randint(current_year, current_year + 5)
-                
-                # If current year, ensure month is in the future
-                if exp_year_full == current_year:
-                    exp_month = random.randint(current_month, 12)
-                else:
-                    exp_month = random.randint(1, 12)
-                
-                exp_month_str = str(exp_month).zfill(2)
-                exp_year_short = str(exp_year_full)[-2:] # Get last two digits
+        num_suffix_len = num_len - len(bin_input)
+        if num_suffix_len < 0:
+            num = bin_input[:num_len] # Truncate BIN if it's too long for the card type
+        else:
+            num = bin_input + ''.join(str(random.randint(0, 9)) for _ in range(num_suffix_len))
+        
+        if not luhn_checksum(num):
+            continue
+        
+        # Generate MM (01-12)
+        mm = str(random.randint(1, 12)).zfill(2)
+        # Generate YYYY (current year + 1 to 5 years)
+        yyyy = str(datetime.now().year + random.randint(1, 5))
+        
+        cvv_length = 4 if brand.lower() == 'american express' else 3
+        cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
+        
+        cards.append(f"`{num}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-                # Generate CVV (4 for Amex, 3 for others)
-                cvv_length = 4 if card_scheme == "american express" else 3
-                cvv = ''.join(random.choices('0123456789', k=cvv_length))
-                
-                generated_cards.append(f"`{temp_card_number}|{exp_month_str}|{exp_year_short}|{cvv}`")
-                card_count += 1
-                break
-            attempts += 1
-        if attempts == max_attempts_per_card:
-            logger.warning(f"Failed to generate Luhn-valid card for BIN {bin_number} after {max_attempts_per_card} attempts.")
-            # Break if too many attempts, to avoid infinite loop
-            break 
-
-    if not generated_cards:
-        await status_message.edit_text(
-            f"⚠️ Could not generate any valid cards for BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n"
-            "This might happen for very specific or invalid BINs\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
-
-    card_list_text = "\n".join(generated_cards)
-
-    scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
-    type_ = escape_markdown_v2(bin_details.get("type", "N/A"))
-    level = escape_markdown_v2(bin_details.get("level", "N/A"))
-    level_emoji = get_level_emoji(bin_details.get("level", "N/A"))
-    bank_name = escape_markdown_v2(bin_details.get("bank_name", "N/A"))
-    country_name = escape_markdown_v2(get_short_country_name(bin_details.get("country_name", "N/A")))
-    country_iso = escape_markdown_v2(bin_details.get("country_iso", "N/A"))
-    website = escape_markdown_v2(bin_details.get("website", "N/A"))
-    phone = escape_markdown_v2(bin_details.get("phone", "N/A"))
-
-    response_text = (
-        f"✨ *Cards Generated Successfully* ✨\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"• 𝗕𝗜𝗡             : `{escape_markdown_v2(bin_number)}`\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗦𝗰𝗵𝗲𝗺𝗲 : `{scheme}`\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗧𝘆𝗽𝗲    : `{type_}`\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗟𝗲𝘃𝗲𝗹  : `{level} {level_emoji}`\n"
-        f"• 𝗕𝗮𝗻𝗸 𝗡𝗮𝗺𝗲   : `{bank_name}`\n"
-        f"• 𝗖𝗼𝘂𝗻𝘁𝗿𝘆       : `{country_name} \\({country_iso}\\)`\n"
-        f"• 𝗩𝗕𝗩 𝗦𝘁𝗮𝘁𝘂𝘀  : `{get_vbv_status_display('N/A')}`\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"🌐 𝗪𝗲𝗯𝘀𝗶𝘁𝗲       : `{website}`\n"
-        f"📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁     : `{phone}`\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"> 𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗲𝗱 𝗯𝘆 \\-: {escape_markdown_v2(update.effective_user.full_name)}\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
+    cards_list = "\n".join(cards)
+    
+    escaped_brand = escape_markdown_v2(brand)
+    escaped_bank = escape_markdown_v2(bank)
+    escaped_country_name = escape_markdown_v2(country_name)
+    escaped_country_emoji = escape_markdown_v2(country_emoji)
+    escaped_card_type = escape_markdown_v2(card_type)
+    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
+    
+    # BIN info block content for /gen, using ">>" as separator and escaped hyphen
+    bin_info_block_content = (
+        f"✦ BIN\\-LOOKUP\n"
+        f"✦ BIN : `{escape_markdown_v2(bin_input)}`\n"
+        f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
+        f"✦ Type : {escaped_card_type}\n"
+        f"✦ Bank : {escaped_bank}"
     )
 
-    await status_message.edit_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
+    user_info_block_content = (
+        f"Requested by : {escaped_user_full_name}\n"
+        f"Bot by : 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎"
+    )
 
+    result = (
+        f"> Generated 10 Cards 💳\n"
+        f"\n"
+        f"{cards_list}\n"
+        f"\n"
+        f"> {bin_info_block_content.replace('\n', '\n> ')}\n"
+        f"> \n"
+        f"> {user_info_block_content.replace('\n', '\n> ')}"
+    )
+
+    await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    if not context.args or len(context.args[0]) < 6:
-        return await update.message.reply_text(
-            "❌ Please provide a 6\\-digit BIN\\. Usage: `/bin <BIN>`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    bin_input = None
+    if context.args:
+        bin_input = context.args[0]
+    elif update.message.text:
+        command_text = update.message.text.split(maxsplit=1)
+        if len(command_text) > 1:
+            bin_input = command_text[1]
 
-    bin_number = context.args[0][:6]
-    if not bin_number.isdigit():
-        return await update.message.reply_text(
-            "❌ Invalid BIN\\. Please provide a numeric 6\\-digit BIN\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    if not bin_input:
+        return await update.message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/bin [bin]` or `\\.bin [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    status_message = await update.message.reply_text(
-        f"🔍 Looking up BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n_This may take a moment\\._",
-        parse_mode=ParseMode.MARKDOWN_V2
+    bin_input = bin_input[:6]
+    
+    bin_details = await get_bin_details(bin_input)
+
+    scheme = bin_details["scheme"]
+    bank = bin_details["bank"]
+    card_type = bin_details["card_type"]
+    level = bin_details["level"]
+    country_name = bin_details['country_name']
+    country_emoji = bin_details['country_emoji']
+    vbv_status = bin_details["vbv_status"]
+
+    escaped_scheme = escape_markdown_v2(scheme)
+    escaped_bank = escape_markdown_v2(bank)
+    escaped_country_name = escape_markdown_v2(country_name)
+    escaped_country_emoji = escape_markdown_v2(country_emoji)
+    escaped_card_type = escape_markdown_v2(card_type)
+    escaped_level = escape_markdown_v2(level)
+    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
+
+    level_emoji = get_level_emoji(escaped_level)
+    status_display = get_vbv_status_display(vbv_status)
+    
+    # Main BIN info box - made narrower for mobile
+    bin_info_box = (
+        f"╔═══════ BIN INFO ═══════╗\n"
+        f"✦ BIN    : `{escape_markdown_v2(bin_input)}`\n"
+        f"✦ Status : {status_display}\n"
+        f"✦ Brand  : {escaped_scheme}\n"
+        f"✦ Type   : {escaped_card_type}\n"
+        f"✦ Level  : {level_emoji} {escaped_level}\n"
+        f"✦ Bank   : {escaped_bank}\n"
+        f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n"
+        f"╚════════════════════════╝"
     )
 
+    # User info in a separate quote box
+    user_info_quote_box = (
+        f"> Requested by \\-: {escaped_user_full_name}\n"
+        f"> Bot by \\-: 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎"
+    )
+
+    result = f"{bin_info_box}\n\n{user_info_quote_box}"
+    
+    await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
+
+async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message):
+    """
+    Handles the long-running kill animation and final message.
+    This function is designed to be run as a separate asyncio task.
+    """
+    time_taken = 0 # Initialize time_taken
+
+    # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
+    kill_time = random.uniform(30, 78) 
+    start_time = time.time()
+
+    # Animation frames for "Killing..." using ⚡ emoji
+    animation_states = [
+        "Kɪʟʟɪɴɢ ⚡",
+        "Kɪʟʟɪɴɢ ⚡⚡",
+        "Kɪʟʟɪɴɢ ⚡⚡⚡",
+        "Kɪʟʟɪɴɢ ⚡⚡",
+        "Kɪʟʟɪɴɢ ⚡"
+    ]
+    frame_interval = 4.0 # seconds per frame update (Increased to reduce API calls)
+
+    elapsed_animation_time = 0
+    frame_index = 0
+
+    while elapsed_animation_time < kill_time:
+        current_frame = animation_states[frame_index % len(animation_states)]
+        # Edit the initial message to show the animation
+        try:
+            await initial_message.edit_text(
+                f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+                f"🔪 {current_frame}"
+            , parse_mode=ParseMode.MARKDOWN_V2)
+        except BadRequest as e:
+            # This specific error means content is identical, so we just log and continue.
+            # Or if it's a flood control error, we still continue after the sleep.
+            if "Message is not modified" in str(e) or "Flood control exceeded" in str(e):
+                logger.debug(f"Message not modified or flood control hit during animation: {e}")
+            else:
+                # Other BadRequest errors might be critical, so log but DO NOT BREAK.
+                # We need the sleep to continue to ensure the full kill_time is met.
+                logger.warning(f"Failed to edit message during animation (BadRequest, non-modified): {e}")
+        except Exception as e:
+            logger.warning(f"Failed to edit message during animation (General Error): {e}")
+            # For any other unexpected error, log but DO NOT BREAK.
+            # We need the sleep to continue to ensure the full kill_time is met.
+        
+        # Calculate remaining time for sleep to ensure total kill_time is met
+        sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
+        if sleep_duration <= 0:
+            break # No more time left to sleep
+        await asyncio.sleep(sleep_duration)
+        
+        elapsed_animation_time = time.time() - start_time
+        frame_index += 1
+
+    # Calculate actual time taken after the loop finishes
+    time_taken = round(time.time() - start_time)
+
+    # Get BIN details for stylish info
+    cc_part = full_card_str.split('|')[0]
+    bin_number = cc_part[:6]
     bin_details = await get_bin_details(bin_number)
 
-    if not bin_details:
-        await status_message.edit_text(
-            f"❌ Could not retrieve details for BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n"
-            "Please check the BIN or try again later\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
+    # Escape dynamic parts for MarkdownV2, careful with emojis
+    bank_name = escape_markdown_v2(bin_details.get("bank", "Unknown")) # Use .get with default
+    level = escape_markdown_v2(bin_details.get("level", "N/A")) # Use .get with default
+    level_emoji = get_level_emoji(bin_details.get("level", "N/A")) # Emoji doesn't need escaping
+    brand = escape_markdown_v2(bin_details.get("scheme", "Unknown")) # Use .get with default
 
-    scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
-    type_ = escape_markdown_v2(bin_details.get("type", "N/A"))
-    level = escape_markdown_v2(bin_details.get("level", "N/A"))
-    level_emoji = get_level_emoji(bin_details.get("level", "N/A"))
-    bank_name = escape_markdown_v2(bin_details.get("bank_name", "N/A"))
-    country_name = escape_markdown_v2(get_short_country_name(bin_details.get("country_name", "N/A")))
-    country_iso = escape_markdown_v2(bin_details.get("country_iso", "N/A"))
-    website = escape_markdown_v2(bin_details.get("website", "N/A"))
-    phone = escape_markdown_v2(bin_details.get("phone", "N/A"))
-    
-    response_text = (
-        f"💳 *BIN Lookup Results* 💳\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"• 𝗕𝗜𝗡             : `{escape_markdown_v2(bin_number)}`\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗦𝗰𝗵𝗲𝗺𝗲 : `{scheme}`\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗧𝘆𝗽𝗲    : `{type_}`\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗟𝗲𝘃𝗲𝗹  : `{level} {level_emoji}`\n"
-        f"• 𝗕𝗮𝗻𝗸 𝗡𝗮𝗺𝗲   : `{bank_name}`\n"
-        f"• 𝗖𝗼𝘂𝗻𝘁𝗿𝘆       : `{country_name} \\({country_iso}\\)`\n"
-        f"• 𝗩𝗕𝗩 𝗦𝘁𝗮𝘁𝘂𝘀  : `{get_vbv_status_display('N/A')}`\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"🌐 𝗪𝗲𝗯𝘀𝗶𝘁𝗲       : `{website}`\n"
-        f"📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁     : `{phone}`\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escape_markdown_v2(update.effective_user.full_name)}\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
+    # Determine header based on card scheme
+    header_title = "⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
+    if bin_details["scheme"].lower() == 'mastercard':
+        # Generate random percentage > 67%
+        percentage = random.randint(68, 100) 
+        header_title = f"⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%" # Escaping - and % for MarkdownV2
+
+    # Construct the final message using a single f-string for easy modification
+    # Manual padding for visual alignment of colons
+    final_message_text_formatted = (
+        f"╭───[ {header_title} ]───╮\n"
+        f"\n"
+        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n" # Added Card No. line
+        f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
+        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
+        f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      :  𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎\n"
+        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : {escape_markdown_v2(f'{time_taken:.0f} seconds')}\n"
+        f"\n"
+        f"╰────────────────────╯"
     )
-    await status_message.edit_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
 
-
-async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message: Update.effective_message):
-    """Helper function to simulate card killing with animation."""
-    animation_frames = ["⚡", "✨", "🔥"]
-    
-    start_time = time.time()
-    last_update_time = start_time
-    
-    # Simulate a longer process with updates
-    total_duration = random.randint(30, 78) # Simulate 30 to 78 seconds process
-    
-    for i in range(total_duration):
-        frame = animation_frames[i % len(animation_frames)]
-        current_killing_text = f"Killing {frame}"
-        
-        # Only update every 2 seconds to avoid flooding Telegram API
-        if time.time() - last_update_time > 2:
-            try:
-                await initial_message.edit_text(
-                    f"💀 *Card Killer \\(Simulating\\)* 💀\n"
-                    f"━━━━━━━━━━━━━━\n"
-                    f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n"
-                    f"• 𝗦𝘁𝗮𝘁𝘂𝘀     : {escape_markdown_v2(current_killing_text)}\n"
-                    f"• 𝗧𝗶𝗺𝗲 𝗘𝗹𝗮𝗽𝘀𝗲𝗱: `{escape_markdown_v2(str(timedelta(seconds=int(time.time() - start_time))))}`\n"
-                    f"━━━━━━━━━━━━━━\n"
-                    f"> 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁\\.\n"
-                    f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺",
-                    parse_mode=ParseMode.MARKDOWN_V2
-                )
-                last_update_time = time.time()
-            except BadRequest as e:
-                # Catch "Message is not modified" errors, which means no update is needed
-                if "message is not modified" not in str(e).lower():
-                    logger.error(f"Error editing message during kill animation: {e}")
-            except Exception as e:
-                logger.error(f"Unexpected error during kill animation: {e}")
-            
-        await asyncio.sleep(1) # Wait 1 second per "step"
-
-    end_time = time.time()
-    time_taken = end_time - start_time
-
-    # Split card for BIN lookup if possible
-    bin_part = full_card_str.split('|')[0][:6] if full_card_str.split('|')[0].isdigit() else None
-    
-    card_info_text = ""
-    if bin_part:
-        bin_details = await get_bin_details(bin_part)
-        if bin_details:
-            card_info_text = (
-                f"• 𝗖𝗮𝗿𝗱 𝗕𝗿𝗮𝗻𝗱: `{escape_markdown_v2(bin_details.get('scheme', 'N/A'))}`\n"
-                f"• 𝗜𝘀𝘀𝘂𝗲𝗿      : `{escape_markdown_v2(bin_details.get('bank_name', 'N/A'))}`\n"
-                f"• 𝗖𝗮𝗿𝗱 𝗟𝗲𝘃𝗲𝗹: `{escape_markdown_v2(bin_details.get('level', 'N/A'))}`\n"
-            )
-        else:
-            card_info_text = "• 𝗖𝗮𝗿𝗱 𝗜𝗻𝗳𝗼 : `N/A \\(BIN lookup failed\\)`\n"
-
-    # For Mastercard, add a random success percentage
-    success_percentage_text = ""
-    if bin_details and bin_details.get("scheme", "").lower() == "mastercard":
-        success_percentage = random.randint(68, 100)
-        success_percentage_text = f"• 𝗦𝘂𝗰𝗰𝗲𝘀𝘀    : `{success_percentage}%`\n"
-
-    response_text = (
-        f"✅ *Card Killed Successfully!* ✅\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n"
-        f"{card_info_text}"
-        f"{success_percentage_text}"
-        f"━━━━━━━━━━━━━━\n"
-        f"> 𝗞𝗶𝗹𝗹𝗲𝗿     : {escape_markdown_v2(update.effective_user.full_name)}\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺\n"
-        f"> 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻: `{escape_markdown_v2(str(timedelta(seconds=int(time_taken))))}`"
-    )
-    
-    try:
-        await initial_message.edit_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
-    except Exception as e:
-        logger.error(f"Error sending final kill message: {e}")
-        # Fallback to sending a new message if editing failed
-        await update.effective_message.reply_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
+    await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await enforce_cooldown(update.effective_user.id):
-        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
-
     card_details_input = None
+
+    # 1. Try to get card details from command arguments
     if context.args:
         card_details_input = " ".join(context.args)
+        logger.debug(f"Kill command: Card details from args: '{card_details_input}'")
+    # 2. If no arguments, try to get from message text for .kill command
+    elif update.message.text and (update.message.text.lower().startswith(".kill ") or update.message.text.lower().startswith("/kill ")):
+        # Extract content after the command word
+        parts = update.message.text.split(maxsplit=1)
+        if len(parts) > 1:
+            card_details_input = parts[1].strip()
+        logger.debug(f"Kill command: Card details from message text: '{card_details_input}'")
+    # 3. Fallback to replied message if no direct arguments
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         card_details_input = update.message.reply_to_message.text
+        logger.debug(f"Kill command: Card details from replied message: '{card_details_input}'")
 
     if not card_details_input:
+        logger.info("Kill command: No card details found in arguments or replied message.")
         return await update.message.reply_text(
             "❌ Please provide card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) as an argument or reply to a message containing them\\. "
             "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Regex to extract CC|MM|YY|CVV or CC|MM|YYYY|CVV
+    # Regex to find card details in `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV` format.
+    # Added \s* around | to tolerate spaces, and \s*$ to tolerate trailing spaces.
     card_match = re.search(r"(\d{13,19})\s*\|\s*(\d{2})\s*\|\s*(\d{2}|\d{4})\s*\|\s*(\d{3,4})\s*$", card_details_input)
+    logger.debug(f"Kill command: Regex match result: {card_match}")
 
     if not card_match:
+        logger.info(f"Kill command: Regex failed to match for input: '{card_details_input}'")
         return await update.message.reply_text(
             "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. "
-            "Make sure it's in the format `CC\\|MM\\|YY\\|CVV` or `CC\\|MM\\|YYYY\\|CVV`\\.",
+            "Make sure it's in the format `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    full_card_str = f"{card_match.group(1)}|{card_match.group(2)}|{card_match.group(3)}|{card_match.group(4)}"
+    cc = card_match.group(1)
+    mm = card_match.group(2)
+    yy = card_match.group(3) # Keep the original year format (YY or YYYY) for display
+    cvv = card_match.group(4)
     
+    full_card_str = f"{cc}|{mm}|{yy}|{cvv}"
+    
+    if not await enforce_cooldown(update.effective_user.id):
+        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    # Send the initial message and store it to edit later
     initial_message = await update.message.reply_text(
-        f"💀 *Card Killer \\(Simulating\\)* 💀\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n"
-        f"• 𝗦𝘁𝗮𝘁𝘂𝘀     : Killing ⚡\n"
-        f"• 𝗧𝗶𝗺𝗲 𝗘𝗹𝗮𝗽𝘀𝗲𝗱: `0:00:00`\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"> 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁\\.\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺",
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
-    
-    # Run the kill process in the background
+        f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+        f"🔪Kɪʟʟɪɴɢ ⚡" # Initial message without emojis for animation
+    , parse_mode=ParseMode.MARKDOWN_V2)
+
+    # Create a separate task for the long-running kill process
     asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message))
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await enforce_cooldown(update.effective_user.id):
-        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
-
-    uptime = datetime.now() - context.application.bot_data.get('start_time', datetime.now())
-    uptime_str = str(timedelta(seconds=int(uptime.total_seconds())))
-
-    # Get system and process info
-    cpu_percent = psutil.cpu_percent(interval=1)
-    ram_info = psutil.virtual_memory()
-    ram_percent = ram_info.percent
+    total_users = len(user_last_command)
     
-    # Calculate process specific RAM usage
-    process = psutil.Process(os.getpid())
-    process_ram_mb = process.memory_info().rss / (1024 * 1024) # RSS in MB
+    ram_mb = psutil.virtual_memory().used / (1024 * 1024)
+    ram_usage = f"{ram_mb:.0f} MB"
+    
+    cpu_usage_percent = psutil.cpu_percent()
+    escaped_cpu_usage_text = escape_markdown_v2(str(cpu_usage_percent)) + "\\%" # Ensure % is escaped
+    
+    uptime_seconds = int(time.time() - psutil.boot_time())
+    days, remainder = divmod(uptime_seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, _ = divmod(remainder, 60)
+    
+    uptime_parts = []
+    if days > 0:
+        uptime_parts.append(f"{days} day{'s' if days > 1 else ''}")
+    if hours > 0:
+        uptime_parts.append(f"{hours} hour{'s' if hours > 1 else ''}")
+    if minutes > 0:
+        uptime_parts.append(f"{minutes} minute{'s' if minutes > 1 else ''}")
+    
+    uptime_string = ", ".join(uptime_parts) if uptime_parts else "less than a minute"
 
-    total_users = len(user_last_command) # Simple count of users who used a command
+    escaped_total_users = escape_markdown_v2(str(total_users))
+    escaped_ram_usage = escape_markdown_v2(ram_usage)
+    escaped_uptime_string = escape_markdown_v2(uptime_string)
+    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
 
-    response_text = (
-        f"📊 *Bot Status* 📊\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"• 𝗨𝗽𝘁𝗶𝗺𝗲       : `{escape_markdown_v2(uptime_str)}`\n"
-        f"• 𝗖𝗣𝗨 𝗨𝘀𝗮𝗴𝗲   : `{cpu_percent:.1f}%`\n"
-        f"• 𝗥𝗔𝗠 𝗨𝘀𝗮𝗴𝗲   : `{ram_percent:.1f}%` \\(Total\\)\n"
-        f"• 𝗕𝗼𝘁 𝗥𝗔𝗠    : `{process_ram_mb:.2f} MB`\n"
-        f"• 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀: `{total_users}`\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escape_markdown_v2(update.effective_user.full_name)}\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
+    status_msg = (
+        f"> 📊 Bot Status\n"
+        f"> 👥 Total Users: {escaped_total_users}\n"
+        f"> 🧠 RAM Usage: {escaped_ram_usage}\n"
+        f"> 🖥️ CPU Usage: {escaped_cpu_usage_text}\n"
+        f"> ⏱️ Uptime: {escaped_uptime_string}\n"
+        f"> 🤖 Bot by \\- 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎"
     )
-    await update.message.reply_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
+    
+    await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id):
@@ -807,7 +881,6 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         yy_full = yy
 
     # Initial message while checking
-    # FIXED: Escaped the ellipsis
     checking_message = await update.message.reply_text("⏳ Attempting live card authorization with Stripe\\.\\.\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     result = await check_card_with_stripe_live(cc, mm, yy_full, cvv)
@@ -824,7 +897,7 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"• 𝗦𝘁𝗮𝘁𝘂𝘀     : LIVE ✅\n"
             f"━━━━━━━━━━━━━━\n"
             f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escaped_user_full_name}\n"
-            f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
+            f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎"
         )
     else:
         error_msg = escape_markdown_v2(result.get("message", "An unknown error occurred\\."))
@@ -836,7 +909,7 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"• 𝗥𝗲𝗮𝘀𝗼𝗻     : {error_msg}\n"
             f"━━━━━━━━━━━━━━\n"
             f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escaped_user_full_name}\n"
-            f"> 𝗕𝒐𝒕 𝒃𝒚 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
+            f"> 𝗕𝒐𝒕 𝒃𝒚 \\-: 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎"
         )
     
     try:
@@ -853,52 +926,30 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Allows the owner to authorize a specific group."""
     if update.effective_user.id != OWNER_ID:
-        return await update.message.reply_text("❌ You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
-
-    if not context.args or not context.args[0].isdigit() and not context.args[0].startswith('-100'):
-        return await update.message.reply_text(
-            "❌ Please provide a valid chat ID \\(numeric\\) to authorize\\. Usage: `/au <chat_id>`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    chat_id_to_authorize = int(context.args[0])
-
-    # Here you would add the chat_id_to_authorize to your authorized groups list/database
-    # For this example, we'll just acknowledge.
-    # In a real bot, you'd store this in a persistent way (e.g., database, file).
+        return await update.message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not context.args:
+        return await update.message.reply_text("Usage: `/au [chat_id]`\\. Please provide a chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
-    # Example: Check if the bot is actually in the group
     try:
-        chat = await context.bot.get_chat(chat_id_to_authorize)
-        if chat.type in ["group", "supergroup"]:
-            await update.message.reply_text(
-                f"✅ Group `{chat_id_to_authorize}` \\(`{escape_markdown_v2(chat.title)}`\\) has been authorized successfully\\.",
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
-            logger.info(f"Group {chat_id_to_authorize} ('{chat.title}') authorized by owner.")
-        else:
-            await update.message.reply_text(
-                f"❌ The provided ID `{chat_id_to_authorize}` is not a group chat\\. Please provide a valid group chat ID\\.",
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
-    except Exception as e:
-        await update.message.reply_text(
-            f"❌ Could not authorize group `{chat_id_to_authorize}`\\. Error: `{escape_markdown_v2(str(e))}`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        logger.error(f"Error authorizing group {chat_id_to_authorize}: {e}")
+        chat_id_to_authorize = int(context.args[0])
+        # In a real bot, you would store this chat_id in a persistent storage (database/file)
+        # and then check against it for future command access.
+        # For demonstration, we'll just acknowledge the authorization.
+        await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    except ValueError:
+        await update.message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-
+# === MAIN APPLICATION SETUP ===
 def main():
     if TOKEN is None:
-        logger.error("BOT_TOKEN environment variable is not set\\. Exiting\\.")
+        logger.error("BOT_TOKEN environment variable is not set. Please set it before running the bot.")
         exit(1)
-    
     if OWNER_ID is None:
-        logger.warning("OWNER_ID environment variable is not set\\. Owner\\-only commands will not function\\.")
-
+        logger.error("OWNER_ID environment variable is not set. Please set it before running the bot. Owner-only commands will not function.")
+        # Do not exit, just warn, so other functionalities can still work if owner_id is not critical for all.
+        # exit(1) # Removed exit to allow bot to run even without OWNER_ID if desired.
+    
     application = ApplicationBuilder().token(TOKEN).build()
 
     # Store start time for uptime calculation
@@ -911,10 +962,11 @@ def main():
     # Explicitly add filters for private and group chats for kill command
     application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
     application.add_handler(CommandHandler("chk", stripe_auth_check, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS)) # Added Stripe command
+
     application.add_handler(CommandHandler("au", authorize_group))
 
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*\s*.*"), gen))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*\s*.*"), bin_lookup))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
     # Explicitly add filters for private and group chats for .kill message handler
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.chk\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), stripe_auth_check)) # Added Stripe message handler
@@ -926,8 +978,8 @@ def main():
     # Add the error handler
     application.add_error_handler(error_handler)
 
-    logger.info("Bot started polling\\.\\.\\.")
+    logger.info("Bot started polling...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
