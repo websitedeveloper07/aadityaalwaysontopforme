@@ -361,11 +361,11 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     elif command_name == "kill": # Updated kill command details
         usage_text = (
             "*💀 Kill Card*\n" +
-            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\n" + # Updated usage
+            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\n" +
             "Alternatively, reply to a message with card details using `/kill` or `\\.kill`\\.\n" +
             "Example: `/kill 1234567890123456\\|12\\|25\\|123`\n" +
-            "Example: `/kill 1234567890123456\\|12\\|2025\\|123`\n" + # Added YYYY example
-            "This command kills a visa sucessfully but mastercard not completely.\\.\n"
+            "Example: `/kill 1234567890123456\\|12\\|2025\\|123`\n" +
+            "This command kills a provided card\\. It works effectively for Visa cards, but for Mastercard, the success rate may vary\\.\n"
         ).strip()
     elif command_name == "au":
         usage_text = (
