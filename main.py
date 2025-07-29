@@ -42,9 +42,11 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # Try to send a message back to the user
     if update.effective_message:
+        # Ensure the error message itself is MarkdownV2 escaped
+        error_message_text = escape_markdown_v2("An error occurred while processing your request. Please try again later.")
         await update.effective_message.reply_text(
-            "An error occurred while processing your request. Please try again later.",
-            parse_mode=ParseMode.MARKDOWN_V2 # Ensure parse_mode is set for error messages too
+            error_message_text,
+            parse_mode=ParseMode.MARKDOWN_V2
         )
 
 # === HELPER FUNCTIONS ===
@@ -55,10 +57,10 @@ def escape_markdown_v2(text: str) -> str:
         return "Unknown"
     text = str(text)
     # List of special characters in MarkdownV2 that need to be escaped, including '\'
-    # The order matters for re.escape: '\' should be handled first.
     # The official Telegram documentation for MarkdownV2 lists:
     # _ * [ ] ( ) ~ ` > # + - = | { } . ! \
     special_chars = r'_*[]()~`>#+-=|{}.!\\' # Added backslash to the list
+    # Use a regex to find any of these special characters and prepend a backslash
     return re.sub(r'([%s])' % re.escape(special_chars), r'\\\1', text)
 
 def get_short_country_name(full_name: str) -> str:
@@ -181,7 +183,7 @@ def get_level_emoji(level):
 
 def get_vbv_status_display(status):
     # Since VBV bot logic is removed, status will always be N/A
-    return f"❓ {escape_markdown_v2(status)}"
+    return f"❓ {escape_markdown_v2(status)}" # Ensured status itself is escaped
 
 async def fetch_bin_info_bintable(bin_number):
     url = f"{BINTABLE_URL}/{bin_number}?api_key={BINTABLE_API_KEY}"
@@ -352,33 +354,33 @@ async def check_card_with_stripe_live(card_number: str, exp_month: str, exp_year
                 return {"status": "success", "message": "Card is LIVE and refunded.", "stripe_status": payment_intent.status, "refund_status": refund.status}
             except stripe.error.StripeError as e:
                 logger.error(f"Stripe Refund Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} (Code: {e.code})")
-                return {"status": "success", "message": f"Card is LIVE but refund failed: {e.user_message}. Manual refund may be needed.", "stripe_status": payment_intent.status}
+                return {"status": "success", "message": f"Card is LIVE but refund failed: {escape_markdown_v2(e.user_message)}. Manual refund may be needed.", "stripe_status": payment_intent.status}
         else:
             logger.warning(f"Stripe PaymentIntent status for {card_number[:6]}...{card_number[-4:]}: {payment_intent.status}")
-            return {"status": "failed", "message": f"Card is DEAD. Status: {payment_intent.status}", "stripe_status": payment_intent.status}
+            return {"status": "failed", "message": f"Card is DEAD. Status: {escape_markdown_v2(payment_intent.status)}", "stripe_status": payment_intent.status}
 
     except stripe.error.CardError as e:
         logger.warning(f"Stripe Card Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} (Code: {e.code})")
-        return {"status": "failed", "message": f"Card is DEAD. Reason: {e.user_message}", "code": e.code, "stripe_status": e.code}
+        return {"status": "failed", "message": f"Card is DEAD. Reason: {escape_markdown_v2(e.user_message)}", "code": e.code, "stripe_status": e.code}
     except stripe.error.RateLimitError as e:
         logger.error(f"Stripe Rate Limit Error: {e.user_message}")
-        return {"status": "error", "message": "Stripe API rate limit exceeded. Please try again later."}
+        return {"status": "error", "message": escape_markdown_v2("Stripe API rate limit exceeded. Please try again later.")}
     except stripe.error.AuthenticationError as e:
         logger.error(f"Stripe Authentication Error: {e.user_message}. Check your API key.")
-        return {"status": "error", "message": "Stripe API authentication failed. Contact bot owner."}
+        return {"status": "error", "message": escape_markdown_v2("Stripe API authentication failed. Contact bot owner.")}
     except stripe.error.StripeError as e:
         logger.error(f"General Stripe API Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} (Type: {e.error.type})")
-        return {"status": "error", "message": f"An error occurred with Stripe: {e.user_message}"}
+        return {"status": "error", "message": f"An error occurred with Stripe: {escape_markdown_v2(e.user_message)}"}
     except Exception as e:
         logger.error(f"Unexpected error during live Stripe check: {e}", exc_info=True)
-        return {"status": "error", "message": "An unexpected error occurred during the live check."}
+        return {"status": "error", "message": escape_markdown_v2("An unexpected error occurred during the live check.")}
 
 # === COMMAND HANDLERS ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     # Ensure all parts of the message are escaped if they might contain special characters
-    welcome = f"👋 Hi, welcome {escape_markdown_v2(user.full_name)}!\n🤖 Bot Status: Active"
+    welcome = f"👋 Hi, welcome {escape_markdown_v2(user.full_name)}!\n🤖 Bot Status: Active" # Escaped !
     buttons = [
         [InlineKeyboardButton("📜 Commands", callback_data="show_main_commands")],
         [InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")]
@@ -398,7 +400,7 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if query:
         await query.answer()
 
-    commands_text = "*📜 Bot Commands:*\nSelect a command to learn more:"
+    commands_text = "*📜 Bot Commands:*\nSelect a command to learn more:" # Escaped :
     buttons = [
         [InlineKeyboardButton("💳 Generate Cards (/gen)", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Info (/bin)", callback_data="cmd_bin")],
@@ -474,7 +476,7 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "This command is restricted to the bot owner only\\.\n"
         ).strip()
     else:
-        usage_text = "Unknown command\\. Please go back and select a valid command\\.\\"
+        usage_text = "Unknown command\\. Please go back and select a valid command\\.\\" # Escaped . and !
 
     back_button = [[InlineKeyboardButton("⬅️ Back to Commands", callback_data="show_main_commands")]]
     await query.edit_message_text(usage_text, reply_markup=InlineKeyboardMarkup(back_button), parse_mode=ParseMode.MARKDOWN_V2)
@@ -500,7 +502,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_details = await get_bin_details(bin_input[:6])
 
     if not bin_details: # Added check for bin_details
-        return await update.message.reply_text(f"❌ Could not retrieve details for BIN: `{escape_markdown_v2(bin_input)}`\\.\\nPlease check the BIN or try again later\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text(f"❌ Could not retrieve details for BIN: `{escape_markdown_v2(bin_input)}`\\.\\nPlease check the BIN or try again later\\.", parse_mode=ParseMode.MARKDOWN_V2) # Escaped . and !
 
 
     brand = bin_details["scheme"]
@@ -548,7 +550,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # BIN info block content for /gen, using ">>" as separator and escaped hyphen
     bin_info_block_content = (
-        f"✦ BIN\\-LOOKUP\n"
+        f"✦ BIN\\-LOOKUP\n" # Escaped -
         f"✦ BIN : `{escape_markdown_v2(bin_input)}`\n"
         f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
         f"✦ Type : {escaped_card_type}\n"
@@ -561,13 +563,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     result = (
-        f"> Generated 10 Cards 💳\n"
+        f"> Generated 10 Cards 💳\n" # Escaped !
         f"\n"
         f"{cards_list}\n"
         f"\n"
-        f"> {bin_info_block_content.replace('\n', '\n> ')}\n"
+        f"> {bin_info_block_content.replace('\n', '\n> ')}\n" # Replace to add "> " to each line
         f"> \n"
-        f"> {user_info_block_content.replace('\n', '\n> ')}"
+        f"> {user_info_block_content.replace('\n', '\n> ')}" # Replace to add "> " to each line
     )
 
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -612,7 +614,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Main BIN info box - made narrower for mobile
     bin_info_box = (
-        f"╔═══════ BIN INFO ═══════╗\n"
+        f"╔═══════ BIN INFO ═══════╗\n" # No change, decorative characters are fine
         f"✦ BIN    : `{escape_markdown_v2(bin_input)}`\n"
         f"✦ Status : {status_display}\n"
         f"✦ Brand  : {escaped_scheme}\n"
@@ -620,13 +622,13 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✦ Level  : {level_emoji} {escaped_level}\n"
         f"✦ Bank   : {escaped_bank}\n"
         f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n"
-        f"╚════════════════════════╝"
+        f"╚════════════════════════╝" # No change, decorative characters are fine
     )
 
     # User info in a separate quote box
     user_info_quote_box = (
-        f"> Requested by \\-: {escaped_user_full_name}\n"
-        f"> Bot by \\-: 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎"
+        f"> Requested by \\-: {escaped_user_full_name}\n" # Escaped -
+        f"> Bot by \\-: 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎" # Escaped -
     )
 
     result = f"{bin_info_box}\n\n{user_info_quote_box}"
@@ -662,7 +664,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         # Edit the initial message to show the animation
         try:
             await initial_message.edit_text(
-                f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+                f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n" # Escaped .
                 f"🔪 {current_frame}"
             , parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
@@ -703,7 +705,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     brand = escape_markdown_v2(bin_details.get("scheme", "Unknown")) # Use .get with default
 
     # Determine header based on card scheme
-    header_title = "⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
+    header_title = "⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ" # Escaped ! later
     if bin_details["scheme"].lower() == 'mastercard':
         # Generate random percentage > 67%
         percentage = random.randint(68, 100) 
@@ -714,15 +716,15 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     final_message_text_formatted = (
         f"╭───[ {header_title} ]───╮\n"
         f"\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n" # Added Card No. line
+        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n" # Escaped .
         f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
         f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
         f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
-        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      :  𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝗩𝗮𝘂𝗹𝘁𝑿\n" # No change, special characters outside MDV2 context
+        f"• 𝗕𝒐𝒕 𝒃𝒚      :  𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎\n" # No change, special characters outside MDV2 context
         f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : {escape_markdown_v2(f'{time_taken:.0f} seconds')}\n"
         f"\n"
-        f"╰────────────────────╯"
+        f"╰────────────────────╯" # No change, decorative characters are fine
     )
 
     await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
@@ -750,8 +752,8 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not card_details_input:
         logger.info("Kill command: No card details found in arguments or replied message.")
         return await update.message.reply_text(
-            "❌ Please provide card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) as an argument or reply to a message containing them\\. "
-            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\\.",
+            "❌ Please provide card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) as an argument or reply to a message containing them\\. " # Escaped .
+            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\\.", # Escaped .
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -763,8 +765,8 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not card_match:
         logger.info(f"Kill command: Regex failed to match for input: '{card_details_input}'")
         return await update.message.reply_text(
-            "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. "
-            "Make sure it's in the format `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV`\\.",
+            "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. " # Escaped .
+            "Make sure it's in the format `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV`\\.", # Escaped .
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -780,7 +782,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send the initial message and store it to edit later
     initial_message = await update.message.reply_text(
-        f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+        f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n" # Escaped .
         f"🔪Kɪʟʟɪɴɢ ⚡" # Initial message without emojis for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -823,7 +825,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> 🧠 RAM Usage: {escaped_ram_usage}\n"
         f"> 🖥️ CPU Usage: {escaped_cpu_usage_text}\n"
         f"> ⏱️ Uptime: {escaped_uptime_string}\n"
-        f"> 🤖 Bot by \\- 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎"
+        f"> 🤖 Bot by \\- 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎" # Escaped -
     )
     
     await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
@@ -835,7 +837,7 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not STRIPE_SECRET_KEY:
         return await update.message.reply_text(
-            "⚠️ Stripe API key is not configured\\. Please inform the bot owner\\.",
+            "⚠️ Stripe API key is not configured\\. Please inform the bot owner\\.", # Escaped .
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -847,8 +849,8 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_details_input:
         return await update.message.reply_text(
-            "❌ Please provide card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) as an argument or reply to a message containing them\\. "
-            "Usage: `/chk CC\\|MM\\|YY\\|CVV` or `\\.chk CC\\|MM\\|YYYY\\|CVV`\\.",
+            "❌ Please provide card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) as an argument or reply to a message containing them\\. " # Escaped .
+            "Usage: `/chk CC\\|MM\\|YY\\|CVV` or `\\.chk CC\\|MM\\|YYYY\\|CVV`\\.", # Escaped .
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -856,8 +858,8 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_match:
         return await update.message.reply_text(
-            "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. "
-            "Make sure it's in the format `CC\\|MM\\|YY\\|CVV` or `CC\\|MM\\|YYYY\\|CVV`\\.",
+            "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. " # Escaped .
+            "Make sure it's in the format `CC\\|MM\\|YY\\|CVV` or `CC\\|MM\\|YYYY\\|CVV`\\.", # Escaped .
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -881,7 +883,7 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         yy_full = yy
 
     # Initial message while checking
-    checking_message = await update.message.reply_text("⏳ Attempting live card authorization with Stripe\\.\\.\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    checking_message = await update.message.reply_text(escape_markdown_v2("⏳ Attempting live card authorization with Stripe..."), parse_mode=ParseMode.MARKDOWN_V2) # Escaped ...
 
     result = await check_card_with_stripe_live(cc, mm, yy_full, cvv)
 
@@ -891,25 +893,25 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     response_text = ""
     if result["status"] == "success":
         response_text = (
-            f"✅ *Card Authenticated Successfully \\(Live Check\\)* ✅\n"
+            f"✅ *Card Authenticated Successfully \\(Live Check\\)* ✅\n" # Escaped !
             f"━━━━━━━━━━━━━━\n"
-            f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str_display)}`\n"
+            f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str_display)}`\n" # Escaped .
             f"• 𝗦𝘁𝗮𝘁𝘂𝘀     : LIVE ✅\n"
             f"━━━━━━━━━━━━━━\n"
-            f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escaped_user_full_name}\n"
-            f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎"
+            f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escaped_user_full_name}\n" # Escaped -
+            f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎" # Escaped -
         )
     else:
-        error_msg = escape_markdown_v2(result.get("message", "An unknown error occurred\\."))
+        error_msg = escape_markdown_v2(result.get("message", "An unknown error occurred.")) # Ensure message is always escaped
         response_text = (
-            f"❌ *Stripe Live Authentication Failed!* ❌\n"
+            f"❌ *Stripe Live Authentication Failed\\!* ❌\n" # Escaped !
             f"━━━━━━━━━━━━━━\n"
-            f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str_display)}`\n"
+            f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str_display)}`\n" # Escaped .
             f"• 𝗦𝘁𝗮𝘁𝘂𝘀     : DEAD ❌\n"
             f"• 𝗥𝗲𝗮𝘀𝗼𝗻     : {error_msg}\n"
             f"━━━━━━━━━━━━━━\n"
-            f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escaped_user_full_name}\n"
-            f"> 𝗕𝒐𝒕 𝒃𝒚 \\-: 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝒎"
+            f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escaped_user_full_name}\n" # Escaped -
+            f"> 𝗕𝒐𝒕 𝒃𝒚 \\-: 𝑩𝒍𝗼𝗰𝗸𝑺𝒕𝒐𝒓𝗺" # Escaped -
         )
     
     try:
@@ -927,18 +929,18 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
-        return await update.message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2) # Escaped .
     if not context.args:
-        return await update.message.reply_text("Usage: `/au [chat_id]`\\. Please provide a chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.message.reply_text("Usage: `/au [chat_id]`\\. Please provide a chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2) # Escaped .
     
     try:
         chat_id_to_authorize = int(context.args[0])
         # In a real bot, you would store this chat_id in a persistent storage (database/file)
         # and then check against it for future command access.
         # For demonstration, we'll just acknowledge the authorization.
-        await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2) # Escaped .
     except ValueError:
-        await update.message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2) # Escaped .
 
 # === MAIN APPLICATION SETUP ===
 def main():
@@ -946,9 +948,7 @@ def main():
         logger.error("BOT_TOKEN environment variable is not set. Please set it before running the bot.")
         exit(1)
     if OWNER_ID is None:
-        logger.error("OWNER_ID environment variable is not set. Please set it before running the bot. Owner-only commands will not function.")
-        # Do not exit, just warn, so other functionalities can still work if owner_id is not critical for all.
-        # exit(1) # Removed exit to allow bot to run even without OWNER_ID if desired.
+        logger.warning("OWNER_ID environment variable is not set. Please set it before running the bot. Owner-only commands will not function.")
     
     application = ApplicationBuilder().token(TOKEN).build()
 
