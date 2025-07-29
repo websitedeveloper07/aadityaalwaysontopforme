@@ -31,8 +31,9 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 else:
     # Log a warning if the key is not set, the bot will still run but Stripe checker won't work
-    print("STRIPE_SECRET_KEY environment variable is not set. Stripe checker will not function.")
-    # logger.warning("STRIPE_SECRET_KEY environment variable is not set. Stripe checker will not function.")
+    print("STRIPE_SECRET_KEY environment variable is not set\\. Stripe checker will not function\\.")
+    logger.warning("STRIPE_SECRET_KEY environment variable is not set\\. Stripe checker will not function\\.")
+
 
 # === LOGGING SETUP ===
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -53,7 +54,9 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 # === HELPER FUNCTIONS ===
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for MarkdownV2 formatting."""
-    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    # List of characters to escape: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
+    # The backslash itself must be escaped first.
+    escape_chars = r'_*[]()~`>#+-=|{}.!\'
     return re.sub(r'([%s])' % re.escape(escape_chars), r'\\\1', text)
 
 def get_short_country_name(full_name: str) -> str:
@@ -132,7 +135,7 @@ async def fetch_bin_info_bintable(bin_number: str) -> dict | None:
                 elif resp.status == 404:
                     logger.info(f"BIN {bin_number} not found on Bintable.")
                 else:
-                    logger.warning(f"Bintable API error for BIN {bin_number}: {resp.status} - {await resp.text()}")
+                    logger.warning(f"Bintable API error for BIN {bin_number}: {resp.status} \\- {await resp.text()}")
     except aiohttp.ClientError as e:
         logger.error(f"Network error fetching Bintable info: {e}")
     except Exception as e:
@@ -161,7 +164,7 @@ async def fetch_bin_info_binlist(bin_number: str) -> dict | None:
                 elif resp.status == 404:
                     logger.info(f"BIN {bin_number} not found on Binlist.")
                 else:
-                    logger.warning(f"Binlist API error for BIN {bin_number}: {resp.status} - {await resp.text()}")
+                    logger.warning(f"Binlist API error for BIN {bin_number}: {resp.status} \\- {await resp.text()}")
     except aiohttp.ClientError as e:
         logger.error(f"Network error fetching Binlist info: {e}")
     except Exception as e:
@@ -193,7 +196,7 @@ async def fetch_bin_info_bincheckio(bin_number: str) -> dict | None:
                 elif resp.status == 404:
                     logger.info(f"BIN {bin_number} not found on Bincheck.io.")
                 else:
-                    logger.warning(f"Bincheck.io API error for BIN {bin_number}: {resp.status} - {await resp.text()}")
+                    logger.warning(f"Bincheck.io API error for BIN {bin_number}: {resp.status} \\- {await resp.text()}")
     except aiohttp.ClientError as e:
         logger.error(f"Network error fetching Bincheck.io info: {e}")
     except Exception as e:
@@ -238,7 +241,7 @@ async def check_card_with_stripe_live(card_number: str, exp_month: str, exp_year
     to check if a card is live using Stripe.
     """
     if not stripe.api_key:
-        return {"status": "error", "message": "Stripe API key not configured. Contact bot owner."}
+        return {"status": "error", "message": "Stripe API key not configured\\. Contact bot owner\\."}
 
     # Use a unique ID for idempotency to prevent duplicate charges
     idempotency_key = f"auth_check_{uuid.uuid4()}"
@@ -282,30 +285,30 @@ async def check_card_with_stripe_live(card_number: str, exp_month: str, exp_year
                     idempotency_key=f"{idempotency_key}_refund" # Idempotency for refund
                 )
                 logger.info(f"Successfully authorized and refunded card: {card_number[:6]}...{card_number[-4:]}")
-                return {"status": "success", "message": "Card is LIVE and refunded.", "stripe_status": payment_intent.status, "refund_status": refund.status}
+                return {"status": "success", "message": "Card is LIVE and refunded\\.", "stripe_status": payment_intent.status, "refund_status": refund.status}
             except stripe.error.StripeError as e:
-                logger.error(f"Stripe Refund Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} (Code: {e.code})")
+                logger.error(f"Stripe Refund Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} \\(Code: {e.code}\\)")
                 # Even if refund fails, the card was likely live.
-                return {"status": "success", "message": f"Card is LIVE but refund failed: {escape_markdown_v2(e.user_message)}. Manual refund may be needed.", "stripe_status": payment_intent.status}
+                return {"status": "success", "message": f"Card is LIVE but refund failed: {escape_markdown_v2(e.user_message)}\\. Manual refund may be needed\\.", "stripe_status": payment_intent.status}
         else:
             # PaymentIntent failed or requires further action (e.g., 3D Secure)
             # For a simple checker, anything not 'succeeded' is usually considered dead.
             logger.warning(f"Stripe PaymentIntent status for {card_number[:6]}...{card_number[-4:]}: {payment_intent.status}")
-            return {"status": "failed", "message": f"Card is DEAD. Status: {escape_markdown_v2(payment_intent.status)}", "stripe_status": payment_intent.status}
+            return {"status": "failed", "message": f"Card is DEAD\\. Status: {escape_markdown_v2(payment_intent.status)}", "stripe_status": payment_intent.status}
 
     except stripe.error.CardError as e:
         # A decline or card-related error occurred
-        logger.warning(f"Stripe Card Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} (Code: {e.code})")
-        return {"status": "failed", "message": f"Card is DEAD. Reason: {escape_markdown_v2(e.user_message)}", "code": e.code, "stripe_status": e.code}
+        logger.warning(f"Stripe Card Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} \\(Code: {e.code}\\)")
+        return {"status": "failed", "message": f"Card is DEAD\\. Reason: {escape_markdown_v2(e.user_message)}", "code": e.code, "stripe_status": e.code}
     except stripe.error.RateLimitError as e:
         logger.error(f"Stripe Rate Limit Error: {e.user_message}")
-        return {"status": "error", "message": "Stripe API rate limit exceeded\\. Please try again later\\."}
+        return {"status": "error", "message": "Stripe API rate limit exceeded\\.\\ Please try again later\\."}
     except stripe.error.AuthenticationError as e:
-        logger.error(f"Stripe Authentication Error: {e.user_message}. Check your API key.")
+        logger.error(f"Stripe Authentication Error: {e.user_message}\\. Check your API key\\.")
         return {"status": "error", "message": "Stripe API authentication failed\\. Contact bot owner\\."}
     except stripe.error.StripeError as e:
         # Other Stripe API errors (e.g., network, invalid request)
-        logger.error(f"General Stripe API Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} (Type: {e.error.type})")
+        logger.error(f"General Stripe API Error for {card_number[:6]}...{card_number[-4:]}: {e.user_message} \\(Type: {e.error.type}\\)")
         return {"status": "error", "message": f"An error occurred with Stripe: {escape_markdown_v2(e.user_message)}"}
     except Exception as e:
         logger.error(f"Unexpected error during live Stripe check: {e}", exc_info=True)
@@ -428,7 +431,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     status_message = await update.message.reply_text(
-        f"⚙️ Generating 10 cards for BIN: `{escape_markdown_v2(bin_number)}`\\.\n_This may take a moment\\._",
+        f"⚙️ Generating 10 cards for BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n_This may take a moment\\._",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
@@ -436,7 +439,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not bin_details:
         await status_message.edit_text(
-            f"❌ Could not retrieve details for BIN: `{escape_markdown_v2(bin_number)}`\\.\n"
+            f"❌ Could not retrieve details for BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n"
             "Please check the BIN or try again later\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
@@ -491,7 +494,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not generated_cards:
         await status_message.edit_text(
-            f"⚠️ Could not generate any valid cards for BIN: `{escape_markdown_v2(bin_number)}`\\.\n"
+            f"⚠️ Could not generate any valid cards for BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n"
             "This might happen for very specific or invalid BINs\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
@@ -517,7 +520,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• 𝗖𝗮𝗿𝗱 𝗧𝘆𝗽𝗲    : `{type_}`\n"
         f"• 𝗖𝗮𝗿𝗱 𝗟𝗲𝘃𝗲𝗹  : `{level} {level_emoji}`\n"
         f"• 𝗕𝗮𝗻𝗸 𝗡𝗮𝗺𝗲   : `{bank_name}`\n"
-        f"• 𝗖𝗼𝘂𝗻𝘁𝗿𝘆       : `{country_name} ({country_iso})`\n"
+        f"• 𝗖𝗼𝘂𝗻𝘁𝗿𝘆       : `{country_name} \\({country_iso}\\)`\n"
         f"• 𝗩𝗕𝗩 𝗦𝘁𝗮𝘁𝘂𝘀  : `{get_vbv_status_display('N/A')}`\n"
         f"━━━━━━━━━━━━━━\n"
         f"🌐 𝗪𝗲𝗯𝘀𝗶𝘁𝗲       : `{website}`\n"
@@ -527,7 +530,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{card_list_text}\n"
         f"━━━━━━━━━━━━━━\n"
         f"> 𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗲𝗱 𝗯𝘆 \\-: {escape_markdown_v2(update.effective_user.full_name)}\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝗼𝗿𝗺"
+        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
     )
 
     await status_message.edit_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -551,7 +554,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     status_message = await update.message.reply_text(
-        f"🔍 Looking up BIN: `{escape_markdown_v2(bin_number)}`\\.\n_This may take a moment\\._",
+        f"🔍 Looking up BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n_This may take a moment\\._",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
@@ -559,7 +562,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not bin_details:
         await status_message.edit_text(
-            f"❌ Could not retrieve details for BIN: `{escape_markdown_v2(bin_number)}`\\.\n"
+            f"❌ Could not retrieve details for BIN: `{escape_markdown_v2(bin_number)}`\\.\\\n"
             "Please check the BIN or try again later\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
@@ -583,7 +586,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• 𝗖𝗮𝗿𝗱 𝗧𝘆𝗽𝗲    : `{type_}`\n"
         f"• 𝗖𝗮𝗿𝗱 𝗟𝗲𝘃𝗲𝗹  : `{level} {level_emoji}`\n"
         f"• 𝗕𝗮𝗻𝗸 𝗡𝗮𝗺𝗲   : `{bank_name}`\n"
-        f"• 𝗖𝗼𝘂𝗻𝘁𝗿𝘆       : `{country_name} ({country_iso})`\n"
+        f"• 𝗖𝗼𝘂𝗻𝘁𝗿𝘆       : `{country_name} \\({country_iso}\\)`\n"
         f"• 𝗩𝗕𝗩 𝗦𝘁𝗮𝘁𝘂𝘀  : `{get_vbv_status_display('N/A')}`\n"
         f"━━━━━━━━━━━━━━\n"
         f"🌐 𝗪𝗲𝗯𝘀𝗶𝘁𝗲       : `{website}`\n"
@@ -598,7 +601,6 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message: Update.effective_message):
     """Helper function to simulate card killing with animation."""
     animation_frames = ["⚡", "✨", "🔥"]
-    killing_text = "Killing ⚡"
     
     start_time = time.time()
     last_update_time = start_time
@@ -617,7 +619,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
                     f"💀 *Card Killer \\(Simulating\\)* 💀\n"
                     f"━━━━━━━━━━━━━━\n"
                     f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n"
-                    f"• 𝗦𝘁𝗮𝘁𝘂𝘀     : {current_killing_text}\n"
+                    f"• 𝗦𝘁𝗮𝘁𝘂𝘀     : {escape_markdown_v2(current_killing_text)}\n"
                     f"• 𝗧𝗶𝗺𝗲 𝗘𝗹𝗮𝗽𝘀𝗲𝗱: `{escape_markdown_v2(str(timedelta(seconds=int(time.time() - start_time))))}`\n"
                     f"━━━━━━━━━━━━━━\n"
                     f"> 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁\\.\n"
@@ -650,7 +652,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
                 f"• 𝗖𝗮𝗿𝗱 𝗟𝗲𝘃𝗲𝗹: `{escape_markdown_v2(bin_details.get('level', 'N/A'))}`\n"
             )
         else:
-            card_info_text = "• 𝗖𝗮𝗿𝗱 𝗜𝗻𝗳𝗼 : `N/A (BIN lookup failed)`\n"
+            card_info_text = "• 𝗖𝗮𝗿𝗱 𝗜𝗻𝗳𝗼 : `N/A \\(BIN lookup failed\\)`\n"
 
     # For Mastercard, add a random success percentage
     success_percentage_text = ""
@@ -701,7 +703,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not card_match:
         return await update.message.reply_text(
             "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. "
-            "Make sure it's in the format `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV`\\.",
+            "Make sure it's in the format `CC\\|MM\\|YY\\|CVV` or `CC\\|MM\\|YYYY\\|CVV`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -783,7 +785,7 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not card_match:
         return await update.message.reply_text(
             "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. "
-            "Make sure it's in the format `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV`\\.",
+            "Make sure it's in the format `CC\\|MM\\|YY\\|CVV` or `CC\\|MM\\|YYYY\\|CVV`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -807,7 +809,8 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         yy_full = yy
 
     # Initial message while checking
-    checking_message = await update.message.reply_text("⏳ Attempting live card authorization with Stripe...", parse_mode=ParseMode.MARKDOWN_V2)
+    # FIXED: Escaped the ellipsis
+    checking_message = await update.message.reply_text("⏳ Attempting live card authorization with Stripe\\.\\.\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     result = await check_card_with_stripe_live(cc, mm, yy_full, cvv)
 
@@ -826,7 +829,7 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
         )
     else:
-        error_msg = escape_markdown_v2(result.get("message", "An unknown error occurred."))
+        error_msg = escape_markdown_v2(result.get("message", "An unknown error occurred\\."))
         response_text = (
             f"❌ *Stripe Live Authentication Failed!* ❌\n"
             f"━━━━━━━━━━━━━━\n"
@@ -892,11 +895,11 @@ async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     if TOKEN is None:
-        logger.error("BOT_TOKEN environment variable is not set. Exiting.")
+        logger.error("BOT_TOKEN environment variable is not set\\. Exiting\\.")
         exit(1)
     
     if OWNER_ID is None:
-        logger.warning("OWNER_ID environment variable is not set. Owner-only commands will not function.")
+        logger.warning("OWNER_ID environment variable is not set\\. Owner\\-only commands will not function\\.")
 
     application = ApplicationBuilder().token(TOKEN).build()
 
@@ -925,7 +928,7 @@ def main():
     # Add the error handler
     application.add_error_handler(error_handler)
 
-    logger.info("Bot started polling...")
+    logger.info("Bot started polling\\.\\.\\.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
