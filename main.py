@@ -527,7 +527,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{card_list_text}\n"
         f"━━━━━━━━━━━━━━\n"
         f"> 𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗲𝗱 𝗯𝘆 \\-: {escape_markdown_v2(update.effective_user.full_name)}\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
+        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝗼𝗿𝗺"
     )
 
     await status_message.edit_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -590,7 +590,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁     : `{phone}`\n"
         f"━━━━━━━━━━━━━━\n"
         f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escape_markdown_v2(update.effective_user.full_name)}\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
+        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
     )
     await status_message.edit_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -621,7 +621,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
                     f"• 𝗧𝗶𝗺𝗲 𝗘𝗹𝗮𝗽𝘀𝗲𝗱: `{escape_markdown_v2(str(timedelta(seconds=int(time.time() - start_time))))}`\n"
                     f"━━━━━━━━━━━━━━\n"
                     f"> 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁\\.\n"
-                    f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎",
+                    f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺",
                     parse_mode=ParseMode.MARKDOWN_V2
                 )
                 last_update_time = time.time()
@@ -666,7 +666,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         f"{success_percentage_text}"
         f"━━━━━━━━━━━━━━\n"
         f"> 𝗞𝗶𝗹𝗹𝗲𝗿     : {escape_markdown_v2(update.effective_user.full_name)}\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎\n"
+        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺\n"
         f"> 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻: `{escape_markdown_v2(str(timedelta(seconds=int(time_taken))))}`"
     )
     
@@ -715,7 +715,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• 𝗧𝗶𝗺𝗲 𝗘𝗹𝗮𝗽𝘀𝗲𝗱: `0:00:00`\n"
         f"━━━━━━━━━━━━━━\n"
         f"> 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁\\.\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎",
+        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺",
         parse_mode=ParseMode.MARKDOWN_V2
     )
     
@@ -751,7 +751,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀: `{total_users}`\n"
         f"━━━━━━━━━━━━━━\n"
         f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escape_markdown_v2(update.effective_user.full_name)}\n"
-        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
+        f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
     )
     await update.message.reply_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -823,7 +823,7 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"• 𝗦𝘁𝗮𝘁𝘂𝘀     : LIVE ✅\n"
             f"━━━━━━━━━━━━━━\n"
             f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escaped_user_full_name}\n"
-            f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
+            f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
         )
     else:
         error_msg = escape_markdown_v2(result.get("message", "An unknown error occurred."))
@@ -835,7 +835,7 @@ async def stripe_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"• 𝗥𝗲𝗮𝘀𝗼𝗻     : {error_msg}\n"
             f"━━━━━━━━━━━━━━\n"
             f"> 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 \\-: {escaped_user_full_name}\n"
-            f"> 𝗕𝒐𝒕 𝒃𝒚 \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
+            f"> 𝗕𝒐𝒕 𝒃𝒚 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
         )
     
     try:
