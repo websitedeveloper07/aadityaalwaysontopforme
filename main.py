@@ -550,7 +550,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         "Killing⚡⚡",
         "Killing⚡"
     ]
-    frame_interval = 1.0 # seconds per frame update
+    frame_interval = 2.0 # seconds per frame update (Increased to reduce API calls)
 
     elapsed_animation_time = 0
     frame_index = 0
@@ -565,8 +565,9 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
             , parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
             # This specific error means content is identical, so we just log and continue.
-            if "Message is not modified" in str(e):
-                logger.debug(f"Message not modified during animation: {e}")
+            # Or if it's a flood control error, we still continue after the sleep.
+            if "Message is not modified" in str(e) or "Flood control exceeded" in str(e):
+                logger.debug(f"Message not modified or flood control hit during animation: {e}")
             else:
                 # Other BadRequest errors might be critical, so log but DO NOT BREAK.
                 # We need the sleep to continue to ensure the full kill_time is met.
@@ -589,7 +590,8 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     time_taken = round(time.time() - start_time)
 
     # Get BIN details for stylish info
-    bin_number = full_card_str.split('|')[0][:6] # Extract BIN from full_card_str
+    cc_part = full_card_str.split('|')[0]
+    bin_number = cc_part[:6]
     bin_details = await get_bin_details(bin_number)
 
     # Escape dynamic parts for MarkdownV2, careful with emojis
