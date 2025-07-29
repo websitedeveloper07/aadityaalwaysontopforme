@@ -56,7 +56,8 @@ def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for MarkdownV2 formatting."""
     # List of characters to escape: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
     # The backslash itself must be escaped first.
-    escape_chars = r'_*[]()~`>#+-=|{}.!\'
+    # FIXED: Changed to a regular string and escaped the backslash properly.
+    escape_chars = '_*[]()~`>#+-=|{}.!\\' 
     return re.sub(r'([%s])' % re.escape(escape_chars), r'\\\1', text)
 
 def get_short_country_name(full_name: str) -> str:
@@ -525,9 +526,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"━━━━━━━━━━━━━━\n"
         f"🌐 𝗪𝗲𝗯𝘀𝗶𝘁𝗲       : `{website}`\n"
         f"📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁     : `{phone}`\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"𝗖𝗮𝗿𝗱𝘀 \\(CC\\|MM\\|YY\\|CVV\\):\n"
-        f"{card_list_text}\n"
         f"━━━━━━━━━━━━━━\n"
         f"> 𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗲𝗱 𝗯𝘆 \\-: {escape_markdown_v2(update.effective_user.full_name)}\n"
         f"> 𝗕𝗼𝘁 𝗯𝘆 \\-: 𝑩𝒍𝗼𝗰𝗸𝗦𝘁𝗼𝗿𝗺"
