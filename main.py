@@ -342,7 +342,7 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "*💳 Generate Cards*\n" +
             "Usage: `/gen [bin]` or `\\.gen [bin]`\n" +
             "Example: `/gen 453957`\n" +
-            "Generates 10 credit card numbers based on the provided BIN\\.\\\n"
+            "Generates 10 credit cards based on the provided BIN\\.\\\n"
         ).strip()
     elif command_name == "bin":
         usage_text = (
@@ -365,7 +365,7 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "Alternatively, reply to a message with card details using `/kill` or `\\.kill`\\.\n" +
             "Example: `/kill 1234567890123456\\|12\\|25\\|123`\n" +
             "Example: `/kill 1234567890123456\\|12\\|2025\\|123`\n" + # Added YYYY example
-            "Simulates the 'killing' of a card with a random delay, then provides details and time taken\\.\n"
+            "Kills a card. "Visa-100%" and Mastercard above 68%"\\.\n"
         ).strip()
     elif command_name == "au":
         usage_text = (
