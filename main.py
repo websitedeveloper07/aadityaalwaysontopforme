@@ -262,7 +262,7 @@ async def get_bin_details(bin_number):
         details["country_name"] = country_info.get("name", details["country_name"])
         details["country_emoji"] = country_info.get("flag", details["country_emoji"]) 
         details["scheme"] = card_info.get("scheme", details["scheme"]).capitalize()
-        details["card_type"] = card_info.get("type", details["type"]).capitalize() # Corrected to 'type'
+        details["card_type"] = card_info.get("type", details["card_type"]).capitalize()
         details["level"] = card_info.get("category", details["level"]).capitalize()
     else:
         binlist_data = await fetch_bin_info_binlist(bin_number)
@@ -531,9 +531,100 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
+async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message):
+    """
+    Handles the long-running kill animation and final message.
+    This function is designed to be run as a separate asyncio task.
+    """
+    time_taken = 0 # Initialize time_taken
+
+    # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
+    kill_time = random.uniform(30, 78) 
+    start_time = time.time()
+
+    # Animation frames for "Killing..." using ⚡ emoji
+    animation_states = [
+        "Killing⚡",
+        "Killing⚡⚡",
+        "Killing⚡⚡⚡",
+        "Killing⚡⚡",
+        "Killing⚡"
+    ]
+    frame_interval = 1.0 # seconds per frame update
+
+    elapsed_animation_time = 0
+    frame_index = 0
+
+    while elapsed_animation_time < kill_time:
+        current_frame = animation_states[frame_index % len(animation_states)]
+        # Edit the initial message to show the animation
+        try:
+            await initial_message.edit_text(
+                f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+                f"🔪 {current_frame}"
+            , parse_mode=ParseMode.MARKDOWN_V2)
+        except BadRequest as e:
+            # This specific error means content is identical, so we just log and continue.
+            if "Message is not modified" in str(e):
+                logger.debug(f"Message not modified during animation: {e}")
+            else:
+                # Other BadRequest errors might be critical, so log but DO NOT BREAK.
+                # We need the sleep to continue to ensure the full kill_time is met.
+                logger.warning(f"Failed to edit message during animation (BadRequest, non-modified): {e}")
+        except Exception as e:
+            logger.warning(f"Failed to edit message during animation (General Error): {e}")
+            # For any other unexpected error, log but DO NOT BREAK.
+            # We need the sleep to continue to ensure the full kill_time is met.
+        
+        # Calculate remaining time for sleep to ensure total kill_time is met
+        sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
+        if sleep_duration <= 0:
+            break # No more time left to sleep
+        await asyncio.sleep(sleep_duration)
+        
+        elapsed_animation_time = time.time() - start_time
+        frame_index += 1
+
+    # Calculate actual time taken after the loop finishes
+    time_taken = round(time.time() - start_time)
+
+    # Get BIN details for stylish info
+    bin_number = full_card_str.split('|')[0][:6] # Extract BIN from full_card_str
+    bin_details = await get_bin_details(bin_number)
+
+    # Escape dynamic parts for MarkdownV2, careful with emojis
+    bank_name = escape_markdown_v2(bin_details["bank"])
+    level = escape_markdown_v2(bin_details["level"])
+    level_emoji = get_level_emoji(bin_details["level"]) # Emoji doesn't need escaping
+    brand = escape_markdown_v2(bin_details["scheme"])
+
+    # Determine header based on card scheme
+    header_title = "⚡ 𝑪𝑨𝑹𝑫 𝑲𝑰𝑳𝑳𝑬𝑫"
+    if bin_details["scheme"].lower() == 'mastercard':
+        # Generate random percentage > 67%
+        percentage = random.randint(68, 100) 
+        header_title = f"⚡𝑪𝑨𝑹𝑫 𝑲𝑰𝑳𝑳𝑬𝑫 \\- {percentage}\\%" # Escaping - and % for MarkdownV2
+
+    # Construct the final message using a single f-string for easy modification
+    # Manual padding for visual alignment of colons
+    final_message_text_formatted = (
+        f"╭───[ {header_title} ]───╮\n"
+        f"\n"
+        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n" # Added Card No. line
+        f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
+        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
+        f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       : `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      : `𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎`\n"
+        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
+        f"\n"
+        f"╰────────────────────╯"
+    )
+
+    await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
+
+
 async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Initialize time_taken at the beginning to prevent NameError if loop breaks early
-    time_taken = 0 
     card_details_input = None
 
     # 1. Try to get card details from command arguments
@@ -583,95 +674,14 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
+    # Send the initial message and store it to edit later
     initial_message = await update.message.reply_text(
         f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-        f"🔪 Kɪʟʟɪɴɢ ⚡" # Initial message without emojis for animation
+        f"🔪 Killing" # Initial message without emojis for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
-    kill_time = random.uniform(30, 78) 
-    start_time = time.time()
-
-    # Animation frames for "Killing..." using ⚡ emoji
-    animation_states = [
-        " Kɪʟʟɪɴɢ ⚡",
-        " Kɪʟʟɪɴɢ ⚡⚡",
-        " Kɪʟʟɪɴɢ ⚡⚡⚡",
-        " Kɪʟʟɪɴɢ ⚡⚡",
-        " Kɪʟʟɪɴɢ ⚡"
-    ]
-    frame_interval = 1.0 # seconds per frame update
-
-    elapsed_animation_time = 0
-    frame_index = 0
-
-    while elapsed_animation_time < kill_time:
-        current_frame = animation_states[frame_index % len(animation_states)]
-        # Edit the initial message to show the animation
-        try:
-            await initial_message.edit_text(
-                f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-                f"🔪 {current_frame}"
-            , parse_mode=ParseMode.MARKDOWN_V2)
-        except BadRequest as e:
-            # This specific error means content is identical, so we just log and continue.
-            if "Message is not modified" in str(e):
-                logger.debug(f"Message not modified during animation: {e}")
-            else:
-                # Other BadRequest errors might be critical, so log but DO NOT BREAK.
-                # We need the sleep to continue to ensure the full kill_time is met.
-                logger.warning(f"Failed to edit message during animation (BadRequest, non-modified): {e}")
-        except Exception as e:
-            logger.warning(f"Failed to edit message during animation (General Error): {e}")
-            # For any other unexpected error, log but DO NOT BREAK.
-            # We need the sleep to continue to ensure the full kill_time is met.
-        
-        # Calculate remaining time for sleep to ensure total kill_time is met
-        sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
-        if sleep_duration <= 0:
-            break # No more time left to sleep
-        await asyncio.sleep(sleep_duration)
-        
-        elapsed_animation_time = time.time() - start_time
-        frame_index += 1
-
-    # Calculate actual time taken after the loop finishes
-    time_taken = round(time.time() - start_time)
-
-    # Get BIN details for stylish info
-    bin_number = cc[:6]
-    bin_details = await get_bin_details(bin_number)
-
-    # Escape dynamic parts for MarkdownV2, careful with emojis
-    bank_name = escape_markdown_v2(bin_details["bank"])
-    level = escape_markdown_v2(bin_details["level"])
-    level_emoji = get_level_emoji(bin_details["level"]) # Emoji doesn't need escaping
-    brand = escape_markdown_v2(bin_details["scheme"])
-
-    # Determine header based on card scheme
-    header_title = "⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
-    if bin_details["scheme"].lower() == 'mastercard':
-        # Generate random percentage > 67%
-        percentage = random.randint(68, 100) 
-        header_title = f"⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%" # Escaping - and % for MarkdownV2
-
-    # Construct the final message using a single f-string for easy modification
-    # Manual padding for visual alignment of colons
-    final_message_text_formatted = (
-        f"╭───[ {header_title} ]───╮\n"
-        f"\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n" # Added Card No. line
-        f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
-        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
-        f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
-        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      :  𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎\n"
-        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
-        f"\n"
-        f"╰────────────────────╯"
-    )
-
-    await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
+    # Create a separate task for the long-running kill process
+    asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message))
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -741,12 +751,15 @@ def main():
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
-    application.add_handler(CommandHandler("kill", kill))
+    # Explicitly add filters for private and group chats for kill command
+    application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
+
     application.add_handler(CommandHandler("au", authorize_group))
 
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*"), kill))
+    # Explicitly add filters for private and group chats for .kill message handler
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
 
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
