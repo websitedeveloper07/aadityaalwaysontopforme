@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Secure Card Input</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        /* Basic styling for Stripe Elements - you can customize this */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1 {
+            color: #007bff;
+        }
+        form {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        #card-element {
+            border: 1px solid #ced4da;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover:enabled {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #a0c9f1;
+            cursor: not-allowed;
+        }
+        #card-errors {
+            color: #dc3545; /* Red color for errors */
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        #token-result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border: 1px dashed #6c757d;
+            border-radius: 4px;
+            word-break: break-all; /* Ensures long tokens wrap */
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Secure Card Input</h1>
+    <form id="payment-form">
+        <label for="card-element">
+            Credit or debit card
+        </label>
+        <div id="card-element">
+            </div>
+
+        <button id="submit-button">Submit Card</button>
+
+        <div id="card-errors" role="alert"></div>
+        <p id="token-result">
+            Once you submit, your PaymentMethod ID will appear here. Copy it to use with your bot.
+        </p>
+    </form>
+
+    <script>
+        // Initialize Stripe with your Publishable Key
+        // Your provided Test Publishable Key
+        const stripe = Stripe('pk_test_51RaI3z9TDeGbKTRN2Lx3c7GyqFg51uTE5EJU3JMg0F23ZGacpsPDgXZKPEKcy6tVza5Hw4VWsKWD4OxAVXcmhn4I00YPF67Nqf');
+        const elements = stripe.elements();
+
+        // Create an instance of the card Element.
+        const card = elements.create('card', {
+            style: {
+                base: {
+                    iconColor: '#666EE8',
+                    color: '#313259',
+                    fontWeight: '300',
+                    fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                    fontSize: '16px',
+                    '::placeholder': {
+                        color: '#CFD7E0',
+                    },
+                },
+            }
+        });
+
+        // Add an instance of the card Element into the `card-element` div.
+        card.mount('#card-element');
+
+        const form = document.getElementById('payment-form');
+        const cardErrors = document.getElementById('card-errors');
+        const tokenResult = document.getElementById('token-result');
+        const submitButton = document.getElementById('submit-button');
+
+        // Handle real-time validation errors from the card Element.
+        card.addEventListener('change', (event) => {
+            if (event.error) {
+                cardErrors.textContent = event.error.message;
+            } else {
+                cardErrors.textContent = '';
+            }
+            // Enable/disable the submit button based on card input completeness
+            submitButton.disabled = !event.complete;
+        });
+
+        // Handle form submission.
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            submitButton.disabled = true; // Disable button to prevent multiple submissions
+
+            cardErrors.textContent = '';
+            tokenResult.textContent = 'Processing...';
+
+            // Create a PaymentMethod token from the card Element
+            const { error, paymentMethod } = await stripe.createPaymentMethod({
+                type: 'card',
+                card: card,
+            });
+
+            if (error) {
+                // Inform the user if there was an error.
+                cardErrors.textContent = error.message;
+                tokenResult.textContent = 'Failed to get PaymentMethod ID.';
+                submitButton.disabled = false;
+            } else {
+                // Send the paymentMethod.id to your backend server (which then talks to your bot)
+                // For direct testing, you can copy this ID and send it to your bot's command.
+                tokenResult.textContent = 'Success! Copy this PaymentMethod ID: ' + paymentMethod.id;
+                // In a real application, you would typically use fetch() to send paymentMethod.id to your server:
+                // fetch('/your-backend-endpoint-to-process-token', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({ paymentMethodId: paymentMethod.id, userId: 'some-user-id' })
+                // })
+                // .then(response => response.json())
+                // .then(data => { /* handle response from your server */ })
+                // .catch(error => { /* handle errors */ });
+                submitButton.disabled = false; // Re-enable for new attempts, or redirect user
+            }
+        });
+    </script>
+</body>
+</html>
