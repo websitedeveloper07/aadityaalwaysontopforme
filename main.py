@@ -571,16 +571,49 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     initial_message = await update.message.reply_text(
-        f"Card: `{escape_markdown_v2(full_card_str)}`\n" # Retained this for initial "Killing..." message
-        f"🔪 Killing\\.\\.\\."
+        f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+        f"🔪 Killing" # Initial message without dots for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
 
     # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
     kill_time = random.uniform(30, 78) 
     start_time = time.time()
-    await asyncio.sleep(kill_time)
-    end_time = time.time()
-    time_taken = round(end_time - start_time)
+
+    # Animation frames for "Killing..."
+    animation_states = [
+        "Killing",
+        "Killing.",
+        "Killing..",
+        "Killing...",
+        "Killing..",
+        "Killing."
+    ]
+    frame_interval = 1.0 # seconds per frame update
+
+    elapsed_time = 0
+    frame_index = 0
+
+    while elapsed_time < kill_time:
+        current_frame = animation_states[frame_index % len(animation_states)]
+        # Edit the initial message to show the animation
+        try:
+            await initial_message.edit_text(
+                f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+                f"🔪 {current_frame}"
+            , parse_mode=ParseMode.MARKDOWN_V2)
+        except Exception as e:
+            logger.warning(f"Failed to edit message during animation: {e}")
+            # If editing fails (e.g., message deleted), break the loop
+            break
+        
+        # Calculate remaining time for sleep to ensure total kill_time is met
+        sleep_duration = min(frame_interval, kill_time - elapsed_time)
+        if sleep_duration <= 0:
+            break # No more time left to sleep
+        await asyncio.sleep(sleep_duration)
+        
+        elapsed_time = time.time() - start_time
+        frame_index += 1
 
     # Get BIN details for stylish info
     bin_number = cc[:6]
@@ -599,16 +632,41 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         percentage = random.randint(68, 100) 
         header_title = f"⚡𝑪𝑨𝑹𝑫 𝑲𝑰𝑳𝑳𝑬𝑫 \\- {percentage}\\%" # Escaping - and % for MarkdownV2
 
+    # Define labels and their corresponding values
+    labels = {
+        "Brand": brand,
+        "Issuer": bank_name,
+        "Level": f"{level_emoji} {level}",
+        "Killer": "𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿",
+        "Bot by": "𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎",
+        "Time Taken": f"`{escape_markdown_v2(f'{time_taken:.0f} seconds')}`"
+    }
+
+    # Calculate max label length for alignment
+    # We need to consider the visual length of the bold Unicode characters
+    # For '𝗕𝗿𝗮𝗻𝗱', '𝗜𝘀𝘀𝘂𝗲𝗿', etc., these are wider than single ASCII chars.
+    # A simple len() might not be accurate for visual alignment.
+    # Let's approximate by assuming these bold unicode chars are 1.5x wider or find max actual display width.
+    # For simplicity, I'll use a fixed padding that looks good.
+    # If perfect pixel-perfect alignment is needed, it gets more complex with Unicode widths.
+    max_label_len = max(len(label) for label in labels.keys()) + 2 # Add a bit extra for safety with unicode bold
+
+    details_lines = []
+    for label, value in labels.items():
+        # Using a fixed padding here to ensure alignment. Adjust '14' as needed.
+        # The unicode bold characters are wider, so visual alignment might differ from char count.
+        # MarkdownV2 requires escaping of the colon if it's immediately after a bold/italic.
+        # To ensure alignment AND correct Markdown, we'll format the label and then append the value.
+        padded_label = f"• {label:<10}" # Adjust 10 for desired padding
+        details_lines.append(f"{padded_label} : {value}")
+
+
     # Construct the final message using a single f-string for easy modification
     final_message_text_formatted = (
         f"╭───[ {header_title} ]───╮\n"
         f"\n"
-        f"• 𝗕𝗿𝗮𝗻𝗱    ⫸ {brand}\n"
-        f"• 𝗜𝘀𝘀𝘂𝗲𝗿    ⫸ {bank_name}\n"
-        f"• 𝗟𝗲𝘃𝗲𝗹     ⫸ {level_emoji} {level}\n"
-        f"• 𝗞𝗶𝗹𝗹𝗲𝗿    ⫸ 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
-        f"• 𝗕𝗼𝘁 𝗯𝘆   ⫸ 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎\n"
-        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  ⫸ `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
+        # Join the details lines here
+        + "\n".join(details_lines) + "\n"
         f"\n"
         f"╰────────────────────╯"
     )
