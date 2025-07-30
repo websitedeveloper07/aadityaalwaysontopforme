@@ -13,10 +13,14 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Messa
 from telegram.error import BadRequest
 
 # === CONFIGURATION ===
+# IMPORTANT: Set these as environment variables before running your bot:
+# export BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+# export OWNER_ID="YOUR_TELEGRAM_USER_ID" # Your personal Telegram User ID (numeric)
+# export BINTABLE_API_KEY="YOUR_BINTABLE_API_KEY" # Get this from Bintable.com
 TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 
-BINTABLE_API_KEY = os.getenv("BINTABLE_API_KEY", "d1359fe2b305160dd9b9d895a07b4438794ea1f6") # Using environment variable for API key
+BINTABLE_API_KEY = os.getenv("BINTABLE_API_KEY") # Read directly from environment variable
 BINTABLE_URL = "https://api.bintable.com/v1"
 
 # --- New Configuration ---
@@ -26,9 +30,11 @@ DAILY_KILL_CREDIT_LIMIT = 30
 
 # === GLOBAL STATE ===
 user_last_command = {}
-AUTHORIZED_CHATS = set() # Stores chat_ids of authorized groups (in-memory, resets on bot restart)
-AUTHORIZED_PRIVATE_USERS = set() # Stores user_ids of authorized private users (in-memory, resets on bot restart)
-USER_CREDITS = {} # user_id -> {'credits': int, 'last_credit_reset': datetime} (in-memory, resets on bot restart)
+# These sets/dict are in-memory and will reset on bot restart.
+# For persistence, consider using a simple JSON file or a database.
+AUTHORIZED_CHATS = set() # Stores chat_ids of authorized groups
+AUTHORIZED_PRIVATE_USERS = set() # Stores user_ids of authorized private users
+USER_CREDITS = {} # user_id -> {'credits': int, 'last_credit_reset': datetime}
 
 # === LOGGING SETUP ===
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -40,19 +46,12 @@ def escape_markdown_v2(text: str) -> str:
     """Escapes markdown v2 special characters."""
     # List of special characters in MarkdownV2 that need to be escaped
     # _ * [ ] ( ) ~ ` > # + - = | { } . !
-    # The order matters for some characters, e.g., '[' needs to be escaped before parsing links.
-    # We are using re.sub with a lambda function for each character to handle specific cases.
     
     # Escape characters that are always special
     escaped_text = re.sub(r"([_*\[\]()~`>#+\-=|{}.!])", r"\\\1", text)
     
-    # Handle the case of "period" or "dot" followed by a space (e.g., in file names like "my.file")
-    # This specifically targets dots not followed by a digit (like in numbers 1.23)
-    # or not preceding a space (like in sentences "End of sentence. Next one.")
-    # For simplicity and to avoid over-escaping, let's keep the general escape for now.
-    # If specific issues arise with dots, more complex regex might be needed.
-
-    return escaped_text.replace('\\\\\\\\', '\\\\\\') # Fix double escaping caused by the simple regex for backslashes
+    # Correct common double escaping issue with backslashes
+    return escaped_text.replace('\\\\\\\\', '\\\\\\')
 
 def get_short_country_name(full_name):
     name_map = {
@@ -180,8 +179,8 @@ async def get_bin_details(bin_number):
     }
 
     async with aiohttp.ClientSession() as session:
-        # Try Bintable
-        if BINTABLE_API_KEY != "d1359fe2b305160dd9b9d895a07b4438794ea1f6" and BINTABLE_API_KEY: # Only use if not default key
+        # Try Bintable first if API key is provided
+        if BINTABLE_API_KEY:
             try:
                 bintable_url = f"{BINTABLE_URL}/{bin_number}?api_key={BINTABLE_API_KEY}"
                 async with session.get(bintable_url, timeout=5) as response:
@@ -197,10 +196,14 @@ async def get_bin_details(bin_number):
                             bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
                             logger.info(f"BIN details from Bintable for {bin_number}: {data}")
                             return bin_data
+                    else:
+                        logger.warning(f"Bintable API returned status {response.status} for {bin_number}. Response: {await response.text()}")
             except aiohttp.ClientError as e:
                 logger.warning(f"Bintable API call failed for {bin_number}: {e}")
             except Exception as e:
                 logger.warning(f"Error processing Bintable response for {bin_number}: {e}")
+        else:
+            logger.info("BINTABLE_API_KEY not set. Skipping Bintable lookup.")
 
         # Try Binlist as fallback
         try:
@@ -218,6 +221,8 @@ async def get_bin_details(bin_number):
                         bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
                         logger.info(f"BIN details from Binlist for {bin_number}: {data}")
                         return bin_data
+                else:
+                    logger.warning(f"Binlist API returned status {response.status} for {bin_number}. Response: {await response.text()}")
         except aiohttp.ClientError as e:
             logger.warning(f"Binlist API call failed for {bin_number}: {e}")
         except Exception as e:
@@ -239,6 +244,8 @@ async def get_bin_details(bin_number):
                         bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
                         logger.info(f"BIN details from Bincheck.io for {bin_number}: {data}")
                         return bin_data
+                else:
+                    logger.warning(f"Bincheck.io API returned status {response.status} for {bin_number}. Response: {await response.text()}")
         except aiohttp.ClientError as e:
             logger.warning(f"Bincheck.io API call failed for {bin_number}: {e}")
         except Exception as e:
@@ -286,9 +293,9 @@ def add_credits_to_user(user_id, amount):
     return USER_CREDITS[user_id]['credits']
 
 async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     chat_type = update.effective_chat.type
+    chat_id = update.effective_chat.id # Get chat_id for group check
 
     # Owner can use bot everywhere
     if user_id == OWNER_ID:
@@ -301,7 +308,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
         else:
             keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
+            await update.effective_message.reply_text( # Use effective_message for consistency
                 f"🚫 You are not approved to use bot in private\\. Get the subscription at cheap from {AUTHORIZATION_CONTACT} to use or else use for free in our official group\\.",
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.MARKDOWN_V2
@@ -313,12 +320,12 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
         if chat_id in AUTHORIZED_CHATS:
             return True
         else:
-            await update.message.reply_text(
+            await update.effective_message.reply_text( # Use effective_message for consistency
                 f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return False
-    return False # Should not reach here ordinarily
+    return False # Should not reach here
 
 
 # === COMMAND HANDLERS ===
@@ -326,8 +333,8 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_full_name = escape_markdown_v2(update.effective_user.full_name)
     welcome_message = (
-        f"Hey {user_full_name} \\! I am 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽 your Telegram Bot\\.\n\n"
-        f"I can help you with BIN lookups,Killing and card generation\\.\n\n"
+        f"Hey {user_full_name} \\! I am 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎 your Telegram Bot\\.\n\n"
+        f"I can help you with BIN lookups and card generation\\.\n\n"
         f"Press the button below to see my commands\\."
     )
     keyboard = [
@@ -335,7 +342,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Our Official Group", url=OFFICIAL_GROUP_LINK)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+
+    # Handle both direct /start command and "back to start" callback
+    if update.message: # Direct command
+        await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+    elif update.callback_query: # From inline button
+        query = update.callback_query
+        await query.answer()
+        # Check if the message can be edited, otherwise send new message
+        try:
+            await query.edit_message_text(welcome_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+        except BadRequest as e:
+            if "Message is not modified" in str(e):
+                logger.debug("Message not modified when trying to edit start message.")
+            else:
+                logger.warning(f"Could not edit message for 'back to start', sending new one: {e}")
+                await context.bot.send_message(
+                    chat_id=query.message.chat_id,
+                    text=welcome_message,
+                    reply_markup=reply_markup,
+                    parse_mode=ParseMode.MARKDOWN_V2
+                )
 
 async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -370,10 +397,10 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             "Example: `/bin 400000`"
         ),
         "kill": (
-            "*/kill CC\\|MM\\|YY\\|CVV*\n"
-            "Simulate 'killing' a credit card\\. This is a fun simulation and does NOT affect real cards\\.\n"
-            "You have `30` credits daily for this command\\.\n"
-            "Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
+            f"*/kill CC\\|MM\\|YY\\|CVV*\n"
+            f"Simulate 'killing' a credit card\\. This is a fun simulation and does NOT affect real cards\\.\n"
+            f"You have `{get_user_credits(update.effective_user.id)}` credits daily for this command\\.\n"
+            f"Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
         ),
         "status": (
             "*/status*\n"
@@ -391,21 +418,21 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
     if not await enforce_cooldown(update.effective_user.id):
-        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_input = None
     if context.args:
         bin_input = context.args[0]
-    elif update.message.text:
-        command_text = update.message.text.split(maxsplit=1)
+    elif update.effective_message and update.effective_message.text: # Use effective_message
+        command_text = update.effective_message.text.split(maxsplit=1)
         if len(command_text) > 1:
             bin_input = command_text[1]
 
     if not bin_input:
-        return await update.message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     if len(bin_input) < 6:
-        return await update.message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("⚠️ BIN should be at least 6 digits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_details = await get_bin_details(bin_input[:6])
 
@@ -476,24 +503,24 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> {user_info_block_content.replace('\n', '\n> ')}"
     )
 
-    await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
     if not await enforce_cooldown(update.effective_user.id):
-        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_input = None
     if context.args:
         bin_input = context.args[0]
-    elif update.message.text:
-        command_text = update.message.text.split(maxsplit=1)
+    elif update.effective_message and update.effective_message.text: # Use effective_message
+        command_text = update.effective_message.text.split(maxsplit=1)
         if len(command_text) > 1:
             bin_input = command_text[1]
 
     if not bin_input:
-        return await update.message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/bin [bin]` or `\\.bin [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/bin [bin]` or `\\.bin [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_input = bin_input[:6]
 
@@ -539,7 +566,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     result = f"{bin_info_box}\n\n{user_info_quote_box}"
 
-    await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message):
     """
@@ -644,7 +671,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id != OWNER_ID:
         # For group chats, if not authorized, return
         if (chat_type == 'group' or chat_type == 'supergroup') and update.effective_chat.id not in AUTHORIZED_CHATS:
-            await update.message.reply_text(
+            await update.effective_message.reply_text( # Use effective_message
                 f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
@@ -653,7 +680,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if chat_type == 'private' and user_id not in AUTHORIZED_PRIVATE_USERS:
             keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
+            await update.effective_message.reply_text( # Use effective_message
                 f"🚫 You are not approved to use bot in private\\. Get the subscription at cheap from {AUTHORIZATION_CONTACT} to use or else use for free in our official group\\.",
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.MARKDOWN_V2
@@ -664,14 +691,14 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id != OWNER_ID:
         remaining_credits = get_user_credits(user_id)
         if remaining_credits <= 0:
-            await update.message.reply_text(
+            await update.effective_message.reply_text( # Use effective_message
                 f"❌ You have no credits left for the kill command today\\. Your daily credits will reset soon\\. Use other commands for free in our official group, or contact {AUTHORIZATION_CONTACT} for more credits\\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return
         
     if not await enforce_cooldown(user_id):
-        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     card_details_input = None
 
@@ -680,20 +707,20 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         card_details_input = " ".join(context.args)
         logger.debug(f"Kill command: Card details from args: '{card_details_input}')")
     # 2. If no arguments, try to get from message text for .kill command
-    elif update.message.text and (update.message.text.lower().startswith(".kill ") or update.message.text.lower().startswith("/kill ")):
+    elif update.effective_message and (update.effective_message.text.lower().startswith(".kill ") or update.effective_message.text.lower().startswith("/kill ")):
         # Extract content after the command word
-        parts = update.message.text.split(maxsplit=1)
+        parts = update.effective_message.text.split(maxsplit=1)
         if len(parts) > 1:
             card_details_input = parts[1].strip()
         logger.debug(f"Kill command: Card details from message text: '{card_details_input}'")
     # 3. Fallback to replied message if no direct arguments
-    elif update.message.reply_to_message and update.message.reply_to_message.text:
-        card_details_input = update.message.reply_to_message.text
+    elif update.effective_message and update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
+        card_details_input = update.effective_message.reply_to_message.text
         logger.debug(f"Kill command: Card details from replied message: '{card_details_input}'")
 
     if not card_details_input:
         logger.info("Kill command: No card details found in arguments or replied message.")
-        return await update.message.reply_text(
+        return await update.effective_message.reply_text( # Use effective_message
             "❌ Please provide card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) as an argument or reply to a message containing them\\. "
             "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -706,7 +733,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_match:
         logger.info(f"Kill command: Regex failed to match for input: '{card_details_input}'")
-        return await update.message.reply_text(
+        return await update.effective_message.reply_text( # Use effective_message
             "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. "
             "Make sure it's in the format `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -723,11 +750,11 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id != OWNER_ID:
         consume_credit(user_id)
         remaining_credits_after_use = get_user_credits(user_id) # Get updated credits
-        await update.message.reply_text(f"💳 Card received\\. Your remaining daily credits: `{remaining_credits_after_use}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text(f"💳 Card received\\. Your remaining daily credits: `{remaining_credits_after_use}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
 
     # Send the initial message and store it to edit later
-    initial_message = await update.message.reply_text(
+    initial_message = await update.effective_message.reply_text( # Use effective_message
         f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
         f"🔪Kɪʟʟɪɴɢ ⚡" # Initial message without emojis for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
@@ -777,91 +804,102 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> 🤖 Bot by \\- 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
     )
 
-    await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
-        return await update.message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     if not context.args:
-        return await update.message.reply_text("Usage: `/au [chat_id]`\\. Please provide a chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("Usage: `/au [chat_id]`\\. Please provide a chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     try:
         chat_id_to_authorize = int(context.args[0])
         AUTHORIZED_CHATS.add(chat_id_to_authorize)
-        await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
-        await update.message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
 async def authorize_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
-        return await update.message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     if not context.args:
-        return await update.message.reply_text("Usage: `/auth [user_id]`\\. Please provide a user ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("Usage: `/auth [user_id]`\\. Please provide a user ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     try:
         user_id_to_authorize = int(context.args[0])
         AUTHORIZED_PRIVATE_USERS.add(user_id_to_authorize)
-        await update.message.reply_text(f"✅ User `{user_id_to_authorize}` is now authorized to use the bot in private chat\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text(f"✅ User `{user_id_to_authorize}` is now authorized to use the bot in private chat\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
-        await update.message.reply_text("❌ Invalid user ID\\. Please provide a numeric user ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text("❌ Invalid user ID\\. Please provide a numeric user ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
 async def add_credits(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
-        return await update.message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
     if len(context.args) != 2:
-        return await update.message.reply_text("Usage: `/ar [amount] [user_id]`\\. Example: `/ar 50 123456789`", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text("Usage: `/ar [amount] [user_id]`\\. Example: `/ar 50 123456789`", parse_mode=ParseMode.MARKDOWN_V2)
 
     try:
         amount = int(context.args[0])
         target_user_id = int(context.args[1])
         
         if amount <= 0:
-            return await update.message.reply_text("❌ Amount must be a positive number\\.", parse_mode=ParseMode.MARKDOWN_V2)
+            return await update.effective_message.reply_text("❌ Amount must be a positive number\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
         new_credits = add_credits_to_user(target_user_id, amount)
-        await update.message.reply_text(f"✅ Added `{amount}` credits to user `{target_user_id}`\\. Total credits for user: `{new_credits}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text(f"✅ Added `{amount}` credits to user `{target_user_id}`\\. Total credits for user: `{new_credits}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
-        await update.message.reply_text("❌ Invalid amount or user ID\\. Please provide numeric values\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text("❌ Invalid amount or user ID\\. Please provide numeric values\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
 async def handle_unauthorized_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # This handler will catch commands that are not explicitly handled by other handlers
-    # but still pass the filter. We check authorization here.
+    # This handler acts as a catch-all for commands or messages from unauthorized sources
+    # that are NOT already explicitly handled and blocked by the check_authorization in specific handlers.
+    
     if update.effective_user.id == OWNER_ID:
-        # Owner is always authorized, so do nothing, let other handlers implicitly fail if command doesn't exist.
+        # Owner is always authorized, so we don't send authorization messages for them.
+        # If the command is not recognized, it will simply do nothing.
         return
 
-    if update.effective_chat.type == 'private' and update.effective_user.id not in AUTHORIZED_PRIVATE_USERS:
-        # For private users not authorized, show start menu only
-        keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(
-            f"🚫 You are not approved to use bot in private\\. Get the subscription at cheap from {AUTHORIZATION_CONTACT} to use or else use for free in our official group\\.",
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
-    elif (update.effective_chat.type == 'group' or update.effective_chat.type == 'supergroup') and update.effective_chat.id not in AUTHORIZED_CHATS:
-        await update.message.reply_text(
-            f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
-    # If authorized, or owner, let other handlers process. This specific handler
-    # should ideally be placed after other specific command handlers.
+    # If the bot receives a message (which might be a command) and it's not from an owner,
+    # and the effective_message is available, proceed with authorization check.
+    if update.effective_message:
+        chat_type = update.effective_chat.type
+        user_id = update.effective_user.id
+        chat_id = update.effective_chat.id
+
+        if chat_type == 'private' and user_id not in AUTHORIZED_PRIVATE_USERS:
+            # For private users not authorized, show specific message and group button
+            keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.effective_message.reply_text(
+                f"🚫 You are not approved to use bot in private\\. Get the subscription at cheap from {AUTHORIZATION_CONTACT} to use or else use for free in our official group\\.",
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+        elif (chat_type == 'group' or chat_type == 'supergroup') and chat_id not in AUTHORIZED_CHATS:
+            # For unauthorized groups, show specific message
+            await update.effective_message.reply_text(
+                f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+    # If the user/chat is authorized, or effective_message is not available (e.g., channel post),
+    # this handler does nothing, allowing other handlers or the default Telegram behavior.
+
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a telegram message to notify the user."""
     logger.error("Exception while handling an update:", exc_info=context.error)
     try:
-        # Try to send a generic error message to the user
-        if update and update.effective_message:
+        # Try to send a generic error message to the user if a message context is available
+        if isinstance(update, Update) and update.effective_message:
             await update.effective_message.reply_text(
                 "An unexpected error occurred\\. Please try again or contact support\\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
     except Exception as e:
-        logger.error(f"Failed to send error message to user: {e}")
+        logger.error(f"Failed to send error message to user in error_handler: {e}")
 
 # === MAIN FUNCTION ===
 def main():
@@ -871,18 +909,18 @@ def main():
     if OWNER_ID is None:
         logger.error("OWNER_ID environment variable is not set. Please set it before running the bot.")
         exit(1)
+    # No check for BINTABLE_API_KEY here; get_bin_details handles its absence.
 
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # Start command (always accessible)
+    # Start command (always accessible and needs to handle callback queries)
     application.add_handler(CommandHandler("start", start))
 
-    # Commands that require authorization (except /start which is always allowed)
+    # Commands that require authorization (check_authorization is inside each handler)
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
-    # Note: filters.ChatType.PRIVATE | filters.ChatType.GROUPS is used for kill
-    # because it can be used in both. Authorization logic is inside the handler.
+    # filters.ChatType.PRIVATE | filters.ChatType.GROUPS ensures it works in both contexts
     application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
 
     # Owner-only commands
@@ -898,15 +936,15 @@ def main():
     # Callback query handlers for inline keyboard buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
-    application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$"))
+    application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$")) # Re-direct to start handler
 
-    # Add a catch-all message handler for unauthorized commands/chats.
-    # This must be placed AFTER all specific command handlers to avoid intercepting them.
-    # It catches all messages that are commands or just text, but its internal logic
-    # will determine if it should send an authorization message or let other handlers proceed.
+    # Add a general message handler for authorization checks for unhandled commands.
+    # This handler must be placed AFTER all specific command handlers.
+    # It catches all text messages, including unhandled commands.
     application.add_handler(MessageHandler(
-        filters.COMMAND | filters.TEXT, # Catches all commands and text
-        handle_unauthorized_commands # Checks if the command is allowed in the chat
+        filters.TEXT & filters.COMMAND, # Only process messages that are commands
+        handle_unauthorized_commands,
+        block=False # Do not block other handlers if this one doesn't return
     ))
     
     # Add the error handler
