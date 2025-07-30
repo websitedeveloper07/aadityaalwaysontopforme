@@ -175,7 +175,7 @@ async def get_bin_details(bin_number):
         "scheme": "N/A", "type": "N/A", "level": "N/A",
         "bank": "N/A", "country_name": "N/A", "country_emoji": "",
         "vbv_status": None, # Stays None, as actual VBV check is removed
-        "card_type": "N/A" # Used for consistency in responses
+        "card_type": "N/A" # Used for consistency in responses (will store 'category' if from Bintable)
     }
 
     async with aiohttp.ClientSession() as session:
@@ -187,13 +187,18 @@ async def get_bin_details(bin_number):
                     if response.status == 200:
                         data = await response.json()
                         if data and data.get("success"):
-                            bin_data["scheme"] = data.get("scheme", "N/A").upper()
-                            bin_data["type"] = data.get("type", "N/A").title()
-                            bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type
-                            bin_data["level"] = data.get("level", "N/A").title()
-                            bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
-                            bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
-                            bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
+                            card_info = data.get("card", {})
+                            country_info = data.get("country", {})
+                            bank_info = data.get("bank", {})
+
+                            bin_data["scheme"] = card_info.get("scheme", "N/A").upper()
+                            # Prioritize 'category' for 'card_type' if available from Bintable
+                            bin_data["card_type"] = card_info.get("category", card_info.get("type", "N/A")).title()
+                            bin_data["type"] = card_info.get("type", "N/A").title() # Keep 'type' as original 'type'
+                            bin_data["level"] = card_info.get("level", "N/A").title()
+                            bin_data["bank"] = bank_info.get("name", "N/A").title()
+                            bin_data["country_name"] = country_info.get("name", "N/A")
+                            bin_data["country_emoji"] = country_info.get("emoji", "")
                             logger.info(f"BIN details from Bintable for {bin_number}: {data}")
                             return bin_data
                     else:
@@ -214,7 +219,7 @@ async def get_bin_details(bin_number):
                     if data:
                         bin_data["scheme"] = data.get("scheme", "N/A").upper()
                         bin_data["type"] = data.get("type", "N/A").title()
-                        bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type
+                        bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type here
                         bin_data["level"] = data.get("brand", "N/A").title() # Binlist has 'brand' for level-like info
                         bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
                         bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
@@ -237,7 +242,7 @@ async def get_bin_details(bin_number):
                     if data and data.get("success"):
                         bin_data["scheme"] = data.get("scheme", "N/A").upper()
                         bin_data["type"] = data.get("type", "N/A").title()
-                        bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type
+                        bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type here
                         bin_data["level"] = data.get("level", "N/A").title()
                         bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
                         bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
