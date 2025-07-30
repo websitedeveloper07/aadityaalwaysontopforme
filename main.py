@@ -333,10 +333,12 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_full_name = escape_markdown_v2(update.effective_user.full_name)
     welcome_message = (
-        f"Hey {user_full_name} \\! I am 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎 your Telegram Bot\\.\n\n"
-        f"I can help you with BIN lookups and card generation\\.\n\n"
-        f"Press the button below to see my commands\\."
+        f"Hey {user_full_name} 👋\\! Welcome to *𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ* ⚡\\.\n\n"
+        f"I'm your all\\-in\\-one bot for ⚙️ *Card Tools* & 💀 *Live Killing* \\!\n"
+        f"Use me to generate cards, check BINs, and powerful cc killer — fast and smart ✅\\.\n\n"
+        f"Hit the button below to explore all my commands and get started 👇"
     )
+
     keyboard = [
         [InlineKeyboardButton("Commands", callback_data="show_main_commands")],
         [InlineKeyboardButton("Our Official Group", url=OFFICIAL_GROUP_LINK)]
