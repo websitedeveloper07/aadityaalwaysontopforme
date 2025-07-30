@@ -192,7 +192,7 @@ async def get_bin_details(bin_number):
 
                     if response.status == 200:
                         data = await response.json()
-                        if data and data.get("success"):
+                        if data and data.get("result") == 200 and data.get("message") == "SUCCESS":
                             card_info = data.get("card", {})
                             country_info = data.get("country", {})
                             bank_info = data.get("bank", {})
