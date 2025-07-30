@@ -192,10 +192,13 @@ async def get_bin_details(bin_number):
 
                     if response.status == 200:
                         data = await response.json()
+                        # Correctly check for Bintable's success indicators
                         if data and data.get("result") == 200 and data.get("message") == "SUCCESS":
-                            card_info = data.get("card", {})
-                            country_info = data.get("country", {})
-                            bank_info = data.get("bank", {})
+                            # Correctly access the nested 'data' dictionary first
+                            response_data = data.get("data", {})
+                            card_info = response_data.get("card", {})
+                            country_info = response_data.get("country", {})
+                            bank_info = response_data.get("bank", {})
 
                             # Populate bin_data with Bintable details
                             bin_data["scheme"] = card_info.get("scheme", "N/A").upper()
@@ -210,7 +213,7 @@ async def get_bin_details(bin_number):
                             logger.info(f"Successfully retrieved BIN details from Bintable for {bin_number}: {bin_data}")
                             return bin_data # Return immediately if Bintable was successful
                         else:
-                            logger.warning(f"Bintable API returned success=false or no data for {bin_number}. Data: {data}")
+                            logger.warning(f"Bintable API returned non-success indicators for {bin_number}. Data: {data}")
                     else:
                         logger.warning(f"Bintable API returned non-200 status {response.status} for {bin_number}.")
             except aiohttp.ClientError as e:
@@ -263,7 +266,7 @@ async def get_bin_details(bin_number):
 
                 if response.status == 200:
                     data = await response.json()
-                    if data and data.get("success"):
+                    if data and data.get("success"): # Bincheck.io uses 'success' boolean
                         # Populate bin_data with Bincheck.io details
                         bin_data["scheme"] = data.get("scheme", "N/A").upper()
                         bin_data["type"] = data.get("type", "N/A").title()
