@@ -420,7 +420,7 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
         )
     }
 
-    # Corrected indentation for the following lines
+
     text = details.get(command_name, "Details not found\\.")
     keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -503,7 +503,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_info_block_content = (
         f"Requested by : {escaped_user_full_name}\n"
-        f"Bot by : 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
+        f"Bot by : 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️"
     )
 
     result = (
@@ -574,17 +574,18 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # User info in a separate quote box
     user_info_quote_box = (
         f"> Requested by \\-: {escaped_user_full_name}\n"
-        f"> Bot by \\-: 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
+        f"> Bot by \\-: 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️"
     )
 
     result = f"{bin_info_box}\n\n{user_info_quote_box}"
 
     await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
-async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message):
+async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message, bin_details):
     """
     Handles the long-running kill animation and final message.
     This function is designed to be run as a separate asyncio task.
+    It now receives bin_details directly.
     """
     time_taken = 0 # Initialize time_taken
 
@@ -639,12 +640,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     # Calculate actual time taken after the loop finishes
     time_taken = round(time.time() - start_time)
 
-    # Get BIN details for stylish info
-    cc_part = full_card_str.split('|')[0]
-    bin_number = cc_part[:6]
-    bin_details = await get_bin_details(bin_number)
-
-    # Escape dynamic parts for MarkdownV2, careful with emojis
+    # Use bin_details passed directly
     bank_name = escape_markdown_v2(bin_details["bank"])
     level = escape_markdown_v2(bin_details["level"])
     level_emoji = get_level_emoji(bin_details["level"]) # Emoji doesn't need escaping
@@ -667,7 +663,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
         f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
         f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      :  𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      :  🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️\n"
         f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : {escape_markdown_v2(f'{time_taken:.0f} seconds')}\n"
         f"\n"
         f"╰────────────────────╯"
@@ -759,6 +755,22 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     full_card_str = f"{cc}|{mm}|{yy}|{cvv}"
 
+    # --- Moved logic for Prepaid and Amex checks here ---
+    bin_number = cc[:6]
+    bin_details = await get_bin_details(bin_number)
+
+    if bin_details["card_type"].lower() == "prepaid":
+        return await update.effective_message.reply_text(
+            f"🚫 𝙋𝙧𝙚𝙥𝙖𝙞𝙙 𝘽𝙄𝙉𝙨 𝙖𝙧𝙚 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\. Bin: `{escape_markdown_v2(bin_number)}` 💳 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    elif bin_details["scheme"].lower() == "american express":
+        return await update.effective_message.reply_text(
+            f"🚫 𝘼𝙈𝙀𝙓 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\. Bin: `{escape_markdown_v2(bin_number)}` 💳 𝙞𝙨 𝙖𝙣 𝘼𝙢𝙚𝙧𝙞𝙘𝙖𝙣 𝙀𝙭𝙥𝙧𝙚𝙨𝙨 𝙩𝙮𝙥𝙚\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    # --- End of moved logic ---
+
     # Consume credit after all validations pass and before starting the process
     if user_id != OWNER_ID:
         consume_credit(user_id)
@@ -772,8 +784,8 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🔪Kɪʟʟɪɴɢ ⚡" # Initial message without emojis for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Create a separate task for the long-running kill process
-    asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message))
+    # Create a separate task for the long-running kill process, passing bin_details
+    asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message, bin_details))
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -814,7 +826,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> 🧠 RAM Usage: {escaped_ram_usage}\n"
         f"> 🖥️ CPU Usage: {escaped_cpu_usage_text}\n"
         f"> ⏱️ Uptime: {escaped_uptime_string}\n"
-        f"> 🤖 Bot by \\- 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
+        f"> 🤖 Bot by \\- 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️"
     )
 
     await update.effective_message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
