@@ -333,10 +333,12 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_full_name = escape_markdown_v2(update.effective_user.full_name)
     welcome_message = (
-        f"Hey {user_full_name} \\! I am 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎 your Telegram Bot\\.\n\n"
-        f"I can help you with BIN lookups and card generation\\.\n\n"
-        f"Press the button below to see my commands\\."
+        f"Hey {user_full_name} 👋\\! Welcome to *𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ* ⚡\\.\n\n"
+        f"I'm your all\\-in\\-one bot for ⚙️ *Card Tools* & 💀 *Live Killing* \\!\n"
+        f"Use me to generate cards, check BINs, and powerful cc killer — fast and smart ✅\\.\n\n"
+        f"Hit the button below to explore all my commands and get started 👇"
     )
+
     keyboard = [
         [InlineKeyboardButton("Commands", callback_data="show_main_commands")],
         [InlineKeyboardButton("Our Official Group", url=OFFICIAL_GROUP_LINK)]
@@ -391,32 +393,33 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     command_name = query.data.replace("cmd_", "")
 
-    details = {
-        "gen": (
-            "*/gen \\<BIN\\>*\n"
-            "Generate 10 random credit cards \\(CC\\|MM\\|YY\\|CVV\\) based on a 6\\-digit BIN\\.\n"
-            "Example: `/gen 400000`"
-        ),
-        "bin": (
-            "*/bin \\<BIN\\>*\n"
-            "Look up detailed information for a 6\\-digit BIN \\(Bank, Country, Type, Scheme\\, Level\\, VBV Status\\)\\.\n"
-            "Example: `/bin 400000`"
-        ),
-        "kill": (
-            f"*/kill CC\\|MM\\|YY\\|CVV*\n"
-            f"Simulate 'killing' a credit card\\. This is a fun simulation and does NOT affect real cards\\.\n"
-            f"You have `{get_user_credits(update.effective_user.id)}` credits daily for this command\\.\n"
-            f"Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
-        ),
-        "status": (
-            "*/status*\n"
-            "Check the bot's current operational status \\(RAM, CPU, Uptime, Total Users\\)\\."
-        ),
-        "credits": ( # Added details for credits command
-            "*/credits*\n"
-            "Check your remaining daily kill credits and your username\\."
-        )
-    }
+details = {
+    "gen": (
+        "*/gen <BIN>*\n"
+        "Generate 10 random credit cards in the format `CC|MM|YY|CVV` based on a 6\\-digit BIN\\.\n"
+        "Example: `/gen 400000`"
+    ),
+    "bin": (
+        "*/bin <BIN>*\n"
+        "Get full details of any BIN \\(Bank, Country, Brand, Type, Level, VBV\\)\\.\n"
+        "Example: `/bin 400000`"
+    ),
+    "kill": (
+        "*/kill CC|MM|YY|CVV*\n"
+        "Execute a real\\-time CC kill request \\- fast and accurate 💀\\.\n"
+        "You have `{get_user_credits(update.effective_user.id)}` daily credits for this command\\.\n"
+        "Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
+    ),
+    "status": (
+        "*/status*\n"
+        "Check the bot's live system stats \\(RAM, CPU, Uptime, Total Users\\)\\."
+    ),
+    "credits": (
+        "*/credits*\n"
+        "View your remaining daily kill credits and linked Telegram username\\."
+    )
+}
+
 
     text = details.get(command_name, "Details not found\\.")
     keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
@@ -702,7 +705,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         remaining_credits = get_user_credits(user_id)
         if remaining_credits <= 0:
             await update.effective_message.reply_text( # Use effective_message
-                f"❌ You have no credits left for the kill command today\\. Your daily credits will reset soon\\. Use other commands for free in our official group, or contact {AUTHORIZATION_CONTACT} for more credits\\.",
+                f"❌ You have no credits left for the kill command today\\. Your daily credits will reset soon\\. Or contact {AUTHORIZATION_CONTACT} for more credits\\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return
