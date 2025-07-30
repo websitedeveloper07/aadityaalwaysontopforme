@@ -25,7 +25,7 @@ BINTABLE_URL = "https://api.bintable.com/v1"
 
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@enough69s"
-OFFICIAL_GROUP_LINK = "https://t.me/+8a9R0pRERuE2YWFh" # Replace with your actual official group link
+OFFICIAL_GROUP_LINK = "https://t.me/+gtvJT4SoimBjYjQ1" # Replace with your actual official group link
 DAILY_KILL_CREDIT_LIMIT = 30
 
 # === GLOBAL STATE ===
