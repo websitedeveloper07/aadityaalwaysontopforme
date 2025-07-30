@@ -171,19 +171,25 @@ def luhn_checksum(card_number):
     return total % 10 == 0
 
 async def get_bin_details(bin_number):
+    # Initialize bin_data with default N/A values
     bin_data = {
         "scheme": "N/A", "type": "N/A", "level": "N/A",
         "bank": "N/A", "country_name": "N/A", "country_emoji": "",
-        "vbv_status": None, # Stays None, as actual VBV check is removed
-        "card_type": "N/A" # Used for consistency in responses (will store 'category' if from Bintable)
+        "vbv_status": None,
+        "card_type": "N/A" # This will hold 'category' from Bintable, or 'type' from others
     }
 
     async with aiohttp.ClientSession() as session:
-        # Try Bintable first if API key is provided
+        # --- Attempt to get details from Bintable first ---
         if BINTABLE_API_KEY:
             try:
                 bintable_url = f"{BINTABLE_URL}/{bin_number}?api_key={BINTABLE_API_KEY}"
-                async with session.get(bintable_url, timeout=5) as response:
+                logger.info(f"Attempting Bintable lookup for BIN: {bin_number}")
+                async with session.get(bintable_url, timeout=7) as response: # Increased timeout slightly
+                    response_text = await response.text()
+                    logger.info(f"Bintable response status for {bin_number}: {response.status}")
+                    logger.info(f"Bintable raw response for {bin_number}: {response_text}")
+
                     if response.status == 200:
                         data = await response.json()
                         if data and data.get("success"):
@@ -191,73 +197,95 @@ async def get_bin_details(bin_number):
                             country_info = data.get("country", {})
                             bank_info = data.get("bank", {})
 
+                            # Populate bin_data with Bintable details
                             bin_data["scheme"] = card_info.get("scheme", "N/A").upper()
-                            # Prioritize 'category' for 'card_type' if available from Bintable
+                            bin_data["type"] = card_info.get("type", "N/A").title()
+                            # Use 'category' for 'card_type' if available, otherwise fallback to 'type'
                             bin_data["card_type"] = card_info.get("category", card_info.get("type", "N/A")).title()
-                            bin_data["type"] = card_info.get("type", "N/A").title() # Keep 'type' as original 'type'
                             bin_data["level"] = card_info.get("level", "N/A").title()
                             bin_data["bank"] = bank_info.get("name", "N/A").title()
                             bin_data["country_name"] = country_info.get("name", "N/A")
                             bin_data["country_emoji"] = country_info.get("emoji", "")
-                            logger.info(f"BIN details from Bintable for {bin_number}: {data}")
-                            return bin_data
+                            
+                            logger.info(f"Successfully retrieved BIN details from Bintable for {bin_number}: {bin_data}")
+                            return bin_data # Return immediately if Bintable was successful
+                        else:
+                            logger.warning(f"Bintable API returned success=false or no data for {bin_number}. Data: {data}")
                     else:
-                        logger.warning(f"Bintable API returned status {response.status} for {bin_number}. Response: {await response.text()}")
+                        logger.warning(f"Bintable API returned non-200 status {response.status} for {bin_number}.")
             except aiohttp.ClientError as e:
-                logger.warning(f"Bintable API call failed for {bin_number}: {e}")
+                logger.warning(f"Bintable API call failed (ClientError) for {bin_number}: {e}")
             except Exception as e:
-                logger.warning(f"Error processing Bintable response for {bin_number}: {e}")
+                logger.warning(f"Error processing Bintable response (General Error) for {bin_number}: {e}")
         else:
             logger.info("BINTABLE_API_KEY not set. Skipping Bintable lookup.")
 
-        # Try Binlist as fallback
+        # --- Fallback to Binlist if Bintable failed or didn't provide useful data ---
+        logger.info(f"Falling back to Binlist lookup for BIN: {bin_number}")
         try:
             binlist_url = f"https://lookup.binlist.net/{bin_number}"
-            async with session.get(binlist_url, timeout=5) as response:
+            async with session.get(binlist_url, timeout=7) as response: # Increased timeout slightly
+                response_text = await response.text()
+                logger.info(f"Binlist response status for {bin_number}: {response.status}")
+                logger.info(f"Binlist raw response for {bin_number}: {response_text}")
+
                 if response.status == 200:
                     data = await response.json()
                     if data:
+                        # Populate bin_data with Binlist details
                         bin_data["scheme"] = data.get("scheme", "N/A").upper()
                         bin_data["type"] = data.get("type", "N/A").title()
-                        bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type here
+                        bin_data["card_type"] = data.get("type", "N/A").title() # Binlist doesn't have 'category', so use 'type'
                         bin_data["level"] = data.get("brand", "N/A").title() # Binlist has 'brand' for level-like info
                         bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
                         bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
                         bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
-                        logger.info(f"BIN details from Binlist for {bin_number}: {data}")
-                        return bin_data
+                        
+                        logger.info(f"Successfully retrieved BIN details from Binlist for {bin_number}: {bin_data}")
+                        return bin_data # Return immediately if Binlist was successful
+                    else:
+                        logger.warning(f"Binlist API returned no data for {bin_number}.")
                 else:
-                    logger.warning(f"Binlist API returned status {response.status} for {bin_number}. Response: {await response.text()}")
+                    logger.warning(f"Binlist API returned non-200 status {response.status} for {bin_number}.")
         except aiohttp.ClientError as e:
-            logger.warning(f"Binlist API call failed for {bin_number}: {e}")
+            logger.warning(f"Binlist API call failed (ClientError) for {bin_number}: {e}")
         except Exception as e:
-            logger.warning(f"Error processing Binlist response for {bin_number}: {e}")
+            logger.warning(f"Error processing Binlist response (General Error) for {bin_number}: {e}")
 
-        # Try Bincheck.io as final fallback
+        # --- Fallback to Bincheck.io if both Bintable and Binlist failed ---
+        logger.info(f"Falling back to Bincheck.io lookup for BIN: {bin_number}")
         try:
             bincheck_url = f"https://api.bincheck.io/v2/{bin_number}"
-            async with session.get(bincheck_url, timeout=5) as response:
+            async with session.get(bincheck_url, timeout=7) as response: # Increased timeout slightly
+                response_text = await response.text()
+                logger.info(f"Bincheck.io response status for {bin_number}: {response.status}")
+                logger.info(f"Bincheck.io raw response for {bin_number}: {response_text}")
+
                 if response.status == 200:
                     data = await response.json()
                     if data and data.get("success"):
+                        # Populate bin_data with Bincheck.io details
                         bin_data["scheme"] = data.get("scheme", "N/A").upper()
                         bin_data["type"] = data.get("type", "N/A").title()
-                        bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type here
+                        bin_data["card_type"] = data.get("type", "N/A").title() # Bincheck.io doesn't have 'category', so use 'type'
                         bin_data["level"] = data.get("level", "N/A").title()
                         bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
                         bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
                         bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
-                        logger.info(f"BIN details from Bincheck.io for {bin_number}: {data}")
-                        return bin_data
+                        
+                        logger.info(f"Successfully retrieved BIN details from Bincheck.io for {bin_number}: {bin_data}")
+                        return bin_data # Return immediately if Bincheck.io was successful
+                    else:
+                        logger.warning(f"Bincheck.io API returned success=false or no data for {bin_number}. Data: {data}")
                 else:
-                    logger.warning(f"Bincheck.io API returned status {response.status} for {bin_number}. Response: {await response.text()}")
+                    logger.warning(f"Bincheck.io API returned non-200 status {response.status} for {bin_number}.")
         except aiohttp.ClientError as e:
-            logger.warning(f"Bincheck.io API call failed for {bin_number}: {e}")
+            logger.warning(f"Bincheck.io API call failed (ClientError) for {bin_number}: {e}")
         except Exception as e:
-            logger.warning(f"Error processing Bincheck.io response for {bin_number}: {e}")
+            logger.warning(f"Error processing Bincheck.io response (General Error) for {bin_number}: {e}")
 
-    # If all APIs fail or return no data, return default N/A values
-    logger.warning(f"Failed to get BIN details for {bin_number} from all sources.")
+    # If all APIs fail or return no data, return the initially set default N/A values
+    logger.warning(f"Failed to get BIN details for {bin_number} from all sources. Returning default N/A data.")
     return bin_data
 
 async def enforce_cooldown(user_id: int) -> bool:
