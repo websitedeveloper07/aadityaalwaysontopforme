@@ -397,32 +397,32 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     command_name = query.data.replace("cmd_", "")
 
-    details = {
-        "gen": (
-            "*/gen <BIN>*\n"
-            "Generate 10 random credit cards in the format `CC|MM|YY|CVV` based on a 6\\-digit BIN\\.\n"
-            "Example: `/gen 400000`"
-        ),
-        "bin": (
-            "*/bin <BIN>*\n"
-            "Get full details of any BIN \\(Bank, Country, Brand, Type, Level, VBV\\)\\.\n"
-            "Example: `/bin 400000`"
-        ),
-        "kill": (
-            "*/kill CC|MM|YY|CVV*\n"
-            "Execute a real\\-time CC kill request \\- fast and accurate 💀\\.\n"
-            f"You have `{get_user_credits(update.effective_user.id)}` daily credits for this command\\.\n"
-            "Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
-        ),
-        "status": (
-            "*/status*\n"
-            "Check the bot's live system stats \\(RAM, CPU, Uptime, Total Users\\)\\."
-        ),
-        "credits": (
-            "*/credits*\n"
-            "View your remaining daily kill credits and linked Telegram username\\."
-        )
-    }
+details = {
+    "gen": (
+        "`/gen <BIN>`\n"
+        "Generate 10 random credit cards in the format `CC|MM|YY|CVV` based on a 6\\-digit BIN\\.\n"
+        "Example: `/gen 400000`"
+    ),
+    "bin": (
+        "`/bin <BIN>`\n"
+        "Get full details of any BIN \\(Bank, Country, Brand, Type, Level, VBV\\)\\.\n"
+        "Example: `/bin 400000`"
+    ),
+    "kill": (
+        "`/kill CC|MM|YY|CVV`\n"
+        "Execute a real\\-time CC kill request \\- fast and accurate 💀\\.\n"
+        f"You have `{get_user_credits(update.effective_user.id)}` daily credits for this command\\.\n"
+        "Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
+    ),
+    "status": (
+        "`/status`\n"
+        "Check the bot's live system stats \\(RAM, CPU, Uptime, Total Users\\)\\."
+    ),
+    "credits": (
+        "`/credits`\n"
+        "View your remaining daily kill credits and linked Telegram username\\."
+    )
+}
 
     text = details.get(command_name, "Details not found\\.")
     keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
