@@ -420,11 +420,16 @@ details = {
     )
 }
 
+text = details.get(command_name, "Details not found\\.")
+keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
+reply_markup = InlineKeyboardMarkup(keyboard)
 
-    text = details.get(command_name, "Details not found\\.")
-    keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+await query.edit_message_text(
+    text,
+    reply_markup=reply_markup,
+    parse_mode=ParseMode.MARKDOWN_V2
+)
+
 
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
