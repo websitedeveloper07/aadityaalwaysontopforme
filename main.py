@@ -357,12 +357,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.debug("Message not modified when trying to edit start message.")
             else:
                 logger.warning(f"Could not edit message for 'back to start', sending new one: {e}")
+                # Fallback to sending a new message if edit fails
                 await context.bot.send_message(
                     chat_id=query.message.chat_id,
                     text=welcome_message,
                     reply_markup=reply_markup,
                     parse_mode=ParseMode.MARKDOWN_V2
                 )
+    else: # Fallback for any other unexpected update type if needed
+        logger.warning(f"Start command called without message or callback_query: {update}")
+        # If no effective message or callback query, do nothing or log further.
+
 
 async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -375,6 +380,7 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("🔍 BIN Lookup", callback_data="cmd_bin")],
         [InlineKeyboardButton("🔪 Kill Card", callback_data="cmd_kill")],
         [InlineKeyboardButton("📊 Bot Status", callback_data="cmd_status")],
+        [InlineKeyboardButton("ℹ️ My Credits", callback_data="cmd_credits")], # Added for credits command
         [InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -405,6 +411,10 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
         "status": (
             "*/status*\n"
             "Check the bot's current operational status \\(RAM, CPU, Uptime, Total Users\\)\\."
+        ),
+        "credits": ( # Added details for credits command
+            "*/credits*\n"
+            "Check your remaining daily kill credits and your username\\."
         )
     }
 
@@ -735,7 +745,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"Kill command: Regex failed to match for input: '{card_details_input}'")
         return await update.effective_message.reply_text( # Use effective_message
             "❌ Could not find valid card details \\(CC\\|MM\\|YY\\|CVV or CC\\|MM\\|YYYY\\|CVV\\) in the provided input\\. "
-            "Make sure it's in the format `CC|MM|YY|CVV` or `CC|MM|YYYY|CVV`\\.",
+            "Make sure it's in the format `CC|MM|YY|CVV` or `MM/YY/CVV`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -786,7 +796,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if hours > 0:
         uptime_parts.append(f"{hours} hour{'s' if hours > 1 else ''}")
     if minutes > 0:
-        uptime_parts.append(f"{minutes} minute{'s' if minutes > 1 else ''}")
+        uptime_parts.append(f"{minutes} minute{'s' if minutes > 1 молодежь ''}")
 
     uptime_string = ", ".join(uptime_parts) if uptime_parts else "less than a minute"
 
@@ -805,6 +815,27 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.effective_message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
+
+async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_authorization(update, context):
+        return
+    if not await enforce_cooldown(update.effective_user.id):
+        return await update.effective_message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    user_id = update.effective_user.id
+    user_full_name = escape_markdown_v2(update.effective_user.full_name)
+    remaining_credits = get_user_credits(user_id)
+
+    credits_msg = (
+        f"✨ *Your Daily Credits*\n"
+        f"──────────────\n"
+        f"👤 Username  : {user_full_name}\n"
+        f"💳 Credits   : `{remaining_credits}` / `{DAILY_KILL_CREDIT_LIMIT}`\n"
+        f"──────────────\n"
+        f"Next reset : `Daily`"
+    )
+
+    await update.effective_message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -920,6 +951,8 @@ def main():
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
+    application.add_handler(CommandHandler("credits", credits_command)) # Added new credits command
+
     # filters.ChatType.PRIVATE | filters.ChatType.GROUPS ensures it works in both contexts
     application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
 
@@ -932,6 +965,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.credits\b.*"), credits_command)) # Added new credits command for dot prefix
 
     # Callback query handlers for inline keyboard buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
