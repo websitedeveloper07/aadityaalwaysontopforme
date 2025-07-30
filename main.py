@@ -10,378 +10,386 @@ from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
-from telegram.error import BadRequest # Import BadRequest for specific error handling
+from telegram.error import BadRequest
 
 # === CONFIGURATION ===
 TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 
-BINTABLE_API_KEY = "d1359fe2b305160dd9b9d895a07b4438794ea1f6"
+BINTABLE_API_KEY = os.getenv("BINTABLE_API_KEY", "d1359fe2b305160dd9b9d895a07b4438794ea1f6") # Using environment variable for API key
 BINTABLE_URL = "https://api.bintable.com/v1"
 
+# --- New Configuration ---
+AUTHORIZATION_CONTACT = "@enough69s"
+OFFICIAL_GROUP_LINK = "https://t.me/+8a9R0pRERuE2YWFh" # Replace with your actual official group link
+DAILY_KILL_CREDIT_LIMIT = 30
+
+# === GLOBAL STATE ===
 user_last_command = {}
+AUTHORIZED_CHATS = set() # Stores chat_ids of authorized groups (in-memory, resets on bot restart)
+AUTHORIZED_PRIVATE_USERS = set() # Stores user_ids of authorized private users (in-memory, resets on bot restart)
+USER_CREDITS = {} # user_id -> {'credits': int, 'last_credit_reset': datetime} (in-memory, resets on bot restart)
 
 # === LOGGING SETUP ===
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# === ERROR HANDLER ===
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Log the error and and send a message to the user."""
-    logger.error("Exception while handling an update:", exc_info=context.error)
-
-    # Try to send a message back to the user
-    if update.effective_message:
-        await update.effective_message.reply_text(
-            "An error occurred while processing your request. Please try again later."
-        )
-
 # === HELPER FUNCTIONS ===
 
-def escape_markdown_v2(text):
-    if text is None:
-        return "Unknown"
-    text = str(text)
+def escape_markdown_v2(text: str) -> str:
+    """Escapes markdown v2 special characters."""
     # List of special characters in MarkdownV2 that need to be escaped
-    # See: https://core.telegram.org/bots/api#markdownv2-style
-    special_chars = '_*[]()~`>#+-=|{}.!'
-    escaped_text = ""
-    for char in text:
-        if char in special_chars:
-            escaped_text += '\\' + char
-        else:
-            escaped_text += char
-    return escaped_text
+    # _ * [ ] ( ) ~ ` > # + - = | { } . !
+    # The order matters for some characters, e.g., '[' needs to be escaped before parsing links.
+    # We are using re.sub with a lambda function for each character to handle specific cases.
+    
+    # Escape characters that are always special
+    escaped_text = re.sub(r"([_*\[\]()~`>#+\-=|{}.!])", r"\\\1", text)
+    
+    # Handle the case of "period" or "dot" followed by a space (e.g., in file names like "my.file")
+    # This specifically targets dots not followed by a digit (like in numbers 1.23)
+    # or not preceding a space (like in sentences "End of sentence. Next one.")
+    # For simplicity and to avoid over-escaping, let's keep the general escape for now.
+    # If specific issues arise with dots, more complex regex might be needed.
+
+    return escaped_text.replace('\\\\\\\\', '\\\\\\') # Fix double escaping caused by the simple regex for backslashes
 
 def get_short_country_name(full_name):
-    if not full_name:
-        return "Unknown"
-    
     name_map = {
-        "United States of America": "United States",
-        "Russian Federation": "Russia",
-        "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
-        "Republic of Korea": "South Korea",
-        "Islamic Republic of Iran": "Iran",
-        "Venezuela (Bolivarian Republic of)": "Venezuela",
-        "Viet Nam": "Vietnam",
-        "Lao People's Democratic Republic": "Laos",
-        "Democratic Republic of the Congo": "DR Congo",
-        "Congo (Democratic Republic of the)": "Congo",
-        "Tanzania, United Republic of": "Tanzania",
-        "Syrian Arab Republic": "Syria",
-        "Bolivia (Plurinational State of)": "Bolivia",
-        "Brunei Darussalam": "Brunei",
-        "Cabo Verde": "Cape Verde",
-        "Central African Republic": "Central African Republic",
-        "Comoros": "Comoros",
-        "Côte d'Ivoire": "Ivory Coast",
-        "Democratic People's Republic of Korea": "North Korea",
-        "Dominican Republic": "Dominican Republic",
-        "Equatorial Guinea": "Equatorial Guinea",
-        "Eswatini": "Eswatini",
-        "Falkland Islands (Malvinas)": "Falkland Islands",
-        "Gambia (the)": "Gambia",
-        "Guinea-Bissau": "Guinea-Bissau",
-        "Holy See": "Vatican City",
-        "Iran (Islamic Republic of)": "Iran",
-        "Lao People's Democratic Republic": "Laos",
-        "Libya": "Libya",
-        "Macedonia (the former Yugoslav Republic of)": "North Macedonia",
-        "Micronesia (Federated States of)": "Micronesia",
-        "Moldova (Republic of)": "Moldova",
-        "Mozambique": "Mozambique",
-        "Myanmar": "Myanmar",
-        "Niger (the)": "Niger",
-        "Palestine, State of": "Palestine",
-        "Saint Helena, Ascension and Tristan da Cunha": "Saint Helena",
-        "Sao Tome and Principe": "Sao Tome and Principe",
-        "Serbia": "Serbia",
-        "Slovakia": "Slovakia",
-        "Slovenia": "Slovenia",
-        "Somalia": "Somalia",
-        "South Georgia and the South Sandwich Islands": "South Georgia",
-        "South Sudan": "South Sudan",
-        "Sudan (the)": "Sudan",
-        "Svalbard and Jan Mayen": "Svalbard",
-        "Timor-Leste": "Timor-Leste",
-        "Togo": "Togo",
-        "Tokelau": "Tokelau",
-        "Tonga": "Tonga",
-        "Trinidad and Tobago": "Trinidad and Tobago",
-        "Tunisia": "Tunisia",
-        "Turkey": "Turkey",
-        "Turkmenistan": "Turkmenistan",
-        "Turks and Caicos Islands (the)": "Turks and Caicos",
-        "Tuvalu": "Tuvalu",
-        "Uganda": "Uganda",
-        "Ukraine": "Ukraine",
-        "United Arab Emirates (the)": "United Arab Emirates",
-        "United States Minor Outlying Islands (the)": "US Outlying Islands",
-        "Uruguay": "Uruguay",
-        "Uzbekistan": "Uzbekistan",
-        "Vanuatu": "Vanuatu",
-        "Venezuela (Bolivarian Republic of)": "Venezuela",
-        "Wallis and Futuna": "Wallis and Futuna",
-        "Western Sahara": "Western Sahara",
-        "Yemen": "Yemen",
-        "Zambia": "Zambia",
-        "Zimbabwe": "Zimbabwe",
+        "United States": "USA", "United Kingdom": "UK", "Canada": "CA",
+        "Australia": "AU", "Germany": "DE", "France": "FR",
+        "India": "IN", "Brazil": "BR", "Mexico": "MX",
+        "Argentina": "AR", "South Africa": "ZA", "Japan": "JP",
+        "China": "CN", "Russia": "RU", "Italy": "IT",
+        "Spain": "ES", "Netherlands": "NL", "Belgium": "BE",
+        "Sweden": "SE", "Norway": "NO", "Denmark": "DK",
+        "Finland": "FI", "Ireland": "IE", "Switzerland": "CH",
+        "Austria": "AT", "Portugal": "PT", "Greece": "GR",
+        "Turkey": "TR", "Poland": "PL", "Egypt": "EG",
+        "Saudi Arabia": "SA", "United Arab Emirates": "AE", "New Zealand": "NZ",
+        "Singapore": "SG", "Malaysia": "MY", "Indonesia": "ID",
+        "Philippines": "PH", "Thailand": "TH", "Vietnam": "VN",
+        "South Korea": "KR", "Nigeria": "NG", "Kenya": "KE",
+        "Colombia": "CO", "Chile": "CL", "Peru": "PE",
+        "Venezuela": "VE", "Pakistan": "PK", "Bangladesh": "BD",
+        "Ukraine": "UA", "Kazakhstan": "KZ", "Romania": "RO",
+        "Czech Republic": "CZ", "Hungary": "HU", "Slovakia": "SK",
+        "Croatia": "HR", "Serbia": "RS", "Bulgaria": "BG",
+        "Lithuania": "LT", "Latvia": "LV", "Estonia": "EE",
+        "Israel": "IL", "Egypt": "EG", "Morocco": "MA",
+        "Algeria": "DZ", "Tunisia": "TN", "Kuwait": "KW",
+        "Qatar": "QA", "Bahrain": "BH", "Oman": "OM",
+        "Jordan": "JO", "Lebanon": "LB", "Syria": "SY",
+        "Iraq": "IQ", "Iran": "IR", "Afghanistan": "AF",
+        "Nepal": "NP", "Sri Lanka": "LK", "Myanmar": "MM",
+        "Cambodia": "KH", "Laos": "LA", "Mongolia": "MN",
+        "Uzbekistan": "UZ", "Azerbaijan": "AZ", "Georgia": "GE",
+        "Armenia": "AM", "Moldova": "MD", "Belarus": "BY",
+        "Bosnia and Herzegovina": "BA", "Albania": "AL", "North Macedonia": "MK",
+        "Kosovo": "XK", "Cyprus": "CY", "Malta": "MT",
+        "Iceland": "IS", "Luxembourg": "LU", "Monaco": "MC",
+        "Andorra": "AD", "San Marino": "SM", "Liechtenstein": "LI",
+        "Vatican City": "VA", "Greenland": "GL", "Fiji": "FJ",
+        "Papua New Guinea": "PG", "Solomon Islands": "SB", "Vanuatu": "VU",
+        "New Caledonia": "NC", "French Polynesia": "PF", "Samoa": "WS",
+        "Tonga": "TO", "Tuvalu": "TV", "Kiribati": "KI",
+        "Nauru": "NR", "Marshall Islands": "MH", "Micronesia": "FM",
+        "Palau": "PW", "East Timor": "TL", "Brunei": "BN",
+        "Bhutan": "BT", "Maldives": "MV", "Seychelles": "SC",
+        "Mauritius": "MU", "Comoros": "KM", "Madagascar": "MG",
+        "Mozambique": "MZ", "Angola": "AO", "Zambia": "ZM",
+        "Zimbabwe": "ZW", "Botswana": "BW", "Namibia": "NA",
+        "Lesotho": "LS", "Eswatini": "SZ", "Congo (Brazzaville)": "CG",
+        "Congo (Kinshasa)": "CD", "Gabon": "GA", "Equatorial Guinea": "GQ",
+        "Cameroon": "CM", "Central African Republic": "CF", "Chad": "TD",
+        "Niger": "NE", "Burkina Faso": "BF", "Mali": "ML",
+        "Mauritania": "MR", "Senegal": "SN", "Gambia": "GM",
+        "Guinea-Bissau": "GW", "Guinea": "GN", "Sierra Leone": "SL",
+        "Liberia": "LR", "Ivory Coast": "CI", "Ghana": "GH",
+        "Togo": "TG", "Benin": "BJ", "Nigeria": "NG",
+        "Ethiopia": "ET", "Eritrea": "ER", "Djibouti": "DJ",
+        "Somalia": "SO", "South Sudan": "SS", "Sudan": "SD",
+        "Uganda": "UG", "Rwanda": "RW", "Burundi": "BI",
+        "Tanzania": "TZ", "Malawi": "MW", "Djibouti": "DJ",
+        "Zimbabwe": "ZW", "Eritrea": "ER", "Angola": "AO",
+        "Cape Verde": "CV", "Sao Tome and Principe": "ST", "Dominican Republic": "DO",
+        "Haiti": "HT", "Jamaica": "JM", "Cuba": "CU",
+        "Bahamas": "BS", "Barbados": "BB", "Trinidad and Tobago": "TT",
+        "Guyana": "GY", "Suriname": "SR", "French Guiana": "GF",
+        "Belize": "BZ", "Guatemala": "GT", "Honduras": "HN",
+        "El Salvador": "SV", "Nicaragua": "NI", "Costa Rica": "CR",
+        "Panama": "PA", "Ecuador": "EC", "Bolivia": "BO",
+        "Paraguay": "PY", "Uruguay": "UY", "Aruba": "AW",
+        "Curaçao": "CW", "Sint Maarten": "SX", "Cayman Islands": "KY",
+        "Bermuda": "BM", "Turks and Caicos Islands": "TC", "British Virgin Islands": "VG",
+        "US Virgin Islands": "VI", "Guam": "GU", "Northern Mariana Islands": "MP",
+        "American Samoa": "AS", "Puerto Rico": "PR"
     }
+    return name_map.get(full_name, full_name)
 
-    if full_name in name_map:
-        return name_map[full_name]
-
-    cleaned_name = re.sub(r'\s*\(.*\)\s*', '', full_name).strip()
-    cleaned_name = re.sub(r'\s*of\s+.*$', '', cleaned_name).strip()
-    
-    words = cleaned_name.split()
-    if len(words) > 2 and words[1].lower() in ["republic", "kingdom", "states", "federation"]:
-        return " ".join(words[:2])
-    elif len(words) > 1 and words[0].lower() == "the":
-        return " ".join(words[1:])
-    
-    return cleaned_name
-
-def luhn_checksum(card_number):
-    def digits_of(n): return [int(d) for d in str(n)]
-    digits = digits_of(card_number)
-    odd_digits = digits[-1::-2]
-    even_digits = digits[-2::-2]
-
-    checksum = sum(odd_digits)
-    for d in even_digits:
-        checksum += sum(digits_of(d * 2))
-    return checksum % 10 == 0
 
 def get_level_emoji(level):
-    level_map = {
-        "Classic": "💳",
-        "Gold": "✨",
-        "Platinum": "💎",
-        "Infinite": "♾️",
-        "Signature": "✍️",
-        "Business": "💼",
-        "Corporate": "🏢",
-        "Prepaid": "🎁",
-        "Debit": "💸",
-        "Credit": "💰",
-        "Standard": "🌟"
-    }
-    return level_map.get(level, "❓")
+    level_lower = level.lower()
+    if "gold" in level_lower:
+        return "🌟"
+    elif "platinum" in level_lower:
+        return "💎"
+    elif "premium" in level_lower:
+        return "✨"
+    elif "infinite" in level_lower:
+        return "♾️"
+    elif "corporate" in level_lower:
+        return "💼"
+    elif "business" in level_lower:
+        return "📈"
+    elif "standard" in level_lower or "classic" in level_lower:
+        return "💳"
+    return "💡" # Default emoji
 
 def get_vbv_status_display(status):
-    # Since VBV bot logic is removed, status will always be N/A
-    return f"❓ {escape_markdown_v2(status)}"
+    # This function is here for completeness based on the original script,
+    # but the VBV status is always "N/A" as per current logic.
+    if status is True:
+        return "✅ LIVE"
+    elif status is False:
+        return "❌ DEAD"
+    else:
+        return "🤷 N/A"
 
-async def fetch_bin_info_bintable(bin_number):
-    url = f"{BINTABLE_URL}/{bin_number}?api_key={BINTABLE_API_KEY}"
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data.get("result") == 200 and data.get("data"):
-                        return data["data"]
-                    else:
-                        logger.warning(f"Bintable API reported an error or no data for BIN {bin_number}. Response: {data}")
-                        return None
-                else:
-                    logger.warning(f"Bintable API returned HTTP status {resp.status} for BIN: {bin_number}")
-                    return None
-    except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching from Bintable for {bin_number}: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"An unexpected error occurred fetching from Bintable for {bin_number}: {e}")
-        return None
+def luhn_checksum(card_number):
+    """Checks if a credit card number is valid using the Luhn algorithm."""
+    digits = [int(d) for d in card_number if d.isdigit()]
+    total = 0
+    num_digits = len(digits)
+    parity = num_digits % 2
 
-async def fetch_bin_info_binlist(bin_number):
-    url = f"https://lookup.binlist.net/{bin_number}"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                if resp.status == 200:
-                    return await resp.json()
-                else:
-                    logger.warning(f"Binlist API returned status {resp.status} for BIN: {bin_number}")
-                    return None
-    except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching from Binlist for {bin_number}: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"An unexpected error occurred fetching from Binlist for {bin_number}: {e}")
-        return None
-
-async def fetch_bin_info_bincheckio(bin_number):
-    url = f"https://api.bincheck.io/bin/{bin_number}"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data.get("status") == "ok":
-                        return data
-                    else:
-                        logger.warning(f"Bincheck.io API returned status '{data.get('status')}' for BIN: {bin_number}")
-                        return None
-                else:
-                    logger.warning(f"Bincheck.io API returned HTTP status {resp.status} for BIN: {bin_number}")
-                    return None
-    except aiohttp.ClientError as e:
-        logger.error(f"Network error fetching from Bincheck.io for {bin_number}: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"An unexpected error occurred fetching from Bincheck.io for {bin_number}: {e}")
-        return None
+    for i, digit in enumerate(digits):
+        if i % 2 == parity:
+            digit *= 2
+            if digit > 9:
+                digit -= 9
+        total += digit
+    return total % 10 == 0
 
 async def get_bin_details(bin_number):
-    """
-    Attempts to fetch BIN details from multiple APIs with fallback.
-    VBV status will always be N/A.
-    """
-    details = {
-        "bank": "Unknown",
-        "country_name": "Unknown",
-        "country_emoji": "",
-        "scheme": "Unknown",
-        "card_type": "Unknown",
-        "level": "N/A",
-        "vbv_status": "N/A" # Always N/A
+    bin_data = {
+        "scheme": "N/A", "type": "N/A", "level": "N/A",
+        "bank": "N/A", "country_name": "N/A", "country_emoji": "",
+        "vbv_status": None, # Stays None, as actual VBV check is removed
+        "card_type": "N/A" # Used for consistency in responses
     }
-    
-    bintable_data = await fetch_bin_info_bintable(bin_number)
-    
-    if bintable_data:
-        bank_info = bintable_data.get("bank", {})
-        country_info = bintable_data.get("country", {})
-        card_info = bintable_data.get("card", {})
 
-        details["bank"] = bank_info.get("name", details["bank"])
-        details["country_name"] = country_info.get("name", details["country_name"])
-        details["country_emoji"] = country_info.get("flag", details["country_emoji"]) 
-        details["scheme"] = card_info.get("scheme", details["scheme"]).capitalize()
-        details["card_type"] = card_info.get("type", details["card_type"]).capitalize()
-        details["level"] = card_info.get("category", details["level"]).capitalize()
-    else:
-        binlist_data = await fetch_bin_info_binlist(bin_number)
-        if binlist_data:
-            details["bank"] = binlist_data.get("bank", {}).get("name", details["bank"])
-            details["country_name"] = binlist_data.get("country", {}).get("name", details["country_name"])
-            details["country_emoji"] = binlist_data.get("country", {}).get("emoji", details["country_emoji"])
-            details["scheme"] = binlist_data.get("scheme", details["scheme"]).capitalize()
-            details["card_type"] = binlist_data.get("type", details["card_type"]).capitalize()
-        else:
-            bincheck_data = await fetch_bin_info_bincheckio(bin_number)
-            if bincheck_data:
-                details["bank"] = bincheck_data.get("bank", {}).get("name", details["bank"])
-                details["country_name"] = bincheck_data.get("country", {}).get("name", details["country_name"])
-                details["country_emoji"] = bincheck_data.get("country", {}).get("emoji", details["country_emoji"])
-                details["scheme"] = bincheck_data.get("brand", details["scheme"]).capitalize()
-                details["card_type"] = bincheck_data.get("type", details["card_type"]).capitalize()
-                details["level"] = bincheck_data.get("level", details["level"]).capitalize()
+    async with aiohttp.ClientSession() as session:
+        # Try Bintable
+        if BINTABLE_API_KEY != "d1359fe2b305160dd9b9d895a07b4438794ea1f6" and BINTABLE_API_KEY: # Only use if not default key
+            try:
+                bintable_url = f"{BINTABLE_URL}/{bin_number}?api_key={BINTABLE_API_KEY}"
+                async with session.get(bintable_url, timeout=5) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data and data.get("success"):
+                            bin_data["scheme"] = data.get("scheme", "N/A").upper()
+                            bin_data["type"] = data.get("type", "N/A").title()
+                            bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type
+                            bin_data["level"] = data.get("level", "N/A").title()
+                            bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
+                            bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
+                            bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
+                            logger.info(f"BIN details from Bintable for {bin_number}: {data}")
+                            return bin_data
+            except aiohttp.ClientError as e:
+                logger.warning(f"Bintable API call failed for {bin_number}: {e}")
+            except Exception as e:
+                logger.warning(f"Error processing Bintable response for {bin_number}: {e}")
 
-    details["country_name"] = get_short_country_name(details["country_name"])
-    
-    return details
+        # Try Binlist as fallback
+        try:
+            binlist_url = f"https://lookup.binlist.net/{bin_number}"
+            async with session.get(binlist_url, timeout=5) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data:
+                        bin_data["scheme"] = data.get("scheme", "N/A").upper()
+                        bin_data["type"] = data.get("type", "N/A").title()
+                        bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type
+                        bin_data["level"] = data.get("brand", "N/A").title() # Binlist has 'brand' for level-like info
+                        bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
+                        bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
+                        bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
+                        logger.info(f"BIN details from Binlist for {bin_number}: {data}")
+                        return bin_data
+        except aiohttp.ClientError as e:
+            logger.warning(f"Binlist API call failed for {bin_number}: {e}")
+        except Exception as e:
+            logger.warning(f"Error processing Binlist response for {bin_number}: {e}")
 
-async def enforce_cooldown(user_id):
-    now = time.time()
-    last_time = user_last_command.get(user_id, 0)
-    if now - last_time < 5:
+        # Try Bincheck.io as final fallback
+        try:
+            bincheck_url = f"https://api.bincheck.io/v2/{bin_number}"
+            async with session.get(bincheck_url, timeout=5) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data and data.get("success"):
+                        bin_data["scheme"] = data.get("scheme", "N/A").upper()
+                        bin_data["type"] = data.get("type", "N/A").title()
+                        bin_data["card_type"] = data.get("type", "N/A").title() # Use 'type' for card_type
+                        bin_data["level"] = data.get("level", "N/A").title()
+                        bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
+                        bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
+                        bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
+                        logger.info(f"BIN details from Bincheck.io for {bin_number}: {data}")
+                        return bin_data
+        except aiohttp.ClientError as e:
+            logger.warning(f"Bincheck.io API call failed for {bin_number}: {e}")
+        except Exception as e:
+            logger.warning(f"Error processing Bincheck.io response for {bin_number}: {e}")
+
+    # If all APIs fail or return no data, return default N/A values
+    logger.warning(f"Failed to get BIN details for {bin_number} from all sources.")
+    return bin_data
+
+async def enforce_cooldown(user_id: int) -> bool:
+    """Enforces a 5-second cooldown per user."""
+    current_time = time.time()
+    last_command_time = user_last_command.get(user_id, 0)
+
+    if current_time - last_command_time < 5:
         return False
-    user_last_command[user_id] = now
+    user_last_command[user_id] = current_time
     return True
+
+# --- New Helper Functions ---
+def get_user_credits(user_id):
+    now = datetime.now()
+    if user_id not in USER_CREDITS:
+        USER_CREDITS[user_id] = {'credits': DAILY_KILL_CREDIT_LIMIT, 'last_credit_reset': now}
+    else:
+        # Check if it's a new day since last reset (based on date only)
+        last_reset_date = USER_CREDITS[user_id]['last_credit_reset'].date()
+        if now.date() > last_reset_date:
+            USER_CREDITS[user_id]['credits'] = DAILY_KILL_CREDIT_LIMIT
+            USER_CREDITS[user_id]['last_credit_reset'] = now
+    return USER_CREDITS[user_id]['credits']
+
+def consume_credit(user_id):
+    get_user_credits(user_id) # Ensure credits are up-to-date
+    if USER_CREDITS[user_id]['credits'] > 0:
+        USER_CREDITS[user_id]['credits'] -= 1
+        return True
+    return False
+
+def add_credits_to_user(user_id, amount):
+    get_user_credits(user_id) # Ensure credits are up-to-date
+    USER_CREDITS[user_id]['credits'] += amount
+    # Optionally, update last_credit_reset to now to prevent immediate re-fill if you want this to be a "manual override"
+    # USER_CREDITS[user_id]['last_credit_reset'] = datetime.now()
+    return USER_CREDITS[user_id]['credits']
+
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    chat_type = update.effective_chat.type
+
+    # Owner can use bot everywhere
+    if user_id == OWNER_ID:
+        return True
+
+    # Check for private chat restrictions
+    if chat_type == 'private':
+        if user_id in AUTHORIZED_PRIVATE_USERS:
+            return True
+        else:
+            keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(
+                f"🚫 You are not approved to use bot in private\\. Get the subscription at cheap from {AUTHORIZATION_CONTACT} to use or else use for free in our official group\\.",
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return False
+
+    # Check for group chat restrictions
+    elif chat_type == 'group' or chat_type == 'supergroup':
+        if chat_id in AUTHORIZED_CHATS:
+            return True
+        else:
+            await update.message.reply_text(
+                f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return False
+    return False # Should not reach here ordinarily
+
 
 # === COMMAND HANDLERS ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    welcome = f"👋 Hi, welcome {user.full_name}!\n🤖 Bot Status: Active"
-    buttons = [
-        [InlineKeyboardButton("📜 Commands", callback_data="show_main_commands")],
-        [InlineKeyboardButton("👥 Group", url="https://t.me/+8a9R0pRERuE2YWFh")]
+    user_full_name = escape_markdown_v2(update.effective_user.full_name)
+    welcome_message = (
+        f"Hey {user_full_name} \\! I am 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽 your Telegram Bot\\.\n\n"
+        f"I can help you with BIN lookups,Killing and card generation\\.\n\n"
+        f"Press the button below to see my commands\\."
+    )
+    keyboard = [
+        [InlineKeyboardButton("Commands", callback_data="show_main_commands")],
+        [InlineKeyboardButton("Our Official Group", url=OFFICIAL_GROUP_LINK)]
     ]
-    
-    query = update.callback_query
-    if query:
-        await query.answer()
-        await query.edit_message_text(welcome, reply_markup=InlineKeyboardMarkup(buttons))
-    else:
-        await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(buttons))
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    if query:
-        await query.answer()
+    await query.answer()
 
-    commands_text = "📜 *Bot Commands:*\nSelect a command to learn more:"
-    buttons = [
-        [InlineKeyboardButton("💳 Generate Cards (/gen)", callback_data="cmd_gen")],
-        [InlineKeyboardButton("🔍 BIN Info (/bin)", callback_data="cmd_bin")],
-        [InlineKeyboardButton("📊 Bot Status (/status)", callback_data="cmd_status")],
-        [InlineKeyboardButton("💀 Kill Card (/kill)", callback_data="cmd_kill")], # Added kill command to menu
-        [InlineKeyboardButton("⬅️ Back to Start", callback_data="back_to_start")]
+    commands_text = "Here are the commands you can use:\n\n"
+
+    keyboard = [
+        [InlineKeyboardButton("💳 Generate Cards", callback_data="cmd_gen")],
+        [InlineKeyboardButton("🔍 BIN Lookup", callback_data="cmd_bin")],
+        [InlineKeyboardButton("🔪 Kill Card", callback_data="cmd_kill")],
+        [InlineKeyboardButton("📊 Bot Status", callback_data="cmd_status")],
+        [InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]
     ]
-    
-    if query:
-        await query.edit_message_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
-    else:
-        await update.message.reply_text(commands_text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=ParseMode.MARKDOWN)
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(commands_text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     command_name = query.data.replace("cmd_", "")
-    
-    usage_text = ""
-    if command_name == "gen":
-        usage_text = (
-            "*💳 Generate Cards*\n" +
-            "Usage: `/gen [bin]` or `\\.gen [bin]`\n" +
-            "Example: `/gen 453957`\n" +
-            "Generates 10 credit cards based on the provided BIN\\.\\\n"
-        ).strip()
-    elif command_name == "bin":
-        usage_text = (
-            "*🔍 BIN Info*\n" +
-            "Usage: `/bin [bin]` or `\\.bin [bin]`\n" +
-            "Example: `/bin 518765`\n" +
-            "Provides detailed information about a given BIN\\.\\\n"
-        ).strip()
-    elif command_name == "status":
-        usage_text = (
-            "*📊 Bot Status*\n" +
-            "Usage: `/status`\n" +
-            "Example: `/status`\n" +
-            "Displays the bot's current operational status, including user count, RAM/CPU usage, and uptime\\.\\\n"
-        ).strip()
-    elif command_name == "kill": # Updated kill command details
-        usage_text = (
-            "*💀 Kill Card*\n" +
-            "Usage: `/kill CC\\|MM\\|YY\\|CVV` or `\\.kill CC\\|MM\\|YYYY\\|CVV`\n" +
-            "Alternatively, reply to a message with card details using `/kill` or `\\.kill`\\.\n" +
-            "Example: `/kill 1234567890123456\\|12\\|25\\|123`\n" +
-            "Example: `/kill 1234567890123456\\|12\\|2025\\|123`\n" +
-            "This command kills a provided card\\. It works effectively for Visa cards, but for Mastercard, the success rate may vary\\.\n"
-        ).strip()
-    elif command_name == "au":
-        usage_text = (
-            "*🔐 Authorize Group*\n" +
-            "Usage: `/au [chat_id]`\n" +
-            "Example: `/au \\-100123456789`\n" +
-            "Authorizes a specific group to use the bot's features\\.\\\n" +
-            "*Note:* This command can only be used by the bot owner\\.\n"
-        ).strip()
-    else:
-        usage_text = "Unknown command\\. Please go back and select a valid command\\.\\"
 
-    back_button = [[InlineKeyboardButton("⬅️ Back to Commands", callback_data="show_main_commands")]]
-    await query.edit_message_text(usage_text, reply_markup=InlineKeyboardMarkup(back_button), parse_mode=ParseMode.MARKDOWN_V2)
+    details = {
+        "gen": (
+            "*/gen \\<BIN\\>*\n"
+            "Generate 10 random credit cards \\(CC\\|MM\\|YY\\|CVV\\) based on a 6\\-digit BIN\\.\n"
+            "Example: `/gen 400000`"
+        ),
+        "bin": (
+            "*/bin \\<BIN\\>*\n"
+            "Look up detailed information for a 6\\-digit BIN \\(Bank, Country, Type, Scheme\\, Level\\, VBV Status\\)\\.\n"
+            "Example: `/bin 400000`"
+        ),
+        "kill": (
+            "*/kill CC\\|MM\\|YY\\|CVV*\n"
+            "Simulate 'killing' a credit card\\. This is a fun simulation and does NOT affect real cards\\.\n"
+            "You have `30` credits daily for this command\\.\n"
+            "Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
+        ),
+        "status": (
+            "*/status*\n"
+            "Check the bot's current operational status \\(RAM, CPU, Uptime, Total Users\\)\\."
+        )
+    }
+
+    text = details.get(command_name, "Details not found\\.")
+    keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_authorization(update, context):
+        return
     if not await enforce_cooldown(update.effective_user.id):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -406,13 +414,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_name = bin_details['country_name']
     country_emoji = bin_details['country_emoji']
     card_type = bin_details["card_type"]
-    
+
     cards = []
     while len(cards) < 10:
         # Determine card number length based on brand, default to 16
         num_len = 16
         if brand.lower() == 'american express':
-            num_len = 15 
+            num_len = 15
         elif brand.lower() == 'diners club':
             num_len = 14
 
@@ -421,29 +429,29 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             num = bin_input[:num_len] # Truncate BIN if it's too long for the card type
         else:
             num = bin_input + ''.join(str(random.randint(0, 9)) for _ in range(num_suffix_len))
-        
+
         if not luhn_checksum(num):
             continue
-        
+
         # Generate MM (01-12)
         mm = str(random.randint(1, 12)).zfill(2)
         # Generate YYYY (current year + 1 to 5 years)
         yyyy = str(datetime.now().year + random.randint(1, 5))
-        
+
         cvv_length = 4 if brand.lower() == 'american express' else 3
         cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
-        
+
         cards.append(f"`{num}|{mm}|{yyyy[-2:]}|{cvv}`")
 
     cards_list = "\n".join(cards)
-    
+
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
-    
+
     # BIN info block content for /gen, using ">>" as separator and escaped hyphen
     bin_info_block_content = (
         f"✦ BIN\\-LOOKUP\n"
@@ -471,6 +479,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_authorization(update, context):
+        return
     if not await enforce_cooldown(update.effective_user.id):
         return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -486,7 +496,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/bin [bin]` or `\\.bin [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     bin_input = bin_input[:6]
-    
+
     bin_details = await get_bin_details(bin_input)
 
     scheme = bin_details["scheme"]
@@ -507,7 +517,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
-    
+
     # Main BIN info box - made narrower for mobile
     bin_info_box = (
         f"╔═══════ BIN INFO ═══════╗\n"
@@ -528,7 +538,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     result = f"{bin_info_box}\n\n{user_info_quote_box}"
-    
+
     await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message):
@@ -539,7 +549,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     time_taken = 0 # Initialize time_taken
 
     # Simulate delay: 30 seconds to 1.3 minutes (78 seconds)
-    kill_time = random.uniform(30, 78) 
+    kill_time = random.uniform(30, 78)
     start_time = time.time()
 
     # Animation frames for "Killing..." using ⚡ emoji
@@ -576,13 +586,13 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
             logger.warning(f"Failed to edit message during animation (General Error): {e}")
             # For any other unexpected error, log but DO NOT BREAK.
             # We need the sleep to continue to ensure the full kill_time is met.
-        
+
         # Calculate remaining time for sleep to ensure total kill_time is met
         sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
         if sleep_duration <= 0:
             break # No more time left to sleep
         await asyncio.sleep(sleep_duration)
-        
+
         elapsed_animation_time = time.time() - start_time
         frame_index += 1
 
@@ -604,7 +614,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     header_title = "⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
     if bin_details["scheme"].lower() == 'mastercard':
         # Generate random percentage > 67%
-        percentage = random.randint(68, 100) 
+        percentage = random.randint(68, 100)
         header_title = f"⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%" # Escaping - and % for MarkdownV2
 
     # Construct the final message using a single f-string for easy modification
@@ -627,12 +637,48 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    chat_type = update.effective_chat.type
+
+    # Owner bypasses all checks
+    if user_id != OWNER_ID:
+        # For group chats, if not authorized, return
+        if (chat_type == 'group' or chat_type == 'supergroup') and update.effective_chat.id not in AUTHORIZED_CHATS:
+            await update.message.reply_text(
+                f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+        # For private chats, if not authorized, return
+        if chat_type == 'private' and user_id not in AUTHORIZED_PRIVATE_USERS:
+            keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(
+                f"🚫 You are not approved to use bot in private\\. Get the subscription at cheap from {AUTHORIZATION_CONTACT} to use or else use for free in our official group\\.",
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+    # Credit check for /kill command (only if not owner)
+    if user_id != OWNER_ID:
+        remaining_credits = get_user_credits(user_id)
+        if remaining_credits <= 0:
+            await update.message.reply_text(
+                f"❌ You have no credits left for the kill command today\\. Your daily credits will reset soon\\. Use other commands for free in our official group, or contact {AUTHORIZATION_CONTACT} for more credits\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+        
+    if not await enforce_cooldown(user_id):
+        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
     card_details_input = None
 
     # 1. Try to get card details from command arguments
     if context.args:
         card_details_input = " ".join(context.args)
-        logger.debug(f"Kill command: Card details from args: '{card_details_input}'")
+        logger.debug(f"Kill command: Card details from args: '{card_details_input}')")
     # 2. If no arguments, try to get from message text for .kill command
     elif update.message.text and (update.message.text.lower().startswith(".kill ") or update.message.text.lower().startswith("/kill ")):
         # Extract content after the command word
@@ -670,11 +716,15 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mm = card_match.group(2)
     yy = card_match.group(3) # Keep the original year format (YY or YYYY) for display
     cvv = card_match.group(4)
-    
+
     full_card_str = f"{cc}|{mm}|{yy}|{cvv}"
-    
-    if not await enforce_cooldown(update.effective_user.id):
-        return await update.message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    # Consume credit after all validations pass and before starting the process
+    if user_id != OWNER_ID:
+        consume_credit(user_id)
+        remaining_credits_after_use = get_user_credits(user_id) # Get updated credits
+        await update.message.reply_text(f"💳 Card received\\. Your remaining daily credits: `{remaining_credits_after_use}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
 
     # Send the initial message and store it to edit later
     initial_message = await update.message.reply_text(
@@ -687,19 +737,22 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_authorization(update, context):
+        return
+
     total_users = len(user_last_command)
-    
+
     ram_mb = psutil.virtual_memory().used / (1024 * 1024)
     ram_usage = f"{ram_mb:.0f} MB"
-    
+
     cpu_usage_percent = psutil.cpu_percent()
     escaped_cpu_usage_text = escape_markdown_v2(str(cpu_usage_percent)) + "\\%"
-    
+
     uptime_seconds = int(time.time() - psutil.boot_time())
     days, remainder = divmod(uptime_seconds, 86400)
     hours, remainder = divmod(remainder, 3600)
     minutes, _ = divmod(remainder, 60)
-    
+
     uptime_parts = []
     if days > 0:
         uptime_parts.append(f"{days} day{'s' if days > 1 else ''}")
@@ -707,7 +760,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         uptime_parts.append(f"{hours} hour{'s' if hours > 1 else ''}")
     if minutes > 0:
         uptime_parts.append(f"{minutes} minute{'s' if minutes > 1 else ''}")
-    
+
     uptime_string = ", ".join(uptime_parts) if uptime_parts else "less than a minute"
 
     escaped_total_users = escape_markdown_v2(str(total_users))
@@ -723,22 +776,94 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"> ⏱️ Uptime: {escaped_uptime_string}\n"
         f"> 🤖 Bot by \\- 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎"
     )
-    
+
     await update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
-        return await update.message.reply_text("🚫 You are not authorized to use this command.")
+        return await update.message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     if not context.args:
         return await update.message.reply_text("Usage: `/au [chat_id]`\\. Please provide a chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
-    
+
     try:
         chat_id_to_authorize = int(context.args[0])
+        AUTHORIZED_CHATS.add(chat_id_to_authorize)
         await update.message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
         await update.message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-# === MAIN APPLICATION SETUP ===
+async def authorize_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return await update.message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not context.args:
+        return await update.message.reply_text("Usage: `/auth [user_id]`\\. Please provide a user ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    try:
+        user_id_to_authorize = int(context.args[0])
+        AUTHORIZED_PRIVATE_USERS.add(user_id_to_authorize)
+        await update.message.reply_text(f"✅ User `{user_id_to_authorize}` is now authorized to use the bot in private chat\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID\\. Please provide a numeric user ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+async def add_credits(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return await update.message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    
+    if len(context.args) != 2:
+        return await update.message.reply_text("Usage: `/ar [amount] [user_id]`\\. Example: `/ar 50 123456789`", parse_mode=ParseMode.MARKDOWN_V2)
+
+    try:
+        amount = int(context.args[0])
+        target_user_id = int(context.args[1])
+        
+        if amount <= 0:
+            return await update.message.reply_text("❌ Amount must be a positive number\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+        new_credits = add_credits_to_user(target_user_id, amount)
+        await update.message.reply_text(f"✅ Added `{amount}` credits to user `{target_user_id}`\\. Total credits for user: `{new_credits}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    except ValueError:
+        await update.message.reply_text("❌ Invalid amount or user ID\\. Please provide numeric values\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+async def handle_unauthorized_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # This handler will catch commands that are not explicitly handled by other handlers
+    # but still pass the filter. We check authorization here.
+    if update.effective_user.id == OWNER_ID:
+        # Owner is always authorized, so do nothing, let other handlers implicitly fail if command doesn't exist.
+        return
+
+    if update.effective_chat.type == 'private' and update.effective_user.id not in AUTHORIZED_PRIVATE_USERS:
+        # For private users not authorized, show start menu only
+        keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            f"🚫 You are not approved to use bot in private\\. Get the subscription at cheap from {AUTHORIZATION_CONTACT} to use or else use for free in our official group\\.",
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+    elif (update.effective_chat.type == 'group' or update.effective_chat.type == 'supergroup') and update.effective_chat.id not in AUTHORIZED_CHATS:
+        await update.message.reply_text(
+            f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+    # If authorized, or owner, let other handlers process. This specific handler
+    # should ideally be placed after other specific command handlers.
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log the error and send a telegram message to notify the user."""
+    logger.error("Exception while handling an update:", exc_info=context.error)
+    try:
+        # Try to send a generic error message to the user
+        if update and update.effective_message:
+            await update.effective_message.reply_text(
+                "An unexpected error occurred\\. Please try again or contact support\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+    except Exception as e:
+        logger.error(f"Failed to send error message to user: {e}")
+
+# === MAIN FUNCTION ===
 def main():
     if TOKEN is None:
         logger.error("BOT_TOKEN environment variable is not set. Please set it before running the bot.")
@@ -746,27 +871,44 @@ def main():
     if OWNER_ID is None:
         logger.error("OWNER_ID environment variable is not set. Please set it before running the bot.")
         exit(1)
-    
+
     application = ApplicationBuilder().token(TOKEN).build()
 
+    # Start command (always accessible)
     application.add_handler(CommandHandler("start", start))
+
+    # Commands that require authorization (except /start which is always allowed)
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
-    # Explicitly add filters for private and group chats for kill command
+    # Note: filters.ChatType.PRIVATE | filters.ChatType.GROUPS is used for kill
+    # because it can be used in both. Authorization logic is inside the handler.
     application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
 
-    application.add_handler(CommandHandler("au", authorize_group))
+    # Owner-only commands
+    application.add_handler(CommandHandler("au", authorize_group)) # Authorize Group
+    application.add_handler(CommandHandler("auth", authorize_user)) # Authorize Private User
+    application.add_handler(CommandHandler("ar", add_credits)) # Add Credits to User
 
+    # Message handlers for dot commands
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
-    # Explicitly add filters for private and group chats for .kill message handler
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
 
+    # Callback query handlers for inline keyboard buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
     application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$"))
 
+    # Add a catch-all message handler for unauthorized commands/chats.
+    # This must be placed AFTER all specific command handlers to avoid intercepting them.
+    # It catches all messages that are commands or just text, but its internal logic
+    # will determine if it should send an authorization message or let other handlers proceed.
+    application.add_handler(MessageHandler(
+        filters.COMMAND | filters.TEXT, # Catches all commands and text
+        handle_unauthorized_commands # Checks if the command is allowed in the chat
+    ))
+    
     # Add the error handler
     application.add_error_handler(error_handler)
 
