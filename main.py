@@ -333,12 +333,10 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_full_name = escape_markdown_v2(update.effective_user.full_name)
     welcome_message = (
-        f"Hey {user_full_name} 👋\\! Welcome to *𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ* ⚡\\.\n\n"
-        f"I'm your all\\-in\\-one bot for ⚙️ *Card Tools* & 💀 *Live Killing* \\!\n"
-        f"Use me to generate cards, check BINs, and powerful cc killer — fast and smart ✅\\.\n\n"
-        f"Hit the button below to explore all my commands and get started 👇"
+        f"Hey {user_full_name} \\! I am 𝑩𝒍𝒐𝒄𝒌𝑺𝒕𝒐𝒓𝒎 your Telegram Bot\\.\n\n"
+        f"I can help you with BIN lookups and card generation\\.\n\n"
+        f"Press the button below to see my commands\\."
     )
-
     keyboard = [
         [InlineKeyboardButton("Commands", callback_data="show_main_commands")],
         [InlineKeyboardButton("Our Official Group", url=OFFICIAL_GROUP_LINK)]
@@ -388,51 +386,44 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(commands_text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     command_name = query.data.replace("cmd_", "")
 
-details = {
-    "gen": (
-        "`/gen <BIN>`\n"
-        "Generate 10 random credit cards in the format `CC|MM|YY|CVV` based on a 6\\-digit BIN\\.\n"
-        "Example: `/gen 400000`"
-    ),
-    "bin": (
-        "`/bin <BIN>`\n"
-        "Get full details of any BIN \\(Bank, Country, Brand, Type, Level, VBV\\)\\.\n"
-        "Example: `/bin 400000`"
-    ),
-    "kill": (
-        "`/kill CC|MM|YY|CVV`\n"
-        "Execute a real\\-time CC kill request \\- fast and accurate 💀\\.\n"
-        f"You have `{get_user_credits(update.effective_user.id)}` daily credits for this command\\.\n"
-        "Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
-    ),
-    "status": (
-        "`/status`\n"
-        "Check the bot's live system stats \\(RAM, CPU, Uptime, Total Users\\)\\."
-    ),
-    "credits": (
-        "`/credits`\n"
-        "View your remaining daily kill credits and linked Telegram username\\."
-    )
-}
+    details = {
+        "gen": (
+            "*/gen \\<BIN\\>*\n"
+            "Generate 10 random credit cards \\(CC\\|MM\\|YY\\|CVV\\) based on a 6\\-digit BIN\\.\n"
+            "Example: `/gen 400000`"
+        ),
+        "bin": (
+            "*/bin \\<BIN\\>*\n"
+            "Look up detailed information for a 6\\-digit BIN \\(Bank, Country, Type, Scheme\\, Level\\, VBV Status\\)\\.\n"
+            "Example: `/bin 400000`"
+        ),
+        "kill": (
+            f"*/kill CC\\|MM\\|YY\\|CVV*\n"
+            f"Performs real\\-time card killing\\. Fast, direct, and effective ☠️\\.\n"
+            f"You have `{get_user_credits(update.effective_user.id)}` credits daily for this command\\.\n"
+            f"Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
+        ),
+        "status": (
+            "*/status*\n"
+            "Check the bot's current operational status \\(RAM, CPU, Uptime, Total Users\\)\\."
+        ),
+        "credits": ( # Added details for credits command
+            "*/credits*\n"
+            "Check your remaining daily kill credits and your username\\."
+        )
+    }
 
+    # Corrected indentation for the following lines
     text = details.get(command_name, "Details not found\\.")
     keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
 
-    await query.edit_message_text(
-        text,
-        reply_markup=reply_markup,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
@@ -658,11 +649,11 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     brand = escape_markdown_v2(bin_details["scheme"])
 
     # Determine header based on card scheme
-    header_title = "⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
+    header_title = "⚡Cᴀʀd Kɪʟʟᴇd Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
     if bin_details["scheme"].lower() == 'mastercard':
         # Generate random percentage > 67%
         percentage = random.randint(68, 100)
-        header_title = f"⚡Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%" # Escaping - and % for MarkdownV2
+        header_title = f"⚡Cᴀʀd Kɪʟʟᴇd Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%" # Escaping - and % for MarkdownV2
 
     # Construct the final message using a single f-string for easy modification
     # Manual padding for visual alignment of colons
@@ -712,7 +703,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         remaining_credits = get_user_credits(user_id)
         if remaining_credits <= 0:
             await update.effective_message.reply_text( # Use effective_message
-                f"❌ You have no credits left for the kill command today\\. Your daily credits will reset soon\\. Or contact {AUTHORIZATION_CONTACT} for more credits\\.",
+                f"❌ You have no credits left for the kill command today\\. Your daily credits will reset soon\\. Use other commands for free in our official group, or contact {AUTHORIZATION_CONTACT} for more credits\\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return
@@ -806,7 +797,6 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if hours > 0:
         uptime_parts.append(f"{hours} hour{'s' if hours > 1 else ''}")
     if minutes > 0:
-        # Corrected line: removed 'молодежь' and added 'else' for ternary operator
         uptime_parts.append(f"{minutes} minute{'s' if minutes > 1 else ''}")
 
     uptime_string = ", ".join(uptime_parts) if uptime_parts else "less than a minute"
