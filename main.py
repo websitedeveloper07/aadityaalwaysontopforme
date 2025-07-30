@@ -796,7 +796,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if hours > 0:
         uptime_parts.append(f"{hours} hour{'s' if hours > 1 else ''}")
     if minutes > 0:
-        uptime_parts.append(f"{minutes} minute{'s' if minutes > 1 молодежь ''}")
+        # Corrected line: removed 'молодежь' and added 'else' for ternary operator
+        uptime_parts.append(f"{minutes} minute{'s' if minutes > 1 else ''}")
 
     uptime_string = ", ".join(uptime_parts) if uptime_parts else "less than a minute"
 
