@@ -942,8 +942,6 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-fake = Faker()
-
 def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
 
@@ -952,6 +950,24 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if not await enforce_cooldown(update.effective_user.id, update):
         return
+
+    # Parse country input
+    args = context.args
+    country_input = " ".join(args).strip().lower() if args else "usa"
+
+    # Country-to-locale mapping
+    country_locale_map = {
+        "usa": "en_US", "us": "en_US", "united states": "en_US",
+        "uk": "en_GB", "united kingdom": "en_GB",
+        "india": "en_IN", "in": "en_IN", "bharat": "en_IN",
+        "canada": "en_CA", "australia": "en_AU",
+        "germany": "de_DE", "france": "fr_FR",
+        "spain": "es_ES", "italy": "it_IT"
+    }
+
+    # Get locale and initialize Faker
+    locale = country_locale_map.get(country_input, "en_US")
+    fake = Faker(locale)
 
     name = escape_markdown_v2(fake.name())
     street = escape_markdown_v2(fake.street_address())
