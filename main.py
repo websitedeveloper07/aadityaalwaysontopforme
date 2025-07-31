@@ -944,9 +944,9 @@ from telegram.ext import ContextTypes
 
 def esc(text: str) -> str:
     """
-    Escapes all special characters required by Telegram MarkdownV2 for inline code.
+    Escapes all special characters required by Telegram MarkdownV2.
     """
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+    return re.sub(r'([\\`*_{}\[\]()#+\-.!|>~=])', r'\\\1', str(text))
 
 async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
@@ -957,7 +957,7 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     country_input = " ".join(args).strip().lower() if args else "usa"
 
-    # Map short names to Faker locales
+    # Locale map
     country_locale_map = {
         "usa": "en_US", "us": "en_US",
         "uk": "en_GB", "united kingdom": "en_GB",
@@ -970,7 +970,7 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     locale = country_locale_map.get(country_input, "en_US")
     fake = Faker(locale)
 
-    # Generate fake values
+    # Fake info
     name = fake.name()
     street = fake.street_address()
     address2 = getattr(fake, "secondary_address", lambda: "Suite 12")()
@@ -995,9 +995,8 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_agent = fake.user_agent()
 
     def line(label, emoji, value):
-        return f"{emoji} *{label:<12}* ➤ `{esc(value)}`"
+        return f"{emoji} {label:<12} ➤ `{esc(value)}`"
 
-    # Final formatted message
     msg = (
         "┏━━━━━━━⍟\n"
         "*┃ Fake Identity*\n"
@@ -1026,7 +1025,12 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{line('User-Agent',   '🖥️', user_agent)}"
     )
 
-    await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+    try:
+        await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+    except Exception as e:
+        print("‼️ Message failed to send. Debug message below:\n")
+        print(msg)
+        raise e
 
 
 
