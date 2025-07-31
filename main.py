@@ -1267,37 +1267,37 @@ def main():
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("credits", credits_command))
-    application.add_handler(CommandHandler("fk", fk_country))  # Replaced old fk_command
-    application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS))  # /help only in groups
+    application.add_handler(CommandHandler("fk", fk_command)) # Corrected function name
+    application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS)) # /help only in groups
 
     # Dot-prefixed versions
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.credits\b.*"), credits_command))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_country))  # ✅ Fixed this line
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_command)) # Corrected function name
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.help\b.*") & filters.ChatType.GROUPS, help_command))
 
     # Kill command in both private & groups
     application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
 
     # Owner-only commands
-    application.add_handler(CommandHandler("au", authorize_group))  # Authorize Group
-    application.add_handler(CommandHandler("auth", authorize_user))  # Authorize Private User
-    application.add_handler(CommandHandler("ar", add_credits))  # Add Credits to User
-    application.add_handler(CommandHandler("admin", admin_command))  # Admin Dashboard
-    application.add_handler(CommandHandler("rauth", remove_authorize_user))  # Remove Authorized User
+    application.add_handler(CommandHandler("au", authorize_group)) # Authorize Group
+    application.add_handler(CommandHandler("auth", authorize_user)) # Authorize Private User
+    application.add_handler(CommandHandler("ar", add_credits)) # Add Credits to User
+    application.add_handler(CommandHandler("admin", admin_command)) # Admin Dashboard
+    application.add_handler(CommandHandler("rauth", remove_authorize_user)) # Remove Authorized User
 
     # Callback query handlers for inline keyboard buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
-    application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$"))  # Re-direct to start handler
+    application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$")) # Re-direct to start handler
 
     # Fallback handler for unhandled commands
     application.add_handler(MessageHandler(
-        filters.TEXT & filters.COMMAND,  # Only messages that are slash commands
+        filters.TEXT & filters.COMMAND, # Only messages that are slash commands
         handle_unauthorized_commands,
-        block=False  # Do not block other handlers
+        block=False # Do not block other handlers
     ))
 
     # Global error handler
