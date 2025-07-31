@@ -943,7 +943,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
 def escape_markdown_v2(text: str) -> str:
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
 
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # This check assumes you have a check_authorization and enforce_cooldown function.
@@ -995,29 +995,30 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┏━━━━━━━⍟\n"
         "┃ Fake Identity \n"
         "┗━━━━━━━━━━━⊛\n\n"
-        f"✧ Name      ➳ `{escape_markdown_v2(name)}`\n"
-        f"✧ Street    ➳ `{escape_markdown_v2(street)}`\n"
-        f"✧ Address 2 ➳ `{escape_markdown_v2(address2)}`\n"
-        f"✧ City      ➳ `{escape_markdown_v2(city)}`\n"
-        f"✧ State     ➳ `{escape_markdown_v2(state)}`\n"
-        f"✧ Country   ➳ `{escape_markdown_v2(country)}`\n"
-        f"✧ ZIP Code  ➳ `{escape_markdown_v2(zip_code)}`\n\n"
-        f"✧ Email     ➳ `{escape_markdown_v2(email)}`\n"
-        f"✧ Phone     ➳ `{escape_markdown_v2(phone)}`\n"
-        f"✧ DOB       ➳ `{escape_markdown_v2(str(dob))}`\n"
-        f"✧ Company   ➳ `{escape_markdown_v2(company)}`\n"
-        f"✧ Job Title ➳ `{escape_markdown_v2(job)}`\n"
-        f"✧ SSN/ID    ➳ `{escape_markdown_v2(ssn)}`\n"
-        f"✧ National ID ➳ `{escape_markdown_v2(national_id)}`\n"
-        f"✧ IP Address  ➳ `{escape_markdown_v2(ip)}`\n\n"
-        f"✧ Username  ➳ `{escape_markdown_v2(username)}`\n"
-        f"✧ Password  ➳ `{escape_markdown_v2(password)}`\n"
-        f"✧ Website   ➳ `{escape_markdown_v2(website)}`\n\n"
-        f"✧ Credit Card ➳ `{escape_markdown_v2(cc_number)}`\n"
-        f"✧ PAN Number  ➳ `{escape_markdown_v2(pan_number)}`\n\n"
-        f"✧ Device Name ➳ `{escape_markdown_v2(device)}`\n"
-        f"✧ User-Agent  ➳ `{escape_markdown_v2(user_agent)}`"
+        f"✧ Name      ➳ `{name}`\n"
+        f"✧ Street    ➳ `{street}`\n"
+        f"✧ Address 2 ➳ `{address2}`\n"
+        f"✧ City      ➳ `{city}`\n"
+        f"✧ State     ➳ `{state}`\n"
+        f"✧ Country   ➳ `{country}`\n"
+        f"✧ ZIP Code  ➳ `{zip_code}`\n\n"
+        f"✧ Email     ➳ `{email}`\n"
+        f"✧ Phone     ➳ `{phone}`\n"
+        f"✧ DOB       ➳ `{dob}`\n"
+        f"✧ Company   ➳ `{company}`\n"
+        f"✧ Job Title ➳ `{job}`\n"
+        f"✧ SSN/ID    ➳ `{ssn}`\n"
+        f"✧ National ID ➳ `{national_id}`\n"
+        f"✧ IP Address  ➳ `{ip}`\n\n"
+        f"✧ Username  ➳ `{username}`\n"
+        f"✧ Password  ➳ `{password}`\n"
+        f"✧ Website   ➳ `{website}`\n\n"
+        f"✧ Credit Card ➳ `{cc_number}`\n"
+        f"✧ PAN Number  ➳ `{pan_number}`\n\n"
+        f"✧ Device Name ➳ `{device}`\n"
+        f"✧ User-Agent  ➳ `{user_agent}`"
     )
+
 
 
     await update.effective_message.reply_text(msg, parse_mode="MarkdownV2")
