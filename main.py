@@ -675,12 +675,16 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
 
     while elapsed_animation_time < kill_time:
         current_frame = animation_frames[frame_index % len(animation_frames)]
+        
+        # FIX: Escape the current animation frame text
+        escaped_frame = escape_markdown_v2(current_frame)
+        
         # Edit the initial message to show the animation
         try:
             await initial_message.edit_text(
                 f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
                 f"🔪 Kɪʟʟɪɴɢ...\n"
-                f"```{current_frame}```"
+                f"```{escaped_frame}```"
             , parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
             if "Message is not modified" in str(e):
@@ -701,11 +705,13 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
 
     # Final frame to ensure it always reaches 100%
     final_frame = animation_frames[-1]
+    # FIX: Escape the final animation frame text
+    escaped_final_frame = escape_markdown_v2(final_frame)
     try:
         await initial_message.edit_text(
             f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
             f"🔪 Kɪʟʟɪɴɢ...\n"
-            f"```{final_frame}```"
+            f"```{escaped_final_frame}```"
         , parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
         logger.warning(f"Failed to edit message to final frame: {e}")
