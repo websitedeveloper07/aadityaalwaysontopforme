@@ -936,10 +936,10 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 from faker import Faker
+import random
 import re
 
 def escape_markdown_v2(text: str) -> str:
-    """Escape MarkdownV2 special characters."""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -951,7 +951,6 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     country_input = " ".join(args).strip().lower() if args else "usa"
 
-    # Map country names to Faker locales
     country_locale_map = {
         "usa": "en_US", "us": "en_US",
         "uk": "en_GB", "united kingdom": "en_GB",
@@ -964,48 +963,59 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     locale = country_locale_map.get(country_input, "en_US")
     fake = Faker(locale)
 
-    # Generate fake data
-    full_name = fake.name()
-    gender = random.choice(["Male", "Female"])
-    dob = fake.date_of_birth(minimum_age=18, maximum_age=60)
-    nationality = country_input.upper()
-    email = fake.email()
-    phone = fake.phone_number()
+    name = fake.name()
     street = fake.street_address()
+    address2 = fake.secondary_address() if hasattr(fake, "secondary_address") else "Suite 12"
     city = fake.city()
     state = fake.state()
+    country = country_input.upper()
     zip_code = fake.postcode()
-    country = nationality
-    ip = fake.ipv4_public()
-    website = fake.url()
+    email = fake.email()
+    phone = fake.phone_number()
+    dob = fake.date_of_birth(minimum_age=18, maximum_age=60)
+    company = fake.company()
     job = fake.job()
-    age = datetime.now().year - dob.year
-    dob_formatted = f"{dob.day} {dob.strftime('%B')} {dob.year}"
-
-    # Escape all fields
-    def esc(v): return escape_markdown_v2(str(v))
+    ssn = fake.ssn() if hasattr(fake, "ssn") else fake.swift()
+    national_id = fake.bban() if hasattr(fake, "bban") else fake.iban()
+    ip = fake.ipv4_public()
+    username = fake.user_name()
+    password = fake.password()
+    website = fake.url()
+    cc_number = fake.credit_card_number()
+    pan_number = "N/A"
+    device = f"{fake.android_platform_token().split(' ')[0]} {random.randint(1, 12)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
+    user_agent = fake.user_agent()
 
     msg = (
-        f"╭━━━✦ 𝑭𝒂𝒌𝒆 𝑰𝒏𝒇𝒐 𝑮𝒆𝒏𝒆𝒓𝒂𝒕𝒆𝒅 ✦━━━╮\n\n"
-        f"👤 𝗙𝘂𝗹𝗹 𝗡𝗮𝗺𝗲: {esc(full_name)}\n"
-        f"🚻 𝗚𝗲𝗻𝗱𝗲𝗿: {esc(gender)}\n"
-        f"🎂 𝗔𝗴𝗲 / 𝗗𝗢𝗕: {esc(age)} / {esc(dob_formatted)}\n"
-        f"🌎 𝗡𝗮𝘁𝗶𝗼𝗻𝗮𝗹𝗶𝘁𝘆: {esc(nationality)}\n"
-        f"📧 𝗘𝗺𝗮𝗶𝗹: {esc(email)}\n"
-        f"📞 𝗣𝗵𝗼𝗻𝗲: {esc(phone)}\n\n"
-        f"🏠 𝗦𝘁𝗿𝗲𝗲𝘁: {esc(street)}\n"
-        f"🏙️ 𝗖𝗶𝘁𝘆: {esc(city)}\n"
-        f"🗺️ 𝗣𝗿𝗼𝘃𝗶𝗻𝗰𝗲: {esc(state)}\n"
-        f"🏷️ 𝗣𝗼𝘀𝘁𝗮𝗹 𝗖𝗼𝗱𝗲: {esc(zip_code)}\n"
-        f"🌐 𝗖𝗼𝘂𝗻𝘁𝗿𝘆: {esc(country)}\n"
-        f"📡 𝗜𝗣 𝗔𝗱𝗱𝗿𝗲𝘀𝘀: {esc(ip)}\n\n"
-        f"🔗 𝗪𝗲𝗯𝘀𝗶𝘁𝗲: {esc(website)}\n"
-        f"💼 𝗝𝗼𝗯 𝗧𝗶𝘁𝗹𝗲: {esc(job)}\n\n"
-        f"╰━━━━━━━━━━━━━━━━━━━━╯"
+        "┏━━━━━━━⍟\n"
+        "┃ Fake Identity \n"
+        "┗━━━━━━━━━━━⊛\n\n"
+        f"✧ Name      ➳ {name}\n"
+        f"✧ Street    ➳ {street}\n"
+        f"✧ Address 2 ➳ {address2}\n"
+        f"✧ City      ➳ {city}\n"
+        f"✧ State     ➳ {state}\n"
+        f"✧ Country   ➳ {country}\n"
+        f"✧ ZIP Code  ➳ {zip_code}\n\n"
+        f"✧ Email     ➳ {email}\n"
+        f"✧ Phone     ➳ {phone}\n"
+        f"✧ DOB       ➳ {dob}\n"
+        f"✧ Company   ➳ {company}\n"
+        f"✧ Job Title ➳ {job}\n"
+        f"✧ SSN/ID    ➳ {ssn}\n"
+        f"✧ National ID ➳ {national_id}\n"
+        f"✧ IP Address  ➳ {ip}\n\n"
+        f"✧ Username  ➳ {username}\n"
+        f"✧ Password  ➳ {password}\n"
+        f"✧ Website   ➳ {website}\n\n"
+        f"✧ Credit Card ➳ {cc_number}\n"
+        f"✧ PAN Number  ➳ {pan_number}\n\n"
+        f"✧ Device Name ➳ {device}\n"
+        f"✧ User-Agent  ➳ {user_agent}"
     )
 
-    # Send message as monospace block
-    await update.effective_message.reply_text(f"```{msg}```", parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(msg)
+
 
 
 # --- New /help command ---
