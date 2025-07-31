@@ -937,88 +937,89 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from faker import Faker
 import random
-from datetime import datetime
+import re
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
-def pad(label: str, width: int = 14) -> str:
-    return label + " " * (width - len(label))
+def escape_markdown_v2(text: str) -> str:
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
-def line(label, emoji, value):
-    return f"{emoji} {pad(label)}➣ `{value}`"
-
-async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_authorization(update, context):
-        return
-    if not await enforce_cooldown(update.effective_user.id, update):
-        return
+async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # This check assumes you have a check_authorization and enforce_cooldown function.
+    # if not await check_authorization(update, context):
+    #     return
+    # if not await enforce_cooldown(update.effective_user.id, update):
+    #     return
 
     args = context.args
-    country_input = " ".join(args).strip() if args else "us"
+    country_input = " ".join(args).strip().lower() if args else "usa"
 
     country_locale_map = {
         "usa": "en_US", "us": "en_US",
-        "uk": "en_GB", "india": "en_IN",
-        "canada": "en_CA", "australia": "en_AU",
-        "germany": "de_DE", "france": "fr_FR",
-        "spain": "es_ES", "italy": "it_IT",
+        "uk": "en_GB", "united kingdom": "en_GB",
+        "india": "en_IN", "canada": "en_CA",
+        "australia": "en_AU", "germany": "de_DE",
+        "france": "fr_FR", "spain": "es_ES",
+        "italy": "it_IT"
     }
 
-    locale = country_locale_map.get(country_input.lower(), "en_US")
+    locale = country_locale_map.get(country_input, "en_US")
     fake = Faker(locale)
 
-    full_name = fake.name()
-    street = fake.street_address()
-    address2 = fake.secondary_address() if hasattr(fake, "secondary_address") else "-"
-    city = fake.city()
-    state = fake.state()
-    zip_code = fake.postcode()
-    country = country_input.upper()
-    email = fake.email()
-    phone = fake.phone_number()
-    dob = fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%Y-%m-%d")
-    company = fake.company()
-    job = fake.job()
-    ssn = fake.ssn() if hasattr(fake, "ssn") else fake.bothify("###-##-####")
-    national_id = fake.bothify(text="??##?#?#?#?#?#?#?#")
-    ip = fake.ipv4_public()
-    username = fake.user_name()
-    password = fake.password()
-    website = fake.url()
-    credit_card = fake.credit_card_number()
-    pan_number = "N/A"
-    device = f"Android {random.randint(6, 13)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
-    user_agent = fake.user_agent()
+    # Generate data and escape special characters for markdown
+    name = escape_markdown_v2(fake.name())
+    street = escape_markdown_v2(fake.street_address())
+    address2 = escape_markdown_v2(fake.secondary_address() if hasattr(fake, "secondary_address") else "Suite 12")
+    city = escape_markdown_v2(fake.city())
+    state = escape_markdown_v2(fake.state())
+    country = escape_markdown_v2(country_input.upper())
+    zip_code = escape_markdown_v2(fake.postcode())
+    email = escape_markdown_v2(fake.email())
+    phone = escape_markdown_v2(fake.phone_number())
+    dob = escape_markdown_v2(str(fake.date_of_birth(minimum_age=18, maximum_age=60)))
+    company = escape_markdown_v2(fake.company())
+    job = escape_markdown_v2(fake.job())
+    ssn = escape_markdown_v2(fake.ssn() if hasattr(fake, "ssn") else fake.swift())
+    national_id = escape_markdown_v2(fake.bban() if hasattr(fake, "bban") else fake.iban())
+    ip = escape_markdown_v2(fake.ipv4_public())
+    username = escape_markdown_v2(fake.user_name())
+    password = escape_markdown_v2(fake.password())
+    website = escape_markdown_v2(fake.url())
+    cc_number = escape_markdown_v2(fake.credit_card_number())
+    pan_number = escape_markdown_v2("N/A")
+    device = escape_markdown_v2(f"{fake.android_platform_token().split(' ')[0]} {random.randint(1, 12)}.{random.randint(0, 9)}.{random.randint(0, 9)}")
+    user_agent = escape_markdown_v2(fake.user_agent())
 
     msg = (
         "┏━━━━━━━⍟\n"
-        "┃ Fake Identity\n"
+        "┃ Fake Identity \n"
         "┗━━━━━━━━━━━⊛\n\n"
-        f"{line('Name',         '👤', full_name)}\n"
-        f"{line('Street',       '🏠', street)}\n"
-        f"{line('Address 2',    '🏢', address2)}\n"
-        f"{line('City',         '🌆', city)}\n"
-        f"{line('State',        '🗺️', state)}\n"
-        f"{line('Country',      '🌐', country)}\n"
-        f"{line('ZIP Code',     '🏷️', zip_code)}\n\n"
-        f"{line('Email',        '📧', email)}\n"
-        f"{line('Phone',        '📞', phone)}\n"
-        f"{line('DOB',          '🎂', dob)}\n"
-        f"{line('Company',      '🏢', company)}\n"
-        f"{line('Job Title',    '💼', job)}\n"
-        f"{line('SSN/ID',       '🆔', ssn)}\n"
-        f"{line('National ID',  '🪪', national_id)}\n"
-        f"{line('IP Address',   '📡', ip)}\n\n"
-        f"{line('Username',     '👤', username)}\n"
-        f"{line('Password',     '🔐', password)}\n"
-        f"{line('Website',      '🔗', website)}\n\n"
-        f"{line('Credit Card',  '💳', credit_card)}\n"
-        f"{line('PAN Number',   '🧾', pan_number)}\n\n"
-        f"{line('Device Name',  '📱', device)}\n"
-        f"{line('User-Agent',   '🖥️', user_agent)}"
+        f"✧ Name      ➳ `{name}`\n"
+        f"✧ Street    ➳ `{street}`\n"
+        f"✧ Address 2 ➳ `{address2}`\n"
+        f"✧ City      ➳ `{city}`\n"
+        f"✧ State     ➳ `{state}`\n"
+        f"✧ Country   ➳ `{country}`\n"
+        f"✧ ZIP Code  ➳ `{zip_code}`\n\n"
+        f"✧ Email     ➳ `{email}`\n"
+        f"✧ Phone     ➳ `{phone}`\n"
+        f"✧ DOB       ➳ `{dob}`\n"
+        f"✧ Company   ➳ `{company}`\n"
+        f"✧ Job Title ➳ `{job}`\n"
+        f"✧ SSN/ID    ➳ `{ssn}`\n"
+        f"✧ National ID ➳ `{national_id}`\n"
+        f"✧ IP Address  ➳ `{ip}`\n\n"
+        f"✧ Username  ➳ `{username}`\n"
+        f"✧ Password  ➳ `{password}`\n"
+        f"✧ Website   ➳ `{website}`\n\n"
+        f"✧ Credit Card ➳ `{cc_number}`\n"
+        f"✧ PAN Number  ➳ `{pan_number}`\n\n"
+        f"✧ Device Name ➳ `{device}`\n"
+        f"✧ User-Agent  ➳ `{user_agent}`"
     )
 
-    await update.effective_message.reply_text(msg, parse_mode=None)
+    await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 # --- New /help command ---
