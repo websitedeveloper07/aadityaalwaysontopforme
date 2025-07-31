@@ -941,9 +941,11 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 
-# ➤ Value arrow changed to ➣
+def pad(label: str, width: int = 14) -> str:
+    return label + " " * (width - len(label))
+
 def line(label, emoji, value):
-    return f"{emoji} {label:<13} ➣ {value}"
+    return f"{emoji} {pad(label)}➣ `{value}`"
 
 async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
@@ -985,7 +987,7 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     website = fake.url()
     credit_card = fake.credit_card_number()
     pan_number = "N/A"
-    device = f"{fake.android_platform_token().split('/')[0]} {random.randint(1, 13)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
+    device = f"Android {random.randint(6, 13)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
     user_agent = fake.user_agent()
 
     msg = (
@@ -1016,8 +1018,7 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{line('User-Agent',   '🖥️', user_agent)}"
     )
 
-    await update.effective_message.reply_text(msg)
-
+    await update.effective_message.reply_text(msg, parse_mode=None)
 
 
 # --- New /help command ---
