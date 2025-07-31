@@ -937,88 +937,62 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from faker import Faker
 import random
+import re
 from telegram import Update
-from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-def escape_md_v2_outside(text: str) -> str:
-    """Escape MarkdownV2 special characters for outside backticks."""
-    import re
+fake = Faker()
+
+def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
 
-def escape_md_v2_inside_backticks(text: str) -> str:
-    """Escape only ` and \ for inside backticks."""
-    return text.replace('\\', '\\\\').replace('`', '\\`')
-
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
-    country_input = " ".join(args).strip().lower() if args else "usa"
+    if not await check_authorization(update, context):
+        return
+    if not await enforce_cooldown(update.effective_user.id, update):
+        return
 
-    country_locale_map = {
-        "usa": "en_US", "us": "en_US",
-        "uk": "en_GB", "united kingdom": "en_GB",
-        "india": "en_IN", "canada": "en_CA",
-        "australia": "en_AU", "germany": "de_DE",
-        "france": "fr_FR", "spain": "es_ES",
-        "italy": "it_IT"
-    }
-
-    locale = country_locale_map.get(country_input, "en_US")
-    fake = Faker(locale)
-
-    # Escape values (inside backticks)
-    name = escape_md_v2_inside_backticks(fake.name())
-    street = escape_md_v2_inside_backticks(fake.street_address())
-    address2 = escape_md_v2_inside_backticks(fake.secondary_address() if hasattr(fake, "secondary_address") else "Suite 12")
-    city = escape_md_v2_inside_backticks(fake.city())
-    state = escape_md_v2_inside_backticks(fake.state())
-    country = escape_md_v2_inside_backticks(country_input.upper())
-    zip_code = escape_md_v2_inside_backticks(fake.postcode())
-    email = escape_md_v2_inside_backticks(fake.email())
-    phone = escape_md_v2_inside_backticks(fake.phone_number())
-    dob = escape_md_v2_inside_backticks(str(fake.date_of_birth(minimum_age=18, maximum_age=60)))
-    company = escape_md_v2_inside_backticks(fake.company())
-    job = escape_md_v2_inside_backticks(fake.job())
-    ssn = escape_md_v2_inside_backticks(fake.ssn() if hasattr(fake, "ssn") else fake.swift())
-    national_id = escape_md_v2_inside_backticks(fake.bban() if hasattr(fake, "bban") else fake.iban())
-    ip = escape_md_v2_inside_backticks(fake.ipv4_public())
-    username = escape_md_v2_inside_backticks(fake.user_name())
-    password = escape_md_v2_inside_backticks(fake.password())
-    website = escape_md_v2_inside_backticks(fake.url())
-    cc_number = escape_md_v2_inside_backticks(fake.credit_card_number())
-    pan_number = escape_md_v2_inside_backticks("N/A")
-    device = escape_md_v2_inside_backticks(f"{fake.android_platform_token().split(' ')[0]} {random.randint(1, 12)}.{random.randint(0, 9)}.{random.randint(0, 9)}")
-    user_agent = escape_md_v2_inside_backticks(fake.user_agent())
+    name = escape_markdown_v2(fake.name())
+    street = escape_markdown_v2(fake.street_address())
+    address2 = escape_markdown_v2(fake.secondary_address())
+    city = escape_markdown_v2(fake.city())
+    state = escape_markdown_v2(fake.state())
+    zip_code = escape_markdown_v2(fake.postcode())
+    country = escape_markdown_v2(fake.country())
+    phone = escape_markdown_v2(fake.phone_number())
+    email = escape_markdown_v2(fake.email())
+    username = escape_markdown_v2(fake.user_name())
+    dob = escape_markdown_v2(fake.date_of_birth(minimum_age=18, maximum_age=50).strftime("%d/%m/%Y"))
+    ssn = escape_markdown_v2(fake.ssn())
+    job = escape_markdown_v2(fake.job())
+    company = escape_markdown_v2(fake.company())
+    ip = escape_markdown_v2(fake.ipv4())
+    ua = escape_markdown_v2(fake.user_agent())
 
     msg = (
-        "┏━━━━━━━⍟\n"
-        "┃ Fake Identity \n"
-        "┗━━━━━━━━━━━⊛\n\n"
-        f"✧ Name         ➳ `{name}`\n"
-        f"✧ Street       ➳ `{street}`\n"
-        f"✧ Address 2    ➳ `{address2}`\n"
-        f"✧ City         ➳ `{city}`\n"
-        f"✧ State        ➳ `{state}`\n"
-        f"✧ Country      ➳ `{country}`\n"
-        f"✧ ZIP Code     ➳ `{zip_code}`\n\n"
-        f"✧ Email        ➳ `{email}`\n"
-        f"✧ Phone        ➳ `{phone}`\n"
-        f"✧ DOB          ➳ `{dob}`\n"
-        f"✧ Company      ➳ `{company}`\n"
-        f"✧ Job Title    ➳ `{job}`\n"
-        f"✧ SSN/ID       ➳ `{ssn}`\n"
-        f"✧ National ID  ➳ `{national_id}`\n"
-        f"✧ IP Address   ➳ `{ip}`\n\n"
-        f"✧ Username     ➳ `{username}`\n"
-        f"✧ Password     ➳ `{password}`\n"
-        f"✧ Website      ➳ `{website}`\n\n"
-        f"✧ Credit Card  ➳ `{cc_number}`\n"
-        f"✧ PAN Number   ➳ `{pan_number}`\n\n"
-        f"✧ Device Name  ➳ `{device}`\n"
-        f"✧ User-Agent   ➳ `{user_agent}`"
+        "╭━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━━━━⬣\n"
+        f"┣ ❏ 𝙉𝙖𝙢𝙚      ➳ `{name}`\n"
+        f"┣ ❏ 𝘿𝙤𝘽       ➳ `{dob}`\n"
+        f"┣ ❏ 𝙎𝙎𝙉       ➳ `{ssn}`\n"
+        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡     ➳ `{email}`\n"
+        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ `{username}`\n"
+        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚     ➳ `{phone}`\n"
+        f"┣ ❏ 𝙅𝙤𝙗       ➳ `{job}`\n"
+        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮   ➳ `{company}`\n"
+        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩    ➳ `{street}`\n"
+        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ `{address2}`\n"
+        f"┣ ❏ 𝘾𝙞𝙩𝙮      ➳ `{city}`\n"
+        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚     ➳ `{state}`\n"
+        f"┣ ❏ 𝙕𝙞𝙥       ➳ `{zip_code}`\n"
+        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮   ➳ `{country}`\n"
+        f"┣ ❏ 𝙄𝙋        ➳ `{ip}`\n"
+        f"┣ ❏ 𝙐𝘼        ➳ `{ua}`\n"
+        "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
