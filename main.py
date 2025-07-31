@@ -32,7 +32,7 @@ DAILY_KILL_CREDIT_LIMIT = 30
 user_last_command = {}
 # These sets/dict are in-memory and will reset on bot restart.
 # For persistence, consider using a simple JSON file or a database.
-AUTHORIZED_CHATS = set() # Stores chat_ids of authorized groups
+AUTHORIZED_CHATS = set() # Stores chat_id of authorized groups
 AUTHORIZED_PRIVATE_USERS = set() # Stores user_ids of authorized private users
 USER_CREDITS = {} # user_id -> {'credits': int, 'last_credit_reset': datetime}
 
@@ -291,12 +291,13 @@ async def get_bin_details(bin_number):
     logger.warning(f"Failed to get BIN details for {bin_number} from all sources. Returning default N/A data.")
     return bin_data
 
-async def enforce_cooldown(user_id: int) -> bool:
-    """Enforces a 5-second cooldown per user."""
+async def enforce_cooldown(user_id: int, update: Update) -> bool:
+    """Enforces a 5-second cooldown per user and sends a warning message."""
     current_time = time.time()
     last_command_time = user_last_command.get(user_id, 0)
 
     if current_time - last_command_time < 5:
+        await update.effective_message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
         return False
     user_last_command[user_id] = current_time
     return True
@@ -367,6 +368,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
 # === COMMAND HANDLERS ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # No cooldown for start command
     user_full_name = escape_markdown_v2(update.effective_user.full_name)
     welcome_message = (
         f"Hey {user_full_name} 👋\\! Welcome to *𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ* ⚡\\.\n\n"
@@ -417,8 +419,9 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("💳 Generate Cards", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Lookup", callback_data="cmd_bin")],
         [InlineKeyboardButton("🔪 Kill Card", callback_data="cmd_kill")],
+        [InlineKeyboardButton("👤 Fake Info", callback_data="cmd_fk")], # Added for fake info command
         [InlineKeyboardButton("📊 Bot Status", callback_data="cmd_status")],
-        [InlineKeyboardButton("ℹ️ My Credits", callback_data="cmd_credits")], # Added for credits command
+        [InlineKeyboardButton("ℹ️ My Credits", callback_data="cmd_credits")], 
         [InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -446,11 +449,15 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
             f"You have `{get_user_credits(update.effective_user.id)}` credits daily for this command\\.\n"
             f"Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
         ),
+        "fk": (
+            "*/fk*\n"
+            "Generates random fake personal information: name, address, email, IP, phone number, and credit card details\\."
+        ),
         "status": (
             "*/status*\n"
             "Check the bot's current operational status \\(RAM, CPU, Uptime, Total Users\\)\\."
         ),
-        "credits": ( # Added details for credits command
+        "credits": (
             "*/credits*\n"
             "Check your remaining daily kill credits and your username\\."
         )
@@ -466,8 +473,8 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
-    if not await enforce_cooldown(update.effective_user.id):
-        return await update.effective_message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not await enforce_cooldown(update.effective_user.id, update): # Pass update to cooldown
+        return 
 
     bin_input = None
     if context.args:
@@ -514,6 +521,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Generate YYYY (current year + 1 to 5 years)
         yyyy = str(datetime.now().year + random.randint(1, 5))
 
+        # CVV length logic: 4 for Amex, 3 for others
         cvv_length = 4 if brand.lower() == 'american express' else 3
         cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
 
@@ -557,8 +565,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
-    if not await enforce_cooldown(update.effective_user.id):
-        return await update.effective_message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not await enforce_cooldown(update.effective_user.id, update): # Pass update to cooldown
+        return 
 
     bin_input = None
     if context.args:
@@ -566,7 +574,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif update.effective_message and update.effective_message.text: # Use effective_message
         command_text = update.effective_message.text.split(maxsplit=1)
         if len(command_text) > 1:
-            bin_input = command_text[1]
+            bin_input = parts[1]
 
     if not bin_input:
         return await update.effective_message.reply_text("❌ Please provide a 6\\-digit BIN\\. Usage: `/bin [bin]` or `\\.bin [bin]`\\.", parse_mode=ParseMode.MARKDOWN_V2)
@@ -742,8 +750,8 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-    if not await enforce_cooldown(user_id):
-        return await update.effective_message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not await enforce_cooldown(user_id, update): # Pass update to cooldown
+        return 
 
     card_details_input = None
 
@@ -797,7 +805,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if bin_details["card_type"].lower() == "prepaid":
         return await update.effective_message.reply_text(
-            f"🚫 𝙋𝙧𝙚𝙥𝙖𝙞𝙙 𝘽𝙄𝙉𝙨 𝙖𝙧𝙚 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\. Bin: `{escape_markdown_v2(bin_number)}` 💳 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚\\.",
+            f"🚫 𝙋𝙧𝙚𝙥𝙖𝙞𝙙 𝘽𝙄𝙉s 𝙖𝙧𝙚 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\. Bin: `{escape_markdown_v2(bin_number)}` 💳 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     elif bin_details["scheme"].lower() == "american express":
@@ -827,6 +835,8 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
+    if not await enforce_cooldown(update.effective_user.id, update): # Pass update to cooldown
+        return 
 
     total_users = len(user_last_command)
 
@@ -870,8 +880,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
-    if not await enforce_cooldown(update.effective_user.id):
-        return await update.effective_message.reply_text("⏳ Please wait 5 seconds before retrying\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not await enforce_cooldown(update.effective_user.id, update): # Pass update to cooldown
+        return 
 
     user_id = update.effective_user.id
     user_full_name = escape_markdown_v2(update.effective_user.full_name)
@@ -888,6 +898,90 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
+# --- New command: .fk (Fake Data Generator) ---
+async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_authorization(update, context):
+        return
+    if not await enforce_cooldown(update.effective_user.id, update): # Pass update to cooldown
+        return 
+
+    # Generate random fake data
+    first_names = ["John", "Jane", "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank"]
+    last_names = ["Doe", "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller"]
+    streets = ["Main St", "Oak Ave", "Pine Ln", "Maple Dr", "Elm Rd", "Cedar Blvd", "Willow Ct"]
+    cities = ["Springfield", "Rivertown", "Centerville", "Northwood", "Fairview", "Lakeview"]
+    states = ["NY", "CA", "TX", "FL", "IL", "GA", "VA"]
+    domains = ["example.com", "test.org", "mail.net", "fakesite.info"]
+
+    name = f"{random.choice(first_names)} {random.choice(last_names)}"
+    address = f"{random.randint(100, 999)} {random.choice(streets)}, {random.choice(cities)}, {random.choice(states)} {random.randint(10000, 99999)}"
+    email = f"{name.replace(' ', '.').lower()}@{random.choice(domains)}"
+    ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
+    phone_number = f"+1-{random.randint(200, 999)}-{random.randint(100, 999)}-{random.randint(1000, 9999)}"
+
+    # Generate random credit card details
+    # Randomly pick a BIN from a small set including Amex for testing CVV length
+    sample_bins = ["442486", "51580042", "3472680", "3774582"] # Visa, Mastercard, Amex, Amex
+    random_bin = random.choice(sample_bins)
+    
+    bin_details_cc = await get_bin_details(random_bin)
+    
+    cc_scheme = bin_details_cc["scheme"]
+    cc_num_len = 16
+    if cc_scheme.lower() == 'american express':
+        cc_num_len = 15
+    elif cc_scheme.lower() == 'diners club':
+        cc_num_len = 14
+
+    cc_num_suffix_len = cc_num_len - len(random_bin)
+    if cc_num_suffix_len < 0:
+        cc_number = random_bin[:cc_num_len]
+    else:
+        cc_number = random_bin + ''.join(str(random.randint(0, 9)) for _ in range(cc_num_suffix_len))
+    
+    # Ensure Luhn validity
+    while not luhn_checksum(cc_number):
+        if cc_num_suffix_len < 0:
+            cc_number = random_bin[:cc_num_len] # Regenerate based on truncated BIN
+        else:
+            cc_number = random_bin + ''.join(str(random.randint(0, 9)) for _ in range(cc_num_suffix_len))
+
+
+    cc_mm = str(random.randint(1, 12)).zfill(2)
+    cc_yy = str(datetime.now().year + random.randint(1, 5))[-2:] # Last two digits
+    
+    # CVV length logic: 4 for Amex, 3 for others
+    cvv_length = 4 if cc_scheme.lower() == 'american express' else 3
+    cc_cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
+
+    credit_card_details = f"`{cc_number}|{cc_mm}|{cc_yy}|{cc_cvv}`"
+    credit_card_info = (
+        f"  Scheme: {escape_markdown_v2(cc_scheme)}\n"
+        f"  Bank: {escape_markdown_v2(bin_details_cc['bank'])}\n"
+        f"  Country: {escape_markdown_v2(bin_details_cc['country_name'])} {escape_markdown_v2(bin_details_cc['country_emoji'])}\n"
+        f"  Card: {credit_card_details}"
+    )
+
+    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
+
+    # Format the output message
+    response_message = (
+        f"🗂️ *Fake Information Generated*\n"
+        f"────────────────────\n"
+        f"• *Name*: {escape_markdown_v2(name)}\n"
+        f"• *Address*: {escape_markdown_v2(address)}\n"
+        f"• *Email*: {escape_markdown_v2(email)}\n"
+        f"• *IP Address*: {escape_markdown_v2(ip_address)}\n"
+        f"• *Phone Number*: {escape_markdown_v2(phone_number)}\n"
+        f"• *Credit Card*: \n{credit_card_info.replace('  ', '    ')}\n" # Indent credit card details
+        f"────────────────────\n"
+        f"> Requested by \\-: {escaped_user_full_name}\n"
+        f"> Bot by \\-: 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️"
+    )
+
+    await update.effective_message.reply_text(response_message, parse_mode=ParseMode.MARKDOWN_V2)
+
+
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return await update.effective_message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
@@ -897,9 +991,14 @@ async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         chat_id_to_authorize = int(context.args[0])
         AUTHORIZED_CHATS.add(chat_id_to_authorize)
-        await update.effective_message.reply_text(f"✅ Group `{chat_id_to_authorize}` is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        chat_info = await context.bot.get_chat(chat_id_to_authorize)
+        chat_title = escape_markdown_v2(chat_info.title if chat_info.title else f"Unnamed Group {chat_id_to_authorize}")
+        await update.effective_message.reply_text(f"✅ Group `{chat_title}` \\(`{chat_id_to_authorize}`\\) is now authorized to use the bot\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
         await update.effective_message.reply_text("❌ Invalid chat ID\\. Please provide a numeric chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    except Exception as e:
+        await update.effective_message.reply_text(f"❌ Error authorizing group: {escape_markdown_v2(str(e))}\\. Make sure bot is in the group\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
 
 async def authorize_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -910,9 +1009,48 @@ async def authorize_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user_id_to_authorize = int(context.args[0])
         AUTHORIZED_PRIVATE_USERS.add(user_id_to_authorize)
-        await update.effective_message.reply_text(f"✅ User `{user_id_to_authorize}` is now authorized to use the bot in private chat\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        user_info = await context.bot.get_chat(user_id_to_authorize)
+        user_full_name = escape_markdown_v2(user_info.full_name)
+        await update.effective_message.reply_text(f"✅ User `{user_full_name}` \\(`{user_id_to_authorize}`\\) is now authorized to use the bot in private chat\\.", parse_mode=ParseMode.MARKDOWN_V2)
     except ValueError:
         await update.effective_message.reply_text("❌ Invalid user ID\\. Please provide a numeric user ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    except Exception as e:
+        await update.effective_message.reply_text(f"❌ Error authorizing user: {escape_markdown_v2(str(e))}\\. Make sure bot has interacted with user before\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+
+async def remove_authorize_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return await update.effective_message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not context.args:
+        return await update.effective_message.reply_text("Usage: `/rauth [user_id]`\\. Please provide a user ID to unapprove\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    try:
+        user_id_to_unauthorize = int(context.args[0])
+        if user_id_to_unauthorize in AUTHORIZED_PRIVATE_USERS:
+            AUTHORIZED_PRIVATE_USERS.remove(user_id_to_unauthorize)
+            # Also remove them from USER_CREDITS to reset their state
+            if user_id_to_unauthorize in USER_CREDITS:
+                del USER_CREDITS[user_id_to_unauthorize]
+            
+            user_info = await context.bot.get_chat(user_id_to_unauthorize)
+            user_full_name = escape_markdown_v2(user_info.full_name)
+            await update.effective_message.reply_text(
+                f"❌ User `{user_full_name}` \\(`{user_id_to_unauthorize}`\\) has been unapproved from using the bot in private chat and their credits reset\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+        else:
+            await update.effective_message.reply_text(
+                f"⚠️ User `{user_id_to_unauthorize}` was not found in the authorized private users list\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+    except ValueError:
+        await update.effective_message.reply_text("❌ Invalid user ID\\. Please provide a numeric user ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    except Exception as e:
+        await update.effective_message.reply_text(
+            f"❌ Error unapproving user: {escape_markdown_v2(str(e))}\\. Make sure bot has interacted with user before\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
 
 async def add_credits(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -929,9 +1067,62 @@ async def add_credits(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await update.effective_message.reply_text("❌ Amount must be a positive number\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
         new_credits = add_credits_to_user(target_user_id, amount)
-        await update.effective_message.reply_text(f"✅ Added `{amount}` credits to user `{target_user_id}`\\. Total credits for user: `{new_credits}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        target_user_info = await context.bot.get_chat(target_user_id)
+        target_user_full_name = escape_markdown_v2(target_user_info.full_name)
+        await update.effective_message.reply_text(
+            f"✅ Added `{amount}` credits to user `{target_user_full_name}` \\(`{target_user_id}`\\)\\. Total credits for user: `{new_credits}`\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
     except ValueError:
         await update.effective_message.reply_text("❌ Invalid amount or user ID\\. Please provide numeric values\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    except Exception as e:
+        await update.effective_message.reply_text(
+            f"❌ Error adding credits: {escape_markdown_v2(str(e))}\\. Make sure bot has interacted with user before\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return await update.effective_message.reply_text("🚫 You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    # --- Authorized Groups ---
+    authorized_groups_list = []
+    for chat_id in AUTHORIZED_CHATS:
+        try:
+            chat = await context.bot.get_chat(chat_id)
+            group_name = escape_markdown_v2(chat.title)
+            authorized_groups_list.append(f"    • {group_name} \\(`{chat_id}`\\)")
+        except Exception:
+            authorized_groups_list.append(f"    • Unknown Group \\(`{chat_id}`\\) \\(Bot might not be in the group\\)")
+    authorized_groups_str = "\n".join(authorized_groups_list) if authorized_groups_list else "    _None_"
+
+    # --- Authorized Private Users ---
+    authorized_private_users_list = []
+    for user_id in AUTHORIZED_PRIVATE_USERS:
+        try:
+            user = await context.bot.get_chat(user_id) # get_chat can also get user info
+            user_full_name = escape_markdown_v2(user.full_name)
+            authorized_private_users_list.append(f"    • {user_full_name} \\(`{user_id}`\\)")
+        except Exception:
+            authorized_private_users_list.append(f"    • Unknown User \\(`{user_id}`\\) \\(Bot might not have interacted with user\\)")
+    authorized_private_users_str = "\n".join(authorized_private_users_list) if authorized_private_users_list else "    _None_"
+
+    admin_info_msg = (
+        f"👑 *Admin Panel Overview* 👑\n"
+        f"──────────────\n"
+        f"📚 *Authorized Groups:*\n"
+        f"{authorized_groups_str}\n"
+        f"\n"
+        f"👥 *Authorized Private Users:*\n"
+        f"{authorized_private_users_str}\n"
+        f"──────────────\n"
+        f"Use `/au \\<chat\\_id\\>` to authorize a group\\.\n"
+        f"Use `/auth \\<user\\_id\\>` to authorize a private user\\.\n"
+        f"Use `/ar \\<amount\\> \\<user\\_id\\>` to add credits\\.\n"
+        f"Use `/rauth \\<user\\_id\\>` to unapprove a private user\\."
+    )
+    await update.effective_message.reply_text(admin_info_msg, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 async def handle_unauthorized_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # This handler acts as a catch-all for commands or messages from unauthorized sources
@@ -1002,7 +1193,8 @@ def main():
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
-    application.add_handler(CommandHandler("credits", credits_command)) # Added new credits command
+    application.add_handler(CommandHandler("credits", credits_command))
+    application.add_handler(CommandHandler("fk", fk_command)) # New /fk command handler
 
     # filters.ChatType.PRIVATE | filters.ChatType.GROUPS ensures it works in both contexts
     application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
@@ -1011,12 +1203,15 @@ def main():
     application.add_handler(CommandHandler("au", authorize_group)) # Authorize Group
     application.add_handler(CommandHandler("auth", authorize_user)) # Authorize Private User
     application.add_handler(CommandHandler("ar", add_credits)) # Add Credits to User
+    application.add_handler(CommandHandler("admin", admin_command)) # New Admin Command
+    application.add_handler(CommandHandler("rauth", remove_authorize_user)) # New Remove Authorization Command
 
     # Message handlers for dot commands
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.credits\b.*"), credits_command)) # Added new credits command for dot prefix
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.credits\b.*"), credits_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_command)) # New .fk command handler
 
     # Callback query handlers for inline keyboard buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
