@@ -678,8 +678,8 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         # Edit the initial message to show the animation
         try:
             await initial_message.edit_text(
-                f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-                f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n" # Corrected: escaped periods
+                f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+                f"🔪 Kɪʟʟɪɴɢ...\n"
                 f"```{current_frame}```"
             , parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
@@ -703,8 +703,8 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     final_frame = animation_frames[-1]
     try:
         await initial_message.edit_text(
-            f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-            f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n" # Corrected: escaped periods
+            f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+            f"🔪 Kɪʟʟɪɴɢ...\n"
             f"```{final_frame}```"
         , parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
@@ -856,7 +856,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send the initial message and store it to edit later
     initial_message = await update.effective_message.reply_text( # Use effective_message
-        f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+        f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
         f"🔪Kɪʟʟɪɴɢ ⚡" # Initial message without emojis for animation
     , parse_mode=ParseMode.MARKDOWN_V2)
 
