@@ -1026,7 +1026,7 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
-        await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text(msg)
     except Exception as e:
         print("‼️ Message failed to send. Debug message below:\n")
         print(msg)
