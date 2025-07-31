@@ -388,7 +388,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # No cooldown for start command
     user_full_name = escape_markdown_v2(update.effective_user.full_name)
     welcome_message = (
-        f"Hey {user_full_name} 👋\\! Welcome to *𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ* ⚡\\.\n\n"
+        f"Hey {user_full_name} 👋\\! Welcome to *𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿* ⚡\\.\n\n"
         f"I'm your all\\-in\\-one bot for ⚙️ *Card Tools* & 💀 *Live Killing* \\!\n"
         f"Use me to generate cards, check BINs, and powerful cc killer — fast and smart ✅\\.\n\n"
         f"Hit the button below to explore all my commands and get started 👇"
@@ -681,9 +681,8 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         
         # Edit the initial message to show the animation
         try:
-            # FIX: Escape the dots in "Killing..."
+            # FIX: Escape the dots in "Killing..." and remove quote box
             await initial_message.edit_text(
-                f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
                 f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n"
                 f"```{escaped_frame}```"
             , parse_mode=ParseMode.MARKDOWN_V2)
@@ -709,9 +708,8 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     # FIX: Escape the final animation frame text
     escaped_final_frame = escape_markdown_v2(final_frame)
     try:
-        # FIX: Escape the dots in "Killing..."
+        # FIX: Escape the dots in "Killing..." and remove quote box
         await initial_message.edit_text(
-            f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
             f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n"
             f"```{escaped_final_frame}```"
         , parse_mode=ParseMode.MARKDOWN_V2)
@@ -738,14 +736,14 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     # Construct the final message using a single f-string for easy modification
     # Manual padding for visual alignment of colons
     final_message_text_formatted = (
-        f"╭───\\[ {header_title} ]───╮\n" # Escaped brackets in the header
+        f"╭───\\[ {header_title} \\]───╮\n" # FIX: Escaped the closing bracket ']'
         f"\n"
         f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n"
         f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
         f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
         f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
         f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      :  🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      :  🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝒕 𝖃𝖃𝖃 👁️\n"
         f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : {escape_markdown_v2(f'{time_taken:.0f} seconds')}\n"
         f"\n"
         f"╰────────────────────╯"
@@ -864,8 +862,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send the initial message and store it to edit later
     initial_message = await update.effective_message.reply_text( # Use effective_message
-        f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-        f"🔪Kɪʟʟɪɴɢ ⚡" # Initial message without emojis for animation
+        f"🔪Kɪʟʟɪɴɢ ⚡" # Initial message without quote box
     , parse_mode=ParseMode.MARKDOWN_V2)
 
     # Create a separate task for the long-running kill process, passing bin_details
@@ -1016,7 +1013,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• *Credit Card*: \n{credit_card_info.replace('  ', '    ')}\n" # Indent credit card details
         f"────────────────────\n"
         f"> Requested by \\-: {escaped_user_full_name}\n"
-        f"> Bot by \\-: 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️"
+        f"> Bot by \\-: 🔮 𝓖𝓸𝓼𝓽𝓑𝓲t 𝖃𝖃𝖃 👁️"
     )
 
     await update.effective_message.reply_text(response_message, parse_mode=ParseMode.MARKDOWN_V2)
