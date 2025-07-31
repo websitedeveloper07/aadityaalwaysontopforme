@@ -1020,7 +1020,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-    await update.effective_message.reply_text(msg)
+    await update.effective_message.reply_text(msg, parse_mode="MarkdownV2")
 
 
 # --- New /help command ---
