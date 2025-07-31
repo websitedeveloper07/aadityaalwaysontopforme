@@ -1019,7 +1019,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✧ User-Agent  ➳ `{user_agent}`"
     )
 
-    await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(msg)
 
 
 # --- New /help command ---
