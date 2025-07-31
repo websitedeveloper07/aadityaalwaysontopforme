@@ -1240,12 +1240,8 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 # === MAIN FUNCTION ===
 def main():
     if TOKEN is None:
-        logger.error("BOT_TOKEN environment variable is not set. Please set it before running the bot.")
-        exit(1)
-    if OWNER_ID is None:
-        logger.error("OWNER_ID environment variable is not set. Please set it before running the bot.")
-        exit(1)
-    # No check for BINTABLE_API_KEY here; get_bin_details handles its absence.
+        logger.error("TOKEN is not set.")
+        return
 
     application = ApplicationBuilder().token(TOKEN).build()
 
@@ -1257,43 +1253,40 @@ def main():
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("credits", credits_command))
-    application.add_handler(CommandHandler("fk", fk_country))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_country))
-    application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS)) # New /help command handler, only for groups
+    application.add_handler(CommandHandler("fk", fk_country))  # Replaced old fk_command
+    application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS))  # /help only in groups
 
-    # filters.ChatType.PRIVATE | filters.ChatType.GROUPS ensures it works in both contexts
-    application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
-
-    # Owner-only commands
-    application.add_handler(CommandHandler("au", authorize_group)) # Authorize Group
-    application.add_handler(CommandHandler("auth", authorize_user)) # Authorize Private User
-    application.add_handler(CommandHandler("ar", add_credits)) # Add Credits to User
-    application.add_handler(CommandHandler("admin", admin_command)) # New Admin Command
-    application.add_handler(CommandHandler("rauth", remove_authorize_user)) # New Remove Authorization Command
-
-    # Message handlers for dot commands
+    # Dot-prefixed versions
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.gen\b.*"), gen))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.bin\b.*"), bin_lookup))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.credits\b.*"), credits_command))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_command)) # New .fk command handler
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.help\b.*") & filters.ChatType.GROUPS, help_command)) # New .help command handler, only for groups
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_country))  # ✅ Fixed this line
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.help\b.*") & filters.ChatType.GROUPS, help_command))
+
+    # Kill command in both private & groups
+    application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
+
+    # Owner-only commands
+    application.add_handler(CommandHandler("au", authorize_group))  # Authorize Group
+    application.add_handler(CommandHandler("auth", authorize_user))  # Authorize Private User
+    application.add_handler(CommandHandler("ar", add_credits))  # Add Credits to User
+    application.add_handler(CommandHandler("admin", admin_command))  # Admin Dashboard
+    application.add_handler(CommandHandler("rauth", remove_authorize_user))  # Remove Authorized User
 
     # Callback query handlers for inline keyboard buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
     application.add_handler(CallbackQueryHandler(show_command_details, pattern="^cmd_"))
-    application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$")) # Re-direct to start handler
+    application.add_handler(CallbackQueryHandler(start, pattern="^back_to_start$"))  # Re-direct to start handler
 
-    # Add a general message handler for authorization checks for unhandled commands.
-    # This handler must be placed AFTER all specific command handlers.
-    # It catches all text messages, including unhandled commands.
+    # Fallback handler for unhandled commands
     application.add_handler(MessageHandler(
-        filters.TEXT & filters.COMMAND, # Only process messages that are commands
+        filters.TEXT & filters.COMMAND,  # Only messages that are slash commands
         handle_unauthorized_commands,
-        block=False # Do not block other handlers if this one doesn't return
+        block=False  # Do not block other handlers
     ))
-    
-    # Add the error handler
+
+    # Global error handler
     application.add_error_handler(error_handler)
 
     logger.info("Bot started polling...")
