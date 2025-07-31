@@ -655,18 +655,18 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     start_time = time.time()
 
     # Animation frames for "Killing..." using progress bar
-    animation_frames = [
-        "▱▱▱▱▱▱▱▱▱▱ 0%",
-        "█▱▱▱▱▱▱▱▱▱ 10%",
-        "██▱▱▱▱▱▱▱▱ 20%",
-        "███▱▱▱▱▱▱▱ 30%",
-        "████▱▱▱▱▱▱ 40%",
-        "█████▱▱▱▱▱ 50%",
-        "██████▱▱▱▱ 60%",
-        "███████▱▱▱ 70%",
-        "████████▱▱ 80%",
-        "█████████▱ 90%",
-        "██████████ 100%"
+    animation_frames = [ 
+        "▱▱▱▱▱▱▱▱▱▱ 0%", 
+        "█▱▱▱▱▱▱▱▱▱ 10%", 
+        "██▱▱▱▱▱▱▱▱ 20%", 
+        "███▱▱▱▱▱▱▱ 30%", 
+        "████▱▱▱▱▱▱ 40%", 
+        "█████▱▱▱▱▱ 50%", 
+        "██████▱▱▱▱ 60%", 
+        "███████▱▱▱ 70%", 
+        "████████▱▱ 80%", 
+        "█████████▱ 90%", 
+        "██████████ 100%" 
     ]
     frame_interval = kill_time / len(animation_frames) # seconds per frame update
 
