@@ -681,9 +681,10 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         
         # Edit the initial message to show the animation
         try:
+            # FIX: Escape the dots in "Killing..."
             await initial_message.edit_text(
                 f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-                f"🔪 Kɪʟʟɪɴɢ...\n"
+                f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n"
                 f"```{escaped_frame}```"
             , parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
@@ -708,9 +709,10 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     # FIX: Escape the final animation frame text
     escaped_final_frame = escape_markdown_v2(final_frame)
     try:
+        # FIX: Escape the dots in "Killing..."
         await initial_message.edit_text(
             f"> Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-            f"🔪 Kɪʟʟɪɴɢ...\n"
+            f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n"
             f"```{escaped_final_frame}```"
         , parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
