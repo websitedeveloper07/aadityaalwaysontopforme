@@ -939,8 +939,9 @@ from faker import Faker
 import random
 import re
 
-def escape_markdown_v2(text: str) -> str:
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+def esc(text: str) -> str:
+    """Escape MarkdownV2 special characters for inline code."""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
@@ -963,9 +964,10 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     locale = country_locale_map.get(country_input, "en_US")
     fake = Faker(locale)
 
+    # Generate fake info
     name = fake.name()
     street = fake.street_address()
-    address2 = fake.secondary_address() if hasattr(fake, "secondary_address") else "Suite 12"
+    address2 = getattr(fake, "secondary_address", lambda: "Suite 12")()
     city = fake.city()
     state = fake.state()
     country = country_input.upper()
@@ -975,46 +977,49 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     dob = fake.date_of_birth(minimum_age=18, maximum_age=60)
     company = fake.company()
     job = fake.job()
-    ssn = fake.ssn() if hasattr(fake, "ssn") else fake.swift()
-    national_id = fake.bban() if hasattr(fake, "bban") else fake.iban()
+    ssn = getattr(fake, "ssn", lambda: fake.swift())()
+    national_id = getattr(fake, "bban", lambda: fake.iban())()
     ip = fake.ipv4_public()
     username = fake.user_name()
     password = fake.password()
     website = fake.url()
     cc_number = fake.credit_card_number()
     pan_number = "N/A"
-    device = f"{fake.android_platform_token().split(' ')[0]} {random.randint(1, 12)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
+    device = f"Android {random.randint(1, 12)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
     user_agent = fake.user_agent()
+
+    def line(label, emoji, value):
+        return f"{emoji} *{label:<12}* ➤ `{esc(value)}`"
 
     msg = (
         "┏━━━━━━━⍟\n"
-        "┃ Fake Identity \n"
+        "*┃ Fake Identity*\n"
         "┗━━━━━━━━━━━⊛\n\n"
-        f"✧ Name      ➳ {name}\n"
-        f"✧ Street    ➳ {street}\n"
-        f"✧ Address 2 ➳ {address2}\n"
-        f"✧ City      ➳ {city}\n"
-        f"✧ State     ➳ {state}\n"
-        f"✧ Country   ➳ {country}\n"
-        f"✧ ZIP Code  ➳ {zip_code}\n\n"
-        f"✧ Email     ➳ {email}\n"
-        f"✧ Phone     ➳ {phone}\n"
-        f"✧ DOB       ➳ {dob}\n"
-        f"✧ Company   ➳ {company}\n"
-        f"✧ Job Title ➳ {job}\n"
-        f"✧ SSN/ID    ➳ {ssn}\n"
-        f"✧ National ID ➳ {national_id}\n"
-        f"✧ IP Address  ➳ {ip}\n\n"
-        f"✧ Username  ➳ {username}\n"
-        f"✧ Password  ➳ {password}\n"
-        f"✧ Website   ➳ {website}\n\n"
-        f"✧ Credit Card ➳ {cc_number}\n"
-        f"✧ PAN Number  ➳ {pan_number}\n\n"
-        f"✧ Device Name ➳ {device}\n"
-        f"✧ User-Agent  ➳ {user_agent}"
+        f"{line('Name',         '👤', name)}\n"
+        f"{line('Street',       '🏠', street)}\n"
+        f"{line('Address 2',    '🏢', address2)}\n"
+        f"{line('City',         '🌆', city)}\n"
+        f"{line('State',        '🗺️', state)}\n"
+        f"{line('Country',      '🌐', country)}\n"
+        f"{line('ZIP Code',     '🏷️', zip_code)}\n\n"
+        f"{line('Email',        '📧', email)}\n"
+        f"{line('Phone',        '📞', phone)}\n"
+        f"{line('DOB',          '🎂', str(dob))}\n"
+        f"{line('Company',      '🏢', company)}\n"
+        f"{line('Job Title',    '💼', job)}\n"
+        f"{line('SSN/ID',       '🆔', ssn)}\n"
+        f"{line('National ID',  '🪪', national_id)}\n"
+        f"{line('IP Address',   '📡', ip)}\n\n"
+        f"{line('Username',     '👤', username)}\n"
+        f"{line('Password',     '🔐', password)}\n"
+        f"{line('Website',      '🔗', website)}\n\n"
+        f"{line('Credit Card',  '💳', cc_number)}\n"
+        f"{line('PAN Number',   '🧾', pan_number)}\n\n"
+        f"{line('Device Name',  '📱', device)}\n"
+        f"{line('User-Agent',   '🖥️', user_agent)}"
     )
 
-    await update.effective_message.reply_text(msg)
+    await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 
