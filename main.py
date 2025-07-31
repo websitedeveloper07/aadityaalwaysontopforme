@@ -654,49 +654,61 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     kill_time = random.uniform(30, 78)
     start_time = time.time()
 
-    # Animation frames for "Killing..." using ⚡ emoji
-    animation_states = [
-        "Kɪʟʟɪɴɢ ⚡",
-        "Kɪʟʟɪɴɢ ⚡⚡",
-        "Kɪʟʟɪɴɢ ⚡⚡⚡",
-        "Kɪʟʟɪɴɢ ⚡⚡",
-        "Kɪʟʟɪɴɢ ⚡"
+    # Animation frames for "Killing..." using progress bar
+    animation_frames = [
+        "▱▱▱▱▱▱▱▱▱▱ 0%",
+        "█▱▱▱▱▱▱▱▱▱ 10%",
+        "██▱▱▱▱▱▱▱▱ 20%",
+        "███▱▱▱▱▱▱▱ 30%",
+        "████▱▱▱▱▱▱ 40%",
+        "█████▱▱▱▱▱ 50%",
+        "██████▱▱▱▱ 60%",
+        "███████▱▱▱ 70%",
+        "████████▱▱ 80%",
+        "█████████▱ 90%",
+        "██████████ 100%"
     ]
-    frame_interval = 4.0 # seconds per frame update (Increased to reduce API calls)
+    frame_interval = kill_time / len(animation_frames) # seconds per frame update
 
     elapsed_animation_time = 0
     frame_index = 0
 
     while elapsed_animation_time < kill_time:
-        current_frame = animation_states[frame_index % len(animation_states)]
+        current_frame = animation_frames[frame_index % len(animation_frames)]
         # Edit the initial message to show the animation
         try:
             await initial_message.edit_text(
                 f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-                f"🔪 {current_frame}"
+                f"🔪 Kɪʟʟɪɴɢ...\n"
+                f"```{current_frame}```"
             , parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
-            # This specific error means content is identical, so we just log and continue.
-            # Or if it's a flood control error, we still continue after the sleep.
-            if "Message is not modified" in str(e) or "Flood control exceeded" in str(e):
-                logger.debug(f"Message not modified or flood control hit during animation: {e}")
+            if "Message is not modified" in str(e):
+                logger.debug("Message not modified when trying to edit animation.")
+            elif "Flood control exceeded" in str(e):
+                logger.warning(f"Flood control hit during animation for {full_card_str}: {e}")
             else:
-                # Other BadRequest errors might be critical, so log but DO NOT BREAK.
-                # We need the sleep to continue to ensure the full kill_time is met.
-                logger.warning(f"Failed to edit message during animation (BadRequest, non-modified): {e}")
-        except Exception as e:
-            logger.warning(f"Failed to edit message during animation (General Error): {e}")
-            # For any other unexpected error, log but DO NOT BREAK.
-            # We need the sleep to continue to ensure the full kill_time is met.
+                logger.warning(f"Failed to edit message during animation (BadRequest): {e}")
 
-        # Calculate remaining time for sleep to ensure total kill_time is met
+        # Calculate remaining time for sleep
         sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
         if sleep_duration <= 0:
-            break # No more time left to sleep
+            break
         await asyncio.sleep(sleep_duration)
 
         elapsed_animation_time = time.time() - start_time
         frame_index += 1
+
+    # Final frame to ensure it always reaches 100%
+    final_frame = animation_frames[-1]
+    try:
+        await initial_message.edit_text(
+            f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
+            f"🔪 Kɪʟʟɪɴɢ...\n"
+            f"```{final_frame}```"
+        , parse_mode=ParseMode.MARKDOWN_V2)
+    except Exception as e:
+        logger.warning(f"Failed to edit message to final frame: {e}")
 
     # Calculate actual time taken after the loop finishes
     time_taken = round(time.time() - start_time)
