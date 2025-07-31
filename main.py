@@ -938,10 +938,15 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from faker import Faker
 import random
 import re
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
 def esc(text: str) -> str:
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\-])', r'\\\1', str(text))
-
+    """
+    Escapes all special characters required by Telegram MarkdownV2 for inline code.
+    """
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
@@ -952,6 +957,7 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     country_input = " ".join(args).strip().lower() if args else "usa"
 
+    # Map short names to Faker locales
     country_locale_map = {
         "usa": "en_US", "us": "en_US",
         "uk": "en_GB", "united kingdom": "en_GB",
@@ -964,7 +970,7 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     locale = country_locale_map.get(country_input, "en_US")
     fake = Faker(locale)
 
-    # Generate fake info
+    # Generate fake values
     name = fake.name()
     street = fake.street_address()
     address2 = getattr(fake, "secondary_address", lambda: "Suite 12")()
@@ -991,6 +997,7 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     def line(label, emoji, value):
         return f"{emoji} *{label:<12}* ➤ `{esc(value)}`"
 
+    # Final formatted message
     msg = (
         "┏━━━━━━━⍟\n"
         "*┃ Fake Identity*\n"
