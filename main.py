@@ -951,36 +951,37 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id, update):
         return
 
-    # Parse country input
+    # Parse country argument
     args = context.args
     country_input = " ".join(args).strip().lower() if args else "usa"
 
-    # Country-to-locale mapping
+    # Locale mapping
     country_locale_map = {
         "usa": "en_US", "us": "en_US", "united states": "en_US",
         "uk": "en_GB", "united kingdom": "en_GB",
         "india": "en_IN", "in": "en_IN", "bharat": "en_IN",
         "canada": "en_CA", "australia": "en_AU",
         "germany": "de_DE", "france": "fr_FR",
-        "spain": "es_ES", "italy": "it_IT"
+        "spain": "es_ES", "es": "es_ES", "italy": "it_IT"
     }
 
-    # Get locale and initialize Faker
+    # Fallback to en_US if not found
     locale = country_locale_map.get(country_input, "en_US")
     fake = Faker(locale)
 
+    # Generate escaped fake data
     name = escape_markdown_v2(fake.name())
     street = escape_markdown_v2(fake.street_address())
-    address2 = escape_markdown_v2(fake.secondary_address())
+    address2 = escape_markdown_v2(fake.secondary_address()) if hasattr(fake, "secondary_address") else "Apt. 102"
     city = escape_markdown_v2(fake.city())
     state = escape_markdown_v2(fake.state())
     zip_code = escape_markdown_v2(fake.postcode())
-    country = escape_markdown_v2(fake.country())
+    country = escape_markdown_v2(fake.current_country()) if hasattr(fake, "current_country") else escape_markdown_v2(country_input.upper())
     phone = escape_markdown_v2(fake.phone_number())
     email = escape_markdown_v2(fake.email())
     username = escape_markdown_v2(fake.user_name())
     dob = escape_markdown_v2(fake.date_of_birth(minimum_age=18, maximum_age=50).strftime("%d/%m/%Y"))
-    ssn = escape_markdown_v2(fake.ssn())
+    ssn = escape_markdown_v2(fake.ssn()) if hasattr(fake, "ssn") else escape_markdown_v2(fake.bban())
     job = escape_markdown_v2(fake.job())
     company = escape_markdown_v2(fake.company())
     ip = escape_markdown_v2(fake.ipv4())
