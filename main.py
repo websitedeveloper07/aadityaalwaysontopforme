@@ -679,7 +679,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         try:
             await initial_message.edit_text(
                 f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-                f"🔪 Kɪʟʟɪɴɢ...\n"
+                f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n" # Corrected: escaped periods
                 f"```{current_frame}```"
             , parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
@@ -704,7 +704,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         await initial_message.edit_text(
             f"Card No\\.: `{escape_markdown_v2(full_card_str)}`\n"
-            f"🔪 Kɪʟʟɪɴɢ...\n"
+            f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n" # Corrected: escaped periods
             f"```{final_frame}```"
         , parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
@@ -724,14 +724,15 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     if bin_details["scheme"].lower() == 'mastercard':
         # Generate random percentage > 67%
         percentage = random.randint(68, 100)
-        header_title = f"⚡Cᴀʀd Kɪʟʟᴇd Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%" # Escaping - and % for MarkdownV2
+        # Escaping % is important for markdown
+        header_title = f"⚡Cᴀʀd Kɪʟʟᴇd Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%" 
 
     # Construct the final message using a single f-string for easy modification
     # Manual padding for visual alignment of colons
     final_message_text_formatted = (
-        f"╭───[ {header_title} ]───╮\n"
+        f"╭───\\[ {header_title} ]───╮\n" # Escaped brackets in the header
         f"\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n" # Added Card No. line
+        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n"
         f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
         f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
         f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
@@ -741,6 +742,8 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         f"\n"
         f"╰────────────────────╯"
     )
+    # The hyphens in the header and footer are non-special characters and don't need escaping,
+    # but the brackets do, which I have added.
 
     await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
 
