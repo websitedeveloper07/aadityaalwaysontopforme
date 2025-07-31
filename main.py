@@ -940,8 +940,8 @@ import random
 import re
 
 def esc(text: str) -> str:
-    """Escape MarkdownV2 special characters for inline code."""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\-])', r'\\\1', str(text))
+
 
 async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
