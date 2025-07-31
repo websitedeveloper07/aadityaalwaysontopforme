@@ -329,7 +329,7 @@ def add_credits_to_user(user_id, amount):
     # USER_CREDITS[user_id]['last_credit_reset'] = datetime.now()
     return USER_CREDITS[user_id]['credits']
 
-async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE, is_group_only: bool = False) -> bool:
     user_id = update.effective_user.id
     chat_type = update.effective_chat.type
     chat_id = update.effective_chat.id # Get chat_id for group check
@@ -338,7 +338,24 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
     if user_id == OWNER_ID:
         return True
 
-    # Check for private chat restrictions
+    # If the command is group-only, check that first
+    if is_group_only:
+        if chat_type != 'group' and chat_type != 'supergroup':
+            await update.effective_message.reply_text(
+                "🚫 This command can only be used in authorized group chats\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return False
+        # And then check if the group itself is authorized
+        if chat_id not in AUTHORIZED_CHATS:
+            await update.effective_message.reply_text(
+                f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return False
+        return True # If it's a group-only command and passed group authorization
+
+    # Check for private chat restrictions (for commands not explicitly group-only)
     if chat_type == 'private':
         if user_id in AUTHORIZED_PRIVATE_USERS:
             return True
@@ -352,7 +369,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             return False
 
-    # Check for group chat restrictions
+    # Check for group chat restrictions (for commands not explicitly group-only)
     elif chat_type == 'group' or chat_type == 'supergroup':
         if chat_id in AUTHORIZED_CHATS:
             return True
@@ -921,7 +938,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Generate random credit card details
     # Randomly pick a BIN from a small set including Amex for testing CVV length
-    sample_bins = ["442486", "51580042", "3472680", "3774582"] # Visa, Mastercard, Amex, Amex
+    sample_bins = ["400000", "510000", "340000", "370000"] # Visa, Mastercard, Amex, Amex
     random_bin = random.choice(sample_bins)
     
     bin_details_cc = await get_bin_details(random_bin)
@@ -980,6 +997,38 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.effective_message.reply_text(response_message, parse_mode=ParseMode.MARKDOWN_V2)
+
+# --- New /help command ---
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Only allow this command in authorized group chats
+    if not await check_authorization(update, context, is_group_only=True):
+        return
+    
+    if not await enforce_cooldown(update.effective_user.id, update):
+        return
+
+    # Non-admin commands and their usage in the desired format
+    help_message = (
+        f"✨ *𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿 — 𝑯𝒆𝒍𝒑 𝑴𝒆𝒏𝒖* ✨\n"
+        f"\n"
+        f"📍 *✦ 𝑪𝒐𝒓𝒆 𝑪𝒐𝒎𝒎𝒂𝒏𝒅𝒔 ✦*\n"
+        f"/start — Welcome & Navigation\n"
+        f"/help — Show this help menu\n"
+        f"/status — Bot system info\n"
+        f"/credits — Your remaining kill credits\n"
+        f"\n"
+        f"💳 *✦ 𝑪𝒂𝒓𝒅 𝑻𝒐𝒐𝒍𝒔 ✦*\n"
+        f"/gen \\<bin\\> — Generate cards from BIN\n"
+        f"/bin \\<bin\\> — BIN lookup \\(bank, country, type\\)\n"
+        f"/kill \\<cc\\|mm\\|yy\\|cvv\\> — Simulated kill\n"
+        f"\n"
+        f"🧪 *✦ 𝑬𝒙𝒕𝒓𝒂𝒔 ✦*\n"
+        f"/fk — Fake info \\(fun\\)\n"
+        # Removed /clear and /testcards as they are not in the provided code
+        # If these are meant to be added, their implementation would be needed.
+    )
+
+    await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1140,6 +1189,10 @@ async def handle_unauthorized_commands(update: Update, context: ContextTypes.DEF
         user_id = update.effective_user.id
         chat_id = update.effective_chat.id
 
+        # Skip explicit messages to owner if it's already caught by owner_id check
+        # This part ensures that if a non-owner tries a command, they get the correct message.
+        # Note: Commands that have their own `check_authorization` call at the beginning
+        # will handle their own unauthorized responses first. This catches general unhandled commands.
         if chat_type == 'private' and user_id not in AUTHORIZED_PRIVATE_USERS:
             # For private users not authorized, show specific message and group button
             keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
@@ -1195,6 +1248,7 @@ def main():
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("credits", credits_command))
     application.add_handler(CommandHandler("fk", fk_command)) # New /fk command handler
+    application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS)) # New /help command handler, only for groups
 
     # filters.ChatType.PRIVATE | filters.ChatType.GROUPS ensures it works in both contexts
     application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
@@ -1212,6 +1266,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.credits\b.*"), credits_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_command)) # New .fk command handler
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.help\b.*") & filters.ChatType.GROUPS, help_command)) # New .help command handler, only for groups
 
     # Callback query handlers for inline keyboard buttons
     application.add_handler(CallbackQueryHandler(show_main_commands, pattern="^show_main_commands$"))
