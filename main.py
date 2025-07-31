@@ -1258,6 +1258,7 @@ def main():
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("credits", credits_command))
     application.add_handler(CommandHandler("fk", fk_country))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_country))
     application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS)) # New /help command handler, only for groups
 
     # filters.ChatType.PRIVATE | filters.ChatType.GROUPS ensures it works in both contexts
