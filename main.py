@@ -935,88 +935,78 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
-# --- New command: .fk (Fake Data Generator) ---
-async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+from faker import Faker
+import re
+
+def escape_markdown_v2(text: str) -> str:
+    """Escape MarkdownV2 special characters."""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+
+async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
-    if not await enforce_cooldown(update.effective_user.id, update): # Pass update to cooldown
-        return 
+    if not await enforce_cooldown(update.effective_user.id, update):
+        return
 
-    # Generate random fake data
-    first_names = ["John", "Jane", "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank"]
-    last_names = ["Doe", "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller"]
-    streets = ["Main St", "Oak Ave", "Pine Ln", "Maple Dr", "Elm Rd", "Cedar Blvd", "Willow Ct"]
-    cities = ["Springfield", "Rivertown", "Centerville", "Northwood", "Fairview", "Lakeview"]
-    states = ["NY", "CA", "TX", "FL", "IL", "GA", "VA"]
-    domains = ["example.com", "test.org", "mail.net", "fakesite.info"]
+    args = context.args
+    country_input = " ".join(args).strip().lower() if args else "usa"
 
-    name = f"{random.choice(first_names)} {random.choice(last_names)}"
-    address = f"{random.randint(100, 999)} {random.choice(streets)}, {random.choice(cities)}, {random.choice(states)} {random.randint(10000, 99999)}"
-    email = f"{name.replace(' ', '.').lower()}@{random.choice(domains)}"
-    ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
-    phone_number = f"+1-{random.randint(200, 999)}-{random.randint(100, 999)}-{random.randint(1000, 9999)}"
+    # Map country names to Faker locales
+    country_locale_map = {
+        "usa": "en_US", "us": "en_US",
+        "uk": "en_GB", "united kingdom": "en_GB",
+        "india": "en_IN", "canada": "en_CA",
+        "australia": "en_AU", "germany": "de_DE",
+        "france": "fr_FR", "spain": "es_ES",
+        "italy": "it_IT"
+    }
 
-    # Generate random credit card details
-    # Randomly pick a BIN from a small set including Amex for testing CVV length
-    sample_bins = ["400000", "510000", "340000", "370000"] # Visa, Mastercard, Amex, Amex
-    random_bin = random.choice(sample_bins)
-    
-    bin_details_cc = await get_bin_details(random_bin)
-    
-    cc_scheme = bin_details_cc["scheme"]
-    cc_num_len = 16
-    if cc_scheme.lower() == 'american express':
-        cc_num_len = 15
-    elif cc_scheme.lower() == 'diners club':
-        cc_num_len = 14
+    locale = country_locale_map.get(country_input, "en_US")
+    fake = Faker(locale)
 
-    cc_num_suffix_len = cc_num_len - len(random_bin)
-    if cc_num_suffix_len < 0:
-        cc_number = random_bin[:cc_num_len]
-    else:
-        cc_number = random_bin + ''.join(str(random.randint(0, 9)) for _ in range(cc_num_suffix_len))
-    
-    # Ensure Luhn validity
-    while not luhn_checksum(cc_number):
-        if cc_num_suffix_len < 0:
-            cc_number = random_bin[:cc_num_len] # Regenerate based on truncated BIN
-        else:
-            cc_number = random_bin + ''.join(str(random.randint(0, 9)) for _ in range(cc_num_suffix_len))
+    # Generate fake data
+    full_name = fake.name()
+    gender = random.choice(["Male", "Female"])
+    dob = fake.date_of_birth(minimum_age=18, maximum_age=60)
+    nationality = country_input.upper()
+    email = fake.email()
+    phone = fake.phone_number()
+    street = fake.street_address()
+    city = fake.city()
+    state = fake.state()
+    zip_code = fake.postcode()
+    country = nationality
+    ip = fake.ipv4_public()
+    website = fake.url()
+    job = fake.job()
+    age = datetime.now().year - dob.year
+    dob_formatted = f"{dob.day} {dob.strftime('%B')} {dob.year}"
 
+    # Escape all fields
+    def esc(v): return escape_markdown_v2(str(v))
 
-    cc_mm = str(random.randint(1, 12)).zfill(2)
-    cc_yy = str(datetime.now().year + random.randint(1, 5))[-2:] # Last two digits
-    
-    # CVV length logic: 4 for Amex, 3 for others
-    cvv_length = 4 if cc_scheme.lower() == 'american express' else 3
-    cc_cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
-
-    credit_card_details = f"`{cc_number}|{cc_mm}|{cc_yy}|{cc_cvv}`"
-    credit_card_info = (
-        f"  Scheme: {escape_markdown_v2(cc_scheme)}\n"
-        f"  Bank: {escape_markdown_v2(bin_details_cc['bank'])}\n"
-        f"  Country: {escape_markdown_v2(bin_details_cc['country_name'])} {escape_markdown_v2(bin_details_cc['country_emoji'])}\n"
-        f"  Card: {credit_card_details}"
+    msg = (
+        f"╭━━━✦ 𝑭𝒂𝒌𝒆 𝑰𝒏𝒇𝒐 𝑮𝒆𝒏𝒆𝒓𝒂𝒕𝒆𝒅 ✦━━━╮\n\n"
+        f"👤 𝗙𝘂𝗹𝗹 𝗡𝗮𝗺𝗲: {esc(full_name)}\n"
+        f"🚻 𝗚𝗲𝗻𝗱𝗲𝗿: {esc(gender)}\n"
+        f"🎂 𝗔𝗴𝗲 / 𝗗𝗢𝗕: {esc(age)} / {esc(dob_formatted)}\n"
+        f"🌎 𝗡𝗮𝘁𝗶𝗼𝗻𝗮𝗹𝗶𝘁𝘆: {esc(nationality)}\n"
+        f"📧 𝗘𝗺𝗮𝗶𝗹: {esc(email)}\n"
+        f"📞 𝗣𝗵𝗼𝗻𝗲: {esc(phone)}\n\n"
+        f"🏠 𝗦𝘁𝗿𝗲𝗲𝘁: {esc(street)}\n"
+        f"🏙️ 𝗖𝗶𝘁𝘆: {esc(city)}\n"
+        f"🗺️ 𝗣𝗿𝗼𝘃𝗶𝗻𝗰𝗲: {esc(state)}\n"
+        f"🏷️ 𝗣𝗼𝘀𝘁𝗮𝗹 𝗖𝗼𝗱𝗲: {esc(zip_code)}\n"
+        f"🌐 𝗖𝗼𝘂𝗻𝘁𝗿𝘆: {esc(country)}\n"
+        f"📡 𝗜𝗣 𝗔𝗱𝗱𝗿𝗲𝘀𝘀: {esc(ip)}\n\n"
+        f"🔗 𝗪𝗲𝗯𝘀𝗶𝘁𝗲: {esc(website)}\n"
+        f"💼 𝗝𝗼𝗯 𝗧𝗶𝘁𝗹𝗲: {esc(job)}\n\n"
+        f"╰━━━━━━━━━━━━━━━━━━━━╯"
     )
 
-    escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
+    # Send message as monospace block
+    await update.effective_message.reply_text(f"```{msg}```", parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Format the output message
-    response_message = (
-        f"🗂️ *Fake Information Generated*\n"
-        f"────────────────────\n"
-        f"• *Name*: {escape_markdown_v2(name)}\n"
-        f"• *Address*: {escape_markdown_v2(address)}\n"
-        f"• *Email*: {escape_markdown_v2(email)}\n"
-        f"• *IP Address*: {escape_markdown_v2(ip_address)}\n"
-        f"• *Phone Number*: {escape_markdown_v2(phone_number)}\n"
-        f"• *Credit Card*: \n{credit_card_info.replace('  ', '    ')}\n" # Indent credit card details
-        f"────────────────────\n"
-        f"> Requested by \\-: {escaped_user_full_name}\n"
-        f"> Bot by \\-: 🔮 𝓖𝓸𝓼𝓽𝓑𝓲t 𝖃𝖃𝖃 👁️"
-    )
-
-    await update.effective_message.reply_text(response_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 # --- New /help command ---
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1267,7 +1257,7 @@ def main():
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("credits", credits_command))
-    application.add_handler(CommandHandler("fk", fk_command)) # New /fk command handler
+    application.add_handler(CommandHandler("fk", fk_country))
     application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS)) # New /help command handler, only for groups
 
     # filters.ChatType.PRIVATE | filters.ChatType.GROUPS ensures it works in both contexts
