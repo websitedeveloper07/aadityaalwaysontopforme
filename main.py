@@ -937,16 +937,13 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from faker import Faker
 import random
-import re
+from datetime import datetime
 from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-def esc(text: str) -> str:
-    """
-    Escapes all special characters required by Telegram MarkdownV2.
-    """
-    return re.sub(r'([\\`*_{}\[\]()#+\-.!|>~=])', r'\\\1', str(text))
+# ➤ Value arrow changed to ➣
+def line(label, emoji, value):
+    return f"{emoji} {label:<13} ➣ {value}"
 
 async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
@@ -955,53 +952,47 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     args = context.args
-    country_input = " ".join(args).strip().lower() if args else "usa"
+    country_input = " ".join(args).strip() if args else "us"
 
-    # Locale map
     country_locale_map = {
         "usa": "en_US", "us": "en_US",
-        "uk": "en_GB", "united kingdom": "en_GB",
-        "india": "en_IN", "canada": "en_CA",
-        "australia": "en_AU", "germany": "de_DE",
-        "france": "fr_FR", "spain": "es_ES",
-        "italy": "it_IT"
+        "uk": "en_GB", "india": "en_IN",
+        "canada": "en_CA", "australia": "en_AU",
+        "germany": "de_DE", "france": "fr_FR",
+        "spain": "es_ES", "italy": "it_IT",
     }
 
-    locale = country_locale_map.get(country_input, "en_US")
+    locale = country_locale_map.get(country_input.lower(), "en_US")
     fake = Faker(locale)
 
-    # Fake info
-    name = fake.name()
+    full_name = fake.name()
     street = fake.street_address()
-    address2 = getattr(fake, "secondary_address", lambda: "Suite 12")()
+    address2 = fake.secondary_address() if hasattr(fake, "secondary_address") else "-"
     city = fake.city()
     state = fake.state()
-    country = country_input.upper()
     zip_code = fake.postcode()
+    country = country_input.upper()
     email = fake.email()
     phone = fake.phone_number()
-    dob = fake.date_of_birth(minimum_age=18, maximum_age=60)
+    dob = fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%Y-%m-%d")
     company = fake.company()
     job = fake.job()
-    ssn = getattr(fake, "ssn", lambda: fake.swift())()
-    national_id = getattr(fake, "bban", lambda: fake.iban())()
+    ssn = fake.ssn() if hasattr(fake, "ssn") else fake.bothify("###-##-####")
+    national_id = fake.bothify(text="??##?#?#?#?#?#?#?#")
     ip = fake.ipv4_public()
     username = fake.user_name()
     password = fake.password()
     website = fake.url()
-    cc_number = fake.credit_card_number()
+    credit_card = fake.credit_card_number()
     pan_number = "N/A"
-    device = f"Android {random.randint(1, 12)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
+    device = f"{fake.android_platform_token().split('/')[0]} {random.randint(1, 13)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
     user_agent = fake.user_agent()
-
-    def line(label, emoji, value):
-        return f"{emoji} {label:<12} ➤ `{esc(value)}`"
 
     msg = (
         "┏━━━━━━━⍟\n"
-        "*┃ Fake Identity*\n"
+        "┃ Fake Identity\n"
         "┗━━━━━━━━━━━⊛\n\n"
-        f"{line('Name',         '👤', name)}\n"
+        f"{line('Name',         '👤', full_name)}\n"
         f"{line('Street',       '🏠', street)}\n"
         f"{line('Address 2',    '🏢', address2)}\n"
         f"{line('City',         '🌆', city)}\n"
@@ -1010,7 +1001,7 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{line('ZIP Code',     '🏷️', zip_code)}\n\n"
         f"{line('Email',        '📧', email)}\n"
         f"{line('Phone',        '📞', phone)}\n"
-        f"{line('DOB',          '🎂', str(dob))}\n"
+        f"{line('DOB',          '🎂', dob)}\n"
         f"{line('Company',      '🏢', company)}\n"
         f"{line('Job Title',    '💼', job)}\n"
         f"{line('SSN/ID',       '🆔', ssn)}\n"
@@ -1019,18 +1010,13 @@ async def fk_country(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{line('Username',     '👤', username)}\n"
         f"{line('Password',     '🔐', password)}\n"
         f"{line('Website',      '🔗', website)}\n\n"
-        f"{line('Credit Card',  '💳', cc_number)}\n"
+        f"{line('Credit Card',  '💳', credit_card)}\n"
         f"{line('PAN Number',   '🧾', pan_number)}\n\n"
         f"{line('Device Name',  '📱', device)}\n"
         f"{line('User-Agent',   '🖥️', user_agent)}"
     )
 
-    try:
-        await update.effective_message.reply_text(msg)
-    except Exception as e:
-        print("‼️ Message failed to send. Debug message below:\n")
-        print(msg)
-        raise e
+    await update.effective_message.reply_text(msg)
 
 
 
