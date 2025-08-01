@@ -1009,13 +1009,17 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
-import aiohttp
+import re
+import requests
 from bs4 import BeautifulSoup
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+def escape_markdown_v2(text: str) -> str:
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
 
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Checks a website for payment gateways, security, CAPTCHA, and other details.
-    """
     if not await check_authorization(update, context):
         return
 
@@ -1028,13 +1032,12 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     url = context.args[0]
-    
     if not url.startswith("http"):
         url = "https://" + url
 
     try:
         await update.effective_message.reply_text("Checking for payment gateways and other info, please wait...", parse_mode=ParseMode.MARKDOWN_V2)
-        
+
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
@@ -1043,8 +1046,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         soup = BeautifulSoup(response.text, 'html.parser')
         html_text = response.text.lower()
-        
-        # --- CHECK FOR PAYMENT GATEWAYS ---
+
         gateways = {
             "Stripe": ["stripe.com/v1", "pk_live", "pk_test"],
             "PayPal": ["paypal.com/cgi-bin/webscr", "data-paypal-button"],
@@ -1069,10 +1071,8 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if identifier.lower() in html_text:
                     found_gateways.add(gateway)
                     break
-        
         gateways_str = ", ".join(sorted(list(found_gateways))) if found_gateways else "N/A"
 
-        # --- CHECK FOR CAPTCHA ---
         captcha_found = "N/A"
         if "recaptcha" in html_text:
             captcha_found = "ReCaptcha"
@@ -1081,25 +1081,21 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif any(cap in html_text for cap in ["captcha", "turnstile", "friendly-captcha"]):
             captcha_found = "Possible"
 
-        # --- CHECK FOR CLOUDFLARE ---
         cloudflare_found = "N/A"
         if "cf-ray" in response.headers or "cloudflare" in response.headers.get("Server", "").lower() or "cdn-cgi" in html_text:
             cloudflare_found = "Yes"
 
-        # --- CHECK FOR SECURITY (HTTPS) ---
         security_status = "N/A"
         if url.startswith("https://"):
             security_status = "HTTPS"
             if "Strict-Transport-Security" in response.headers:
                 security_status += " (HSTS)"
 
-        # --- CHECK FOR CVV/CVC ---
         cvv_found = "N/A"
         if soup.find('input', {'name': re.compile(r'cvc|cvv', re.I)}) or \
            soup.find('input', {'id': re.compile(r'cvc|cvv', re.I)}):
             cvv_found = "Yes"
 
-        # --- CHECK FOR INBUILT SYSTEM ---
         inbuilt_system = "N/A"
         if "shopify.com" in html_text or "data-shop-id" in html_text:
             inbuilt_system = "Shopify"
@@ -1107,8 +1103,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             inbuilt_system = "WooCommerce (WordPress)"
         elif "magento" in html_text:
             inbuilt_system = "Magento"
-        
-        # --- CONSTRUCT THE FINAL MESSAGE ---
+
         msg = (
             "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
             f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
@@ -1146,7 +1141,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         msg = f"An unexpected error occurred: `{escape_markdown_v2(str(e))}`"
-    
+
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 # --- New /help command ---
