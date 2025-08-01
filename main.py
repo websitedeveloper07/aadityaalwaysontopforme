@@ -26,7 +26,7 @@ BINTABLE_URL = "https://api.bintable.com/v1"
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@enough69s"
 OFFICIAL_GROUP_LINK = "https://t.me/+gtvJT4SoimBjYjQ1" # Replace with your actual official group link
-DAILY_KILL_CREDIT_LIMIT = 30
+DAILY_KILL_CREDIT_LIMIT = 50
 
 # === GLOBAL STATE ===
 user_last_command = {}
@@ -1382,20 +1382,21 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     help_message = (
-    "╭━━━\\[ 🤖 𝙃𝙚𝙡𝙥 ]━━━━⬣\n"
-    "┣ ❏ /start \\- Welcome message\n"
-    "┣ ❏ /help \\- Shows this help message\n"
-    "┣ ❏ /gen \\- Generate 10 fake cards\n"
-    "┣ ❏ /bin \\<bin\\_number\\> \\- BIN lookup\n"
-    "┣ ❏ /status \\- Bot status\n"
-    "┣ ❏ /credits \\- Check your credits\n"
-    "┣ ❏ /fk \\<country\\_code\\> \\- Generate fake identity for a country\n"
-    "┣ ❏ /gate \\<url\\> \\- Check payment gateways on a website\n"
-    "┣ ❏ /kill \\<cc\\|mm\\|yy\\|cvv\\> \\- Kills a card\n"
-    "╰━━━━━━━━━━━━━━━━━━⬣"
-)
+        "╭━━━[ 🤖 *𝙃𝙚𝙡𝙥 𝙈𝙚𝙣𝙪* ]━━━━⬣\n"
+        "┣ ❏ /start \\- Welcome message\n"
+        "┣ ❏ /help \\- Shows this help message\n"
+        "┣ ❏ /gen <bin> \\- Generate cards from BIN\n"
+        "┣ ❏ /bin <bin> \\- BIN lookup \\(bank, country, type\\)\n"
+        "┣ ❏ /kill <cc\\|mm\\|yy\\|cvv> \\- Simulated kill command\n"
+        "┣ ❏ /fk <country> \\- Generate fake identity info\n"
+        "┣ ❏ /gate <url> \\- Check payment gateways on a website\n"
+        "┣ ❏ /status \\- Bot system status info\n"
+        "┣ ❏ /credits \\- Check your remaining credits\n"
+        "╰━━━━━━━━━━━━━━━━━━⬣"
+    )
 
-    await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
