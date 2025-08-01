@@ -1060,7 +1060,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 )
 
     try:
-        response = requests.get(scraper_url, timeout=20)
+        response = requests.get(proxy_url, headers=headers, timeout=40)
         response.raise_for_status()
 
         html_text = response.text.lower()
