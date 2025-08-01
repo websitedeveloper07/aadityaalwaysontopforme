@@ -1029,11 +1029,11 @@ def escape_markdown_v2(text: str) -> str:
     special_chars = r'_*[]()~`>#+-=|{}.!\\'
     return ''.join([f'\\{char}' if char in special_chars else char for char in text])
 
-# Payment gateway signatures
+# Payment gateway signatures with more specific JS/API patterns
 GATEWAY_SIGNATURES = {
     # --- Major Global Gateways ---
-    "Stripe": [r'\b(stripe\.com|pk_live_|stripe-checkout|stripe\.js)\b', r'\b(data-stripe|stripe-key)\b'],
-    "PayPal": [r'\b(paypal\.com|paypalobjects\.com|data-paypal-button|paypal-checkout|pp_btn_pay)\b'],
+    "Stripe": [r'\b(stripe\.com/v1|pk_live_|pk_test_|stripe-checkout|stripe\.js)\b', r'\b(data-stripe|stripe-key)\b'],
+    "PayPal": [r'\b(paypal\.com/cgi-bin/webscr|paypalobjects\.com|data-paypal-button|paypal-checkout|pp_btn_pay)\b'],
     "Braintree": [r'\b(braintreepayments\.com|braintree\.js|braintree-web|client-token)\b'],
     "Adyen": [r'\b(adyen\.com|adyen/checkout\.min\.js|data-adyen-payment-method)\b'],
     "Authorize.net": [r'\b(authorize\.net/v1|accept\.authorize\.net|data-anet-payment-form)\b'],
@@ -1046,9 +1046,10 @@ GATEWAY_SIGNATURES = {
     "Checkout.com": [r'\b(checkout\.com|checkout-js)\b'],
     "FastSpring": [r'\b(fastspring\.com|fsc\.com)\b'],
     "BlueSnap": [r'\b(bluesnap\.com|bluesnap\.js)\b'],
-
+    
     # --- Indian/Asian Market ---
-    "Razorpay": [r'\b(razorpay\.com/checkout|checkout\.razorpay\.com|data-key|rzp_live|rzp_test)\b'],
+    # Enhanced Razorpay signatures to catch API calls and data attributes
+    "Razorpay": [r'\b(razorpay\.com/checkout|checkout\.razorpay\.com|data-key|rzp_live|rzp_test|api\.razorpay\.com)\b'],
     "PayU": [r'\b(payu\.in|payu\.com|payumoney)\b'],
     "Paytm": [r'\b(paytm\.com|paytm-payments|paytm-wallet|paytm\.in)\b'],
     "PhonePe": [r'\b(phonepe\.com|phonepe-checkout|phonepe-payments)\b'],
@@ -1107,7 +1108,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status = response.status_code
     except Exception as e:
         await update.message.reply_text(
-            f"╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n╰━━━━━━━━━━━━━━━━━━⬣",
+            f"╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n┣ ❏ 𝗠𝗲𝘀𝘀𝗮�𝗲 ➳ `{escape_markdown_v2(str(e))}`\n╰━━━━━━━━━━━━━━━━━━⬣",
             parse_mode=ParseMode.MARKDOWN_V2,
         )
         return
@@ -1129,7 +1130,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Build response
     output = (
-        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀�𝗹𝘁 ━━━━⬣\n"
+        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ━━━━⬣\n"
         f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
         f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁eways ➳ `{escape_markdown_v2(', '.join(found_gateways) if found_gateways else 'N/A')}`\n"
         f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha)}`\n"
