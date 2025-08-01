@@ -5,3 +5,4 @@ Faker
 requests
 beautifulsoup4
 cloudscraper
+httpx
