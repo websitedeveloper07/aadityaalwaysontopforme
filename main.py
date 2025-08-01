@@ -1182,7 +1182,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┣ ❏ /status \\- Bot status\n"
         "┣ ❏ /credits \\- Check your credits\n"
         "┣ ❏ /fk \\<country\\> \\- Generate fake identity\n"
-        "┣ ❏ /kill \\<cc\\|mm\\|yy\\|cvv\\> \\- Simulated card kill\n"
+        "┣ ❏ /kill \\<cc\\|mm\\|yy\\|cvv\\> \\- kills a card\n"
         "┣ ❏ /gate \\<url\\> \\- Check payment gateways on a site\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
