@@ -1384,19 +1384,21 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     help_message = (
-        "🤖 Help Menu:\n"
-        "/start - Welcome message\n"
-        "/help - Shows this help message\n"
-        "/gen <bin> - Generate cards from BIN\n"
-        "/bin <bin> - BIN lookup (bank, country, type)\n"
-        "/kill <cc|mm|yy|cvv> - Simulated kill command\n"
-        "/fk <country> - Generate fake identity info\n"
-        "/gate <url> - Check payment gateways on a website\n"
-        "/status - Bot system status info\n"
-        "/credits - Check your remaining credits"
+        "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
+        "┣ ❏ `/start` \\- Welcome message\n"
+        "┣ ❏ `/help` \\- Shows this help message\n"
+        "┣ ❏ `/gen <bin>` \\- Generate cards from BIN\n"
+        "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
+        "┣ ❏ `/kill <cc|mm|yy|cvv>` \\-  kill a card\n"
+        "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
+        "┣ ❏ `/gate <url>` \\- Check payment gateways on a website\n"
+        "┣ ❏ `/status` \\- Bot system status info\n"
+        "┣ ❏ `/credits` \\- Check your remaining credits\n"
+        "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    await update.message.reply_text(help_message)  # ← No formatting
+    await update.message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
