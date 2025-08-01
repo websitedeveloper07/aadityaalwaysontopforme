@@ -915,28 +915,28 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+user_id = update.effective_user.id
 
-    if get_credits(user_id) <= 0:
-        await update.message.reply_text(
-            "🚫 You have no remaining credits\\. Please subscribe to continue using this bot\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
-
-    user_full_name = escape_markdown_v2(update.effective_user.full_name)
-    remaining_credits = get_user_credits(user_id)
-
-    credits_msg = (
-        f"*✨ Your Credits*\n"
-        f"──────────────\n"
-        f"👤 Username  : {user_full_name}\n"
-        f"💳 Credits   : `{remaining_credits}` / `50`\n"
-        f"──────────────\n"
-        f"Plan : `Free`"
+if get_user_credits(user_id) <= 0:
+    await update.message.reply_text(
+        "🚫 You have no remaining credits\\. Please subscribe to continue using this bot\\.",
+        parse_mode=ParseMode.MARKDOWN_V2
     )
+    return
 
-    await update.effective_message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
+user_full_name = escape_markdown_v2(update.effective_user.full_name)
+remaining_credits = get_user_credits(user_id)
+
+credits_msg = (
+    f"╭━━━ *𝘊𝘳𝘦𝘥𝘪𝘵𝘴 𝘚𝘵𝘢𝘵𝘶𝘴* ━━━⬣\n"
+    f"┣ ❏ *Username* ➳ `{user_full_name}`\n"
+    f"┣ ❏ *Credits* ➳ `{remaining_credits}` / `50`\n"
+    f"┣ ❏ *Plan* ➳ `Free`\n"
+    f"╰━━━━━━━━━━━━━━━━━━⬣"
+)
+
+await update.message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 from faker import Faker
@@ -1369,18 +1369,19 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     help_message = (
-        "╭━━━[ 🤖 𝙃𝙚𝙡𝙥 ]━━━━⬣\n"
-        "┣ ❏ /start - Welcome message\n"
-        "┣ ❏ /help - Shows this help message\n"
-        "┣ ❏ /gen - Generate cards\n"
-        "┣ ❏ /bin <bin_number> - BIN lookup\n"
-        "┣ ❏ /status - Bot status\n"
-        "┣ ❏ /credits - Check your credits\n"
-        "┣ ❏ /fk <country_code> - Fake identity by country\n"
-        "┣ ❏ /kill <cc|mm|yy|cvv> - Simulated card kill\n"
-        "┣ ❏ /gate <url> - Detect payment gateways\n"
-        "╰━━━━━━━━━━━━━━━━━━⬣"
-    )
+    "╭━━━\\[ 🤖 𝙃𝙚𝙡𝙥 ]━━━━⬣\n"
+    "┣ ❏ /start \\- Welcome message\n"
+    "┣ ❏ /help \\- Shows this help message\n"
+    "┣ ❏ /gen \\- Generate 10 fake cards\n"
+    "┣ ❏ /bin \\<bin\\_number\\> \\- BIN lookup\n"
+    "┣ ❏ /status \\- Bot status\n"
+    "┣ ❏ /credits \\- Check your credits\n"
+    "┣ ❏ /fk \\<country\\_code\\> \\- Generate fake identity for a country\n"
+    "┣ ❏ /gate \\<url\\> \\- Check payment gateways on a website\n"
+    "┣ ❏ /kill \\<cc\\|mm\\|yy\\|cvv\\> \\- Simulated card kill\n"
+    "╰━━━━━━━━━━━━━━━━━━⬣"
+)
+
     await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 
