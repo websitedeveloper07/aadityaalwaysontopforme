@@ -1374,6 +1374,8 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # --- New /help command ---
+from telegram.constants import ParseMode
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context, is_group_only=True):
         return
@@ -1382,24 +1384,20 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     help_message = (
-        "╭━━━[ 🤖 *𝙃𝙚𝙡𝙥 𝙈𝙚𝙣𝙪* ]━━━━⬣\n"
-        "┣ ❏ /start \\- Welcome message\n"
-        "┣ ❏ /help \\- Shows this help message\n"
-        "┣ ❏ /gen <bin> \\- Generate cards from BIN\n"
-        "┣ ❏ /bin <bin> \\- BIN lookup \\(bank, country, type\\)\n"
-        "┣ ❏ /kill <cc\\|mm\\|yy\\|cvv> \\- Simulated kill command\n"
-        "┣ ❏ /fk <country> \\- Generate fake identity info\n"
-        "┣ ❏ /gate <url> \\- Check payment gateways on a website\n"
-        "┣ ❏ /status \\- Bot system status info\n"
-        "┣ ❏ /credits \\- Check your remaining credits\n"
+        "╭━━━[ 🤖 <b>Help Menu</b> ]━━━━⬣<br>"
+        "┣ ❏ <b>/start</b> - Welcome message<br>"
+        "┣ ❏ <b>/help</b> - Shows this help message<br>"
+        "┣ ❏ <b>/gen &lt;bin&gt;</b> - Generate cards from BIN<br>"
+        "┣ ❏ <b>/bin &lt;bin&gt;</b> - BIN lookup (bank, country, type)<br>"
+        "┣ ❏ <b>/kill &lt;cc|mm|yy|cvv&gt;</b> - Simulated kill command<br>"
+        "┣ ❏ <b>/fk &lt;country&gt;</b> - Generate fake identity info<br>"
+        "┣ ❏ <b>/gate &lt;url&gt;</b> - Check payment gateways on a website<br>"
+        "┣ ❏ <b>/status</b> - Bot system status info<br>"
+        "┣ ❏ <b>/credits</b> - Check your remaining credits<br>"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    await update.message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
-
-
-
-
+    await update.message.reply_text(help_message, parse_mode=ParseMode.HTML)
 
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
