@@ -1036,31 +1036,30 @@ GATEWAY_SIGNATURES = {
     # --- Major Global Gateways ---
     "Stripe": [
         r'\b(stripe\.com/v1|pk_live_|pk_test_|stripe-checkout|stripe\.js)\b',
-        r'\b(data-stripe|stripe-key)\b',
+        r'\b(data-stripe|stripe-key|stripe-session-id)\b',
         r'\b(js\.stripe\.com)\b',
-        r'\b(https://api\.stripe\.com/v1)\b'
+        r'\b(api\.stripe\.com/v1)\b'
     ],
     "PayPal": [
         r'\b(paypal\.com/cgi-bin/webscr|paypalobjects\.com|data-paypal-button|paypal-checkout|pp_btn_pay)\b',
-        r'\b(www\.paypal\.com/sdk/js)\b',
-        r'\b(paypal\.me)\b'
+        r'\b(www\.paypal\.com/sdk/js|paypal\.me)\b'
     ],
     "Braintree": [
         r'\b(braintreepayments\.com|braintree\.js|braintree-web|client-token)\b',
         r'\b(assets\.braintreegateway\.com)\b',
-        r'\b(paypal\.checkout\.braintree)\b'
+        r'\b(paypal\.checkout\.braintree|braintree\.dropin)\b'
     ],
     "Adyen": [
         r'\b(adyen\.com|adyen/checkout\.min\.js|data-adyen-payment-method)\b',
-        r'\b(checkout\.adyen\.com)\b'
+        r'\b(checkout\.adyen\.com|components\.adyen\.com)\b'
     ],
     "Authorize.net": [
         r'\b(authorize\.net/v1|accept\.authorize\.net|data-anet-payment-form)\b',
-        r'\b(secure2\.authorize\.net)\b'
+        r'\b(secure2\.authorize\.net|anet\.js)\b'
     ],
     "Square": [
         r'\b(squareup\.com/js/payment\.js|square\.com|square-web-sdk)\b',
-        r'\b(connect\.squareup\.com)\b'
+        r'\b(connect\.squareup\.com|api\.squareup\.com)\b'
     ],
     "Worldpay": [
         r'\b(worldpay\.com|worldpay-js|secure\.worldpay\.com)\b'
@@ -1079,10 +1078,10 @@ GATEWAY_SIGNATURES = {
     ],
     "Revolut": [
         r'\b(revolut\.com|revolut-payments)\b',
-        r'\b(assets\.revolut\.com)\b'
+        r'\b(assets\.revolut\.com|api\.revolut\.com)\b'
     ],
     "Checkout.com": [
-        r'\b(checkout\.com|checkout-js)\b',
+        r'\b(checkout\.com|checkout-js|frames\.js)\b',
         r'\b(api\.checkout\.com)\b'
     ],
     "FastSpring": [
@@ -1094,10 +1093,12 @@ GATEWAY_SIGNATURES = {
         r'\b(checkout\.bluesnap\.com)\b'
     ],
     "Global Payments": [
-        r'\b(globalpay\.com|api\.globalpay\.com)\b'
+        r'\b(globalpay\.com|api\.globalpay\.com)\b',
+        r'\b(hpp\.globalpay\.com)\b'
     ],
     "Cybersource": [
-        r'\b(cybersource\.com|cybersource-api)\b'
+        r'\b(cybersource\.com|cybersource-api)\b',
+        r'\b(flex\.cybersource\.com)\b'
     ],
     "Payoneer": [
         r'\b(payoneer\.com|payoneer\.checkout)\b'
@@ -1109,7 +1110,22 @@ GATEWAY_SIGNATURES = {
         r'\b(plaid\.com|plaidlink\.js)\b'
     ],
     "GoCardless": [
-        r'\b(gocardless\.com|gocardless-js)\b'
+        r'\b(gocardless\.com|gocardless-js)\b',
+        r'\b(pay\.gocardless\.com)\b'
+    ],
+    "DLocal": [
+        r'\b(dlocal\.com|dlocal-api)\b',
+        r'\b(checkout\.dlocal\.com)\b'
+    ],
+    "Payfort": [
+        r'\b(payfort\.com|fort\.js)\b'
+    ],
+    "WePay": [
+        r'\b(wepay\.com|wepay\.js)\b'
+    ],
+    "Paddle": [
+        r'\b(paddle\.com|paddle\.js)\b',
+        r'\b(cdn\.paddle\.com)\b'
     ],
     
     # --- Indian/Asian Market ---
@@ -1120,7 +1136,8 @@ GATEWAY_SIGNATURES = {
     ],
     "Juspay (Swiggy/Others)": [
         r'\b(juspay\.in|hyperupi\.com|juspay-sdk)\b',
-        r'\b(Swiggy UPI|Zomato UPI)\b' # Specific platform identifiers
+        r'\b(Swiggy UPI|Zomato UPI)\b',
+        r'\b(juspaysdk)\b'
     ],
     "PayU": [
         r'\b(payu\.in|payu\.com|payumoney\.com)\b',
@@ -1128,7 +1145,7 @@ GATEWAY_SIGNATURES = {
     ],
     "Paytm": [
         r'\b(paytm\.com|paytm-payments|paytmpayments\.com|paytm-wallet|paytm\.in)\b',
-        r'\b(securegw\.paytm\.in)\b'
+        r'\b(securegw\.paytm\.in|pg\.paytm\.in)\b'
     ],
     "PhonePe": [
         r'\b(phonepe\.com|phonepe-checkout|phonepe-payments)\b',
@@ -1139,7 +1156,7 @@ GATEWAY_SIGNATURES = {
     ],
     "Paystack": [
         r'\b(paystack\.co|paystack\.js)\b',
-        r'\b(js\.paystack\.co)\b'
+        r'\b(js\.paystack\.co|api\.paystack\.co)\b'
     ],
     "Zomato Pay": [
         r'\b(zomato-pay|zomatopay|zomatopayments)\b',
@@ -1154,6 +1171,9 @@ GATEWAY_SIGNATURES = {
     ],
     "Paytabs": [
         r'\b(paytabs\.com|paytabs\.js)\b'
+    ],
+    "Easebuzz": [
+        r'\b(easebuzz\.in|easebuzz-api)\b'
     ],
     
     # --- Other Gateways ---
@@ -1179,17 +1199,19 @@ GATEWAY_SIGNATURES = {
     # --- In-built eCommerce Systems ---
     "Shopify Payments": [
         r'\b(cdn\.shopify\.com|data-shop-id|shopify\.com/payments)\b',
-        r'\b(shopify\.checkout)\b'
+        r'\b(shopify\.checkout|checkout\.shopify\.com)\b'
     ],
     "WooCommerce": [
         r'\b(woocommerce\.com|wc-ajax=checkout)\b',
         r'\b(wp-json/wc/v3)\b'
     ],
     "Magento": [
-        r'\b(magento\.com|data-magento-init)\b'
+        r'\b(magento\.com|data-magento-init)\b',
+        r'\b(checkout\.magento\.com)\b'
     ],
     "BigCommerce": [
-        r'\b(bigcommerce\.com|bc-checkout)\b'
+        r'\b(bigcommerce\.com|bc-checkout)\b',
+        r'\b(store-.+\.mybigcommerce\.com)\b'
     ],
     "PrestaShop": [
         r'\b(prestashop\.com|prestashop-checkout)\b'
@@ -1197,11 +1219,17 @@ GATEWAY_SIGNATURES = {
     "OpenCart": [
         r'\b(opencart\.com|index\.php\?route=checkout)\b'
     ],
+    "Big Cartel": [
+        r'\b(bigcartel\.com)\b'
+    ],
+    "Ecwid": [
+        r'\b(ecwid\.com|ecwid-store)\b'
+    ],
     
     # --- Generic Payment Indicators ---
     "Generic Payment System": [
         r'\b(checkout|payment|paynow|pay|secure-payment|buy-now)\b',
-        r'\b(payment-form|payment-gateway-button|payment-gateway-field)\b'
+        r'\b(payment-form|payment-gateway-button|payment-gateway-field|cc-form)\b'
     ]
 }
 
@@ -1225,9 +1253,11 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         url = "https://" + url
 
     # Inform user and get the message object to edit later
+    sent_message = None
     try:
         sent_message = await update.message.reply_text("🔍 *Fetching\\, please wait\\.\\.\\.*", parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
+        # If we can't even send the initial message, log it and stop.
         print(f"Failed to send initial message: {e}")
         return
 
@@ -1239,16 +1269,20 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status = response.status_code
     except Exception as e:
         error_message = (
-            f"╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n"
+            f"╭━━━ 𝗘𝗿𝗿�𝗿 ━━━━⬣\n"
             f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
             f"╰━━━━━━━━━━━━━━━━━━⬣"
         )
-        await context.bot.edit_message_text(
-            chat_id=sent_message.chat_id,
-            message_id=sent_message.message_id,
-            text=error_message,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+        try:
+            await context.bot.edit_message_text(
+                chat_id=sent_message.chat_id,
+                message_id=sent_message.message_id,
+                text=error_message,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+        except Exception:
+            # Fallback to sending a new message if editing fails
+            await update.message.reply_text(error_message, parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     # Deep gateway detection
@@ -1279,12 +1313,16 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Edit the original message with the final result
-    await context.bot.edit_message_text(
-        chat_id=sent_message.chat_id,
-        message_id=sent_message.message_id,
-        text=output,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+    try:
+        await context.bot.edit_message_text(
+            chat_id=sent_message.chat_id,
+            message_id=sent_message.message_id,
+            text=output,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except Exception:
+        # Fallback to sending a new message if editing fails
+        await update.message.reply_text(output, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 # --- New /help command ---
