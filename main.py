@@ -436,9 +436,11 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("💳 Generate Cards", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Lookup", callback_data="cmd_bin")],
         [InlineKeyboardButton("🔪 Kill Card", callback_data="cmd_kill")],
-        [InlineKeyboardButton("👤 Fake Info", callback_data="cmd_fk")], # Added for fake info command
+        [InlineKeyboardButton("👤 Fake Info", callback_data="cmd_fk")],
+        [InlineKeyboardButton("🧠 Payment Scanner", callback_data="cmd_gate")],  # ✅ Added /gate command
         [InlineKeyboardButton("📊 Bot Status", callback_data="cmd_status")],
-        [InlineKeyboardButton("ℹ️ My Credits", callback_data="cmd_credits")], 
+        [InlineKeyboardButton("ℹ️ My Credits", callback_data="cmd_credits")],
+        [InlineKeyboardButton("❔ Help", callback_data="cmd_help")],              # ✅ Added /help command
         [InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -463,28 +465,38 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
         "kill": (
             f"*/kill CC\\|MM\\|YY\\|CVV*\n"
             f"Performs real\\-time card killing\\. Fast, direct, and effective ☠️\\.\n"
-            f"You have `{get_user_credits(update.effective_user.id)}` credits daily for this command\\.\n"
-            f"Example: `/kill 4000000000000000|12|25|123` or reply to a message containing card details\\."
+            f"You have `{get_user_credits(update.effective_user.id)}` credits\\.\n"
+            f"Example: `/kill 4000000000000000|12|25|123`"
         ),
         "fk": (
-            "*/fk*\n"
-            "Generates random fake personal information: name, address, email, IP, phone number, and credit card details\\."
+            "*/fk \\<country\\>*\n"
+            "Generates random fake personal info: name, address, email, IP, phone number, and card\\.\n"
+            "Example: `/fk usa`"
+        ),
+        "gate": (
+            "*/gate \\<url\\>*\n"
+            "Scans a website deeply for payment gateways like Stripe, PayPal, UPI, Klarna, etc\\.\n"
+            "Example: `/gate https://example.com`"
         ),
         "status": (
             "*/status*\n"
-            "Check the bot's current operational status \\(RAM, CPU, Uptime, Total Users\\)\\."
+            "Check bot health \\(RAM, CPU, Uptime, Total Users\\)\\."
         ),
         "credits": (
             "*/credits*\n"
-            "Check your remaining daily kill credits and your username\\."
+            "Shows your remaining credits \\(only 50 total unless subscribed\\)\\."
+        ),
+        "help": (
+            "*/help*\n"
+            "Show full command list and features of the bot\\."
         )
     }
-
 
     text = details.get(command_name, "Details not found\\.")
     keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -915,27 +927,28 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-user_id = update.effective_user.id
+    user_id = update.effective_user.id
 
-if get_user_credits(user_id) <= 0:
-    await update.message.reply_text(
-        "🚫 You have no remaining credits\\. Please subscribe to continue using this bot\\.",
-        parse_mode=ParseMode.MARKDOWN_V2
+    if get_user_credits(user_id) <= 0:
+        await update.message.reply_text(
+            "🚫 You have no remaining credits\\. Please subscribe to continue using this bot\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+
+    user_full_name = escape_markdown_v2(update.effective_user.full_name)
+    remaining_credits = get_user_credits(user_id)
+
+    credits_msg = (
+        f"╭━━━ *𝘊𝘳𝘦𝘥𝘪𝘵𝘴 𝘚𝘵𝘢𝘵𝘶𝘴* ━━━⬣\n"
+        f"┣ ❏ *Username* ➳ `{user_full_name}`\n"
+        f"┣ ❏ *Credits* ➳ `{remaining_credits}` / `50`\n"
+        f"┣ ❏ *Plan* ➳ `Free`\n"
+        f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
-    return
 
-user_full_name = escape_markdown_v2(update.effective_user.full_name)
-remaining_credits = get_user_credits(user_id)
+    await update.message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
-credits_msg = (
-    f"╭━━━ *𝘊𝘳𝘦𝘥𝘪𝘵𝘴 𝘚𝘵𝘢𝘵𝘶𝘴* ━━━⬣\n"
-    f"┣ ❏ *Username* ➳ `{user_full_name}`\n"
-    f"┣ ❏ *Credits* ➳ `{remaining_credits}` / `50`\n"
-    f"┣ ❏ *Plan* ➳ `Free`\n"
-    f"╰━━━━━━━━━━━━━━━━━━⬣"
-)
-
-await update.message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 
@@ -1378,7 +1391,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     "┣ ❏ /credits \\- Check your credits\n"
     "┣ ❏ /fk \\<country\\_code\\> \\- Generate fake identity for a country\n"
     "┣ ❏ /gate \\<url\\> \\- Check payment gateways on a website\n"
-    "┣ ❏ /kill \\<cc\\|mm\\|yy\\|cvv\\> \\- Simulated card kill\n"
+    "┣ ❏ /kill \\<cc\\|mm\\|yy\\|cvv\\> \\- Kills a card\n"
     "╰━━━━━━━━━━━━━━━━━━⬣"
 )
 
