@@ -1228,8 +1228,10 @@ GATEWAY_SIGNATURES = {
     
     # --- Generic Payment Indicators ---
     "Generic Payment System": [
-        r'\b(checkout|payment|paynow|pay|secure-payment|buy-now)\b',
-        r'\b(payment-form|payment-gateway-button|payment-gateway-field|cc-form)\b'
+        r'\b(checkout|payment|paynow|pay|secure-payment|buy-now|purchase|billing)\b',
+        r'\b(payment-form|payment-gateway-button|payment-gateway-field|cc-form|credit-card|debit-card|card-number|card-expiry|card-cvv|cvv|cvc)\b',
+        r'/(checkout|payment|purchase|pay|cart)\b',
+        r'(src="payment\.js"|/api/payment|/api/checkout)'
     ]
 }
 
@@ -1269,8 +1271,8 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status = response.status_code
     except Exception as e:
         error_message = (
-            f"╭━━━ 𝗘𝗿𝗿�𝗿 ━━━━⬣\n"
-            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
+            f"╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n"
+            f"┣ ❏ �𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
             f"╰━━━━━━━━━━━━━━━━━━⬣"
         )
         try:
