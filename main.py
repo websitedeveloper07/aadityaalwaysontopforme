@@ -1358,28 +1358,27 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- New /help command ---
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Only allow this command in authorized group chats
     if not await check_authorization(update, context, is_group_only=True):
         return
-
+    
     if not await enforce_cooldown(update.effective_user.id, update):
         return
 
     help_message = (
         "╭━━━[ 🤖 𝙃𝙚𝙡𝙥 ]━━━━⬣\n"
-        "┣ ❏ /start \\- Welcome message\n"
-        "┣ ❏ /help \\- Shows this help message\n"
-        "┣ ❏ /gen \\<bin\\> \\- Generate 10 cards\n"
-        "┣ ❏ /bin \\<bin\\> \\- BIN lookup\n"
-        "┣ ❏ /status \\- Bot status\n"
-        "┣ ❏ /credits \\- Check your credits\n"
-        "┣ ❏ /fk \\<country\\> \\- Generate fake identity\n"
-        "┣ ❏ /kill \\<cc\\|mm\\|yy\\|cvv\\> \\- kills a card\n"
-        "┣ ❏ /gate \\<url\\> \\- Check payment gateways on a site\n"
+        "┣ ❏ /start - Welcome message\n"
+        "┣ ❏ /help - Shows this help message\n"
+        "┣ ❏ /gen - Generate cards\n"
+        "┣ ❏ /bin <bin_number> - BIN lookup\n"
+        "┣ ❏ /status - Bot status\n"
+        "┣ ❏ /credits - Check your credits\n"
+        "┣ ❏ /fk <country_code> - Fake identity by country\n"
+        "┣ ❏ /kill <cc|mm|yy|cvv> - Simulated card kill\n"
+        "┣ ❏ /gate <url> - Detect payment gateways\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
-
     await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
@@ -1605,7 +1604,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.credits\b.*"), credits_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_command)) # Corrected function name
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.help\b.*") & filters.ChatType.GROUPS, help_command))
+    app.add_handler(CommandHandler("help", help_command))
 
     # Kill command in both private & groups
     application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
