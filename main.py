@@ -1054,7 +1054,10 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={url}"
 
     # Inform that scanning has started
-    await update.effective_message.reply_text("🔍 Fetching, please wait...", parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(
+    escape_markdown_v2("🔍 Fetching, please wait..."),
+    parse_mode=ParseMode.MARKDOWN_V2
+)
 
     try:
         response = requests.get(scraper_url, timeout=20)
