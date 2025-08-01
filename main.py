@@ -1019,7 +1019,7 @@ from telegram.ext import ContextTypes
 from collections import defaultdict
 
 # Replace this with your actual ScraperAPI key
-SCRAPERAPI_KEY = "YOUR_SCRAPERAPI_KEY"
+SCRAPERAPI_KEY = "961f25bd6317dbca7b1f66a832db5b4a"
 
 # Simple in-memory cooldown tracking
 user_cooldowns = defaultdict(lambda: 0)
