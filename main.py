@@ -1032,40 +1032,43 @@ def escape_markdown_v2(text: str) -> str:
 # Payment gateway signatures
 GATEWAY_SIGNATURES = {
     # --- Major Global Gateways ---
-    "Stripe": ["stripe.com/v1", "pk_live_", "pk_test_", "stripe-checkout", "stripe.js", "data-stripe"],
-    "PayPal": ["paypal.com/cgi-bin/webscr", "paypalobjects.com", "data-paypal-button", "paypal-checkout", "pp_btn_pay"],
-    "Braintree": ["braintreepayments.com", "braintree.js", "braintree-web", "client-token"],
-    "Adyen": ["adyen.com", "adyen/checkout.min.js", "data-adyen-payment-method"],
-    "Authorize.net": ["authorize.net/v1", "accept.authorize.net", "data-anet-payment-form"],
-    "Square": ["squareup.com/js/payment.js", "square.com", "square-web-sdk"],
-    "Worldpay": ["worldpay.com", "worldpay-js", "secure.worldpay.com"],
-    "2Checkout": ["2checkout.com", "2co.com", "tco.com"],
-    "Klarna": ["klarna.com", "klarna-payments", "data-klarna"],
-    "Afterpay": ["afterpay.com", "afterpay-payments"],
+    "Stripe": [r'\b(stripe\.com|pk_live_|stripe-checkout|stripe\.js)\b', r'\b(data-stripe|stripe-key)\b'],
+    "PayPal": [r'\b(paypal\.com|paypalobjects\.com|data-paypal-button|paypal-checkout|pp_btn_pay)\b'],
+    "Braintree": [r'\b(braintreepayments\.com|braintree\.js|braintree-web|client-token)\b'],
+    "Adyen": [r'\b(adyen\.com|adyen/checkout\.min\.js|data-adyen-payment-method)\b'],
+    "Authorize.net": [r'\b(authorize\.net/v1|accept\.authorize\.net|data-anet-payment-form)\b'],
+    "Square": [r'\b(squareup\.com/js/payment\.js|square\.com|square-web-sdk)\b'],
+    "Worldpay": [r'\b(worldpay\.com|worldpay-js|secure\.worldpay\.com)\b'],
+    "2Checkout": [r'\b(2checkout\.com|2co\.com|tco\.com)\b'],
+    "Klarna": [r'\b(klarna\.com|klarna-payments|data-klarna)\b'],
+    "Afterpay": [r'\b(afterpay\.com|afterpay-payments)\b'],
+    "Revolut": [r'\b(revolut\.com|revolut-payments)\b'],
+    "Checkout.com": [r'\b(checkout\.com|checkout-js)\b'],
+    "FastSpring": [r'\b(fastspring\.com|fsc\.com)\b'],
+    "BlueSnap": [r'\b(bluesnap\.com|bluesnap\.js)\b'],
 
     # --- Indian/Asian Market ---
-    "Razorpay": ["razorpay.com/checkout", "checkout.razorpay.com", "data-key"],
-    "PayU": ["payu.in", "payu.com", "payu-money"],
-    "Paytm": ["paytm.com", "paytm-payments"],
-    "PhonePe": ["phonepe.com", "phonepe-checkout"],
-    "UPI": ["upi://pay", "upi", "vpa"],
-    "Paystack": ["paystack.co", "paystack-js"],
+    "Razorpay": [r'\b(razorpay\.com/checkout|checkout\.razorpay\.com|data-key|rzp_live|rzp_test)\b'],
+    "PayU": [r'\b(payu\.in|payu\.com|payumoney)\b'],
+    "Paytm": [r'\b(paytm\.com|paytm-payments|paytm-wallet|paytm\.in)\b'],
+    "PhonePe": [r'\b(phonepe\.com|phonepe-checkout|phonepe-payments)\b'],
+    "UPI": [r'\b(upi:\/\/pay)\b', r'\b(vpa)\b', r'\b(upi)\b'],
+    "Paystack": [r'\b(paystack\.co|paystack\.js)\b'],
 
     # --- Other Gateways ---
-    "NMI": ["secure.nmi.com", "nmi-token", "nmi.com"],
-    "Eway": ["eway.com.au", "eway-rapid-api", "ewaygateway.com"],
-    "Paysera": ["paysera.com", "paysera_api"],
-    "PagSeguro": ["pagseguro.uol.com.br"],
-    "Amazon Pay": ["pay.amazon.com", "amazon-pay-button"],
-    "Google Pay / GPay": ["gpay", "googlepay"],
-    "FastSpring": ["fastspring.com", "fsc.com"],
-    "BlueSnap": ["bluesnap.com", "bluesnap.js"],
-    "Revolut": ["revolut.com"],
+    "NMI": [r'\b(secure\.nmi\.com|nmi-token)\b'],
+    "Eway": [r'\b(eway\.com\.au|eway-rapid-api|ewaygateway\.com)\b'],
+    "Paysera": [r'\b(paysera\.com|paysera_api)\b'],
+    "PagSeguro": [r'\b(pagseguro\.uol\.com\.br)\b'],
+    "Amazon Pay": [r'\b(pay\.amazon\.com|amazon-pay-button)\b'],
+    "Google Pay / GPay": [r'\b(googlepay\.com|gpay)\b'],
 
     # --- In-built eCommerce Systems ---
-    "Shopify Payments": ["cdn.shopify.com", "data-shop-id", "shopify.com/payments"],
-    "WooCommerce": ["woocommerce.com", "wc-ajax=checkout"],
-    "Magento": ["magento.com", "data-magento-init"]
+    "Shopify Payments": [r'\b(cdn\.shopify\.com|data-shop-id|shopify\.com/payments)\b'],
+    "WooCommerce": [r'\b(woocommerce\.com|wc-ajax=checkout)\b'],
+    "Magento": [r'\b(magento\.com|data-magento-init)\b'],
+    "BigCommerce": [r'\b(bigcommerce\.com|bc-checkout)\b'],
+    "PrestaShop": [r'\b(prestashop\.com|prestashop-checkout)\b']
 }
 
 # Cooldown duration
@@ -1077,7 +1080,6 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Enforce per-user cooldown
     now = datetime.now()
     if user_id in user_cooldowns and now < user_cooldowns[user_id]:
-        # Return silently if the user is in cooldown
         return
     user_cooldowns[user_id] = now + timedelta(seconds=COOLDOWN_SECONDS)
 
@@ -1094,7 +1096,6 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text("🔍 *Fetching\\, please wait\\.\\.\\.*", parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
-        # If this fails, we can't send any more messages, so just log the error.
         print(f"Failed to send initial message: {e}")
         return
 
@@ -1114,7 +1115,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deep gateway detection
     found_gateways = []
     for gateway, signatures in GATEWAY_SIGNATURES.items():
-        if any(re.search(re.escape(sig), html, re.I) for sig in signatures):
+        if any(re.search(sig, html, re.I) for sig in signatures):
             found_gateways.append(gateway)
 
     # Captcha detection
@@ -1141,10 +1142,6 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(output, parse_mode=ParseMode.MARKDOWN_V2)
-
-
-
-
 
 
 # --- New /help command ---
