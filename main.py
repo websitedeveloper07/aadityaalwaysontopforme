@@ -914,11 +914,12 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
-async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_authorization(update, context):
-        return
-    if not await enforce_cooldown(update.effective_user.id, update): # Pass update to cooldown
-        return 
+if get_credits(user_id) <= 0:
+    await update.message.reply_text(
+        "🚫 You have no remaining credits\\. Please subscribe to continue using this bot\\.",
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+    return 
 
     user_id = update.effective_user.id
     user_full_name = escape_markdown_v2(update.effective_user.full_name)
@@ -930,7 +931,7 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👤 Username  : {user_full_name}\n"
         f"💳 Credits   : `{remaining_credits}` / `{DAILY_KILL_CREDIT_LIMIT}`\n"
         f"──────────────\n"
-        f"Next reset : `Daily`"
+        f"Plan : `Free`"
     )
 
     await update.effective_message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
@@ -1604,7 +1605,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.kill\b.*") & (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), kill))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.credits\b.*"), credits_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^\.fk\b.*"), fk_command)) # Corrected function name
-    app.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("help", help_command))
 
     # Kill command in both private & groups
     application.add_handler(CommandHandler("kill", kill, filters=filters.ChatType.PRIVATE | filters.ChatType.GROUPS))
