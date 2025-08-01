@@ -1016,6 +1016,8 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+import cloudscraper
+
 def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
 
@@ -1040,10 +1042,15 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+        # Use cloudscraper to bypass 403 protections
+        scraper = cloudscraper.create_scraper()
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Referer': 'https://www.google.com/',
         }
-        response = requests.get(url, headers=headers, timeout=10)
+        response = scraper.get(url, headers=headers, timeout=15)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -1119,30 +1126,15 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
 
-    except requests.exceptions.Timeout:
-        msg = (
-            "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗘𝗿𝗿𝗼𝗿 ]━━━━⬣\n"
-            f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-            "┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `Request timed out`\n"
-            "╰━━━━━━━━━━━━━━━━━━⬣"
-        )
-    except requests.exceptions.HTTPError as e:
-        status = f"{e.response.status_code} {e.response.reason}"
-        msg = (
-            "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗘𝗿𝗿𝗼𝗿 ]━━━━⬣\n"
-            f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(status)}`\n"
-            "╰━━━━━━━━━━━━━━━━━━⬣"
-        )
     except Exception as e:
-        error_message = escape_markdown_v2(str(e))
         msg = (
             "╭━━━[ 𝗘𝗿𝗿𝗼𝗿 ]━━━━⬣\n"
-            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{error_message}`\n"
+            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
 
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 # --- New /help command ---
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
