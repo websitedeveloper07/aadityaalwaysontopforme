@@ -1037,21 +1037,25 @@ GATEWAY_SIGNATURES = {
     "Stripe": [
         r'\b(stripe\.com/v1|pk_live_|pk_test_|stripe-checkout|stripe\.js)\b',
         r'\b(data-stripe|stripe-key|stripe-session-id)\b',
-        r'\b(js\.stripe\.com)\b',
-        r'\b(api\.stripe\.com/v1)\b'
+        r'\b(js\.stripe\.com|checkout\.stripe\.com)\b',
+        r'\b(api\.stripe\.com/v1)\b',
+        r'\b(Stripe\.(?P<method>createToken|confirmCardPayment|redirectToCheckout))\b' # Added more JS method calls
     ],
     "PayPal": [
         r'\b(paypal\.com/cgi-bin/webscr|paypalobjects\.com|data-paypal-button|paypal-checkout|pp_btn_pay)\b',
-        r'\b(www\.paypal\.com/sdk/js|paypal\.me)\b'
+        r'\b(www\.paypal\.com/sdk/js|paypal\.me)\b',
+        r'\b(paypal-braintree-client|paypal-rest-sdk)\b' # Added more SDKs
     ],
     "Braintree": [
         r'\b(braintreepayments\.com|braintree\.js|braintree-web|client-token)\b',
         r'\b(assets\.braintreegateway\.com)\b',
-        r'\b(paypal\.checkout\.braintree|braintree\.dropin)\b'
+        r'\b(paypal\.checkout\.braintree|braintree\.dropin)\b',
+        r'\b(braintree\.setup)\b'
     ],
     "Adyen": [
         r'\b(adyen\.com|adyen/checkout\.min\.js|data-adyen-payment-method)\b',
-        r'\b(checkout\.adyen\.com|components\.adyen\.com)\b'
+        r'\b(checkout\.adyen\.com|components\.adyen\.com|api\.adyen\.com)\b',
+        r'\b(AdyenCheckout)\b' # Added JS class name
     ],
     "Authorize.net": [
         r'\b(authorize\.net/v1|accept\.authorize\.net|data-anet-payment-form)\b',
@@ -1127,6 +1131,10 @@ GATEWAY_SIGNATURES = {
         r'\b(paddle\.com|paddle\.js)\b',
         r'\b(cdn\.paddle\.com)\b'
     ],
+    "Paysafe": [ # Added Paysafe
+        r'\b(paysafe\.com|paysafe-api)\b',
+        r'\b(checkout\.paysafe\.com)\b'
+    ],
     
     # --- Indian/Asian Market ---
     "Razorpay": [
@@ -1141,7 +1149,8 @@ GATEWAY_SIGNATURES = {
     ],
     "PayU": [
         r'\b(payu\.in|payu\.com|payumoney\.com)\b',
-        r'\b(payment-page\.payu\.in)\b'
+        r'\b(payment-page\.payu\.in|secure\.payu\.in)\b', # Added secure URL
+        r'\b(payulatam\.com|payu\.pl)\b' # Added regional variations
     ],
     "Paytm": [
         r'\b(paytm\.com|paytm-payments|paytmpayments\.com|paytm-wallet|paytm\.in)\b',
@@ -1175,6 +1184,19 @@ GATEWAY_SIGNATURES = {
     "Easebuzz": [
         r'\b(easebuzz\.in|easebuzz-api)\b'
     ],
+    "UnionPay": [ # Added UnionPay
+        r'\b(unionpay\.com|unionpayinternational\.com|upay\.com)\b',
+        r'\b(cloudpay\.unionpay\.com)\b',
+        r'\b(China UnionPay)\b'
+    ],
+    "WeChat Pay": [ # Added WeChat Pay
+        r'\b(wechatpay\.com|pay\.weixin\.qq\.com)\b',
+        r'\b(wx-jsapi)\b'
+    ],
+    "Alipay": [ # Added Alipay
+        r'\b(alipay\.com|alipay-payments)\b',
+        r'\b(qr\.alipay\.com|openapi\.alipay\.com)\b'
+    ],
     
     # --- Other Gateways ---
     "NMI": [
@@ -1190,10 +1212,16 @@ GATEWAY_SIGNATURES = {
         r'\b(pagseguro\.uol\.com\.br)\b'
     ],
     "Amazon Pay": [
-        r'\b(pay\.amazon\.com|amazon-pay-button)\b'
+        r'\b(pay\.amazon\.com|amazon-pay-button)\b',
+        r'\b(amazon-checkout-sdk|amazon-payment-services)\b',
+        r'\b(https://payments\.amazon\.com)\b',
+        r'\b(amazon\.co\.uk/gp/buy/sp/widget/)\b'
     ],
     "Google Pay / GPay": [
         r'\b(googlepay\.com|gpay)\b'
+    ],
+    "Trustly": [
+        r'\b(trustly\.com|trustly-api|trustly\.js)\b'
     ],
 
     # --- In-built eCommerce Systems ---
@@ -1228,10 +1256,11 @@ GATEWAY_SIGNATURES = {
     
     # --- Generic Payment Indicators ---
     "Generic Payment System": [
-        r'\b(checkout|payment|paynow|pay|secure-payment|buy-now|purchase|billing)\b',
-        r'\b(payment-form|payment-gateway-button|payment-gateway-field|cc-form|credit-card|debit-card|card-number|card-expiry|card-cvv|cvv|cvc)\b',
-        r'/(checkout|payment|purchase|pay|cart)\b',
-        r'(src="payment\.js"|/api/payment|/api/checkout)'
+        r'\b(checkout|payment|paynow|pay|secure-payment|buy-now|purchase|billing|donations|add-to-cart)\b',
+        r'\b(payment-form|payment-gateway-button|payment-gateway-field|cc-form|credit-card|debit-card|card-number|card-expiry|card-cvv|cvv|cvc|card-holder-name|expiry-date|payment-api|payment-widget|payment-method)\b',
+        r'/(checkout|payment|purchase|pay|cart|billing)\b',
+        r'(src="payment\.js"|/api/payment|/api/checkout|/api/secure-payment)',
+        r'\b(data-payment-type)\b'
     ]
 }
 
@@ -1272,7 +1301,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         error_message = (
             f"╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n"
-            f"┣ ❏ �𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
+            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
             f"╰━━━━━━━━━━━━━━━━━━⬣"
         )
         try:
@@ -1303,7 +1332,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Build response
     output = (
-        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ━━━━⬣\n"
+        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂�𝘁 ━━━━⬣\n"
         f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
         f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁eways ➳ `{escape_markdown_v2(', '.join(sorted(list(found_gateways))) if found_gateways else 'N/A')}`\n"
         f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha)}`\n"
@@ -1325,7 +1354,6 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         # Fallback to sending a new message if editing fails
         await update.message.reply_text(output, parse_mode=ParseMode.MARKDOWN_V2)
-
 
 # --- New /help command ---
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
