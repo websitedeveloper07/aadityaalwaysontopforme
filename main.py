@@ -1036,13 +1036,33 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     base_url = user_input.rstrip("/")
     paths = ["", "cart", "checkout", "payment", "pay", "order"]
-
     api_key = "961f25bd6317dbca7b1f66a832db5b4a"
 
     await update.effective_message.reply_text(
-        escape_markdown_v2("🔎 Scanning site for payment gateways..."),
+        escape_markdown_v2("🔍 Scanning site for payment gateways..."),
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
+    gateways = {
+        "Stripe": ["stripe.com/v1", "pk_live", "pk_test"],
+        "PayPal": ["paypal.com/cgi-bin/webscr", "data-paypal-button"],
+        "Braintree": ["braintreepayments.com", "client-token", "braintree-web/"],
+        "Adyen": ["adyen.com", "adyen/checkout.min.js"],
+        "Authorize.net": ["authorize.net/v1", "authorize.net/v3", "authorize.net/payment"],
+        "Razorpay": ["razorpay.com/checkout", "checkout.razorpay.com"],
+        "PayU": ["payu.in", "payu.com"],
+        "Square": ["square.com/js/payment.js"],
+        "Shopify Payments": ["cdn.shopify.com", "data-shop-id", "shopify.com"],
+        "Klarna": ["klarna.com"],
+        "Afterpay": ["afterpay.com"],
+        "2Checkout": ["2checkout.com"],
+        "Paysera": ["paysera.com"],
+        "PagSeguro": ["pagseguro.uol.com.br"],
+        "Paystack": ["paystack.co"],
+        "NMI": ["secure.nmi.com", "nmi.com", "nmi-token"],
+        "Eway": ["eway.com.au", "eway-rapid-api", "ewaygateway.com"],
+        "UPI": ["upi://pay", "paytm", "phonepe", "gpay", "googlepay"]
+    }
 
     for path in paths:
         try:
@@ -1052,49 +1072,33 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             html_text = response.text.lower()
             soup = BeautifulSoup(response.text, 'html.parser')
 
-            gateways = {
-                "Stripe": ["stripe.com/v1", "pk_live", "pk_test"],
-                "PayPal": ["paypal.com/cgi-bin/webscr", "data-paypal-button"],
-                "Braintree": ["braintree-web/", "braintree.com"],
-                "Adyen": ["adyen.com", "adyen/checkout.min.js"],
-                "Authorize.net": ["authorize.net/v1", "authorize.net/v3"],
-                "Razorpay": ["razorpay.com/checkout", "checkout.razorpay.com"],
-                "PayU": ["payu.in", "payu.com"],
-                "Square": ["square.com/js/payment.js"],
-                "Shopify Payments": ["cdn.shopify.com", "data-shop-id", "shopify.com"],
-                "Klarna": ["klarna.com"],
-                "Afterpay": ["afterpay.com"],
-                "2Checkout": ["2checkout.com"],
-                "Paysera": ["paysera.com"],
-                "PagSeguro": ["pagseguro.uol.com.br"],
-                "Paystack": ["paystack.co"]
-            }
-
             found_gateways = set()
-            for gateway, ids in gateways.items():
-                for ident in ids:
+            for name, identifiers in gateways.items():
+                for ident in identifiers:
                     if ident.lower() in html_text:
-                        found_gateways.add(gateway)
+                        found_gateways.add(name)
                         break
 
             if found_gateways:
-                # If gateways are found, return early with this page’s info
-                captcha = "ReCaptcha" if "recaptcha" in html_text else (
-                    "hCaptcha" if "hcaptcha" in html_text else (
-                        "Possible" if "captcha" in html_text else "N/A"
-                    )
+                captcha = (
+                    "ReCaptcha" if "recaptcha" in html_text else
+                    "hCaptcha" if "hcaptcha" in html_text else
+                    "Possible" if "captcha" in html_text else "N/A"
                 )
                 cloudflare = "Yes" if (
                     "cf-ray" in response.headers or
                     "cloudflare" in response.headers.get("Server", "").lower() or
                     "cdn-cgi" in html_text
                 ) else "N/A"
-                security = "HTTPS" + (" (HSTS)" if "Strict-Transport-Security" in response.headers else "") if full_url.startswith("https://") else "N/A"
-                cvv = "Yes" if soup.find('input', {'name': re.compile(r'cvc|cvv', re.I)}) or soup.find('input', {'id': re.compile(r'cvc|cvv', re.I)}) else "N/A"
-                inbuilt = "Shopify" if "shopify.com" in html_text else (
-                    "WooCommerce (WordPress)" if "woocommerce" in html_text or "wp-content" in html_text else (
-                        "Magento" if "magento" in html_text else "N/A"
-                    )
+                security = "HTTPS" + (
+                    " (HSTS)" if "strict-transport-security" in response.headers else ""
+                ) if full_url.startswith("https://") else "N/A"
+                cvv = "Yes" if soup.find('input', {'name': re.compile(r'cvc|cvv', re.I)}) or \
+                    soup.find('input', {'id': re.compile(r'cvc|cvv', re.I)}) else "N/A"
+                inbuilt = (
+                    "Shopify" if "shopify.com" in html_text else
+                    "WooCommerce (WordPress)" if "woocommerce" in html_text or "wp-content" in html_text else
+                    "Magento" if "magento" in html_text else "N/A"
                 )
 
                 msg = (
@@ -1111,11 +1115,9 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
                 return
-
         except Exception:
-            continue  # Try the next path if current one fails
+            continue
 
-    # If none of the paths had any gateway
     msg = (
         "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
         f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(base_url)}`\n"
