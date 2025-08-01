@@ -1009,6 +1009,60 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
+import aiohttp
+from bs4 import BeautifulSoup
+
+async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_authorization(update, context):
+        return
+    if not await enforce_cooldown(update.effective_user.id, update):
+        return
+
+    if not context.args:
+        return await update.effective_message.reply_text("❌ Usage: `/gate <website_url>`", parse_mode=ParseMode.MARKDOWN_V2)
+
+    url = context.args[0]
+    if not url.startswith("http"):
+        url = "https://" + url
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as response:
+                html = await response.text()
+                soup = BeautifulSoup(html, 'html.parser')
+
+                text = soup.get_text().lower()
+                html_lower = html.lower()
+
+                gateway_keywords = ["stripe", "paypal", "braintree", "authorize.net", "squareup", "checkout.com", "razorpay", "payu", "paytm", "adyen", "klarna", "apple pay", "google pay"]
+                gateways_found = [gw for gw in gateway_keywords if gw in html_lower or gw in text]
+                gateways_str = ", ".join(gateways_found) if gateways_found else "Unknown"
+
+                captcha_found = "Yes" if any(c in html_lower for c in ["captcha", "g-recaptcha", "cf-turnstile"]) else "No"
+                cloudflare_found = "Yes" if "cloudflare" in html_lower else "No"
+                security_status = "🔐 Secure" if url.startswith("https://") else "⚠️ Not Secure"
+                cvv_found = "Yes" if any(k in html_lower for k in ["cvv", "cvc", "security code"]) else "No"
+                inbuilt_system = "Yes" if any(x in html_lower for x in ["<form", "checkout", "payment-form", "card-element"]) else "Unknown"
+
+                result = (
+                    "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
+                    f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
+                    f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{escape_markdown_v2(gateways_str)}`\n"
+                    f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha_found)}`\n"
+                    f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{escape_markdown_v2(cloudflare_found)}`\n"
+                    f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{escape_markdown_v2(security_status)}`\n"
+                    f"┣ ❏ 𝗖𝗩𝗩/𝗖𝗩𝗖 ➳ `{escape_markdown_v2(cvv_found)}`\n"
+                    f"┣ ❏ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➳ `{escape_markdown_v2(inbuilt_system)}`\n"
+                    f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(str(response.status))}`\n"
+                    "╰━━━━━━━━━━━━━━━━━━⬣"
+                )
+
+                await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
+
+    except Exception as e:
+        await update.effective_message.reply_text(f"❌ Failed to fetch \\(Error: {escape_markdown_v2(str(e))}\\)", parse_mode=ParseMode.MARKDOWN_V2)
+
+
 
 
 
@@ -1258,6 +1312,7 @@ def main():
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("credits", credits_command))
     application.add_handler(CommandHandler("fk", fk_command)) # Corrected function name
+    application.add_handler(CommandHandler("gate", gate_command))
     application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS)) # /help only in groups
 
     # Dot-prefixed versions
