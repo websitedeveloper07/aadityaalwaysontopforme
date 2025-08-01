@@ -1025,8 +1025,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Please provide a URL to check.\n\n"
-            "Example: `/gate https://example.com`",
+            escape_markdown_v2("Please provide a URL to check.\n\nExample: /gate https://example.com"),
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return
@@ -1036,7 +1035,10 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         url = "https://" + url
 
     try:
-        await update.effective_message.reply_text("Checking for payment gateways and other info, please wait...", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text(
+            escape_markdown_v2("Checking for payment gateways and other info, please wait..."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -1071,7 +1073,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if identifier.lower() in html_text:
                     found_gateways.add(gateway)
                     break
-        gateways_str = ", ".join(sorted(list(found_gateways))) if found_gateways else "N/A"
+        gateways_str = ", ".join(sorted(found_gateways)) if found_gateways else "N/A"
 
         captcha_found = "N/A"
         if "recaptcha" in html_text:
@@ -1119,28 +1121,26 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except requests.exceptions.Timeout:
         msg = (
-            "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
+            "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗘𝗿𝗿𝗼𝗿 ]━━━━⬣\n"
             f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
             "┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `Request timed out`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
     except requests.exceptions.HTTPError as e:
-        status_code = e.response.status_code
+        status = f"{e.response.status_code} {e.response.reason}"
         msg = (
-            "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
+            "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗘𝗿𝗿𝗼𝗿 ]━━━━⬣\n"
             f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(f'{status_code} {e.response.reason}')}`\n"
-            "╰━━━━━━━━━━━━━━━━━━⬣"
-        )
-    except requests.exceptions.RequestException as e:
-        msg = (
-            "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
-            f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2('Failed to connect: ' + str(e))}`\n"
+            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(status)}`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
     except Exception as e:
-        msg = f"An unexpected error occurred: `{escape_markdown_v2(str(e))}`"
+        error_message = escape_markdown_v2(str(e))
+        msg = (
+            "╭━━━[ 𝗘𝗿𝗿𝗼𝗿 ]━━━━⬣\n"
+            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{error_message}`\n"
+            "╰━━━━━━━━━━━━━━━━━━⬣"
+        )
 
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
