@@ -1046,7 +1046,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not url.startswith("http"):
         url = "https://" + url
 
-    await update.message.reply_text("🔍 *Fetching\\, please wait\\...*", parse_mode=ParseMode.MARKDOWN_V2)
+    await update.message.reply_text("🔍 Fetching\\, please wait\\.\\.\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     try:
         api_key = "961f25bd6317dbca7b1f66a832db5b4a"  # 🔁 Replace with your ScraperAPI key
