@@ -1136,7 +1136,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = (
             "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
             f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `Failed to connect: {escape_markdown_v2(str(e))}`\n"
+            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2('Failed to connect: ' + str(e))}`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
     except Exception as e:
