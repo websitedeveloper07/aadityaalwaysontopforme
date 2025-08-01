@@ -1010,11 +1010,14 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 import re
+import time
 import requests
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+
+user_gate_cooldowns = {}
 
 def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
@@ -1022,6 +1025,18 @@ def escape_markdown_v2(text: str) -> str:
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
+
+    user_id = update.effective_user.id
+    now = time.time()
+    last_used = user_gate_cooldowns.get(user_id, 0)
+
+    if now - last_used < 5:
+        await update.effective_message.reply_text(
+            "⏳ Please wait 5 seconds before using `/gate` again.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+    user_gate_cooldowns[user_id] = now
 
     if not context.args:
         await update.effective_message.reply_text(
@@ -1038,6 +1053,9 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     api_key = "961f25bd6317dbca7b1f66a832db5b4a"
     scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={url}"
 
+    # Inform that scanning has started
+    await update.effective_message.reply_text("🔍 Fetching, please wait...", parse_mode=ParseMode.MARKDOWN_V2)
+
     try:
         response = requests.get(scraper_url, timeout=20)
         response.raise_for_status()
@@ -1045,7 +1063,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         html_text = response.text.lower()
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # ✦ Payment Gateways Detection ✦
+        # Gateways
         gateways = {
             "Stripe": ["stripe.com", "pk_live", "stripe.js", "stripe-checkout"],
             "PayPal": ["paypal.com", "paypalobjects.com", "data-paypal-button"],
@@ -1082,28 +1100,28 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     found_gateways.add(name)
                     break
 
-        # ✦ CAPTCHA Detection ✦
+        # Captcha
         captcha = (
             "ReCaptcha" if "recaptcha" in html_text else
             "hCaptcha" if "hcaptcha" in html_text else
             "Possible" if "captcha" in html_text else "N/A"
         )
 
-        # ✦ Cloudflare Detection ✦
+        # Cloudflare
         cloudflare = "Yes" if (
             "cf-ray" in response.headers or
             "cloudflare" in response.headers.get("Server", "").lower() or
             "cdn-cgi" in html_text
         ) else "N/A"
 
-        # ✦ HTTPS + 3D Secure Detection ✦
+        # Security
         security = "HTTPS"
         if "strict-transport-security" in response.headers:
             security += " (HSTS)"
         if "3ds" in html_text or "3dsecure" in html_text:
             security += " + 3D"
 
-        # ✦ CVV Field Detection ✦
+        # CVV/CVC Detection
         cvv = "N/A"
         cvv_keywords = ["cvv", "cvc", "security code", "verification number", "card code"]
         for tag in soup.find_all("input"):
@@ -1112,7 +1130,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cvv = "Yes"
                 break
 
-        # ✦ CMS / Ecom Detection ✦
+        # CMS / Ecom
         inbuilt = (
             "Shopify" if "shopify.com" in html_text else
             "WooCommerce (WordPress)" if "woocommerce" in html_text or "wp-content" in html_text else
@@ -1123,7 +1141,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "N/A"
         )
 
-        # ✦ Reply Message ✦
+        # Final message
         msg = (
             "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
             f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
@@ -1140,7 +1158,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         msg = (
             "╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n"
-            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ {escape_markdown_v2(str(e))}\n"
+            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
 
