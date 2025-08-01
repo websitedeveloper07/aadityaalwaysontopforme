@@ -1016,10 +1016,6 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-import cloudscraper
-from bs4 import BeautifulSoup
-import re
-
 def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
 
@@ -1040,25 +1036,20 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         await update.effective_message.reply_text(
-            escape_markdown_v2("Checking for payment gateways and other info, please wait..."),
+            escape_markdown_v2("Checking for payment gateways and site info, please wait..."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-        scraper = cloudscraper.create_scraper()
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-            'Referer': 'https://www.google.com/',
-        }
+        # Use ScraperAPI to bypass bot protection
+        api_key = "961f25bd6317dbca7b1f66a832db5b4a"
+        scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={url}"
+        response = requests.get(scraper_url, timeout=20)
 
-        response = scraper.get(url, headers=headers, timeout=15)
-
-        if response.status_code == 403:
+        if response.status_code != 200:
             msg = (
                 "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
                 f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-                f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `403 Forbidden \\(Site blocks bots\\)`\n"
+                f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(str(response.status_code))} {escape_markdown_v2(response.reason)}`\n"
                 f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `N/A`\n"
                 "╰━━━━━━━━━━━━━━━━━━⬣"
             )
@@ -1146,6 +1137,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 # --- New /help command ---
