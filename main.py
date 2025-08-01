@@ -1022,36 +1022,50 @@ user_cooldowns = {}
 
 # MarkdownV2 escaper
 def escape_markdown_v2(text: str) -> str:
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
+    """
+    Escapes special characters for MarkdownV2 formatting.
+    This implementation is more robust and escapes characters individually.
+    """
+    special_chars = r'_*[]()~`>#+-=|{}.!\\'
+    return ''.join([f'\\{char}' if char in special_chars else char for char in text])
 
 # Payment gateway signatures
 GATEWAY_SIGNATURES = {
-    "Stripe": ["stripe.com", "pk_live", "stripe-checkout", "stripe.js"],
-    "PayPal": ["paypal.com", "paypalobjects.com", "data-paypal-button"],
-    "Braintree": ["braintreepayments.com", "braintree.js", "client-token"],
-    "Adyen": ["adyen.com", "adyen.js"],
-    "Authorize.net": ["authorize.net", "accept.authorize.net"],
-    "Square": ["squareup.com", "square.com"],
-    "PayU": ["payu.in", "payu.com"],
-    "Paystack": ["paystack.co"],
-    "Klarna": ["klarna.com"],
-    "Afterpay": ["afterpay.com"],
-    "Shopify Payments": ["cdn.shopify.com", "data-shop-id"],
-    "Razorpay": ["razorpay.com"],
-    "NMI": ["secure.nmi.com", "nmi-token"],
-    "Eway": ["eway.com.au", "eway-rapid-api", "ewaygateway.com"],
-    "2Checkout": ["2checkout.com"],
-    "Paysera": ["paysera.com"],
-    "PagSeguro": ["pagseguro.uol.com.br"],
-    "Amazon Pay": ["pay.amazon.com"],
-    "Google Pay / GPay": ["gpay", "googlepay"],
-    "PhonePe": ["phonepe"],
-    "Paytm": ["paytm"],
+    # --- Major Global Gateways ---
+    "Stripe": ["stripe.com/v1", "pk_live_", "pk_test_", "stripe-checkout", "stripe.js", "data-stripe"],
+    "PayPal": ["paypal.com/cgi-bin/webscr", "paypalobjects.com", "data-paypal-button", "paypal-checkout", "pp_btn_pay"],
+    "Braintree": ["braintreepayments.com", "braintree.js", "braintree-web", "client-token"],
+    "Adyen": ["adyen.com", "adyen/checkout.min.js", "data-adyen-payment-method"],
+    "Authorize.net": ["authorize.net/v1", "accept.authorize.net", "data-anet-payment-form"],
+    "Square": ["squareup.com/js/payment.js", "square.com", "square-web-sdk"],
+    "Worldpay": ["worldpay.com", "worldpay-js", "secure.worldpay.com"],
+    "2Checkout": ["2checkout.com", "2co.com", "tco.com"],
+    "Klarna": ["klarna.com", "klarna-payments", "data-klarna"],
+    "Afterpay": ["afterpay.com", "afterpay-payments"],
+
+    # --- Indian/Asian Market ---
+    "Razorpay": ["razorpay.com/checkout", "checkout.razorpay.com", "data-key"],
+    "PayU": ["payu.in", "payu.com", "payu-money"],
+    "Paytm": ["paytm.com", "paytm-payments"],
+    "PhonePe": ["phonepe.com", "phonepe-checkout"],
     "UPI": ["upi://pay", "upi", "vpa"],
-    "FastSpring": ["fastspring.com"],
-    "BlueSnap": ["bluesnap.com"],
-    "Worldpay": ["worldpay.com"],
+    "Paystack": ["paystack.co", "paystack-js"],
+
+    # --- Other Gateways ---
+    "NMI": ["secure.nmi.com", "nmi-token", "nmi.com"],
+    "Eway": ["eway.com.au", "eway-rapid-api", "ewaygateway.com"],
+    "Paysera": ["paysera.com", "paysera_api"],
+    "PagSeguro": ["pagseguro.uol.com.br"],
+    "Amazon Pay": ["pay.amazon.com", "amazon-pay-button"],
+    "Google Pay / GPay": ["gpay", "googlepay"],
+    "FastSpring": ["fastspring.com", "fsc.com"],
+    "BlueSnap": ["bluesnap.com", "bluesnap.js"],
     "Revolut": ["revolut.com"],
+
+    # --- In-built eCommerce Systems ---
+    "Shopify Payments": ["cdn.shopify.com", "data-shop-id", "shopify.com/payments"],
+    "WooCommerce": ["woocommerce.com", "wc-ajax=checkout"],
+    "Magento": ["magento.com", "data-magento-init"]
 }
 
 # Cooldown duration
@@ -1063,6 +1077,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Enforce per-user cooldown
     now = datetime.now()
     if user_id in user_cooldowns and now < user_cooldowns[user_id]:
+        # Return silently if the user is in cooldown
         return
     user_cooldowns[user_id] = now + timedelta(seconds=COOLDOWN_SECONDS)
 
@@ -1078,13 +1093,15 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Inform user
     try:
         await update.message.reply_text("🔍 *Fetching\\, please wait...*", parse_mode=ParseMode.MARKDOWN_V2)
-    except:
-        pass
+    except Exception as e:
+        # If this fails, we can't send any more messages, so just log the error.
+        print(f"Failed to send initial message: {e}")
+        return
 
     # Fetch the page
     try:
         async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-            response = await client.get(url)
+            response = await client.get(url, headers={'User-Agent': 'Mozilla/5.0'})
             html = response.text.lower()
             status = response.status_code
     except Exception as e:
@@ -1097,29 +1114,29 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deep gateway detection
     found_gateways = []
     for gateway, signatures in GATEWAY_SIGNATURES.items():
-        if any(sig.lower() in html for sig in signatures):
+        if any(re.search(re.escape(sig), html, re.I) for sig in signatures):
             found_gateways.append(gateway)
 
     # Captcha detection
     captcha = "ReCaptcha" if "recaptcha" in html else ("hCaptcha" if "hcaptcha" in html else "No Captcha")
-
+    
     # Other checks
-    cloudflare = "Yes" if "cloudflare" in html else "N/A"
+    cloudflare = "Yes" if "cloudflare" in html or "cf-ray" in response.headers else "N/A"
     security = "HTTPS" if url.startswith("https://") else "No HTTPS"
-    cvv = "Yes" if re.search(r'cvv|cvc', html) else "N/A"
+    cvv = "Yes" if re.search(r'cvv|cvc', html, re.I) else "N/A"
     inbuilt = "Yes" if "payment" in html and "form" in html else "N/A"
 
     # Build response
     output = (
         f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ━━━━⬣\n"
         f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-        f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{', '.join(found_gateways) if found_gateways else 'N/A'}`\n"
-        f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{captcha}`\n"
-        f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{cloudflare}`\n"
-        f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{security}`\n"
-        f"┣ ❏ 𝗖𝗩𝗩/𝗖𝗩𝗖 ➳ `{cvv}`\n"
-        f"┣ ❏ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➳ `{inbuilt}`\n"
-        f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{status}`\n"
+        f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{escape_markdown_v2(', '.join(found_gateways) if found_gateways else 'N/A')}`\n"
+        f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha)}`\n"
+        f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{escape_markdown_v2(cloudflare)}`\n"
+        f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{escape_markdown_v2(security)}`\n"
+        f"┣ ❏ 𝗖𝗩𝗩/𝗖𝗩𝗖 ➳ `{escape_markdown_v2(cvv)}`\n"
+        f"┣ ❏ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➳ `{escape_markdown_v2(inbuilt)}`\n"
+        f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(str(status))}`\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
