@@ -1016,55 +1016,48 @@ from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from collections import defaultdict
 
-user_gate_cooldowns = {}
+# Replace this with your actual ScraperAPI key
+SCRAPERAPI_KEY = "YOUR_SCRAPERAPI_KEY"
 
-def escape_markdown_v2(text: str) -> str:
+# Simple in-memory cooldown tracking
+user_cooldowns = defaultdict(lambda: 0)
+
+# Escape for MarkdownV2
+def escape_md(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
 
+# Main /gate command
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_authorization(update, context):
-        return
-
     user_id = update.effective_user.id
     now = time.time()
-    last_used = user_gate_cooldowns.get(user_id, 0)
 
-    if now - last_used < 5:
-        await update.effective_message.reply_text(
-            "⏳ Please wait 5 seconds before using `/gate` again.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    # 5s cooldown per user
+    if now - user_cooldowns[user_id] < 5:
+        await update.message.reply_text("⚠ Please wait 5 seconds before using this command again.", parse_mode=ParseMode.MARKDOWN_V2)
         return
-    user_gate_cooldowns[user_id] = now
+    user_cooldowns[user_id] = now
 
     if not context.args:
-        await update.effective_message.reply_text(
-            escape_markdown_v2("Provide a website URL.\n\nExample: /gate flipkart.com"),
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+        await update.message.reply_text("Usage: `/gate <website>`", parse_mode=ParseMode.MARKDOWN_V2)
         return
 
-    user_input = context.args[0]
-    if not user_input.startswith("http"):
-        user_input = "https://" + user_input
+    raw_url = context.args[0]
+    if not raw_url.startswith("http"):
+        raw_url = "https://" + raw_url
 
-    url = user_input.rstrip("/")
-    api_key = "961f25bd6317dbca7b1f66a832db5b4a"
-    scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={url}"
+    await update.message.reply_text("🔍 Fetching, please wait...", parse_mode=ParseMode.MARKDOWN_V2)
 
-    # Inform that scanning has started
-    await update.effective_message.reply_text(
-    escape_markdown_v2("🔍 Fetching, please wait..."),
-    parse_mode=ParseMode.MARKDOWN_V2
-)
+    # Use ScraperAPI
+    proxy_url = f"https://api.scraperapi.com?api_key={SCRAPERAPI_KEY}&url={raw_url}"
+    headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
-        response = requests.get(proxy_url, headers=headers, timeout=40)
-        response.raise_for_status()
-
-        html_text = response.text.lower()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        resp = requests.get(proxy_url, headers=headers, timeout=40)
+        resp.raise_for_status()
+        html = resp.text.lower()
+        soup = BeautifulSoup(resp.text, 'html.parser')
 
         # Gateways
         gateways = {
@@ -1097,75 +1090,76 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
 
         found_gateways = set()
-        for name, patterns in gateways.items():
-            for keyword in patterns:
-                if keyword in html_text:
+        for name, patterns in gateway_signatures.items():
+            for pat in patterns:
+                if pat in html:
                     found_gateways.add(name)
                     break
 
-        # Captcha
-        captcha = (
-            "ReCaptcha" if "recaptcha" in html_text else
-            "hCaptcha" if "hcaptcha" in html_text else
-            "Possible" if "captcha" in html_text else "N/A"
-        )
+        gateways = ", ".join(sorted(found_gateways)) if found_gateways else "N/A"
+
+        # Captcha detection
+        captcha = "N/A"
+        if "recaptcha" in html:
+            captcha = "ReCaptcha"
+        elif "hcaptcha" in html:
+            captcha = "hCaptcha"
+        elif "captcha" in html:
+            captcha = "Possible"
 
         # Cloudflare
         cloudflare = "Yes" if (
-            "cf-ray" in response.headers or
-            "cloudflare" in response.headers.get("Server", "").lower() or
-            "cdn-cgi" in html_text
+            "cf-ray" in resp.headers or 
+            "cloudflare" in resp.headers.get("server", "").lower() or 
+            "cdn-cgi" in html
         ) else "N/A"
 
-        # Security
+        # HTTPS Security
         security = "HTTPS"
-        if "strict-transport-security" in response.headers:
+        if "strict-transport-security" in resp.headers:
             security += " (HSTS)"
-        if "3ds" in html_text or "3dsecure" in html_text:
-            security += " + 3D"
 
-        # CVV/CVC Detection
-        cvv = "N/A"
-        cvv_keywords = ["cvv", "cvc", "security code", "verification number", "card code"]
-        for tag in soup.find_all("input"):
-            all_attrs = " ".join(str(tag.get(attr, "")).lower() for attr in ["name", "id", "placeholder", "aria-label"])
-            if any(key in all_attrs for key in cvv_keywords):
-                cvv = "Yes"
-                break
+        # CVV/CVC detection
+        cvv = "Yes" if soup.find('input', {'name': re.compile(r'cvc|cvv', re.I)}) else "N/A"
 
-        # CMS / Ecom
-        inbuilt = (
-            "Shopify" if "shopify.com" in html_text else
-            "WooCommerce (WordPress)" if "woocommerce" in html_text or "wp-content" in html_text else
-            "Magento" if "magento" in html_text else
-            "BigCommerce" if "bigcommerce" in html_text else
-            "Wix" if "wix.com" in html_text else
-            "Squarespace" if "squarespace.com" in html_text else
-            "N/A"
-        )
+        # Inbuilt system detection
+        inbuilt = "N/A"
+        if "shopify" in html:
+            inbuilt = "Shopify"
+        elif "woocommerce" in html or "wp-content" in html:
+            inbuilt = "WooCommerce"
+        elif "magento" in html:
+            inbuilt = "Magento"
 
         # Final message
         msg = (
-            "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
-            f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-            f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{escape_markdown_v2(', '.join(sorted(found_gateways)) or 'N/A')}`\n"
-            f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha)}`\n"
-            f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{escape_markdown_v2(cloudflare)}`\n"
-            f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{escape_markdown_v2(security)}`\n"
-            f"┣ ❏ 𝗖𝗩𝗩/𝗖𝗩𝗖 ➳ `{escape_markdown_v2(cvv)}`\n"
-            f"┣ ❏ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➳ `{escape_markdown_v2(inbuilt)}`\n"
-            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(str(response.status_code))}`\n"
+            "╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ━━━━⬣\n"
+            f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_md(raw_url)}`\n"
+            f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{escape_md(gateways)}`\n"
+            f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_md(captcha)}`\n"
+            f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{escape_md(cloudflare)}`\n"
+            f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{escape_md(security)}`\n"
+            f"┣ ❏ 𝗖𝗩𝗩/𝗖𝗩𝗖 ➳ `{escape_md(cvv)}`\n"
+            f"┣ ❏ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➳ `{escape_md(inbuilt)}`\n"
+            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{resp.status_code}`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
 
-    except Exception as e:
+    except requests.exceptions.Timeout:
         msg = (
             "╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n"
-            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
+            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `Request timed out.`\n"
+            "╰━━━━━━━━━━━━━━━━━━⬣"
+        )
+    except requests.exceptions.RequestException as e:
+        msg = (
+            "╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n"
+            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_md(str(e))}`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
 
-    await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
@@ -1175,32 +1169,26 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Only allow this command in authorized group chats
     if not await check_authorization(update, context, is_group_only=True):
         return
-    
+
     if not await enforce_cooldown(update.effective_user.id, update):
         return
 
-    # Non-admin commands and their usage in the desired format
     help_message = (
-        f"✨ *𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿 — 𝑯𝒆𝒍𝒑 𝑴𝒆𝒏𝒖* ✨\n"
-        f"\n"
-        f"📍 *✦ 𝑪𝒐𝒓𝒆 𝑪𝒐𝒎𝒎𝒂𝒏𝒅𝒔 ✦*\n"
-        f"/start — Welcome & Navigation\n"
-        f"/help — Show this help menu\n"
-        f"/status — Bot system info\n"
-        f"/credits — Your remaining kill credits\n"
-        f"\n"
-        f"💳 *✦ 𝑪𝒂𝒓𝒅 𝑻𝒐𝒐𝒍𝒔 ✦*\n"
-        f"/gen \\<bin\\> — Generate cards from BIN\n"
-        f"/bin \\<bin\\> — BIN lookup \\(bank, country, type\\)\n"
-        f"/kill \\<cc\\|mm\\|yy\\|cvv\\> — Simulated kill\n"
-        f"\n"
-        f"🧪 *✦ 𝑬𝒙𝒕𝒓𝒂𝒔 ✦*\n"
-        f"/fk — Fake info \\(fun\\)\n"
-        # Removed /clear and /testcards as they are not in the provided code
-        # If these are meant to be added, their implementation would be needed.
+        "╭━━━[ 🤖 𝙃𝙚𝙡𝙥 ]━━━━⬣\n"
+        "┣ ❏ /start \\- Welcome message\n"
+        "┣ ❏ /help \\- Shows this help message\n"
+        "┣ ❏ /gen \\<bin\\> \\- Generate 10 cards\n"
+        "┣ ❏ /bin \\<bin\\> \\- BIN lookup\n"
+        "┣ ❏ /status \\- Bot status\n"
+        "┣ ❏ /credits \\- Check your credits\n"
+        "┣ ❏ /fk \\<country\\> \\- Generate fake identity\n"
+        "┣ ❏ /kill \\<cc\\|mm\\|yy\\|cvv\\> \\- Simulated card kill\n"
+        "┣ ❏ /gate \\<url\\> \\- Check payment gateways on a site\n"
+        "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
     await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 async def authorize_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
