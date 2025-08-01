@@ -1092,7 +1092,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Inform user
     try:
-        await update.message.reply_text("🔍 *Fetching\\, please wait...*", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("🔍 *Fetching\\, please wait\\.\\.\\.*", parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
         # If this fails, we can't send any more messages, so just log the error.
         print(f"Failed to send initial message: {e}")
@@ -1128,9 +1128,9 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Build response
     output = (
-        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ━━━━⬣\n"
+        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀�𝗹𝘁 ━━━━⬣\n"
         f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-        f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{escape_markdown_v2(', '.join(found_gateways) if found_gateways else 'N/A')}`\n"
+        f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁eways ➳ `{escape_markdown_v2(', '.join(found_gateways) if found_gateways else 'N/A')}`\n"
         f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha)}`\n"
         f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{escape_markdown_v2(cloudflare)}`\n"
         f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{escape_markdown_v2(security)}`\n"
@@ -1141,7 +1141,6 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(output, parse_mode=ParseMode.MARKDOWN_V2)
-
 
 
 
