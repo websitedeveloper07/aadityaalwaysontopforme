@@ -1009,134 +1009,122 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
+import httpx
 import re
-import aiohttp
-import time
-from bs4 import BeautifulSoup
+import asyncio
+from datetime import datetime, timedelta
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-user_gate_cooldowns = {}
+# Cooldown tracker
+user_cooldowns = {}
 
+# MarkdownV2 escaper
 def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
 
-def extract_text_and_scripts(html: str) -> str:
-    soup = BeautifulSoup(html, 'html.parser')
-    scripts = soup.find_all('script')
-    script_text = ' '.join([script.get_text() or '' for script in scripts])
-    return soup.get_text() + script_text
+# Payment gateway signatures
+GATEWAY_SIGNATURES = {
+    "Stripe": ["stripe.com", "pk_live", "stripe-checkout", "stripe.js"],
+    "PayPal": ["paypal.com", "paypalobjects.com", "data-paypal-button"],
+    "Braintree": ["braintreepayments.com", "braintree.js", "client-token"],
+    "Adyen": ["adyen.com", "adyen.js"],
+    "Authorize.net": ["authorize.net", "accept.authorize.net"],
+    "Square": ["squareup.com", "square.com"],
+    "PayU": ["payu.in", "payu.com"],
+    "Paystack": ["paystack.co"],
+    "Klarna": ["klarna.com"],
+    "Afterpay": ["afterpay.com"],
+    "Shopify Payments": ["cdn.shopify.com", "data-shop-id"],
+    "Razorpay": ["razorpay.com"],
+    "NMI": ["secure.nmi.com", "nmi-token"],
+    "Eway": ["eway.com.au", "eway-rapid-api", "ewaygateway.com"],
+    "2Checkout": ["2checkout.com"],
+    "Paysera": ["paysera.com"],
+    "PagSeguro": ["pagseguro.uol.com.br"],
+    "Amazon Pay": ["pay.amazon.com"],
+    "Google Pay / GPay": ["gpay", "googlepay"],
+    "PhonePe": ["phonepe"],
+    "Paytm": ["paytm"],
+    "UPI": ["upi://pay", "upi", "vpa"],
+    "FastSpring": ["fastspring.com"],
+    "BlueSnap": ["bluesnap.com"],
+    "Worldpay": ["worldpay.com"],
+    "Revolut": ["revolut.com"],
+}
+
+# Cooldown duration
+COOLDOWN_SECONDS = 5
 
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    now = time.time()
 
-    # Cooldown check
-    if user_id in user_gate_cooldowns and now - user_gate_cooldowns[user_id] < 5:
-        await update.message.reply_text("⏳ Please wait before using `/gate` again\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    # Enforce per-user cooldown
+    now = datetime.now()
+    if user_id in user_cooldowns and now < user_cooldowns[user_id]:
         return
-    user_gate_cooldowns[user_id] = now
+    user_cooldowns[user_id] = now + timedelta(seconds=COOLDOWN_SECONDS)
 
+    # Input validation
     if not context.args:
-        await update.message.reply_text("Please provide a URL\\.\nUsage: `/gate example.com`", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("🚫 Usage: `/gate <url>`", parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     url = context.args[0]
     if not url.startswith("http"):
         url = "https://" + url
 
-    await update.message.reply_text("🔍 Fetching\\, please wait\\.\\.\\.", parse_mode=ParseMode.MARKDOWN_V2)
-
+    # Inform user
     try:
-        api_key = "961f25bd6317dbca7b1f66a832db5b4a"  # 🔁 Replace with your ScraperAPI key
-        full_proxy_url = f"http://api.scraperapi.com/?api_key={api_key}&url={url}&render=true"
+        await update.message.reply_text("🔍 *Fetching\\, please wait...*", parse_mode=ParseMode.MARKDOWN_V2)
+    except:
+        pass
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(full_proxy_url, timeout=30) as resp:
-                if resp.status != 200:
-                    raise Exception(f"{resp.status} {resp.reason}")
-                html = await resp.text()
-
-        content = extract_text_and_scripts(html).lower()
-
-        gateways = {
-            "Stripe": ["stripe.com", "pk_live", "stripe.js", "stripe-checkout"],
-            "PayPal": ["paypal.com", "paypalobjects.com", "data-paypal-button"],
-            "Braintree": ["braintreepayments.com", "braintree.js", "client-token"],
-            "Adyen": ["adyen.com", "adyen.js"],
-            "Authorize.net": ["authorize.net", "accept.authorize.net"],
-            "Square": ["squareup.com", "square.com"],
-            "PayU": ["payu.in", "payu.com"],
-            "Paystack": ["paystack.co"],
-            "Klarna": ["klarna.com"],
-            "Afterpay": ["afterpay.com"],
-            "Shopify Payments": ["cdn.shopify.com", "data-shop-id"],
-            "Razorpay": ["razorpay.com"],
-            "NMI": ["secure.nmi.com", "nmi-token"],
-            "Eway": ["eway.com.au", "eway-rapid-api", "ewaygateway.com"],
-            "2Checkout": ["2checkout.com"],
-            "Paysera": ["paysera.com"],
-            "PagSeguro": ["pagseguro.uol.com.br"],
-            "Amazon Pay": ["pay.amazon.com"],
-            "Google Pay / GPay": ["gpay", "googlepay"],
-            "PhonePe": ["phonepe"],
-            "Paytm": ["paytm"],
-            "UPI": ["upi://pay"],
-            "FastSpring": ["fastspring.com"],
-            "BlueSnap": ["bluesnap.com"],
-            "Worldpay": ["worldpay.com"],
-            "Revolut": ["revolut.com"],
-        }
-
-        found_gateways = []
-        for name, patterns in gateways.items():
-            if any(p.lower() in content for p in patterns):
-                found_gateways.append(name)
-
-        gateways_result = ", ".join(found_gateways) if found_gateways else "N/A"
-
-        captcha = "N/A"
-        if "recaptcha" in content:
-            captcha = "ReCaptcha"
-        elif "hcaptcha" in content:
-            captcha = "hCaptcha"
-        elif "captcha" in content:
-            captcha = "Possible"
-
-        cloudflare = "Yes" if any(tag in content for tag in ["cf-ray", "cdn-cgi", "cloudflare"]) else "N/A"
-        security = "HTTPS" if url.startswith("https://") else "N/A"
-        cvv_check = "Yes" if re.search(r"(name|id)=[\"']?(cvv|cvc)[\"']?", content) else "N/A"
-
-        platform = "N/A"
-        if "shopify" in content:
-            platform = "Shopify"
-        elif "woocommerce" in content:
-            platform = "WooCommerce"
-        elif "magento" in content:
-            platform = "Magento"
-
-        msg = (
-            "╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ━━━━⬣\n"
-            f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-            f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{escape_markdown_v2(gateways_result)}`\n"
-            f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha)}`\n"
-            f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{escape_markdown_v2(cloudflare)}`\n"
-            f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{escape_markdown_v2(security)}`\n"
-            f"┣ ❏ 𝗖𝗩𝗩/𝗖𝗩𝗖 ➳ `{escape_markdown_v2(cvv_check)}`\n"
-            f"┣ ❏ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➳ `{escape_markdown_v2(platform)}`\n"
-            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `200`\n"
-            "╰━━━━━━━━━━━━━━━━━━⬣"
-        )
-
+    # Fetch the page
+    try:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            response = await client.get(url)
+            html = response.text.lower()
+            status = response.status_code
     except Exception as e:
-        msg = (
-            "╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n"
-            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
-            "╰━━━━━━━━━━━━━━━━━━⬣"
+        await update.message.reply_text(
+            f"╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n╰━━━━━━━━━━━━━━━━━━⬣",
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
+        return
 
-    await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+    # Deep gateway detection
+    found_gateways = []
+    for gateway, signatures in GATEWAY_SIGNATURES.items():
+        if any(sig.lower() in html for sig in signatures):
+            found_gateways.append(gateway)
+
+    # Captcha detection
+    captcha = "ReCaptcha" if "recaptcha" in html else ("hCaptcha" if "hcaptcha" in html else "No Captcha")
+
+    # Other checks
+    cloudflare = "Yes" if "cloudflare" in html else "N/A"
+    security = "HTTPS" if url.startswith("https://") else "No HTTPS"
+    cvv = "Yes" if re.search(r'cvv|cvc', html) else "N/A"
+    inbuilt = "Yes" if "payment" in html and "form" in html else "N/A"
+
+    # Build response
+    output = (
+        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ━━━━⬣\n"
+        f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
+        f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{', '.join(found_gateways) if found_gateways else 'N/A'}`\n"
+        f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{captcha}`\n"
+        f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{cloudflare}`\n"
+        f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{security}`\n"
+        f"┣ ❏ 𝗖𝗩𝗩/𝗖𝗩𝗖 ➳ `{cvv}`\n"
+        f"┣ ❏ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➳ `{inbuilt}`\n"
+        f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{status}`\n"
+        f"╰━━━━━━━━━━━━━━━━━━⬣"
+    )
+
+    await update.message.reply_text(output, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
