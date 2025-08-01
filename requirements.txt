@@ -2,3 +2,4 @@ python-telegram-bot==20.7
 aiohttp
 psutil
 Faker
+beautifulsoup4
