@@ -914,27 +914,30 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
-if get_credits(user_id) <= 0:
-    await update.message.reply_text(
-        "🚫 You have no remaining credits\\. Please subscribe to continue using this bot\\.",
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
-    return 
-
+async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+
+    if get_credits(user_id) <= 0:
+        await update.message.reply_text(
+            "🚫 You have no remaining credits\\. Please subscribe to continue using this bot\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+
     user_full_name = escape_markdown_v2(update.effective_user.full_name)
     remaining_credits = get_user_credits(user_id)
 
     credits_msg = (
-        f"✨ *Your Daily Credits*\n"
+        f"*✨ Your Credits*\n"
         f"──────────────\n"
         f"👤 Username  : {user_full_name}\n"
-        f"💳 Credits   : `{remaining_credits}` / `{DAILY_KILL_CREDIT_LIMIT}`\n"
+        f"💳 Credits   : `{remaining_credits}` / `50`\n"
         f"──────────────\n"
         f"Plan : `Free`"
     )
 
     await update.effective_message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 from faker import Faker
 import random
@@ -1333,7 +1336,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Build response
     output = (
-        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀�𝗹𝘁 ━━━━⬣\n"
+        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ━━━━⬣\n"
         f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
         f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁eways ➳ `{escape_markdown_v2(', '.join(sorted(list(found_gateways))) if found_gateways else 'N/A')}`\n"
         f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha)}`\n"
