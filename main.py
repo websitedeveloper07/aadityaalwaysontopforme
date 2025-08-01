@@ -1053,9 +1053,9 @@ GATEWAY_SIGNATURES = {
         r'\b(braintree\.setup)\b'
     ],
     "Adyen": [
-        r'\b(adyen\.com|adyen/checkout\.min\.js|data-adyen-payment-method)\b',
-        r'\b(checkout\.adyen\.com|components\.adyen\.com|api\.adyen\.com)\b',
-        r'\b(AdyenCheckout)\b' # Added JS class name
+        r'\b(adyen\.com|adyen/checkout\.min\.js|data-adyen-payment-method|adyen\.checkout\.api)\b',
+        r'\b(checkout\.adyen\.com|components\.adyen\.com|api\.adyen\.com|AdyenCheckout)\b',
+        r'\b(adyen-payment-form|adyen\.init\.checkout)\b' # Added specific Adyen-related checkout/form patterns
     ],
     "Authorize.net": [
         r'\b(authorize\.net/v1|accept\.authorize\.net|data-anet-payment-form)\b',
@@ -1332,7 +1332,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Build response
     output = (
-        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂�𝘁 ━━━━⬣\n"
+        f"╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀�𝗹𝘁 ━━━━⬣\n"
         f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
         f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁eways ➳ `{escape_markdown_v2(', '.join(sorted(list(found_gateways))) if found_gateways else 'N/A')}`\n"
         f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha)}`\n"
@@ -1354,6 +1354,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         # Fallback to sending a new message if editing fails
         await update.message.reply_text(output, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 # --- New /help command ---
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
