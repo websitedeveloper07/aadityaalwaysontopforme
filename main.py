@@ -1013,6 +1013,9 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Checks a website for payment gateways, security, CAPTCHA, and other details.
+    """
     if not await check_authorization(update, context):
         return
 
@@ -1131,7 +1134,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = (
             "╭━━━[ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ]━━━━⬣\n"
             f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
-            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(str(status_code))} {e.response.reason}`\n"
+            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(str(status_code))} {escape_markdown_v2(e.response.reason)}`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
     except requests.exceptions.RequestException as e:
@@ -1145,7 +1148,6 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = f"An unexpected error occurred: `{escape_markdown_v2(str(e))}`"
     
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
-
 
 
 
