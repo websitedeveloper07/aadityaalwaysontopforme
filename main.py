@@ -1010,56 +1010,61 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 import re
-import time
+import re
 import requests
+import asyncio
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from collections import defaultdict
 
-# Replace this with your actual ScraperAPI key
-SCRAPERAPI_KEY = "961f25bd6317dbca7b1f66a832db5b4a"
+cooldown_users = {}
 
-# Simple in-memory cooldown tracking
-user_cooldowns = defaultdict(lambda: 0)
+def escape_markdown_v2(text: str) -> str:
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
-# Escape for MarkdownV2
-def escape_md(text: str) -> str:
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
+async def enforce_gate_cooldown(user_id: int, update: Update):
+    now = asyncio.get_event_loop().time()
+    if user_id in cooldown_users and now - cooldown_users[user_id] < 5:
+        remaining = int(5 - (now - cooldown_users[user_id]))
+        await update.effective_message.reply_text(
+            f"⏳ Please wait `{remaining}s` before using /gate again.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return False
+    cooldown_users[user_id] = now
+    return True
 
-# Main /gate command
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    now = time.time()
-
-    # 5s cooldown per user
-    if now - user_cooldowns[user_id] < 5:
-        await update.message.reply_text("⚠ Please wait 5 seconds before using this command again.", parse_mode=ParseMode.MARKDOWN_V2)
-        return
-    user_cooldowns[user_id] = now
-
     if not context.args:
-        await update.message.reply_text("Usage: `/gate <website>`", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text(
+            "Usage: `/gate <url>`\nExample: `/gate flipkart.com`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
         return
 
-    raw_url = context.args[0]
-    if not raw_url.startswith("http"):
-        raw_url = "https://" + raw_url
+    if not await enforce_gate_cooldown(update.effective_user.id, update):
+        return
 
-    await update.message.reply_text("🔍 Fetching, please wait...", parse_mode=ParseMode.MARKDOWN_V2)
-
-    # Use ScraperAPI
-    proxy_url = f"https://api.scraperapi.com?api_key={SCRAPERAPI_KEY}&url={raw_url}"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    url = context.args[0]
+    if not url.startswith("http"):
+        url = "https://" + url
 
     try:
-        resp = requests.get(proxy_url, headers=headers, timeout=40)
-        resp.raise_for_status()
-        html = resp.text.lower()
-        soup = BeautifulSoup(resp.text, 'html.parser')
+        await update.message.reply_text(
+            "🔍 Fetching, please wait\\.\\.\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
-        # Gateways
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36"
+        }
+
+        response = requests.get(url, headers=headers, timeout=25)
+        response.raise_for_status()
+        html = response.text.lower()
+        soup = BeautifulSoup(response.text, "html.parser")
+
         gateways = {
             "Stripe": ["stripe.com", "pk_live", "stripe.js", "stripe-checkout"],
             "PayPal": ["paypal.com", "paypalobjects.com", "data-paypal-button"],
@@ -1079,7 +1084,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Paysera": ["paysera.com"],
             "PagSeguro": ["pagseguro.uol.com.br"],
             "Amazon Pay": ["pay.amazon.com"],
-            "Google Pay / GPay": ["gpay", "googlepay"],
+            "Google Pay": ["gpay", "googlepay"],
             "PhonePe": ["phonepe"],
             "Paytm": ["paytm"],
             "UPI": ["upi://pay"],
@@ -1089,76 +1094,75 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Revolut": ["revolut.com"],
         }
 
-        found_gateways = set()
-        for name, patterns in gateway_signatures.items():
+        detected_gateways = []
+        for name, patterns in gateways.items():
             for pat in patterns:
                 if pat in html:
-                    found_gateways.add(name)
+                    detected_gateways.append(name)
                     break
 
-        gateways = ", ".join(sorted(found_gateways)) if found_gateways else "N/A"
+        gateway_result = ", ".join(sorted(set(detected_gateways))) if detected_gateways else "N/A"
 
-        # Captcha detection
-        captcha = "N/A"
+        # CAPTCHA
         if "recaptcha" in html:
             captcha = "ReCaptcha"
         elif "hcaptcha" in html:
             captcha = "hCaptcha"
-        elif "captcha" in html:
+        elif any(k in html for k in ["captcha", "turnstile", "cf-chl"]):
             captcha = "Possible"
+        else:
+            captcha = "N/A"
 
         # Cloudflare
-        cloudflare = "Yes" if (
-            "cf-ray" in resp.headers or 
-            "cloudflare" in resp.headers.get("server", "").lower() or 
-            "cdn-cgi" in html
-        ) else "N/A"
+        if "cf-ray" in response.headers or "cloudflare" in response.headers.get("server", "").lower():
+            cloudflare = "Yes"
+        else:
+            cloudflare = "N/A"
 
-        # HTTPS Security
-        security = "HTTPS"
-        if "strict-transport-security" in resp.headers:
+        # HTTPS & HSTS
+        security = "HTTPS" if url.startswith("https://") else "N/A"
+        if "strict-transport-security" in response.headers:
             security += " (HSTS)"
 
-        # CVV/CVC detection
-        cvv = "Yes" if soup.find('input', {'name': re.compile(r'cvc|cvv', re.I)}) else "N/A"
+        # CVV/CVC
+        if soup.find("input", {"name": re.compile(r"cvv|cvc", re.I)}) or soup.find("input", {"id": re.compile(r"cvv|cvc", re.I)}):
+            cvv = "Yes"
+        else:
+            cvv = "N/A"
 
-        # Inbuilt system detection
-        inbuilt = "N/A"
+        # Platform
+        platform = "N/A"
         if "shopify" in html:
-            inbuilt = "Shopify"
+            platform = "Shopify"
         elif "woocommerce" in html or "wp-content" in html:
-            inbuilt = "WooCommerce"
+            platform = "WooCommerce"
         elif "magento" in html:
-            inbuilt = "Magento"
+            platform = "Magento"
 
-        # Final message
+        status = response.status_code
+
         msg = (
             "╭━━━ 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 ━━━━⬣\n"
-            f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_md(raw_url)}`\n"
-            f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{escape_md(gateways)}`\n"
-            f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_md(captcha)}`\n"
-            f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{escape_md(cloudflare)}`\n"
-            f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{escape_md(security)}`\n"
-            f"┣ ❏ 𝗖𝗩𝗩/𝗖𝗩𝗖 ➳ `{escape_md(cvv)}`\n"
-            f"┣ ❏ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➳ `{escape_md(inbuilt)}`\n"
-            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{resp.status_code}`\n"
+            f"┣ ❏ 𝗦𝗶𝘁𝗲 ➳ `{escape_markdown_v2(url)}`\n"
+            f"┣ ❏ 𝗣𝗮𝘆𝗺𝗲𝗻𝘁 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 ➳ `{escape_markdown_v2(gateway_result)}`\n"
+            f"┣ ❏ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮 ➳ `{escape_markdown_v2(captcha)}`\n"
+            f"┣ ❏ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲 ➳ `{escape_markdown_v2(cloudflare)}`\n"
+            f"┣ ❏ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➳ `{escape_markdown_v2(security)}`\n"
+            f"┣ ❏ 𝗖𝗩𝗩/𝗖𝗩𝗖 ➳ `{escape_markdown_v2(cvv)}`\n"
+            f"┣ ❏ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➳ `{escape_markdown_v2(platform)}`\n"
+            f"┣ ❏ 𝗦𝘁𝗮𝘁𝘂𝘀 ➳ `{escape_markdown_v2(status)}`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
+        await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
-    except requests.exceptions.Timeout:
-        msg = (
-            "╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n"
-            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `Request timed out.`\n"
-            "╰━━━━━━━━━━━━━━━━━━⬣"
-        )
     except requests.exceptions.RequestException as e:
-        msg = (
+        err_msg = (
             "╭━━━ 𝗘𝗿𝗿𝗼𝗿 ━━━━⬣\n"
-            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_md(str(e))}`\n"
+            f"┣ ❏ 𝗠𝗲𝘀𝘀𝗮𝗴𝗲 ➳ `{escape_markdown_v2(str(e))}`\n"
             "╰━━━━━━━━━━━━━━━━━━⬣"
         )
+        await update.message.reply_text(err_msg, parse_mode=ParseMode.MARKDOWN_V2)
 
-    await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 
