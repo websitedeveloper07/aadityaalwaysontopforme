@@ -444,7 +444,7 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(commands_text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
-)
+
 
 async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -502,6 +502,7 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
