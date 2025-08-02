@@ -446,52 +446,52 @@ async def show_command_details(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     command_name = query.data.replace("cmd_", "")
 
-details = {
-    "gen": (
-        "*/gen \\<BIN\\>*\n"
-        "Generate 10 random credit cards \\(CC\\|MM\\|YY\\|CVV\\) based on a 6\\-digit BIN\\.\n"
-        "Example: `/gen 400000`"
-    ),
-    "bin": (
-        "*/bin \\<BIN\\>*\n"
-        "Look up detailed information for a 6\\-digit BIN \\(Bank, Country, Type, Scheme\\, Level\\, VBV Status\\)\\.\n"
-        "Example: `/bin 400000`"
-    ),
-    "kill": (
-        f"*/kill CC\\|MM\\|YY\\|CVV*\n"
-        f"Performs real\\-time card killing\\. Fast, direct, and effective ☠️\\.\n"
-        f"You have `{get_user_credits(update.effective_user.id)}` credits\\.\n"
-        f"Example: `/kill 4000000000000000|12|25|123`"
-    ),
-    "fk": (
-        "*/fk \\<country\\>*\n"
-        "Generates random fake personal info: name, address, email, IP, phone number, and card\\.\n"
-        "Example: `/fk usa`"
-    ),
-    "gate": (
-        "*/gate \\<url\\>*\n"
-        "Scans a website deeply for payment gateways like Stripe, PayPal, UPI, Klarna, etc\\.\n"
-        "Example: `/gate https://example.com`"
-    ),
-    "fl": (
-        "*/fl \\<dump or reply\\>*\n"
-        "Extracts all valid card formats \\(CC\\|MM\\|YY\\|CVV\\) from messages or dumps\\.\n"
-        "Supports reply or inline usage\\.\n"
-        "Example: `/fl 4242424242424242|12|25|123`"
-    ),
-    "status": (
-        "*/status*\n"
-        "Check bot health \\(RAM, CPU, Uptime, Total Users\\)\\."
-    ),
-    "credits": (
-        "*/credits*\n"
-        "Shows your remaining credits \\(only 50 total unless subscribed\\)\\."
-    ),
-    "help": (
-        "*/help*\n"
-        "Show full command list and features of the bot\\."
-    )
-}
+    details = {
+        "gen": (
+            "*/gen \\<BIN\\>*\n"
+            "Generate 10 random credit cards \\(CC\\|MM\\|YY\\|CVV\\) based on a 6\\-digit BIN\\.\n"
+            "Example: `/gen 400000`"
+        ),
+        "bin": (
+            "*/bin \\<BIN\\>*\n"
+            "Look up detailed information for a 6\\-digit BIN \\(Bank, Country, Type, Scheme\\, Level\\, VBV Status\\)\\.\n"
+            "Example: `/bin 400000`"
+        ),
+        "kill": (
+            f"*/kill CC\\|MM\\|YY\\|CVV*\n"
+            f"Performs real\\-time card killing\\. Fast, direct, and effective ☠️\\.\n"
+            f"You have `{get_user_credits(update.effective_user.id)}` credits\\.\n"
+            f"Example: `/kill 4000000000000000|12|25|123`"
+        ),
+        "fk": (
+            "*/fk \\<country\\>*\n"
+            "Generates random fake personal info: name, address, email, IP, phone number, and card\\.\n"
+            "Example: `/fk usa`"
+        ),
+        "gate": (
+            "*/gate \\<url\\>*\n"
+            "Scans a website deeply for payment gateways like Stripe, PayPal, UPI, Klarna, etc\\.\n"
+            "Example: `/gate https://example.com`"
+        ),
+        "fl": (
+            "*/fl \\<dump or reply\\>*\n"
+            "Extracts all valid card formats \\(CC\\|MM\\|YY\\|CVV\\) from messages or dumps\\.\n"
+            "Supports reply or inline usage\\.\n"
+            "Example: `/fl 4242424242424242|12|25|123`"
+        ),
+        "status": (
+            "*/status*\n"
+            "Check bot health \\(RAM, CPU, Uptime, Total Users\\)\\."
+        ),
+        "credits": (
+            "*/credits*\n"
+            "Shows your remaining credits \\(only 50 total unless subscribed\\)\\."
+        ),
+        "help": (
+            "*/help*\n"
+            "Show full command list and features of the bot\\."
+        )
+    }
 
     text = details.get(command_name, "Details not found\\.")
     keyboard = [[InlineKeyboardButton("🔙 Back to Commands", callback_data="show_main_commands")]]
