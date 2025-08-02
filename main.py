@@ -869,7 +869,7 @@ async def kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id != OWNER_ID:
         consume_credit(user_id)
         remaining_credits_after_use = get_user_credits(user_id) # Get updated credits
-        await update.effective_message.reply_text(f"💳 Card received\\. Your remaining daily credits: `{remaining_credits_after_use}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text(f"💳 Card received\\. Your remaining credits: `{remaining_credits_after_use}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
 
     # Send the initial message and store it to edit later
@@ -948,6 +948,57 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(credits_msg, parse_mode=ParseMode.MARKDOWN_V2)
+
+async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_authorization(update, context):
+        return
+    if not await enforce_cooldown(update.effective_user.id, update):
+        return
+
+    # Step 1: Get the input text from message or reply
+    text = None
+    if context.args:
+        text = " ".join(context.args)
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        text = update.message.reply_to_message.text
+    else:
+        await update.message.reply_text("❌ Please reply to a message or provide dump with card format like `cc|mm|yy|cvv`.", parse_mode=ParseMode.MARKDOWN_V2)
+        return
+
+    # Step 2: Extract all card patterns
+    pattern = r'(\d{13,19})\s*\|\s*(\d{2})\s*\|\s*(\d{2}|\d{4})\s*\|\s*(\d{3,4})'
+    matches = re.findall(pattern, text)
+
+    if not matches:
+        await update.message.reply_text("⚠️ No card data found in the provided input\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return
+
+    # Step 3: Format the cards
+    formatted_cards = []
+    seen = set()
+    for cc, mm, yy, cvv in matches:
+        card = f"{cc}|{mm}|{yy}|{cvv}"
+        if card not in seen:
+            formatted_cards.append(f"`{card}`")
+            seen.add(card)
+
+    # Step 4: Build the final message
+    count = len(formatted_cards)
+    cards_str = "\n".join(formatted_cards)
+    escaped_user = escape_markdown_v2(update.effective_user.full_name)
+
+    msg = (
+        f"╭━━━ [ 💳 𝘊𝘢𝘳𝘥 𝘓𝘪𝘴𝘵 𝘌𝘹𝘵𝘳𝘢𝘤𝘵𝘦𝘥 ] ━━━⬣\n"
+        f"┣ ❏ Total Cards ➳ `{count}`\n"
+        f"┣ ❏ Requested by ➳ `{escaped_user}`\n"
+        f"┣ ❏ Bot by ➳ 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️\n"
+        f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
+        f"{cards_str}"
+    )
+
+    await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+
+
 
 
 
@@ -1613,6 +1664,7 @@ def main():
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("credits", credits_command))
+    application.add_handler(CommandHandler(["fl", ".fl"], fl_command))
     application.add_handler(CommandHandler("fk", fk_command)) # Corrected function name
     application.add_handler(CommandHandler("gate", gate_command))
     application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS)) # /help only in groups
