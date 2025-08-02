@@ -1664,7 +1664,8 @@ def main():
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("credits", credits_command))
-    application.add_handler(CommandHandler(["fl", ".fl"], fl_command))
+    application.add_handler(CommandHandler("fl", fl_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^\.fl\s'), fl_command))
     application.add_handler(CommandHandler("fk", fk_command)) # Corrected function name
     application.add_handler(CommandHandler("gate", gate_command))
     application.add_handler(CommandHandler("help", help_command, filters=filters.ChatType.GROUPS)) # /help only in groups
