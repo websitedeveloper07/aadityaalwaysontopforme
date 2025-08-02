@@ -430,18 +430,21 @@ async def show_main_commands(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     await query.answer()
 
+    commands_text = "*✦ Available Commands ✦*\nChoose a feature below:"
+
     keyboard = [
         [InlineKeyboardButton("💳 Generate Cards", callback_data="cmd_gen")],
         [InlineKeyboardButton("🔍 BIN Lookup", callback_data="cmd_bin")],
         [InlineKeyboardButton("🔪 Kill Card", callback_data="cmd_kill")],
         [InlineKeyboardButton("👤 Fake Info", callback_data="cmd_fk")],
         [InlineKeyboardButton("🧠 Payment Scanner", callback_data="cmd_gate")],
-        [InlineKeyboardButton("📤 Dump Extractor", callback_data="cmd_fl")],  # ✅ New /fl command
+        [InlineKeyboardButton("📤 Dump Extractor", callback_data="cmd_fl")],  # ✅ /fl command
         [InlineKeyboardButton("📊 Bot Status", callback_data="cmd_status")],
         [InlineKeyboardButton("ℹ️ My Credits", callback_data="cmd_credits")],
         [InlineKeyboardButton("❔ Help", callback_data="cmd_help")],
         [InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]
     ]
+
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(commands_text, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
 
