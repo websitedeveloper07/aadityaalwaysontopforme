@@ -6,7 +6,7 @@ import aiohttp
 import re
 import psutil
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
@@ -227,34 +227,42 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     user_last_command[user_id] = current_time
     return True
 
-async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE, is_group_only: bool = False) -> bool:
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Checks if a user or group is authorized to use the bot."""
     user_id = update.effective_user.id
     chat_type = update.effective_chat.type
     chat_id = update.effective_chat.id
+    command_name = context.matches[0].group(1).lower() if context.matches and context.matches[0].group(1) else ""
+
     if user_id == OWNER_ID:
         return True
-    if is_group_only:
-        if chat_type != 'group' and chat_type != 'supergroup':
-            await update.effective_message.reply_text("🚫 This command can only be used in authorized group chats\\.", parse_mode=ParseMode.MARKDOWN_V2)
-            return False
-        if chat_id not in AUTHORIZED_CHATS:
-            await update.effective_message.reply_text(f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.", parse_mode=ParseMode.MARKDOWN_V2)
-            return False
+
+    if command_name == "start":
         return True
+    
     if chat_type == 'private':
         if user_id in AUTHORIZED_PRIVATE_USERS:
             return True
         else:
             keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            escaped_link = escape_markdown_v2(OFFICIAL_GROUP_LINK)
-            await update.effective_message.reply_text(f"🚫 You are not approved to use bot in private\\. Get the subscription at cheap from {AUTHORIZATION_CONTACT} to use or else use for free in our official group\\.", reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+            await update.effective_message.reply_text(
+                "🚫 You are not approved to use the bot in private chats\\. "
+                "Get a subscription at a cheap price from `@enough69s` to use this bot, "
+                "or use it for free in our official group\\.",
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
             return False
-    elif chat_type == 'group' or chat_type == 'supergroup':
+    elif chat_type in ('group', 'supergroup'):
         if chat_id in AUTHORIZED_CHATS:
             return True
         else:
-            await update.effective_message.reply_text(f"🚫 This group chat is not authorized to use this bot\\. Please contact {AUTHORIZATION_CONTACT} to get approved\\.", parse_mode=ParseMode.MARKDOWN_V2)
+            await update.effective_message.reply_text(
+                "🚫 This group is not authorized to use this bot\\. "
+                "Please contact `@enough69s` to get approved\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
             return False
     return False
 
@@ -318,6 +326,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┣ ❏ `/status` \\- Bot system status info\n"
         "┣ ❏ `/credits` \\- Check your remaining credits\n"
         "┣ ❏ `/plans` \\- Check available subscription plans\n"
+        "┣ ❏ `/info` \\- Shows your user info\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
     await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
@@ -374,7 +383,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/credits` \\- Shows your credits\n"
         "• `/bin <BIN>` \\- Performs BIN lookup\n"
         "• `/status` \\- Checks bot health\n"
-        "• `/info` \\- Shows your info"
+        "• `/info` \\- Shows your info\n"
+        "• `/plans` \\- Shows subscription plans"
     )
     keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -383,7 +393,6 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_plans_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the detailed bot plans."""
     query = update.callback_query
-    # Check if the update is from a command or a callback query
     if query:
         await query.answer()
     plans_message = (
@@ -421,14 +430,12 @@ async def show_plans_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    # Check if the update is from a command
     if update.message:
         await update.message.reply_text(
             plans_message,
             reply_markup=reply_markup,
             parse_mode=ParseMode.MARKDOWN_V2
         )
-    # Check if the update is from a callback query
     elif query:
         await query.edit_message_text(
             plans_message,
@@ -835,6 +842,60 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.effective_message.reply_text(status_message, parse_mode=ParseMode.MARKDOWN_V2)
 
+# === OWNER-ONLY COMMANDS ===
+async def _update_user_plan(user_id: int, plan_name: str, credits: int, duration_days: int = None):
+    """Helper function to update user plans."""
+    user_data = get_user_from_db(user_id)
+    user_data['plan'] = plan_name
+    user_data['status'] = plan_name
+    user_data['credits'] = credits
+    if duration_days:
+        expiry_date = datetime.now() + timedelta(days=duration_days)
+        user_data['plan_expiry'] = expiry_date.strftime('%d-%m-%Y')
+    else:
+        user_data['plan_expiry'] = 'N/A'
+    return user_data
+
+async def give_starter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gives a user the Starter plan."""
+    if update.effective_user.id != OWNER_ID:
+        return await update.effective_message.reply_text("❌ You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not context.args or not context.args[0].isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_starter [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
+    user_id = int(context.args[0])
+    await _update_user_plan(user_id, 'Starter Plan', 300, 7)
+    await update.effective_message.reply_text(f"✅ Starter Plan activated for user `{user_id}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+async def give_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gives a user the Premium plan."""
+    if update.effective_user.id != OWNER_ID:
+        return await update.effective_message.reply_text("❌ You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not context.args or not context.args[0].isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_premium [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
+    user_id = int(context.args[0])
+    await _update_user_plan(user_id, 'Premium Plan', 1000, 30)
+    await update.effective_message.reply_text(f"✅ Premium Plan activated for user `{user_id}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+async def give_plus(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gives a user the Plus plan."""
+    if update.effective_user.id != OWNER_ID:
+        return await update.effective_message.reply_text("❌ You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not context.args or not context.args[0].isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_plus [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
+    user_id = int(context.args[0])
+    await _update_user_plan(user_id, 'Plus Plan', 2000, 60)
+    await update.effective_message.reply_text(f"✅ Plus Plan activated for user `{user_id}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+async def give_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gives a user the Custom plan with 3000 credits."""
+    if update.effective_user.id != OWNER_ID:
+        return await update.effective_message.reply_text("❌ You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not context.args or not context.args[0].isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_custom [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
+    user_id = int(context.args[0])
+    await _update_user_plan(user_id, 'Custom Plan', 3000)
+    await update.effective_message.reply_text(f"✅ Custom Plan activated for user `{user_id}` with 3000 credits\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
 # === REGISTERING COMMANDS AND HANDLERS ===
 def main():
     """Starts the bot."""
@@ -853,7 +914,11 @@ def main():
     application.add_handler(CommandHandler("fk", fk_command))
     application.add_handler(CommandHandler("fl", fl_command))
     application.add_handler(CommandHandler("status", status_command))
-    application.add_handler(CommandHandler("plans", show_plans_menu)) # Add this line
+    application.add_handler(CommandHandler("plans", show_plans_menu))
+    application.add_handler(CommandHandler("give_starter", give_starter))
+    application.add_handler(CommandHandler("give_premium", give_premium))
+    application.add_handler(CommandHandler("give_plus", give_plus))
+    application.add_handler(CommandHandler("give_custom", give_custom))
     application.add_handler(CallbackQueryHandler(handle_callback))
     logger.info("Bot started and is polling for updates...")
     application.run_polling()
