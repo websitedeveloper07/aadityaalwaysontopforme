@@ -269,7 +269,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'Free')
     welcome_message = (
-        f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝓾𝒍𝒕𝑿* ⚡\n"
+        f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"🆔 ID: `{user.id}`\n"
         f"👤 Username: `@{user.username or 'N/A'}`\n"
@@ -317,6 +317,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
         "┣ ❏ `/status` \\- Bot system status info\n"
         "┣ ❏ `/credits` \\- Check your remaining credits\n"
+        "┣ ❏ `/plans` \\- Check available subscription plans\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
     await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
@@ -382,9 +383,11 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_plans_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the detailed bot plans."""
     query = update.callback_query
-    await query.answer()
+    # Check if the update is from a command or a callback query
+    if query:
+        await query.answer()
     plans_message = (
-        "📦 *𝓒𝓪𝓻d𝓥𝓪𝓾𝒍𝒕𝑿 Subscription Plans*\n"
+        "📦 *𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 Subscription Plans*\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "🔹 *Starter Plan*\n"
         "• Access: `Full Access`\n"
@@ -418,11 +421,20 @@ async def show_plans_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        plans_message,
-        reply_markup=reply_markup,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+    # Check if the update is from a command
+    if update.message:
+        await update.message.reply_text(
+            plans_message,
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    # Check if the update is from a callback query
+    elif query:
+        await query.edit_message_text(
+            plans_message,
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Main callback handler for all inline keyboard buttons."""
@@ -444,7 +456,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_data = get_user_from_db(user.id)
     info_message = (
-        "🔍 Your Info on 𝓒𝓪𝓻d𝓥𝓪𝓾𝒍𝒕𝑿 ⚡\n"
+        "🔍 Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 ⚡\n"
         "━━━━━━━━━━━━━━\n"
         f"👤 First Name: ㅤ`{user.first_name or 'N/A'}`\n"
         f"🆔 ID: `{user.id}`\n"
@@ -841,6 +853,7 @@ def main():
     application.add_handler(CommandHandler("fk", fk_command))
     application.add_handler(CommandHandler("fl", fl_command))
     application.add_handler(CommandHandler("status", status_command))
+    application.add_handler(CommandHandler("plans", show_plans_menu)) # Add this line
     application.add_handler(CallbackQueryHandler(handle_callback))
     logger.info("Bot started and is polling for updates...")
     application.run_polling()
