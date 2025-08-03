@@ -6,12 +6,13 @@ import aiohttp
 import re
 import psutil
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
 from telegram.error import BadRequest
 from faker import Faker
+import pytz
 
 # === CONFIGURATION ===
 # IMPORTANT: Set these as environment variables before running your bot:
@@ -244,6 +245,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
         else:
             keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
+            escaped_link = escape_markdown_v2(OFFICIAL_GROUP_LINK)
             await update.effective_message.reply_text(f"🚫 You are not approved to use bot in private\\. Get the subscription at cheap from {AUTHORIZATION_CONTACT} to use or else use for free in our official group\\.", reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
             return False
     elif chat_type == 'group' or chat_type == 'supergroup':
@@ -258,8 +260,9 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /start command, displaying user info and main menu."""
     user = update.effective_user
-    now = datetime.now().strftime('%I:%M %p')
-    today = datetime.now().strftime('%d-%m-%Y')
+    indian_timezone = pytz.timezone('Asia/Kolkata')
+    now = datetime.now(indian_timezone).strftime('%I:%M %p')
+    today = datetime.now(indian_timezone).strftime('%d-%m-%Y')
     user_data = get_user_from_db(user.id)
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'Free')
@@ -335,7 +338,7 @@ async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┗ 🕐 Avg Time: `45s`\n"
         "┗ 💉 Health: `100%`\n"
         "┗ 📝 Note: Ideal for Visa\\-only replacement shops\n\n"
-        "🔸 𝗩𝗜𝗦𝗔 + 𝗠𝗔𝗦𝗧𝗘𝗥 𝗚𝗔𝗧𝗘\n"
+        "🔸 𝗩𝗜𝗦𝗔 \\+ 𝗠𝗔𝗦𝗧𝗘𝗥 𝗚𝗔𝗧𝗘\n"
         "┗ 📛 Name: `Advanced K1LL`\n"
         "┗ 💬 Command: `/kmc cc|mm|yy|cvv`\n"
         "┗ 🧾 Format: `CC\\|MM\\|YY\\|CVV`\n"
@@ -571,7 +574,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     level = escape_markdown_v2(bin_details["level"])
     level_emoji = get_level_emoji(bin_details["level"])
     brand = escape_markdown_v2(bin_details["scheme"])
-    header_title = "⚡Cᴀʀd Kɪʟʟᴇd Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
+    header_title = "⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
     if bin_details["scheme"].lower() == 'mastercard':
         percentage = random.randint(68, 100)
         header_title = f"⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%"
@@ -771,8 +774,6 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.effective_message.reply_text("❌ Please provide a dump or text to extract cards from\\. Usage: `/fl <dump or text>`", parse_mode=ParseMode.MARKDOWN_V2)
     
     dump = " ".join(context.args)
-    # A more flexible regex to capture various card formats
-    # Captures 13-16 digit numbers, with optional |MM|YY and optional |CVV
     cards_found = re.findall(r'\d{13,16}(?:\|\d{2}\|\d{2}(?:\|\d{3,4})?)?', dump)
     count = len(cards_found)
     
