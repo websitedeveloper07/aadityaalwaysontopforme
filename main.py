@@ -190,10 +190,10 @@ async def get_bin_details(bin_number):
                         bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
                         bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
                         return bin_data
-            except aiohttp.ClientError as e:
-                logger.warning(f"Binlist API call failed for {bin_number}: {e}")
-            except Exception as e:
-                logger.warning(f"Error processing Binlist response for {bin_number}: {e}")
+        except aiohttp.ClientError as e:
+            logger.warning(f"Binlist API call failed for {bin_number}: {e}")
+        except Exception as e:
+            logger.warning(f"Error processing Binlist response for {bin_number}: {e}")
         try:
             bincheck_url = f"https://api.bincheck.io/v2/{bin_number}"
             async with session.get(bincheck_url, timeout=7) as response:
