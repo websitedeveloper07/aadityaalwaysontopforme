@@ -927,12 +927,22 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(status_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 # === OWNER-ONLY COMMANDS ===
+import re
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# Function to escape MarkdownV2 special characters
+def escape_markdown_v2(text: str) -> str:
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
+
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows all admin commands, authorized groups, and users."""
+
     admin_commands_list = (
-        "• `/give_starter <user_id>`: Give 7-day Starter Plan\n"
-        "• `/give_premium <user_id>`: Give 30-day Premium Plan\n"
-        "• `/give_plus <user_id>`: Give 60-day Plus Plan\n"
+        "• `/give_starter <user_id>`: Give 7\\-day Starter Plan\n"
+        "• `/give_premium <user_id>`: Give 30\\-day Premium Plan\n"
+        "• `/give_plus <user_id>`: Give 60\\-day Plus Plan\n"
         "• `/give_custom <user_id>`: Give Custom Plan\n"
         "• `/take_plan <user_id>`: Remove plan & private access\n"
         "• `/au <chat_id>`: Authorize a group\n"
@@ -940,25 +950,32 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/gen_codes`: Generate 10 Starter Plan codes\n"
     )
 
-    authorized_groups_list = "\n".join([f"• `{chat_id}`" for chat_id in AUTHORIZED_CHATS]) if AUTHORIZED_CHATS else "No groups authorized."
-    
+    authorized_groups_list = (
+        "\n".join([f"• `{escape_markdown_v2(str(chat_id))}`" for chat_id in AUTHORIZED_CHATS])
+        if AUTHORIZED_CHATS else "No groups authorized."
+    )
+
     authorized_users_list = []
     for user_id in AUTHORIZED_PRIVATE_USERS:
         user_data = USER_DATA_DB.get(user_id)
         if user_data:
-            authorized_users_list.append(f"• ID: `{user_id}` | Plan: `{user_data.get('plan', 'N/A')}`")
-    authorized_users_list_str = "\n".join(authorized_users_list) if authorized_users_list else "No private users authorized."
-    
+            uid = escape_markdown_v2(str(user_id))
+            plan = escape_markdown_v2(user_data.get("plan", "N/A"))
+            authorized_users_list.append(f"• ID: `{uid}` | Plan: `{plan}`")
+    authorized_users_list_str = (
+        "\n".join(authorized_users_list) if authorized_users_list else "No private users authorized."
+    )
+
     admin_dashboard_message = (
         "╭━━━━━『 𝐀𝐃𝐌𝐈𝐍 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃 』━━━━━╮\n"
         "┣ 🤖 *Owner Commands:*\n"
-        f"╰─> {admin_commands_list}\n"
+        f"╰─\\> {admin_commands_list}"
         "╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐆𝐫𝐨𝐮𝐩𝐬 』━━━╮\n"
-        f"╰─> {authorized_groups_list}\n"
-        "╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐔𝐬𝐞𝐫𝐬 (Private) 』━━━╮\n"
-        f"╰─> {authorized_users_list_str}\n"
+        f"╰─\\> {escape_markdown_v2(authorized_groups_list)}\n"
+        "╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐔𝐬𝐞𝐫𝐬 \\(Private\\) 』━━━╮\n"
+        f"╰─\\> {escape_markdown_v2(authorized_users_list_str)}"
     )
-    
+
     await update.effective_message.reply_text(admin_dashboard_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def _update_user_plan(user_id: int, plan_name: str, credits: int, duration_days: int = None):
@@ -1063,6 +1080,16 @@ async def remove_authorize_user(update: Update, context: ContextTypes.DEFAULT_TY
     except ValueError:
         return await update.effective_message.reply_text("❌ Invalid user ID format\\. Please provide a valid integer user ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
+import re
+import uuid
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# Escape function (use this globally in your script)
+def escape_markdown_v2(text: str) -> str:
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
+
 async def gen_codes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates 10 redeem codes for the Starter Plan."""
     generated_codes = []
@@ -1074,14 +1101,18 @@ async def gen_codes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'duration_days': 7
         }
         generated_codes.append(code)
-    
-    code_list_text = "\n".join([f"`{code}`" for code in generated_codes])
+
+    # Wrap each code in backticks and escape it
+    code_list_text = "\n".join([f"`{escape_markdown_v2(code)}`" for code in generated_codes])
+
     response_text = (
         "✅ *10 new redeem codes for the Starter Plan have been generated:* \n\n"
         f"{code_list_text}\n\n"
-        f"These codes are one-time use\\. Share them wisely\\."
+        "These codes are one\\-time use\\. Share them wisely\\."
     )
+
     await update.effective_message.reply_text(response_text, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Redeems a code to activate a plan."""
