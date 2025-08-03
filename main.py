@@ -16,9 +16,9 @@ import pytz
 
 # === CONFIGURATION ===
 # IMPORTANT: Set these as environment variables before running your bot:
-# export BOT_TOKEN="7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
-# export OWNER_ID="7796598050" # Your personal Telegram User ID (numeric)
-# export BINTABLE_API_KEY="f000d11bd9d4224861634f3ac3c192579348641a" # Get this from Bintable.com
+# export BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+# export OWNER_ID="YOUR_TELEGRAM_USER_ID" # Your personal Telegram User ID (numeric)
+# export BINTABLE_API_KEY="YOUR_BINTABLE_API_KEY" # Get this from Bintable.com
 TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 BINTABLE_API_KEY = os.getenv("BINTABLE_API_KEY")
@@ -772,11 +772,11 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if not context.args:
         return await update.effective_message.reply_text("❌ Please provide a dump or text to extract cards from\\. Usage: `/fl <dump or text>`", parse_mode=ParseMode.MARKDOWN_V2)
-    
+
     dump = " ".join(context.args)
     cards_found = re.findall(r'\d{13,16}(?:\|\d{2}\|\d{2}(?:\|\d{3,4})?)?', dump)
     count = len(cards_found)
-    
+
     extracted_cards_text = "\n".join([f"`{card}`" for card in cards_found])
     if not extracted_cards_text:
         extracted_cards_text = "No cards found in the provided text."
