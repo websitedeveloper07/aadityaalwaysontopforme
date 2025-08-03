@@ -258,9 +258,8 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
             keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.effective_message.reply_text(
-                "🚫 You are not approved to use the bot in private chats\\. "
-                "Get a subscription at a cheap price from `@enough69s` to use this bot, "
-                "or use it for free in our official group\\.",
+                "🚫 *Private Usage Blocked*\nYou cannot use this bot in private chat.\n\nUse /plans to upgrade or join our group to access tools for free."
+                "Get a subscription  from `@enough69s` to use this bot, "
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.MARKDOWN_V2
             )
