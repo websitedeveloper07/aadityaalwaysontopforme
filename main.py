@@ -896,6 +896,21 @@ async def give_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _update_user_plan(user_id, 'Custom Plan', 3000)
     await update.effective_message.reply_text(f"✅ Custom Plan activated for user `{user_id}` with 3000 credits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
+async def auth_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Authorizes a group to use the bot."""
+    if update.effective_user.id != OWNER_ID:
+        return await update.effective_message.reply_text("❌ You are not authorized to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    if not context.args or not context.args[0].strip('-').isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/au [chat_id]`", parse_mode=ParseMode.MARKDOWN_V2)
+    
+    try:
+        chat_id = int(context.args[0])
+        AUTHORIZED_CHATS.add(chat_id)
+        await update.effective_message.reply_text(f"✅ Group with chat ID `{chat_id}` has been authorized\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    except ValueError:
+        return await update.effective_message.reply_text("❌ Invalid chat ID format\\. Please provide a valid integer chat ID\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+
 # === REGISTERING COMMANDS AND HANDLERS ===
 def main():
     """Starts the bot."""
@@ -919,6 +934,7 @@ def main():
     application.add_handler(CommandHandler("give_premium", give_premium))
     application.add_handler(CommandHandler("give_plus", give_plus))
     application.add_handler(CommandHandler("give_custom", give_custom))
+    application.add_handler(CommandHandler("au", auth_group))
     application.add_handler(CallbackQueryHandler(handle_callback))
     logger.info("Bot started and is polling for updates...")
     application.run_polling()
