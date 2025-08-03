@@ -515,11 +515,11 @@ async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
     card_type = bin_details.get("type", "N/A").lower()
     
     if "mastercard" in scheme:
-        await update.effective_message.reply_text("❌ Only Visa cards are allowed for this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text("❌ 𝙊𝙣𝙡𝙮 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
     
     if "prepaid" in card_type:
-        await update.effective_message.reply_text("❌ Prepaid bins are not allowed to be killed with this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text("🚫 𝙏𝙝𝙞𝙨 𝙘𝙖𝙧𝙙 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚 𝙖𝙣𝙙 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
     
     if not consume_credit(user_id):
@@ -557,11 +557,11 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     card_type = bin_details.get("type", "N/A").lower()
     
     if "visa" in scheme:
-        await update.effective_message.reply_text("❌ Only MasterCard cards are allowed for this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text("❌ 𝙊𝙣𝙡𝙮 𝙈𝙖𝙨𝙩𝙚𝙧𝘾𝙖𝙧𝙙 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
     
     if "prepaid" in card_type:
-        await update.effective_message.reply_text("❌ Prepaid bins are not allowed to be killed with this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text("🚫 𝙏𝙝𝙞𝙨 𝙘𝙖𝙧𝙙 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚 𝙖𝙣𝙙 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
     
     if not consume_credit(user_id):
