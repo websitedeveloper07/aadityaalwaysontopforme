@@ -190,10 +190,10 @@ async def get_bin_details(bin_number):
                         bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
                         bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
                         return bin_data
-        except aiohttp.ClientError as e:
-            logger.warning(f"Binlist API call failed for {bin_number}: {e}")
-        except Exception as e:
-            logger.warning(f"Error processing Binlist response for {bin_number}: {e}")
+            except aiohttp.ClientError as e:
+                logger.warning(f"Binlist API call failed for {bin_number}: {e}")
+            except Exception as e:
+                logger.warning(f"Error processing Binlist response for {bin_number}: {e}")
         try:
             bincheck_url = f"https://api.bincheck.io/v2/{bin_number}"
             async with session.get(bincheck_url, timeout=7) as response:
@@ -332,7 +332,7 @@ async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔹 𝗩𝗜𝗦𝗔 𝗢𝗡𝗟𝗬 𝗚𝗔𝗧𝗘\n"
         "┗ 📛 Name: `Standard K1LL`\n"
         "┗ 💬 Command: `/kill cc|mm|yy|cvv`\n"
-        "┗ 🧾 Format: `CC|MM|YY|CVV`\n"
+        "┗ 🧾 Format: `CC\\|MM\\|YY\\|CVV`\n"
         "┗ 🟢 Status: `Online`\n"
         "┗ 📅 Updated: `03 Aug 2025`\n"
         "┗ 🕐 Avg Time: `45s`\n"
@@ -408,7 +408,7 @@ async def show_plans_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📝 *Note:*\n"
         "• Credits do *not* expire\n"
         "• After expiry, plan access will be locked unless renewed\n"
-        "• 🚫 No refunds | 🔒 Plans are non\\-transferable\n\n"
+        "• 🚫 No refunds \\| 🔒 Plans are non\\-transferable\n\n"
         "✅ *Full Access includes:*\n"
         "Private use of Visa/MasterCard killer and advanced tools only available to paid users\n\n"
         "🛒 *To subscribe or redeem a key:*\n"
@@ -509,9 +509,9 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_details = await get_bin_details(bin_number)
     scheme = bin_details.get("scheme", "N/A").lower()
     card_type = bin_details.get("type", "N/A").lower()
-    if not ("mastercard" in scheme or "visa" in scheme):
-         await update.effective_message.reply_text("❌ Only Visa and MasterCard cards are allowed for this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
-         return
+    if "visa" in scheme:
+        await update.effective_message.reply_text("❌ Only MasterCard cards are allowed for this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return
     if "prepaid" in card_type:
         await update.effective_message.reply_text("❌ Prepaid bins are not allowed to be killed with this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
@@ -632,29 +632,39 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
         cards.append(f"`{num}|{mm}|{yyyy[-2:]}|{cvv}`")
     cards_list = "\n".join(cards)
+    
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(update.effective_user.full_name)
-    bin_info_box = (
-        f"╔═══════ BIN INFO ═══════╗\n"
-        f"✦ BIN    : `{escape_markdown_v2(bin_input)}`\n"
-        f"✦ Status : {get_vbv_status_display(bin_details.get('vbv_status'))}\n"
-        f"✦ Brand  : {escaped_brand}\n"
-        f"✦ Type   : {escaped_card_type}\n"
-        f"✦ Level  : {get_level_emoji(escaped_card_type)} {escaped_card_type}\n"
-        f"✦ Bank   : {escaped_bank}\n"
-        f"✦ Country: {escaped_country_name} {escaped_country_emoji}\n"
-        f"╚════════════════════════╝"
+
+    # BIN info block content for /gen, using ">>" as separator and escaped hyphen
+    bin_info_block_content = (
+        f"✦ BIN\\-LOOKUP\n"
+        f"✦ BIN : `{escape_markdown_v2(bin_input)}`\n"
+        f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
+        f"✦ Type : {escaped_card_type}\n"
+        f"✦ Bank : {escaped_bank}"
     )
-    user_info_quote_box = (
-        f"> Requested by \\-: {escaped_user_full_name}\n"
-        f"> Bot by \\-: 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️"
+
+    user_info_block_content = (
+        f"Requested by : {escaped_user_full_name}\n"
+        f"Bot by : 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️"
     )
-    result = f"{bin_info_box}\n\n{user_info_quote_box}"
-    await update.effective_message.reply_text(f"> Generated 10 Cards 💳\n\n{cards_list}\n\n{result}", parse_mode=ParseMode.MARKDOWN_V2)
+
+    result = (
+        f"> Generated 10 Cards 💳\n"
+        f"\n"
+        f"{cards_list}\n"
+        f"\n"
+        f"> {bin_info_block_content.replace('\n', '\n> ')}\n"
+        f"> \n"
+        f"> {user_info_block_content.replace('\n', '\n> ')}"
+    )
+
+    await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup."""
@@ -772,11 +782,11 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if not context.args:
         return await update.effective_message.reply_text("❌ Please provide a dump or text to extract cards from\\. Usage: `/fl <dump or text>`", parse_mode=ParseMode.MARKDOWN_V2)
-
+    
     dump = " ".join(context.args)
     cards_found = re.findall(r'\d{13,16}(?:\|\d{2}\|\d{2}(?:\|\d{3,4})?)?', dump)
     count = len(cards_found)
-
+    
     extracted_cards_text = "\n".join([f"`{card}`" for card in cards_found])
     if not extracted_cards_text:
         extracted_cards_text = "No cards found in the provided text."
