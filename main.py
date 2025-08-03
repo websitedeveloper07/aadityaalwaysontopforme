@@ -176,6 +176,7 @@ async def get_bin_details(bin_number):
                 logger.warning(f"Bintable API call failed for {bin_number}: {e}")
             except Exception as e:
                 logger.warning(f"Error processing Bintable response for {bin_number}: {e}")
+        
         try:
             binlist_url = f"https://lookup.binlist.net/{bin_number}"
             async with session.get(binlist_url, timeout=7) as response:
@@ -194,6 +195,7 @@ async def get_bin_details(bin_number):
             logger.warning(f"Binlist API call failed for {bin_number}: {e}")
         except Exception as e:
             logger.warning(f"Error processing Binlist response for {bin_number}: {e}")
+            
         try:
             bincheck_url = f"https://api.bincheck.io/v2/{bin_number}"
             async with session.get(bincheck_url, timeout=7) as response:
@@ -365,13 +367,13 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "*✦ All Commands ✦*\n"
         "All commands are live, `Online`, and have `100%` health\\.\n"
         "For MasterCard and Visa, different messages will be shown for prepaid bins\\.\n\n"
-        "• `/gen <BIN>` - Generates 10 cards\n"
-        "• `/fk <country>` - Generates fake info\n"
-        "• `/fl <dump>` - Extracts cards from dumps\n"
-        "• `/credits` - Shows your credits\n"
-        "• `/bin <BIN>` - Performs BIN lookup\n"
-        "• `/status` - Checks bot health\n"
-        "• `/info` - Shows your info"
+        "• `/gen <BIN>` \\- Generates 10 cards\n"
+        "• `/fk <country>` \\- Generates fake info\n"
+        "• `/fl <dump>` \\- Extracts cards from dumps\n"
+        "• `/credits` \\- Shows your credits\n"
+        "• `/bin <BIN>` \\- Performs BIN lookup\n"
+        "• `/status` \\- Checks bot health\n"
+        "• `/info` \\- Shows your info"
     )
     keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
