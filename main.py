@@ -240,8 +240,21 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
     if command_name == "start":
         return True
     
+    # Check for subscription in private chats
+    user_data = get_user_from_db(user_id)
+    plan_expiry_str = user_data.get('plan_expiry')
+    is_authorized_by_plan = False
+    
+    if plan_expiry_str and plan_expiry_str != 'N/A':
+        try:
+            plan_expiry_date = datetime.strptime(plan_expiry_str, '%d-%m-%Y')
+            if plan_expiry_date >= datetime.now():
+                is_authorized_by_plan = True
+        except ValueError:
+            pass # Invalid date format, treat as expired
+
     if chat_type == 'private':
-        if user_id in AUTHORIZED_PRIVATE_USERS:
+        if user_id in AUTHORIZED_PRIVATE_USERS or is_authorized_by_plan:
             return True
         else:
             keyboard = [[InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK)]]
@@ -854,6 +867,7 @@ async def _update_user_plan(user_id: int, plan_name: str, credits: int, duration
         user_data['plan_expiry'] = expiry_date.strftime('%d-%m-%Y')
     else:
         user_data['plan_expiry'] = 'N/A'
+    AUTHORIZED_PRIVATE_USERS.add(user_id)
     return user_data
 
 async def give_starter(update: Update, context: ContextTypes.DEFAULT_TYPE):
