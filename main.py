@@ -279,15 +279,30 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
     return False
 
 # === COMMAND HANDLERS ===
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from telegram.error import BadRequest
+from datetime import datetime
+import pytz
+import logging
+
+logger = logging.getLogger(__name__)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /start command, displaying user info and main menu."""
     user = update.effective_user
+    print(f"/start called by user: {user.id} (@{user.username})")
+    logger.info(f"/start called by user: {user.id} (@{user.username})")
+
     indian_timezone = pytz.timezone('Asia/Kolkata')
     now = datetime.now(indian_timezone).strftime('%I:%M %p')
     today = datetime.now(indian_timezone).strftime('%d-%m-%Y')
+
     user_data = await get_user(user.id)
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'Free')
+
     welcome_message = (
         f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
@@ -299,6 +314,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📋 Plan: `{plan}`\n\n"
         f"Use the buttons below to get started 👇"
     )
+
     keyboard = [
         [
             InlineKeyboardButton("💀 Killers", callback_data="killers_menu"),
@@ -310,17 +326,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
     if update.message:
-        await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text(
+            welcome_message,
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
     elif update.callback_query:
         query = update.callback_query
         await query.answer()
         try:
-            await query.edit_message_text(welcome_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+            await query.edit_message_text(
+                welcome_message,
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
         except BadRequest as e:
             if "Message is not modified" not in str(e):
                 logger.warning(f"Error editing message: {e}")
-                await context.bot.send_message(chat_id=query.message.chat_id, text=welcome_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+                await context.bot.send_message(
+                    chat_id=query.message.chat_id,
+                    text=welcome_message,
+                    reply_markup=reply_markup,
+                    parse_mode=ParseMode.MARKDOWN_V2
+                )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's help menu with a list of commands."""
