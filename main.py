@@ -1178,8 +1178,8 @@ from telegram.ext import (
 from db import init_db
 
 # Replace with your actual values
-TOKEN = "your_bot_token"
-OWNER_ID = 123456789  # Replace with your actual Telegram user ID
+TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
+OWNER_ID = 7796598050  # Replace with your actual Telegram user ID
 
 # Logger setup
 logging.basicConfig(level=logging.INFO)
