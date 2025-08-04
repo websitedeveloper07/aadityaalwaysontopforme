@@ -1198,25 +1198,38 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 # === REGISTERING COMMANDS AND HANDLERS ===
 import os
 import logging
-import asyncio
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, CallbackQueryHandler, filters
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, filters
 )
 from db import init_db
 
+# ⛳ Load environment variables from Railway
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OWNER_ID = int(os.getenv("OWNER_ID", 0))  # Default 0 if not set
 
-# Read from Railway environment variables
-TOKEN = os.environ.get("BOT_TOKEN")
-OWNER_ID = int(os.environ.get("OWNER_ID"))
-
-# Logger setup
+# ✅ Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def main():
-    application = ApplicationBuilder().token(TOKEN).build()
+# 🧠 Import your command handlers here
+from your_handlers_file import (  # Replace with actual file/module name if not handlers.py
+    start, help_command, info, credits_command,
+    kill_card, kmc_kill, gen, bin_lookup,
+    fk_command, fl_command, status_command,
+    show_plans_menu, redeem_command,
+    admin_command, give_starter, give_premium, give_plus, give_custom,
+    take_plan, auth_group, remove_authorize_user, gen_codes_command,
+    handle_callback, error_handler
+)
 
-    # Public Commands
+async def post_init(application):
+    await init_db()
+    logger.info("Database initialized")
+
+def main():
+    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+
+    # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("info", info))
@@ -1231,7 +1244,7 @@ async def main():
     application.add_handler(CommandHandler("plans", show_plans_menu))
     application.add_handler(CommandHandler("redeem", redeem_command))
 
-    # Admin Commands
+    # 🔐 Admin Commands
     owner_filter = filters.User(OWNER_ID)
     application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
     application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
@@ -1243,21 +1256,13 @@ async def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # Callback and Error
+    # Callback & Error
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
-    # Initialize DB
-    await init_db()
-
+    # 🔁 Start polling (handles its own event loop!)
     logger.info("Bot started and is polling for updates...")
-    await application.run_polling()
+    application.run_polling()
 
-# Compatible with Railway’s event loop
-if __name__ == "__main__":
-    try:
-        asyncio.get_event_loop().run_until_complete(main())
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(main())
+if __name__ == '__main__':
+    main()
