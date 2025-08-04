@@ -1166,15 +1166,20 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
             logger.error(f"Failed to send error message to user: {e}")
 
 # === REGISTERING COMMANDS AND HANDLERS ===
-def main():
-    """Starts the bot."""
-    if not TOKEN:
-        logger.error("BOT_TOKEN is not set. Please set the BOT_TOKEN environment variable.")
-        exit(1)
+import asyncio
+
+async def main():
     application = ApplicationBuilder().token(TOKEN).build()
-    asyncio.run(init_db())  # ← This runs once before bot starts
+
+    # Register handlers here...
+    await init_db()
+    
     logger.info("Bot started and is polling for updates...")
-    application.run_polling()
+    await application.run_polling()  # NOTE: await, not plain call
+
+if __name__ == '__main__':
+    asyncio.run(main())
+
     
     # Public Commands
     application.add_handler(CommandHandler("start", start))
