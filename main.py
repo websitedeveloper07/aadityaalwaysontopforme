@@ -7,6 +7,7 @@ import re
 import psutil
 import random
 from datetime import datetime, timedelta
+from db import get_user, update_user, init_db
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
@@ -124,19 +125,20 @@ def get_user_from_db(user_id):
         }
     return USER_DATA_DB.get(user_id)
 
-def consume_credit(user_id):
-    """Consumes 1 credit from a user's balance."""
-    user_data = get_user_from_db(user_id)
+async def consume_credit(user_id):
+    user_data = await get_user(user_id)
     if user_data['credits'] > 0:
-        user_data['credits'] -= 1
+        await update_user(user_id, credits=user_data['credits'] - 1)
         return True
     return False
 
-def add_credits_to_user(user_id, amount):
-    """Adds credits to a user's balance."""
-    user_data = get_user_from_db(user_id)
-    user_data['credits'] += amount
-    return user_data['credits']
+
+async def add_credits_to_user(user_id, amount):
+    user_data = await get_user(user_id)
+    new_credits = user_data['credits'] + amount
+    await update_user(user_id, credits=new_credits)
+    return new_credits
+
 
 async def get_bin_details(bin_number):
     bin_data = {
@@ -235,7 +237,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     # Check for subscription in private chats
     is_authorized_by_plan = False
-    user_data = get_user_from_db(user_id)
+    user_data = await get_user(user.id)
     plan_expiry_str = user_data.get('plan_expiry')
     if user_id in AUTHORIZED_PRIVATE_USERS:
         is_authorized_by_plan = True
@@ -283,7 +285,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     indian_timezone = pytz.timezone('Asia/Kolkata')
     now = datetime.now(indian_timezone).strftime('%I:%M %p')
     today = datetime.now(indian_timezone).strftime('%d-%m-%Y')
-    user_data = get_user_from_db(user.id)
+    user_data = await get_user(user.id)
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'Free')
     welcome_message = (
@@ -471,7 +473,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
     user = update.effective_user
-    user_data = get_user_from_db(user.id)
+    user_data = await get_user(user.id)
     info_message = (
         "🔍 Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 ⚡\n"
         "━━━━━━━━━━━━━━\n"
@@ -494,7 +496,7 @@ async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id, update):
         return
     user_id = update.effective_user.id
-    user_data = get_user_from_db(user_id)
+    user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text("❌ You have no credits left\\. Please get a subscription to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
@@ -536,7 +538,7 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id, update):
         return
     user_id = update.effective_user.id
-    user_data = get_user_from_db(user_id)
+    user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text("❌ You have no credits left\\. Please get a subscription to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
@@ -646,7 +648,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id, update):
         return
     user_id = update.effective_user.id
-    user_data = get_user_from_db(user_id)
+    user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text("❌ You have no credits left\\. Please get a subscription to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
@@ -732,7 +734,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id, update):
         return
     user_id = update.effective_user.id
-    user_data = get_user_from_db(user_id)
+    user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text("❌ You have no credits left\\. Please get a subscription to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
@@ -791,7 +793,7 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
     user = update.effective_user
-    user_data = get_user_from_db(user.id)
+    user_data = await get_user(user.id)
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'N/A')
     
@@ -812,7 +814,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(update.effective_user.id, update):
         return
     user_id = update.effective_user.id
-    user_data = get_user_from_db(user_id)
+    user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text("❌ You have no credits left\\. Please get a subscription to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -870,7 +872,7 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
     user_id = update.effective_user.id
-    user_data = get_user_from_db(user_id)
+    user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text("❌ You have no credits left\\. Please get a subscription to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
@@ -904,7 +906,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
     user_id = update.effective_user.id
-    user_data = get_user_from_db(user_id)
+    user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text("❌ You have no credits left\\. Please get a subscription to use this command\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
@@ -979,17 +981,19 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(admin_dashboard_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def _update_user_plan(user_id: int, plan_name: str, credits: int, duration_days: int = None):
-    """Helper function to update user plans."""
-    user_data = get_user_from_db(user_id)
-    user_data['plan'] = plan_name
-    user_data['status'] = plan_name
-    user_data['credits'] = credits
+    plan_expiry = 'N/A'
     if duration_days:
         expiry_date = datetime.now() + timedelta(days=duration_days)
-        user_data['plan_expiry'] = expiry_date.strftime('%d-%m-%Y')
-    else:
-        user_data['plan_expiry'] = 'N/A'
+        plan_expiry = expiry_date.strftime('%d-%m-%Y')
+    await update_user(
+        user_id,
+        plan=plan_name,
+        status=plan_name,
+        credits=credits,
+        plan_expiry=plan_expiry
+    )
     AUTHORIZED_PRIVATE_USERS.add(user_id)
+
     return user_data
 
 async def give_starter(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1031,7 +1035,7 @@ async def take_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         user_id = int(context.args[0])
-        user_data = get_user_from_db(user_id)
+        user_data = await get_user(user.id)
         
         # Reset plan and credits
         user_data['plan'] = 'Free'
@@ -1127,7 +1131,7 @@ async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.effective_message.reply_text("❌ Invalid or already used code\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
     # Check if the user already has a paid plan
-    user_data = get_user_from_db(user_id)
+   user_data = await get_user(user.id)
     if user_data['plan'] != 'Free':
         return await update.effective_message.reply_text("❌ You already have an active plan\\.", parse_mode=ParseMode.MARKDOWN_V2)
         
@@ -1167,6 +1171,9 @@ def main():
         logger.error("BOT_TOKEN is not set. Please set the BOT_TOKEN environment variable.")
         exit(1)
     application = ApplicationBuilder().token(TOKEN).build()
+    asyncio.run(init_db())  # ← This runs once before bot starts
+    logger.info("Bot started and is polling for updates...")
+    application.run_polling()
     
     # Public Commands
     application.add_handler(CommandHandler("start", start))
