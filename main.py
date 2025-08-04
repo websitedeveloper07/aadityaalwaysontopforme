@@ -1197,19 +1197,17 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 # === REGISTERING COMMANDS AND HANDLERS ===
 import os
-import asyncio
 import logging
+import asyncio
 from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    CallbackQueryHandler,
-    filters,
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, filters
 )
 from db import init_db
+from handlers import *  # assuming you handle all commands in handlers
 
-# ✅ Read from Railway environment variables
-TOKEN = os.getenv("BOT_TOKEN")
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Defaults to 0 if not set
+# Read from Railway environment variables
+TOKEN = os.environ.get("BOT_TOKEN")
+OWNER_ID = int(os.environ.get("OWNER_ID"))
 
 # Logger setup
 logging.basicConfig(level=logging.INFO)
@@ -1218,7 +1216,7 @@ logger = logging.getLogger(__name__)
 async def main():
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # Public commands
+    # Public Commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("info", info))
@@ -1233,7 +1231,7 @@ async def main():
     application.add_handler(CommandHandler("plans", show_plans_menu))
     application.add_handler(CommandHandler("redeem", redeem_command))
 
-    # Admin commands
+    # Admin Commands
     owner_filter = filters.User(OWNER_ID)
     application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
     application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
@@ -1245,23 +1243,21 @@ async def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
+    # Callback and Error
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
-    # Init database
+    # Initialize DB
     await init_db()
 
     logger.info("Bot started and is polling for updates...")
     await application.run_polling()
 
-# ✅ Cross-platform event loop compatibility
+# Compatible with Railway’s event loop
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
-    except RuntimeError as e:
-        if "already running" in str(e):
-            loop = asyncio.get_event_loop()
-            loop.create_task(main())
-            loop.run_forever()
-        else:
-            raise
+        asyncio.get_event_loop().run_until_complete(main())
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main())
