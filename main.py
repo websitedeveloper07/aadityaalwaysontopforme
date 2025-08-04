@@ -551,7 +551,7 @@ async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
 
-    user = update.effective_user  # ✅ FIXED: define user
+    user = update.effective_user
     if not await enforce_cooldown(user.id, update):
         return
 
@@ -563,20 +563,18 @@ async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     if not context.args or len(context.args) != 1:
-        await update.effective_message.reply_text(
+        return await update.effective_message.reply_text(
             "❌ Invalid format\\. Usage: `/kill CC|MM|YY|CVV`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
 
     full_card_str = context.args[0]
     parts = full_card_str.split('|')
     if len(parts) != 4 or not all(p.isdigit() for p in parts):
-        await update.effective_message.reply_text(
+        return await update.effective_message.reply_text(
             "❌ Invalid card format\\. Use `CC|MM|YY|CVV`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
 
     card_number = parts[0]
     bin_number = card_number[:6]
@@ -585,25 +583,28 @@ async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
     card_type = bin_details.get("type", "N/A").lower()
 
     if "mastercard" in scheme:
-        await update.effective_message.reply_text(
+        return await update.effective_message.reply_text(
             "❌ 𝙊𝙣𝙡𝙮 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
+
+    if "amex" in scheme or "american express" in scheme:
+        return await update.effective_message.reply_text(
+            "❌ 𝙊𝙣𝙡𝙮 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
     if "prepaid" in card_type:
-        await update.effective_message.reply_text(
+        return await update.effective_message.reply_text(
             "🚫 𝙏𝙝𝙞𝙨 𝙘𝙖𝙧𝙙 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚 𝙖𝙣𝙙 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
 
-    if not await consume_credit(user.id):  # ✅ FIXED: await consume_credit
-        await update.effective_message.reply_text(
+    if not await consume_credit(user.id):
+        return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
 
     initial_message = await update.effective_message.reply_text(
         "🔪 Kɪʟʟɪɴɢ\\.\\.\\.",
@@ -612,12 +613,13 @@ async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message, bin_details))
 
+
 async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /kmc command for MasterCard only."""
     if not await check_authorization(update, context):
         return
 
-    user = update.effective_user  # ✅ FIXED: define user
+    user = update.effective_user
     if not await enforce_cooldown(user.id, update):
         return
 
@@ -629,20 +631,18 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     if not context.args or len(context.args) != 1:
-        await update.effective_message.reply_text(
-            "❌ Invalid format\\. Usage: `/kmc CC|MM|YY|CVV`",
+        return await update.effective_message.reply_text(
+            "❌ Invalid format\\. Usage: /kmc CC|MM|YY|CVV",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
 
     full_card_str = context.args[0]
     parts = full_card_str.split('|')
     if len(parts) != 4 or not all(p.isdigit() for p in parts):
-        await update.effective_message.reply_text(
-            "❌ Invalid card format\\. Use `CC|MM|YY|CVV`",
+        return await update.effective_message.reply_text(
+            "❌ Invalid card format\\. Use CC|MM|YY|CVV",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
 
     card_number = parts[0]
     bin_number = card_number[:6]
@@ -651,25 +651,28 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     card_type = bin_details.get("type", "N/A").lower()
 
     if "visa" in scheme:
-        await update.effective_message.reply_text(
+        return await update.effective_message.reply_text(
             "❌ 𝙊𝙣𝙡𝙮 𝙈𝙖𝙨𝙩𝙚𝙧𝘾𝙖𝙧𝙙 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
+
+    if "amex" in scheme or "american express" in scheme:
+        return await update.effective_message.reply_text(
+            "❌ 𝙊𝙣𝙡𝙮 𝙈𝙖𝙨𝙩𝙚𝙧𝘾𝙖𝙧𝙙 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
     if "prepaid" in card_type:
-        await update.effective_message.reply_text(
+        return await update.effective_message.reply_text(
             "🚫 𝙏𝙝𝙞𝙨 𝙘𝙖𝙧𝙙 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚 𝙖𝙣𝙙 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
 
-    if not await consume_credit(user.id):  # ✅ FIXED: await it
-        await update.effective_message.reply_text(
+    if not await consume_credit(user.id):
+        return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        return
 
     initial_message = await update.effective_message.reply_text(
         "🔪 Kɪʟʟɪɴɢ\\.\\.\\.",
@@ -677,6 +680,7 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message, bin_details))
+
 
 
 async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message, bin_details):
@@ -755,7 +759,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
 
-    user = update.effective_user  # ✅ Fix: define user
+    user = update.effective_user
     if not await enforce_cooldown(user.id, update):
         return
 
@@ -781,13 +785,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    if not await consume_credit(user.id):  # ✅ Fix: make it await
+    if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Get BIN details
     bin_prefix = bin_input[:6]
     bin_details = await get_bin_details(bin_prefix)
     brand = bin_details["scheme"]
@@ -796,11 +799,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_emoji = bin_details['country_emoji']
     card_type = bin_details["card_type"]
 
-    # Generate cards
     cards = []
     while len(cards) < 10:
         num_len = 16
-        if brand.lower() == 'american express':
+        if brand.lower() in ['american express', 'amex']:
             num_len = 15
         elif brand.lower() == 'diners club':
             num_len = 14
@@ -816,13 +818,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         mm = str(random.randint(1, 12)).zfill(2)
         yyyy = str(datetime.now().year + random.randint(1, 5))
-        cvv_length = 4 if brand.lower() == 'american express' else 3
+        cvv_length = 4 if brand.lower() in ['american express', 'amex'] else 3
         cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
         cards.append(f"`{num}|{mm}|{yyyy[-2:]}|{cvv}`")
 
     cards_list = "\n".join(cards)
 
-    # Escape BIN info
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
@@ -831,7 +832,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(user.full_name)
 
-    # Info blocks
     bin_info_block = (
         f"✦ BIN\\-LOOKUP\n"
         f"✦ BIN : `{escaped_bin}`\n"
