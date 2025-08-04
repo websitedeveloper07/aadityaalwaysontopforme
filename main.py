@@ -15,6 +15,8 @@ from telegram.error import BadRequest
 from faker import Faker
 import pytz
 import uuid
+from config import ADMIN_IDS
+
 
 # === CONFIGURATION ===
 # IMPORTANT: Set these as environment variables before running your bot:
