@@ -1252,12 +1252,9 @@ async def main():
     # 🗃️ Init DB
     await init_db()
 
-    # ✅ Start application correctly
-    await application.initialize()
-    await application.start()
+    # ✅ Start bot
     logger.info("Bot started and is polling for updates...")
-    await application.updater.start_polling()
-    await application.updater.idle()
+    await application.run_polling()
 
 if __name__ == '__main__':
     asyncio.run(main())
