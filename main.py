@@ -53,7 +53,7 @@ REDEEM_CODES = {} # New dictionary to store redeem codes
 USER_DATA_DB = {
     OWNER_ID: {
         'credits': 9999,
-        'plan': 'Owner',
+        'plan': 'PLUS',
         'status': 'Owner',
         'plan_expiry': 'N/A',
         'keys_redeemed': 0,
@@ -281,7 +281,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "🚫 *Private Usage Blocked*\n"
                 "You cannot use this bot in private chat\\.\n\n"
                 "Use /plans to upgrade or join our group to access tools for free\\.\n"
-                "Get a subscription from `@enough69s` to use this bot\\.",
+                "Get a subscription from @enough69s to use this bot\\.",
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.MARKDOWN_V2
             )
@@ -293,7 +293,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
         else:
             await update.effective_message.reply_text(
                 "🚫 This group is not authorized to use this bot\\.\n"
-                "Please contact `@enough69s` to get approved\\.",
+                "Please contact @enough69s to get approved\\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return False
@@ -405,10 +405,10 @@ async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     killer_message = (
-        "╭━━━〔 𝐊𝟏�𝐋𝐄𝐑 𝐂𝐄𝐍𝐓𝐄𝐑 – 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 〕━━━╮\n"
-        "│ 🛠 Status: `Active`\n"
-        "│ 👑 Owner: `@enough69s`\n"
-        "│ ⚙️ Mode: `K1LLER Engine`\n"
+        "╭━━━〔 𝐊𝟏𝐋𝐋𝐄𝐑 𝗚𝗔𝗧𝗘𝗦 – 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 〕━━━╮\n"
+        "│ 🛠 Status: Active\n"
+        "│ 👑 Owner: @enough69s\n"
+        "│ ⚙️ Mode: K1LLER Engine\n"
         "╰━━━━━━━━━━━━━━━━━━━━━━╯\n\n"
         "🔹 𝗩𝗜𝗦𝗔 𝗢𝗡𝗟𝗬 𝗚𝗔𝗧𝗘\n"
         "┗ 📛 Name: `Standard K1LL`\n"
@@ -419,7 +419,7 @@ async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┗ 🕐 Avg Time: `45s`\n"
         "┗ 💉 Health: `100%`\n"
         "┗ 📝 Note: Ideal for Visa\\-only replacement shops\n\n"
-        "🔸 𝗩𝗜𝗦𝗔 \\+ 𝗠𝗔𝗦𝗧𝗘𝗥 𝗚𝗔𝗧𝗘\n"
+        "🔸 𝗠𝗔𝗦𝗧𝗘𝗥 𝗚𝗔𝗧𝗘\n"
         "┗ 📛 Name: `Advanced K1LL`\n"
         "┗ 💬 Command: `/kmc cc|mm|yy|cvv`\n"
         "┗ 🧾 Format: `CC\\|MM\\|YY\\|CVV`\n"
@@ -486,7 +486,7 @@ async def show_plans_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Access: `Everything \\+ Private Queue \\+ Dedicated Support`\n"
         "• Duration: `Custom`\n"
         "• Credits: `Based on Request`\n"
-        "• Price: `DM @enough69s`\n\n"
+        "• Price: DM @enough69s\n\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n"
         "📝 *Note:*\n"
         "• Credits do *not* expire\n"
@@ -495,7 +495,7 @@ async def show_plans_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✅ *Full Access includes:*\n"
         "Private use of Visa/MasterCard killer and advanced tools only available to paid users\n\n"
         "🛒 *To subscribe or redeem a key:*\n"
-        "Contact → `@enough69s`"
+        "Contact → @enough69s"
     )
     keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -736,14 +736,17 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         percentage = random.randint(68, 100)
         header_title = f"⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%"
     final_message_text_formatted = (
-        f"╭───\\[ {header_title} \\]──╮\n"
-        f"├💳 Cᴀʀᴅ : `{escape_markdown_v2(full_card_str)}`\n"
-        f"├⌛ Tɪᴍᴇ : `{time_taken}s`\n"
-        f"├💳 Bʀᴀɴᴅ: `{brand}`\n"
-        f"├🏛️ Bᴀɴᴋ : `{bank_name}`\n"
-        f"├👑 Lᴇᴠᴇʟ: `{level_emoji} {level}`\n"
-        f"├🌍 Cᴏᴜɴᴛʀʏ: `{escape_markdown_v2(bin_details['country_name'])} {bin_details['country_emoji']}`\n"
-        f"╰───────────\\[ ✅ Live \\]──╯"
+        f"╭───\\[ {header_title} \\]───╮\n" # FIX: Escaped the closing bracket ']'
+        f"\n"
+        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n"
+        f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
+        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
+        f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      :  『𝗥ᴏᴄ𝗸ʏ』\n"
+        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : {escape_markdown_v2(f'{time_taken:.0f} seconds')}\n"
+        f"\n"
+        f"╰────────────────────╯"
     )
     await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -839,7 +842,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_info_block = (
         f"Requested by : {escaped_user_full_name}\n"
-        f"Bot by : 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️"
+        f"Bot by : 『𝗥ᴏᴄ𝗸ʏ』"
     )
 
     final_message = (
@@ -929,7 +932,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_info_quote_box = (
         f"> Requested by \\-: {escaped_user}\n"
-        f"> Bot by \\-: 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️"
+        f"> Bot by \\-: 『𝗥ᴏᴄ𝗸ʏ』"
     )
 
     result = f"{bin_info_box}\n\n{user_info_quote_box}"
@@ -1076,7 +1079,7 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╭━━━ [ 💳 𝘊𝘢𝘳𝘥 𝘓𝘪𝘴𝘵 𝘌𝘹𝘵𝘳𝘢𝘤𝘵𝘦𝘥 ] ━━━⬣\n"
         f"┣ ❏ Total Cards ➳ `{count}`\n"
         f"┣ ❏ Requested by ➳ `{escaped_user}`\n"
-        f"┣ ❏ Bot by ➳ 🔮 𝓖𝓸𝓼𝓽𝓑𝓲𝓽 𝖃𝖃𝖃 👁️\n"
+        f"┣ ❏ Bot by ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
         f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
         f"{extracted_cards_text}"
     )
