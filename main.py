@@ -406,9 +406,9 @@ async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     killer_message = (
         "╭━━━〔 𝐊𝟏𝐋𝐋𝐄𝐑 𝗚𝗔𝗧𝗘𝗦 – 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 〕━━━╮\n"
-        "│ 🛠 Status: Active\n"
+        "│ 🛠 Status: 𝘼𝙘𝙩𝙞𝙫𝙚 ✅\n"
         "│ 👑 Owner: @enough69s\n"
-        "│ ⚙️ Mode: K1LLER Engine\n"
+        "│ ⚙️ Mode: 𝙆𝟭𝙇𝙇𝙀𝙍 𝙀𝙉𝙂𝙄𝙉𝙀\n"
         "╰━━━━━━━━━━━━━━━━━━━━━━╯\n\n"
         "🔹 𝗩𝗜𝗦𝗔 𝗢𝗡𝗟𝗬 𝗚𝗔𝗧𝗘\n"
         "┗ 📛 Name: `Standard K1LL`\n"
@@ -418,7 +418,7 @@ async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┗ 📅 Updated: `03 Aug 2025`\n"
         "┗ 🕐 Avg Time: `45s`\n"
         "┗ 💉 Health: `100%`\n"
-        "┗ 📝 Note: Ideal for Visa\\-only replacement shops\n\n"
+        "┗ 📝 Note: Only for Visa\n\n"
         "🔸 𝗠𝗔𝗦𝗧𝗘𝗥 𝗚𝗔𝗧𝗘\n"
         "┗ 📛 Name: `Advanced K1LL`\n"
         "┗ 💬 Command: `/kmc cc|mm|yy|cvv`\n"
@@ -427,7 +427,7 @@ async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┗ 📅 Updated: `03 Aug 2025`\n"
         "┗ 🕐 Avg Time: `65s`\n"
         "┗ 💉 Health: `90%`\n"
-        "┗ 📝 Note: Visa \\+ Master supported \\| High kill rate\n\n"
+        "┗ 📝 Note: Only MasterCard supported\n\n"
         "📊 Total Gates: `2`"
     )
     keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
