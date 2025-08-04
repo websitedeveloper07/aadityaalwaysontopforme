@@ -1177,14 +1177,6 @@ from telegram.ext import (
 
 # Your actual database and command handler imports
 from db import init_db
-from handlers import (
-    start, help_command, info, credits_command, kill_card, kmc_kill,
-    gen, bin_lookup, fk_command, fl_command, status_command,
-    show_plans_menu, redeem_command,
-    admin_command, give_starter, give_premium, give_plus, give_custom,
-    take_plan, auth_group, remove_authorize_user, gen_codes_command,
-    handle_callback, error_handler
-)
 
 # Replace with your actual values
 TOKEN = "your_bot_token"
