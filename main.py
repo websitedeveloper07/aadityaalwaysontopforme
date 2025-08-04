@@ -31,7 +31,7 @@ BINTABLE_URL = "https://api.bintable.com/v1"
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@enough69s"
 OFFICIAL_GROUP_LINK = "https://t.me/+gtvJT4SoimBjYjQ1"
-DEFAULT_FREE_CREDITS = 30  # A non-expiring credit pool for free users
+DEFAULT_FREE_CREDITS = 50  # A non-expiring credit pool for free users
 
 # === PERSISTENCE WARNING ===
 # The following dictionaries store data in-memory and will be LOST when the bot
