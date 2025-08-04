@@ -1131,9 +1131,10 @@ async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.effective_message.reply_text("❌ Invalid or already used code\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
     # Check if the user already has a paid plan
-   user_data = await get_user(user.id)
+    user_data = await get_user(user.id)
     if user_data['plan'] != 'Free':
         return await update.effective_message.reply_text("❌ You already have an active plan\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
         
     # Apply the plan and remove the code
     plan_name = plan_details['plan_name']
