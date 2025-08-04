@@ -1167,21 +1167,37 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 # === REGISTERING COMMANDS AND HANDLERS ===
 import asyncio
+import logging
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    filters,
+)
+
+# Your actual database and command handler imports
+from db import init_db
+from handlers import (
+    start, help_command, info, credits_command, kill_card, kmc_kill,
+    gen, bin_lookup, fk_command, fl_command, status_command,
+    show_plans_menu, redeem_command,
+    admin_command, give_starter, give_premium, give_plus, give_custom,
+    take_plan, auth_group, remove_authorize_user, gen_codes_command,
+    handle_callback, error_handler
+)
+
+# Replace with your actual values
+TOKEN = "your_bot_token"
+OWNER_ID = 123456789  # Replace with your actual Telegram user ID
+
+# Logger setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 async def main():
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # Register handlers here...
-    await init_db()
-    
-    logger.info("Bot started and is polling for updates...")
-    await application.run_polling()  # NOTE: await, not plain call
-
-if __name__ == '__main__':
-    asyncio.run(main())
-
-    
-    # Public Commands
+    # 📦 Public Commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("info", info))
@@ -1196,7 +1212,7 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("plans", show_plans_menu))
     application.add_handler(CommandHandler("redeem", redeem_command))
 
-    # Owner-only commands
+    # 🔐 Admin Commands
     owner_filter = filters.User(OWNER_ID)
     application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
     application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
@@ -1208,22 +1224,17 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
+    # 📲 Callback + Error
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
-    
-    logger.info("Bot started and is polling for updates...")
-    application.run_polling()
 
-async def main():
-    application = ApplicationBuilder().token(TOKEN).build()
-
-    # Add handlers...
-
+    # 🗃️ Init DB
     await init_db()
+
     logger.info("Bot started and is polling for updates...")
     await application.run_polling()
 
 if __name__ == '__main__':
-    import asyncio
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
+
