@@ -1175,7 +1175,6 @@ from telegram.ext import (
     filters,
 )
 
-# Your actual database and command handler imports
 from db import init_db
 
 # Replace with your actual values
@@ -1223,10 +1222,12 @@ async def main():
     # 🗃️ Init DB
     await init_db()
 
+    # ✅ Start application correctly
+    await application.initialize()
+    await application.start()
     logger.info("Bot started and is polling for updates...")
-    await application.run_polling()
+    await application.updater.start_polling()
+    await application.updater.idle()
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
-
+    asyncio.run(main())
