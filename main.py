@@ -1214,5 +1214,16 @@ if __name__ == '__main__':
     logger.info("Bot started and is polling for updates...")
     application.run_polling()
 
+async def main():
+    application = ApplicationBuilder().token(TOKEN).build()
+
+    # Add handlers...
+
+    await init_db()
+    logger.info("Bot started and is polling for updates...")
+    await application.run_polling()
+
 if __name__ == '__main__':
-    main()
+    import asyncio
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
