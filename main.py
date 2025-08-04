@@ -1196,6 +1196,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
             logger.error(f"Failed to send error message to user: {e}")
 
 # === REGISTERING COMMANDS AND HANDLERS ===
+import os
 import asyncio
 import logging
 from telegram.ext import (
@@ -1204,12 +1205,11 @@ from telegram.ext import (
     CallbackQueryHandler,
     filters,
 )
-
 from db import init_db
 
-# Replace with your actual values
-TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
-OWNER_ID = 7796598050  # Replace with your actual Telegram user ID
+# ✅ Read from Railway environment variables
+TOKEN = os.getenv("BOT_TOKEN")
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Defaults to 0 if not set
 
 # Logger setup
 logging.basicConfig(level=logging.INFO)
@@ -1218,7 +1218,7 @@ logger = logging.getLogger(__name__)
 async def main():
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # 📦 Public Commands
+    # Public commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("info", info))
@@ -1233,7 +1233,7 @@ async def main():
     application.add_handler(CommandHandler("plans", show_plans_menu))
     application.add_handler(CommandHandler("redeem", redeem_command))
 
-    # 🔐 Admin Commands
+    # Admin commands
     owner_filter = filters.User(OWNER_ID)
     application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
     application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
@@ -1245,16 +1245,22 @@ async def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # 📲 Callback + Error
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
-    # 🗃️ Init DB
+    # Init database
     await init_db()
 
-    # ✅ Start bot
     logger.info("Bot started and is polling for updates...")
     await application.run_polling()
 
-if __name__ == '__main__':
-    asyncio.run(main())
+# ✅ Cross-platform event loop compatibility
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        if "already running" in str(e):
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(main())
+        else:
+            raise
