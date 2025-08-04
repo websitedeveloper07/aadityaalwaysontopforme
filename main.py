@@ -779,9 +779,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if len(command_text) > 1:
             bin_input = command_text[1]
 
-    if not bin_input or not bin_input.isdigit():
+    if not bin_input or not bin_input.isdigit() or len(bin_input) != 6:
         return await update.effective_message.reply_text(
-            "❌ Please provide a valid numerical BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\.",
+            "❌ Please provide a valid 6\\-digit BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -799,14 +799,15 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_emoji = bin_details['country_emoji']
     card_type = bin_details["card_type"]
 
+    if brand.lower() in ['american express', 'amex', 'diners club']:
+        return await update.effective_message.reply_text(
+            "🚫 𝘼𝙈𝙀𝙓 & 𝘿𝙞𝙣𝙚𝙧𝙨 𝘾𝙡𝙪𝙗 𝘽𝙄𝙉𝙨 𝙖𝙧𝙚 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙜𝙚𝙣𝙚𝙧𝙖𝙩𝙞𝙤𝙣\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
     cards = []
     while len(cards) < 10:
         num_len = 16
-        if brand.lower() in ['american express', 'amex']:
-            num_len = 15
-        elif brand.lower() == 'diners club':
-            num_len = 14
-
         num_suffix_len = num_len - len(bin_input)
         if num_suffix_len < 0:
             num = bin_input[:num_len]
@@ -818,8 +819,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         mm = str(random.randint(1, 12)).zfill(2)
         yyyy = str(datetime.now().year + random.randint(1, 5))
-        cvv_length = 4 if brand.lower() in ['american express', 'amex'] else 3
-        cvv = str(random.randint(0, (10**cvv_length) - 1)).zfill(cvv_length)
+        cvv = str(random.randint(0, 999)).zfill(3)
         cards.append(f"`{num}|{mm}|{yyyy[-2:]}|{cvv}`")
 
     cards_list = "\n".join(cards)
@@ -854,6 +854,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup."""
