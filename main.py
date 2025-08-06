@@ -499,19 +499,20 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     user = update.effective_user
     user_data = await get_user(user.id)
-info_message = (
-    f"╭━━━[ 𝙐𝙎𝙀𝙍 𝙄𝙉𝙁𝙊 – 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ⚡ ]━━━⬣\n"
-    f"┣ ❏ First Name     ➳ `{user.first_name or 'N/A'}`\n"
-    f"┣ ❏ ID             ➳ `{user.id}`\n"
-    f"┣ ❏ Username       ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
-    f"┣ ❏ Status         ➳ `{user_data.get('status', 'N/A')}`\n"
-    f"┣ ❏ Credits        ➳ `{user_data.get('credits', 0)}`\n"
-    f"┣ ❏ Plan           ➳ `{escape_markdown(user_data.get('plan', 'N/A'), version=2)}`\n"
-    f"┣ ❏ Plan Expiry    ➳ `{user_data.get('plan_expiry', 'N/A')}`\n"
-    f"┣ ❏ Keys Redeemed  ➳ `{user_data.get('keys_redeemed', 0)}`\n"
-    f"┣ ❏ Registered At  ➳ `{user_data.get('registered_at', 'N/A')}`\n"
-    f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
-)
+
+    info_message = (
+        f"╭━━━[ 𝙐𝙎𝙀𝙍 𝙄𝙉𝙁𝙊 – 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ⚡ ]━━━⬣\n"
+        f"┣ ❏ First Name     ➳ `{user.first_name or 'N/A'}`\n"
+        f"┣ ❏ ID             ➳ `{user.id}`\n"
+        f"┣ ❏ Username       ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
+        f"┣ ❏ Status         ➳ `{user_data.get('status', 'N/A')}`\n"
+        f"┣ ❏ Credits        ➳ `{user_data.get('credits', 0)}`\n"
+        f"┣ ❏ Plan           ➳ `{escape_markdown(user_data.get('plan', 'N/A'), version=2)}`\n"
+        f"┣ ❏ Plan Expiry    ➳ `{user_data.get('plan_expiry', 'N/A')}`\n"
+        f"┣ ❏ Keys Redeemed  ➳ `{user_data.get('keys_redeemed', 0)}`\n"
+        f"┣ ❏ Registered At  ➳ `{user_data.get('registered_at', 'N/A')}`\n"
+        f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
+    )
 
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
 
