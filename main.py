@@ -804,7 +804,6 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
 
 # Escape all required fields for MarkdownV2
-escaped_bin = escape_markdown_v2(bin_input)
 escaped_brand = escape_markdown_v2(brand)
 escaped_bank = escape_markdown_v2(bank)
 escaped_country_name = escape_markdown_v2(country_name)
