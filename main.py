@@ -800,14 +800,21 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cards_list = "\n".join(cards)
 
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown as escape_markdown_v2
+
+# Escape all required fields for MarkdownV2
 escaped_bin = escape_markdown_v2(bin_input)
 escaped_brand = escape_markdown_v2(brand)
 escaped_bank = escape_markdown_v2(bank)
 escaped_country_name = escape_markdown_v2(country_name)
 escaped_country_emoji = escape_markdown_v2(country_emoji)
 escaped_card_type = escape_markdown_v2(card_type)
+escaped_level = escape_markdown_v2(level)
+escaped_scheme = escape_markdown_v2(scheme)
 escaped_user_full_name = escape_markdown_v2(user.full_name)
 
+# BIN Info block
 bin_info_block = (
     f"╭━━━[ ✦ 𝐁𝐈𝐍 𝐋𝐎𝐎𝐊𝐔𝐏 ✦ ]━━━⬣\n"
     f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
@@ -819,24 +826,31 @@ bin_info_block = (
     f"╰━━━━━━━━━━━━━━━━━━⬣"
 )
 
+# User Info block
 user_info_block = (
     f"┣ ❏ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲 ➳ `{escaped_user_full_name}`\n"
     f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
     f"╰━━━━━━━━━━━━━━━━━━⬣"
 )
 
+# Replace newlines with "> " for quote styling
+quoted_bin_info = bin_info_block.replace('\n', '\n> ')
+quoted_user_info = user_info_block.replace('\n', '\n> ')
+
+# Final message
 final_message = (
-    f"> **Generated 10 Cards 💳**\n\n"
+    f"> *Generated 10 Cards 💳*\n\n"
     f"{cards_list}\n\n"
-    f"> {bin_info_block.replace(chr(10), '\n> ')}\n"
+    f"> {quoted_bin_info}\n"
     f">\n"
-    f"> {user_info_block.replace(chr(10), '\n> ')}"
+    f"> {quoted_user_info}"
 )
 
+# Send the message
 await update.effective_message.reply_text(
-    final_message, parse_mode=ParseMode.MARKDOWN_V2
+    final_message,
+    parse_mode=ParseMode.MARKDOWN_V2
 )
-
 
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
