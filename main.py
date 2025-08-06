@@ -299,12 +299,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     welcome_message = (
         f"╭━━━[ 𝙒𝙀𝙇𝘾𝙊𝙈𝙀 𝙏𝙊 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ]━━━⬣\n"
-        f"┣ ❏ ID        ➳ `{user.id}`\n"
-        f"┣ ❏ Username  ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
-        f"┣ ❏ Date      ➳ `{today}`\n"
-        f"┣ ❏ Time      ➳ `{now}`\n"
-        f"┣ ❏ Credits   ➳ `{credits}`\n"
-        f"┣ ❏ Plan      ➳ `{escape_markdown(plan, version=2)}`\n"
+        f"┣ ❏ 𝐈𝐃        ➳ `{user.id}`\n"
+        f"┣ ❏ 𝐔𝐬𝐞𝐫𝐧𝐚𝐦𝐞  ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
+        f"┣ ❏ 𝐃𝐚𝐭𝐞      ➳ `{today}`\n"
+        f"┣ ❏ 𝐓𝐢𝐦𝐞      ➳ `{now}`\n"
+        f"┣ ❏ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   ➳ `{credits}`\n"
+        f"┣ ❏ 𝐏𝐥𝐚𝐧      ➳ `{escape_markdown(plan, version=2)}`\n"
         f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
         f"_Use the buttons below to get started_"
     )
@@ -502,15 +502,15 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     info_message = (
         f"╭━━━[ 𝙐𝙎𝙀𝙍 𝙄𝙉𝙁𝙊 – 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ⚡ ]━━━⬣\n"
-        f"┣ ❏ First Name     ➳ `{user.first_name or 'N/A'}`\n"
-        f"┣ ❏ ID             ➳ `{user.id}`\n"
-        f"┣ ❏ Username       ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
-        f"┣ ❏ Status         ➳ `{user_data.get('status', 'N/A')}`\n"
-        f"┣ ❏ Credits        ➳ `{user_data.get('credits', 0)}`\n"
-        f"┣ ❏ Plan           ➳ `{escape_markdown(user_data.get('plan', 'N/A'), version=2)}`\n"
-        f"┣ ❏ Plan Expiry    ➳ `{user_data.get('plan_expiry', 'N/A')}`\n"
-        f"┣ ❏ Keys Redeemed  ➳ `{user_data.get('keys_redeemed', 0)}`\n"
-        f"┣ ❏ Registered At  ➳ `{user_data.get('registered_at', 'N/A')}`\n"
+        f"┣ ❏ 𝐅𝐢𝐫𝐬𝐭 𝐍𝐚𝐦𝐞     ➳ `{user.first_name or 'N/A'}`\n"
+        f"┣ ❏ 𝐈𝐃             ➳ `{user.id}`\n"
+        f"┣ ❏ 𝐔𝐬𝐞𝐫𝐧𝐚𝐦𝐞       ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
+        f"┣ ❏ 𝐒𝐭𝐚𝐭𝐮𝐬         ➳ `{user_data.get('status', 'N/A')}`\n"
+        f"┣ ❏ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬        ➳ `{user_data.get('credits', 0)}`\n"
+        f"┣ ❏ 𝐏𝐥𝐚𝐧           ➳ `{escape_markdown(user_data.get('plan', 'N/A'), version=2)}`\n"
+        f"┣ ❏ 𝐏𝐥𝐚𝐧 𝐄𝐱𝐩𝐢𝐫𝐲    ➳ `{user_data.get('plan_expiry', 'N/A')}`\n"
+        f"┣ ❏ 𝐊𝐞𝐲𝐬 𝐑𝐞𝐝𝐞𝐞𝐦𝐞𝐝  ➳ `{user_data.get('keys_redeemed', 0)}`\n"
+        f"┣ ❏ 𝐑𝐞𝐠𝐢𝐬𝐭𝐞𝐫𝐞𝐝 𝐀𝐭  ➳ `{user_data.get('registered_at', 'N/A')}`\n"
         f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -714,13 +714,13 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
 
     final_message_text_formatted = (
         f"╭━━━[ {header_title} ]━━━⬣\n"
-        f"┣ ❏ Card Number     ➳ `{escape_markdown_v2(full_card_str)}`\n"
-        f"┣ ❏ Brand           ➳ `{brand}`\n"
-        f"┣ ❏ Issuer          ➳ `{bank_name}`\n"
-        f"┣ ❏ Level           ➳ `{level_emoji} {level}`\n"
-        f"┣ ❏ Killer          ➳ `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
-        f"┣ ❏ Bot by          ➳ `『𝗥ᴏᴄ𝗸ʏ』`\n"
-        f"┣ ❏ Time Taken      ➳ `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
+        f"┣ ❏ 𝐂𝐚𝐫𝐝 𝐍𝐮𝐦𝐛𝐞𝐫     ➳ `{escape_markdown_v2(full_card_str)}`\n"
+        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝           ➳ `{brand}`\n"
+        f"┣ ❏ 𝐈𝐬𝐬𝐮𝐞𝐫          ➳ `{bank_name}`\n"
+        f"┣ ❏ 𝐋𝐞𝐯𝐞𝐥           ➳ `{level_emoji} {level}`\n"
+        f"┣ ❏ 𝐊𝐢𝐥𝐥𝐞𝐫          ➳ `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
+        f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲          ➳ `『𝗥ᴏᴄ𝗸ʏ』`\n"
+        f"┣ ❏ 𝐓𝐢𝐦𝐞 𝐓𝐚𝐤𝐞𝐧      ➳ `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
         f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -776,7 +776,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bank = bin_details["bank"]
     country_name = bin_details["country_name"]
     country_emoji = bin_details["country_emoji"]
-    card_type = bin_details["card_type"]
 
     # Generate cards
     cards = []
@@ -799,38 +798,30 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    # Escape all required values (but NOT card list)
+    cards_list = "\n".join(cards)  # Don't escape cards to preserve monospace
+
+    # Escape fields safely
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
-    escaped_card_type = escape_markdown_v2(card_type)
-    escaped_user_full_name = escape_markdown_v2(user.full_name)
 
-    cards_list = "\n".join(cards)  # Don't escape this to preserve monospace
-
-    # BIN info block (without level/type/scheme and without BIN LOOKUP header)
+    # BIN Info block (minimalist)
     bin_info_block = (
         f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
         f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
         f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}` {escaped_country_emoji}\n"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    user_info_block = (
-        f"┣ ❏ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲 ➳ `{escaped_user_full_name}`\n"
-        f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
-        f"╰━━━━━━━━━━━━━━━━━━⬣"
-    )
-
+    # Final output message
     final_message = (
         f"> *Generated 10 Cards 💳*\n\n"
         f"{cards_list}\n"
         f">\n"
-        f"> {bin_info_block.replace(chr(10), '\n> ')}\n"
-        f"> {user_info_block.replace(chr(10), '\n> ')}"
+        f"> {bin_info_block.replace(chr(10), '\n> ')}"
     )
 
     await update.effective_message.reply_text(
@@ -839,11 +830,15 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+
 from telegram.constants import ParseMode
 
 def escape_markdown_v2(text: str) -> str:
     escape_chars = r"\_*[]()~`>#+-=|{}.!"
     return ''.join(['\\' + char if char in escape_chars else char for char in text])
+
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown as escape_markdown_v2
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup."""
@@ -905,7 +900,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
 
-    # Build BIN info box
+    # BIN info box (no space after country)
     bin_info_box = (
         f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
         f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
@@ -914,8 +909,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
         f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
         f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
-        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}` {escaped_country_emoji}\n"
-        f"╰━━━━━━━━━━━━━━━━━━⬣"
+        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
     )
 
     user_info_box = (
@@ -926,7 +920,11 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     final_message = f"{bin_info_box}\n\n{user_info_box}"
 
-    await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(
+        final_message,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
 
 
 
@@ -948,10 +946,10 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     credit_message = (
         f"╭━━━[ 💳 𝐂𝐑𝐄𝐃𝐈𝐓 𝐈𝐍𝐅𝐎 💳 ]━━━⬣\n"
-        f"┣ ❏ Username   ➳ `@{escaped_username}`\n"
-        f"┣ ❏ User ID    ➳ `{escaped_user_id}`\n"
-        f"┣ ❏ Plan       ➳ `{escaped_plan}`\n"
-        f"┣ ❏ Credits    ➳ `{escaped_credits}`\n"
+        f"┣ ❏ 𝐔𝐬𝐞𝐫𝐧𝐚𝐦𝐞   ➳ `@{escaped_username}`\n"
+        f"┣ ❏ 𝐔𝐬𝐞𝐫 𝐈𝐃    ➳ `{escaped_user_id}`\n"
+        f"┣ ❏ 𝐏𝐥𝐚𝐧       ➳ `{escaped_plan}`\n"
+        f"┣ ❏ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬    ➳ `{escaped_credits}`\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
