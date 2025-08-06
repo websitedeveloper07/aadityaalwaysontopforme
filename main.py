@@ -25,8 +25,6 @@ from config import ADMIN_IDS
 # export BINTABLE_API_KEY="YOUR_BINTABLE_API_KEY" # Get this from Bintable.com
 TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
-BINTABLE_API_KEY = os.getenv("BINTABLE_API_KEY")
-BINTABLE_URL = "https://api.bintable.com/v1"
 
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@enough69s"
@@ -147,73 +145,43 @@ async def add_credits_to_user(user_id, amount):
 
 async def get_bin_details(bin_number):
     bin_data = {
-        "scheme": "N/A", "type": "N/A", "level": "N/A",
-        "bank": "N/A", "country_name": "N/A", "country_emoji": "",
-        "vbv_status": None, "card_type": "N/A"
+        "scheme": "N/A",         # Card brand (e.g., VISA, Mastercard)
+        "type": "N/A",           # Credit/Debit
+        "level": "N/A",          # Card level (e.g., Classic, Business)
+        "bank": "N/A",           # Bank name
+        "country_name": "N/A",   # Full country name
+        "country_emoji": "",     # Country flag emoji
+        "vbv_status": None,      # Placeholder, not provided by API
+        "card_type": "N/A"       # Redundant with type, still kept
     }
-    async with aiohttp.ClientSession() as session:
-        if BINTABLE_API_KEY:
-            try:
-                bintable_url = f"{BINTABLE_URL}/{bin_number}?api_key={BINTABLE_API_KEY}"
-                async with session.get(bintable_url, timeout=7) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        if data and data.get("result") == 200:
-                            response_data = data.get("data", {})
-                            card_info = response_data.get("card", {})
-                            country_info = response_data.get("country", {})
-                            bank_info = response_data.get("bank", {})
-                            bin_data["scheme"] = card_info.get("scheme", "N/A").upper()
-                            bin_data["type"] = card_info.get("type", "N/A").title()
-                            bin_data["card_type"] = card_info.get("category", card_info.get("type", "N/A")).title()
-                            bin_data["level"] = card_info.get("level", "N/A").title()
-                            bin_data["bank"] = bank_info.get("name", "N/A").title()
-                            bin_data["country_name"] = country_info.get("name", "N/A")
-                            bin_data["country_emoji"] = country_info.get("emoji", "")
-                            return bin_data
-            except aiohttp.ClientError as e:
-                logger.warning(f"Bintable API call failed for {bin_number}: {e}")
-            except Exception as e:
-                logger.warning(f"Error processing Bintable response for {bin_number}: {e}")
-        
-        try:
-            binlist_url = f"https://lookup.binlist.net/{bin_number}"
-            async with session.get(binlist_url, timeout=7) as response:
+
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=7) as response:
                 if response.status == 200:
                     data = await response.json()
-                    if data:
-                        bin_data["scheme"] = data.get("scheme", "N/A").upper()
-                        bin_data["type"] = data.get("type", "N/A").title()
-                        bin_data["card_type"] = data.get("type", "N/A").title()
-                        bin_data["level"] = data.get("brand", "N/A").title()
-                        bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
-                        bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
-                        bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
-                        return bin_data
-        except aiohttp.ClientError as e:
-            logger.warning(f"Binlist API call failed for {bin_number}: {e}")
-        except Exception as e:
-            logger.warning(f"Error processing Binlist response for {bin_number}: {e}")
-            
-        try:
-            bincheck_url = f"https://api.bincheck.io/v2/{bin_number}"
-            async with session.get(bincheck_url, timeout=7) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    if data and data.get("success"):
-                        bin_data["scheme"] = data.get("scheme", "N/A").upper()
-                        bin_data["type"] = data.get("type", "N/A").title()
-                        bin_data["card_type"] = data.get("type", "N/A").title()
-                        bin_data["level"] = data.get("level", "N/A").title()
-                        bin_data["bank"] = data.get("bank", {}).get("name", "N/A").title()
-                        bin_data["country_name"] = data.get("country", {}).get("name", "N/A")
-                        bin_data["country_emoji"] = data.get("country", {}).get("emoji", "")
-                        return bin_data
-        except aiohttp.ClientError as e:
-            logger.warning(f"Bincheck.io API call failed for {bin_number}: {e}")
-        except Exception as e:
-            logger.warning(f"Error processing Bincheck.io response for {bin_number}: {e}")
-    logger.warning(f"Failed to get BIN details for {bin_number} from all sources.")
+                    bin_data["scheme"] = data.get("brand", "N/A").upper()
+                    bin_data["type"] = data.get("type", "N/A").title()
+                    bin_data["card_type"] = data.get("type", "N/A").title()
+                    bin_data["level"] = data.get("level", "N/A").title()
+                    bin_data["bank"] = data.get("bank", "N/A").title()
+                    bin_data["country_name"] = data.get("country_name", "N/A")
+                    bin_data["country_emoji"] = data.get("country_flag", "")
+                    return bin_data
+                else:
+                    logger.warning(f"Antipublic API returned status {response.status} for BIN {bin_number}")
+    except aiohttp.ClientError as e:
+        logger.warning(f"Antipublic API call failed for {bin_number}: {e}")
+    except Exception as e:
+        logger.warning(f"Error processing Antipublic response for {bin_number}: {e}")
+
+    logger.warning(f"Failed to get BIN details for {bin_number} from antipublic.cc.")
     return bin_data
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
