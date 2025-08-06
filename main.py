@@ -800,13 +800,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cards_list = "\n".join(cards)
 
-    escaped_bin = escape_markdown_v2(bin_input)
-    escaped_brand = escape_markdown_v2(brand)
-    escaped_bank = escape_markdown_v2(bank)
-    escaped_country_name = escape_markdown_v2(country_name)
-    escaped_country_emoji = escape_markdown_v2(country_emoji)
-    escaped_card_type = escape_markdown_v2(card_type)
-    escaped_user_full_name = escape_markdown_v2(user.full_name)
+escaped_bin = escape_markdown_v2(bin_input)
+escaped_brand = escape_markdown_v2(brand)
+escaped_bank = escape_markdown_v2(bank)
+escaped_country_name = escape_markdown_v2(country_name)
+escaped_country_emoji = escape_markdown_v2(country_emoji)
+escaped_card_type = escape_markdown_v2(card_type)
+escaped_user_full_name = escape_markdown_v2(user.full_name)
 
 bin_info_block = (
     f"╭━━━[ ✦ 𝐁𝐈𝐍 𝐋𝐎𝐎𝐊𝐔𝐏 ✦ ]━━━⬣\n"
@@ -825,16 +825,18 @@ user_info_block = (
     f"╰━━━━━━━━━━━━━━━━━━⬣"
 )
 
+final_message = (
+    f"> **Generated 10 Cards 💳**\n\n"
+    f"{cards_list}\n\n"
+    f"> {bin_info_block.replace(chr(10), '\n> ')}\n"
+    f">\n"
+    f"> {user_info_block.replace(chr(10), '\n> ')}"
+)
 
-    final_message = (
-        f"> Generated 10 Cards 💳\n\n"
-        f"{cards_list}\n\n"
-        f"> {bin_info_block.replace(chr(10), '\n> ')}\n"
-        f">\n"
-        f"> {user_info_block.replace(chr(10), '\n> ')}"
-    )
+await update.effective_message.reply_text(
+    final_message, parse_mode=ParseMode.MARKDOWN_V2
+)
 
-    await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -886,20 +888,20 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     vbv_status = bin_details["vbv_status"]
 
     # Escape all Markdown
-    escaped_bin = escape_markdown_v2(bin_input)
-    escaped_scheme = escape_markdown_v2(scheme)
-    escaped_bank = escape_markdown_v2(bank)
-    escaped_card_type = escape_markdown_v2(card_type)
-    escaped_level = escape_markdown_v2(level)
-    escaped_country_name = escape_markdown_v2(country_name)
-    escaped_country_emoji = escape_markdown_v2(country_emoji)
-    escaped_user = escape_markdown_v2(user.full_name)
+escaped_bin = escape_markdown_v2(bin_input)
+escaped_scheme = escape_markdown_v2(scheme)
+escaped_bank = escape_markdown_v2(bank)
+escaped_card_type = escape_markdown_v2(card_type)
+escaped_level = escape_markdown_v2(level)
+escaped_country_name = escape_markdown_v2(country_name)
+escaped_country_emoji = escape_markdown_v2(country_emoji)
+escaped_user = escape_markdown_v2(user.full_name)
 
-    # Custom status display functions
-    level_emoji = get_level_emoji(escaped_level)
-    status_display = get_vbv_status_display(vbv_status)
+# Custom status display functions
+level_emoji = get_level_emoji(escaped_level)
+status_display = get_vbv_status_display(vbv_status)
 
-    # Compose result
+# Compose result
 bin_info_box = (
     f"╭━━━[ ✦ 𝐁𝐈𝐍 𝐈𝐍𝐅𝐎 ✦ ]━━━⬣\n"
     f"┣ ❏ 𝐁𝐈𝐍       ➳ `{escaped_bin}`\n"
@@ -918,9 +920,9 @@ user_info_quote_box = (
     f"╰━━━━━━━━━━━━━━━━━━⬣"
 )
 
+result = f"{bin_info_box}\n\n{user_info_quote_box}"
 
-    result = f"{bin_info_box}\n\n{user_info_quote_box}"
-    await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
+await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -939,15 +941,14 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_plan = escape_markdown_v2(plan)
     escaped_credits = escape_markdown_v2(str(credits))
 
-credit_message = (
-    f"╭━━━[ 💳 𝐂𝐑𝐄𝐃𝐈𝐓 𝐈𝐍𝐅𝐎 💳 ]━━━⬣\n"
-    f"┣ ❏ Username   ➳ `@{escaped_username}`\n"
-    f"┣ ❏ User ID    ➳ `{escaped_user_id}`\n"
-    f"┣ ❏ Plan       ➳ `{escaped_plan}`\n"
-    f"┣ ❏ Credits    ➳ `{escaped_credits}`\n"
-    f"╰━━━━━━━━━━━━━━━━━━⬣"
-)
-
+    credit_message = (
+        f"╭━━━[ 💳 𝐂𝐑𝐄𝐃𝐈𝐓 𝐈𝐍𝐅𝐎 💳 ]━━━⬣\n"
+        f"┣ ❏ Username   ➳ `@{escaped_username}`\n"
+        f"┣ ❏ User ID    ➳ `{escaped_user_id}`\n"
+        f"┣ ❏ Plan       ➳ `{escaped_plan}`\n"
+        f"┣ ❏ Credits    ➳ `{escaped_credits}`\n"
+        f"╰━━━━━━━━━━━━━━━━━━⬣"
+    )
 
     await update.effective_message.reply_text(credit_message, parse_mode=ParseMode.MARKDOWN_V2)
 
