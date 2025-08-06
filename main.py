@@ -424,7 +424,7 @@ async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┗ 💬 Command: `/kmc cc|mm|yy|cvv`\n"
         "┗ 🧾 Format: `CC\\|MM\\|YY\\|CVV`\n"
         "┗ ❌ Status: `Offline`\n"
-        "┗ 📅 Updated: `03 Aug 2025`\n"
+        "┗ 📅 Updated: `06 Aug 2025`\n"
         "┗ 🕐 Avg Time: `65s`\n"
         "┗ 💉 Health: `20%`\n"
         "┗ 📝 Note: Only MasterCard supported\n\n"
