@@ -791,14 +791,15 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mm = str(random.randint(1, 12)).zfill(2)
         yyyy = str(datetime.now().year + random.randint(1, 5))
 
-        if brand.lower() in ["american express", "amex"]:
-            cvv = str(random.randint(0, 9999)).zfill(4)
-        else:
-            cvv = str(random.randint(0, 999)).zfill(3)
+        cvv = (
+            str(random.randint(0, 9999)).zfill(4)
+            if brand.lower() in ["american express", "amex"]
+            else str(random.randint(0, 999)).zfill(3)
+        )
 
         cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    # Escape all required fields
+    # Escape all required values (but NOT card list)
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
@@ -806,9 +807,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_country_emoji = escape_markdown_v2(country_emoji)
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(user.full_name)
-    escaped_cards_list = escape_markdown_v2("\n".join(cards))
 
-    # BIN info block (NO header, NO level, NO scheme)
+    cards_list = "\n".join(cards)  # Don't escape this to preserve monospace
+
+    # BIN info block (without level/type/scheme and without BIN LOOKUP header)
     bin_info_block = (
         f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
         f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
@@ -825,9 +827,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     final_message = (
         f"> *Generated 10 Cards 💳*\n\n"
-        f"{escaped_cards_list}\n\n"
-        f"> {bin_info_block.replace(chr(10), '\n> ')}\n"
+        f"{cards_list}\n"
         f">\n"
+        f"> {bin_info_block.replace(chr(10), '\n> ')}\n"
         f"> {user_info_block.replace(chr(10), '\n> ')}"
     )
 
