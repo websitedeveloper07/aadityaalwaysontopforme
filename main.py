@@ -700,28 +700,35 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         await initial_message.edit_text(f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n```{escaped_final_frame}```", parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
         logger.warning(f"Failed to edit message to final frame: {e}")
+    
     time_taken = round(time.time() - start_time)
     bank_name = escape_markdown_v2(bin_details["bank"])
     level = escape_markdown_v2(bin_details["level"])
     level_emoji = get_level_emoji(bin_details["level"])
     brand = escape_markdown_v2(bin_details["scheme"])
     header_title = "⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
+
     if bin_details["scheme"].lower() == 'mastercard':
         percentage = random.randint(68, 100)
         header_title = f"⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%"
-final_message_text_formatted = (
-    f"╭━━━[ {header_title} ]━━━⬣\n"
-    f"┣ ❏ Card Number     ➳ `{escape_markdown_v2(full_card_str)}`\n"
-    f"┣ ❏ Brand           ➳ `{brand}`\n"
-    f"┣ ❏ Issuer          ➳ `{bank_name}`\n"
-    f"┣ ❏ Level           ➳ `{level_emoji} {level}`\n"
-    f"┣ ❏ Killer          ➳ `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
-    f"┣ ❏ Bot by          ➳ `『𝗥ᴏᴄ𝗸ʏ』`\n"
-    f"┣ ❏ Time Taken      ➳ `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
-    f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
-)
 
-    await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
+    final_message_text_formatted = (
+        f"╭━━━[ {header_title} ]━━━⬣\n"
+        f"┣ ❏ Card Number     ➳ `{escape_markdown_v2(full_card_str)}`\n"
+        f"┣ ❏ Brand           ➳ `{brand}`\n"
+        f"┣ ❏ Issuer          ➳ `{bank_name}`\n"
+        f"┣ ❏ Level           ➳ `{level_emoji} {level}`\n"
+        f"┣ ❏ Killer          ➳ `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
+        f"┣ ❏ Bot by          ➳ `『𝗥ᴏᴄ𝗸ʏ』`\n"
+        f"┣ ❏ Time Taken      ➳ `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
+        f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
+    )
+
+    await initial_message.edit_text(
+        final_message_text_formatted,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN."""
