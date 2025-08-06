@@ -860,7 +860,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
 
-    user = update.effective_user  # ✅ Fix: user declared
+    user = update.effective_user
     if not await enforce_cooldown(user.id, update):
         return
 
@@ -885,7 +885,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    if not await consume_credit(user.id):  # ✅ Fix: added await
+    if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -894,51 +894,43 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_input = bin_input[:6]
     bin_details = await get_bin_details(bin_input)
 
-    # Extract details
-    scheme = bin_details["scheme"]
-    bank = bin_details["bank"]
-    card_type = bin_details["card_type"]
-    level = bin_details["level"]
-    country_name = bin_details["country_name"]
-    country_emoji = bin_details["country_emoji"]
+    # Escape all MarkdownV2 content
+    escaped_bin = escape_markdown_v2(bin_input)
+    escaped_scheme = escape_markdown_v2(bin_details["scheme"])
+    escaped_bank = escape_markdown_v2(bin_details["bank"])
+    escaped_card_type = escape_markdown_v2(bin_details["card_type"])
+    escaped_level = escape_markdown_v2(bin_details["level"])
+    escaped_country_name = escape_markdown_v2(bin_details["country_name"])
+    escaped_country_emoji = escape_markdown_v2(bin_details["country_emoji"])
     vbv_status = bin_details["vbv_status"]
+    escaped_user = escape_markdown_v2(user.full_name)
 
-    # Escape all Markdown
-escaped_bin = escape_markdown_v2(bin_input)
-escaped_scheme = escape_markdown_v2(scheme)
-escaped_bank = escape_markdown_v2(bank)
-escaped_card_type = escape_markdown_v2(card_type)
-escaped_level = escape_markdown_v2(level)
-escaped_country_name = escape_markdown_v2(country_name)
-escaped_country_emoji = escape_markdown_v2(country_emoji)
-escaped_user = escape_markdown_v2(user.full_name)
+    # Custom emojis/status display
+    level_emoji = get_level_emoji(escaped_level)
+    status_display = get_vbv_status_display(vbv_status)
 
-# Custom status display functions
-level_emoji = get_level_emoji(escaped_level)
-status_display = get_vbv_status_display(vbv_status)
+    # Build BIN info box
+    bin_info_box = (
+        f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
+        f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
+        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{status_display}`\n"
+        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
+        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
+        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
+        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
+        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}` {escaped_country_emoji}\n"
+        f"╰━━━━━━━━━━━━━━━━━━⬣"
+    )
 
-# Compose result
-bin_info_box = (
-    f"╭━━━[ ✦ 𝐁𝐈𝐍 𝐈𝐍𝐅𝐎 ✦ ]━━━⬣\n"
-    f"┣ ❏ 𝐁𝐈𝐍       ➳ `{escaped_bin}`\n"
-    f"┣ ❏ 𝐒𝐭𝐚𝐭𝐮𝐬    ➳ `{status_display}`\n"
-    f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝     ➳ `{escaped_scheme}`\n"
-    f"┣ ❏ 𝐓𝐲𝐩𝐞      ➳ `{escaped_card_type}`\n"
-    f"┣ ❏ 𝐋𝐞𝐯𝐞𝐥     ➳ `{level_emoji} {escaped_level}`\n"
-    f"┣ ❏ 𝐁𝐚𝐧𝐤      ➳ `{escaped_bank}`\n"
-    f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲   ➳ `{escaped_country_name}` {escaped_country_emoji}\n"
-    f"╰━━━━━━━━━━━━━━━━━━⬣"
-)
+    user_info_box = (
+        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ `{escaped_user}`\n"
+        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
+        f"╰━━━━━━━━━━━━━━━━━━⬣"
+    )
 
-user_info_quote_box = (
-    f"┣ ❏ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲 ➳ `{escaped_user}`\n"
-    f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
-    f"╰━━━━━━━━━━━━━━━━━━⬣"
-)
+    result = f"{bin_info_box}\n\n{user_info_box}"
 
-result = f"{bin_info_box}\n\n{user_info_quote_box}"
-
-await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
