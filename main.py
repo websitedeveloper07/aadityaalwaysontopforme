@@ -730,6 +730,9 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
 
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown as escape_markdown_v2
+
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN."""
     if not await check_authorization(update, context):
@@ -767,87 +770,67 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    bin_prefix = bin_input[:6]
-    bin_details = await get_bin_details(bin_prefix)
+    # BIN lookup
+    bin_details = await get_bin_details(bin_input)
     brand = bin_details["scheme"]
     bank = bin_details["bank"]
-    country_name = bin_details['country_name']
-    country_emoji = bin_details['country_emoji']
+    country_name = bin_details["country_name"]
+    country_emoji = bin_details["country_emoji"]
     card_type = bin_details["card_type"]
 
-    if brand.lower() in ['american express', 'amex', 'diners club']:
-        return await update.effective_message.reply_text(
-            "🚫 𝘼𝙈𝙀𝙓 & 𝘿𝙞𝙣𝙚𝙧𝙨 𝘾𝙡𝙪𝙗 𝘽𝙄𝙉𝙨 𝙖𝙧𝙚 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙜𝙚𝙣𝙚𝙧𝙖𝙩𝙞𝙤𝙣\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
+    # Generate cards
     cards = []
     while len(cards) < 10:
-        num_len = 16
-        num_suffix_len = num_len - len(bin_input)
-        if num_suffix_len < 0:
-            num = bin_input[:num_len]
-        else:
-            num = bin_input + ''.join(str(random.randint(0, 9)) for _ in range(num_suffix_len))
+        card_length = 15 if brand.lower() in ["american express", "amex"] else 16
+        suffix_len = card_length - len(bin_input)
+        card_number = bin_input + ''.join(str(random.randint(0, 9)) for _ in range(suffix_len))
 
-        if not luhn_checksum(num):
+        if not luhn_checksum(card_number):
             continue
 
         mm = str(random.randint(1, 12)).zfill(2)
         yyyy = str(datetime.now().year + random.randint(1, 5))
-        cvv = str(random.randint(0, 999)).zfill(3)
-        cards.append(f"`{num}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    cards_list = "\n".join(cards)
+        if brand.lower() in ["american express", "amex"]:
+            cvv = str(random.randint(0, 9999)).zfill(4)
+        else:
+            cvv = str(random.randint(0, 999)).zfill(3)
 
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown as escape_markdown_v2
+        cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-# Escape all required fields for MarkdownV2
-escaped_brand = escape_markdown_v2(brand)
-escaped_bank = escape_markdown_v2(bank)
-escaped_country_name = escape_markdown_v2(country_name)
-escaped_country_emoji = escape_markdown_v2(country_emoji)
-escaped_card_type = escape_markdown_v2(card_type)
-escaped_level = escape_markdown_v2(level)
-escaped_scheme = escape_markdown_v2(scheme)
-escaped_user_full_name = escape_markdown_v2(user.full_name)
-escaped_cards_list = escape_markdown_v2(cards_list)
+    # Escape all required fields
+    escaped_bin = escape_markdown_v2(bin_input)
+    escaped_brand = escape_markdown_v2(brand)
+    escaped_bank = escape_markdown_v2(bank)
+    escaped_country_name = escape_markdown_v2(country_name)
+    escaped_country_emoji = escape_markdown_v2(country_emoji)
+    escaped_card_type = escape_markdown_v2(card_type)
+    escaped_user_full_name = escape_markdown_v2(user.full_name)
+    escaped_cards_list = escape_markdown_v2("\n".join(cards))
 
-# BIN Info block
-bin_info_block = (
-    f"╭━━━[ ✦ 𝐁𝐈𝐍 𝐋𝐎𝐎𝐊𝐔𝐏 ✦ ]━━━⬣\n"
-    f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
-    f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}` {escaped_country_emoji}\n"
-    f"┣ ❏ 𝐓𝐲𝐩𝐞       ➳ `{escaped_card_type}`\n"
-    f"┣ ❏ 𝐋𝐞𝐯𝐞𝐥      ➳ `{escaped_level}`\n"
-    f"┣ ❏ 𝐒𝐜𝐡𝐞𝐦𝐞     ➳ `{escaped_scheme}`\n"
-    f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
-    f"╰━━━━━━━━━━━━━━━━━━⬣"
-)
+    # BIN info block (NO header, NO level, NO scheme)
+    bin_info_block = (
+        f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
+        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
+        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}` {escaped_country_emoji}\n"
+        f"╰━━━━━━━━━━━━━━━━━━⬣"
+    )
 
-# User Info block
-user_info_block = (
-    f"┣ ❏ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲 ➳ `{escaped_user_full_name}`\n"
-    f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
-    f"╰━━━━━━━━━━━━━━━━━━⬣"
-)
+    user_info_block = (
+        f"┣ ❏ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲 ➳ `{escaped_user_full_name}`\n"
+        f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
+        f"╰━━━━━━━━━━━━━━━━━━⬣"
+    )
 
-# Add "> " for quote block
-quoted_bin_info = bin_info_block.replace('\n', '\n> ')
-quoted_user_info = user_info_block.replace('\n', '\n> ')
+    final_message = (
+        f"> *Generated 10 Cards 💳*\n\n"
+        f"{escaped_cards_list}\n\n"
+        f"> {bin_info_block.replace(chr(10), '\n> ')}\n"
+        f">\n"
+        f"> {user_info_block.replace(chr(10), '\n> ')}"
+    )
 
-# Final message
-final_message = (
-    f"> *Generated 10 Cards 💳*\n\n"
-    f"{escaped_cards_list}\n\n"
-    f"> {quoted_bin_info}\n"
-    f">\n"
-    f"> {quoted_user_info}"
-)
-
-# Inside an async function only
-async def send_result(update):
     await update.effective_message.reply_text(
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
