@@ -297,17 +297,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'Free')
 
-    welcome_message = (
-        f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
-        f"🆔 ID: `{user.id}`\n"
-        f"👤 Username: `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
-        f"📅 Date: `{today}`\n"
-        f"🕒 Time: `{now}`\n"
-        f"💳 Credits: `{credits}`\n"
-        f"📋 Plan: `{escape_markdown(plan, version=2)}`\n\n"
-        f"Use the buttons below to get started 👇"
-    )
+welcome_message = (
+    f"╭━━━[ 𝙒𝙀𝙇𝘾𝙊𝙈𝙀 𝙏𝙊 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ⚡ ]━━━⬣\n"
+    f"┣ ❏ ID        ➳ `{user.id}`\n"
+    f"┣ ❏ Username  ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
+    f"┣ ❏ Date      ➳ `{today}`\n"
+    f"┣ ❏ Time      ➳ `{now}`\n"
+    f"┣ ❏ Credits   ➳ `{credits}`\n"
+    f"┣ ❏ Plan      ➳ `{escape_markdown(plan, version=2)}`\n"
+    f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
+    f"_Use the buttons below to get started_ 👇"
+)
 
     keyboard = [
         [
@@ -385,7 +385,7 @@ async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┗ 🟢 Status: `Online`\n"
         "┗ 📅 Updated: `03 Aug 2025`\n"
         "┗ 🕐 Avg Time: `45s`\n"
-        "┗ 💉 Health: `70%`\n"
+        "┗ 💉 Health: `95%`\n"
         "┗ 📝 Note: Only for Visa\n\n"
         "🔸 𝗠𝗔𝗦𝗧𝗘𝗥 𝗚𝗔𝗧𝗘\n"
         "┗ 📛 Name: `Advanced K1LL`\n"
@@ -499,19 +499,20 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     user = update.effective_user
     user_data = await get_user(user.id)
-    info_message = (
-        "🔍 Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 ⚡\n"
-        "━━━━━━━━━━━━━━\n"
-        f"👤 First Name: ㅤ`{user.first_name or 'N/A'}`\n"
-        f"🆔 ID: `{user.id}`\n"
-        f"📛 Username: `@{user.username or 'N/A'}`\n\n"
-        f"📋 Status: `{user_data.get('status', 'N/A')}`\n"
-        f"💳 Credit: `{user_data.get('credits', 0)}`\n"
-        f"💼 Plan: `{user_data.get('plan', 'N/A')}`\n"
-        f"📅 Plan Expiry: `{user_data.get('plan_expiry', 'N/A')}`\n"
-        f"🔑 Keys Redeemed: `{user_data.get('keys_redeemed', 0)}`\n"
-        f"🗓 Registered At: `{user_data.get('registered_at', 'N/A')}`\n"
-    )
+info_message = (
+    f"╭━━━[ 𝙐𝙎𝙀𝙍 𝙄𝙉𝙁𝙊 – 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ⚡ ]━━━⬣\n"
+    f"┣ ❏ First Name     ➳ `{user.first_name or 'N/A'}`\n"
+    f"┣ ❏ ID             ➳ `{user.id}`\n"
+    f"┣ ❏ Username       ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
+    f"┣ ❏ Status         ➳ `{user_data.get('status', 'N/A')}`\n"
+    f"┣ ❏ Credits        ➳ `{user_data.get('credits', 0)}`\n"
+    f"┣ ❏ Plan           ➳ `{escape_markdown(user_data.get('plan', 'N/A'), version=2)}`\n"
+    f"┣ ❏ Plan Expiry    ➳ `{user_data.get('plan_expiry', 'N/A')}`\n"
+    f"┣ ❏ Keys Redeemed  ➳ `{user_data.get('keys_redeemed', 0)}`\n"
+    f"┣ ❏ Registered At  ➳ `{user_data.get('registered_at', 'N/A')}`\n"
+    f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
+)
+
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -707,19 +708,18 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     if bin_details["scheme"].lower() == 'mastercard':
         percentage = random.randint(68, 100)
         header_title = f"⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%"
-    final_message_text_formatted = (
-        f"╭───\\[ {header_title} \\]───╮\n" # FIX: Escaped the closing bracket ']'
-        f"\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escape_markdown_v2(full_card_str)}`\n"
-        f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
-        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
-        f"• 𝗟𝗲𝘃𝗲𝗹        : `{level_emoji} {level}`\n"
-        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      :  『𝗥ᴏᴄ𝗸ʏ』\n"
-        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : {escape_markdown_v2(f'{time_taken:.0f} seconds')}\n"
-        f"\n"
-        f"╰────────────────────╯"
-    )
+final_message_text_formatted = (
+    f"╭━━━[ {header_title} ]━━━⬣\n"
+    f"┣ ❏ Card Number     ➳ `{escape_markdown_v2(full_card_str)}`\n"
+    f"┣ ❏ Brand           ➳ `{brand}`\n"
+    f"┣ ❏ Issuer          ➳ `{bank_name}`\n"
+    f"┣ ❏ Level           ➳ `{level_emoji} {level}`\n"
+    f"┣ ❏ Killer          ➳ `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
+    f"┣ ❏ Bot by          ➳ `『𝗥ᴏᴄ𝗸ʏ』`\n"
+    f"┣ ❏ Time Taken      ➳ `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
+    f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
+)
+
     await initial_message.edit_text(final_message_text_formatted, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -800,18 +800,23 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_card_type = escape_markdown_v2(card_type)
     escaped_user_full_name = escape_markdown_v2(user.full_name)
 
-    bin_info_block = (
-        f"✦ BIN\\-LOOKUP\n"
-        f"✦ BIN : `{escaped_bin}`\n"
-        f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
-        f"✦ Type : {escaped_card_type}\n"
-        f"✦ Bank : {escaped_bank}"
-    )
+bin_info_block = (
+    f"╭━━━[ ✦ 𝐁𝐈𝐍 𝐋𝐎𝐎𝐊𝐔𝐏 ✦ ]━━━⬣\n"
+    f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
+    f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}` {escaped_country_emoji}\n"
+    f"┣ ❏ 𝐓𝐲𝐩𝐞       ➳ `{escaped_card_type}`\n"
+    f"┣ ❏ 𝐋𝐞𝐯𝐞𝐥      ➳ `{escaped_level}`\n"
+    f"┣ ❏ 𝐒𝐜𝐡𝐞𝐦𝐞     ➳ `{escaped_scheme}`\n"
+    f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
+    f"╰━━━━━━━━━━━━━━━━━━⬣"
+)
 
-    user_info_block = (
-        f"Requested by : {escaped_user_full_name}\n"
-        f"Bot by : 『𝗥ᴏᴄ𝗸ʏ』"
-    )
+user_info_block = (
+    f"┣ ❏ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲 ➳ `{escaped_user_full_name}`\n"
+    f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
+    f"╰━━━━━━━━━━━━━━━━━━⬣"
+)
+
 
     final_message = (
         f"> Generated 10 Cards 💳\n\n"
@@ -887,22 +892,24 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_display = get_vbv_status_display(vbv_status)
 
     # Compose result
-    bin_info_box = (
-        f"╔═══════ BIN INFO ═══════╗\n"
-        f"✦ BIN     : `{escaped_bin}`\n"
-        f"✦ Status  : {status_display}\n"
-        f"✦ Brand   : {escaped_scheme}\n"
-        f"✦ Type    : {escaped_card_type}\n"
-        f"✦ Level   : {level_emoji} {escaped_level}\n"
-        f"✦ Bank    : {escaped_bank}\n"
-        f"✦ Country : {escaped_country_name} {escaped_country_emoji}\n"
-        f"╚════════════════════════╝"
-    )
+bin_info_box = (
+    f"╭━━━[ ✦ 𝐁𝐈𝐍 𝐈𝐍𝐅𝐎 ✦ ]━━━⬣\n"
+    f"┣ ❏ 𝐁𝐈𝐍       ➳ `{escaped_bin}`\n"
+    f"┣ ❏ 𝐒𝐭𝐚𝐭𝐮𝐬    ➳ `{status_display}`\n"
+    f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝     ➳ `{escaped_scheme}`\n"
+    f"┣ ❏ 𝐓𝐲𝐩𝐞      ➳ `{escaped_card_type}`\n"
+    f"┣ ❏ 𝐋𝐞𝐯𝐞𝐥     ➳ `{level_emoji} {escaped_level}`\n"
+    f"┣ ❏ 𝐁𝐚𝐧𝐤      ➳ `{escaped_bank}`\n"
+    f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲   ➳ `{escaped_country_name}` {escaped_country_emoji}\n"
+    f"╰━━━━━━━━━━━━━━━━━━⬣"
+)
 
-    user_info_quote_box = (
-        f"> Requested by \\-: {escaped_user}\n"
-        f"> Bot by \\-: 『𝗥ᴏᴄ𝗸ʏ』"
-    )
+user_info_quote_box = (
+    f"┣ ❏ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲 ➳ `{escaped_user}`\n"
+    f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
+    f"╰━━━━━━━━━━━━━━━━━━⬣"
+)
+
 
     result = f"{bin_info_box}\n\n{user_info_quote_box}"
     await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
@@ -924,14 +931,15 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_plan = escape_markdown_v2(plan)
     escaped_credits = escape_markdown_v2(str(credits))
 
-    credit_message = (
-        f"💳 *Your Credit Info* 💳\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"👤 Username: `@{escaped_username}`\n"
-        f"🆔 User ID: `{escaped_user_id}`\n"
-        f"📋 Plan: `{escaped_plan}`\n"
-        f"💳 Credits: `{escaped_credits}`\n"
-    )
+credit_message = (
+    f"╭━━━[ 💳 𝐂𝐑𝐄𝐃𝐈𝐓 𝐈𝐍𝐅𝐎 💳 ]━━━⬣\n"
+    f"┣ ❏ Username   ➳ `@{escaped_username}`\n"
+    f"┣ ❏ User ID    ➳ `{escaped_user_id}`\n"
+    f"┣ ❏ Plan       ➳ `{escaped_plan}`\n"
+    f"┣ ❏ Credits    ➳ `{escaped_credits}`\n"
+    f"╰━━━━━━━━━━━━━━━━━━⬣"
+)
+
 
     await update.effective_message.reply_text(credit_message, parse_mode=ParseMode.MARKDOWN_V2)
 
