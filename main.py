@@ -297,54 +297,54 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'Free')
 
-welcome_message = (
-    f"╭━━━[ 𝙒𝙀𝙇𝘾𝙊𝙈𝙀 𝙏𝙊 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ⚡ ]━━━⬣\n"
-    f"┣ ❏ ID        ➳ `{user.id}`\n"
-    f"┣ ❏ Username  ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
-    f"┣ ❏ Date      ➳ `{today}`\n"
-    f"┣ ❏ Time      ➳ `{now}`\n"
-    f"┣ ❏ Credits   ➳ `{credits}`\n"
-    f"┣ ❏ Plan      ➳ `{escape_markdown(plan, version=2)}`\n"
-    f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
-    f"_Use the buttons below to get started_ 👇"
-)
+    welcome_message = (
+        f"╭━━━[ 𝙒𝙀𝙇𝘾𝙊𝙈𝙀 𝙏𝙊 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ]━━━⬣\n"
+        f"┣ ❏ ID        ➳ `{user.id}`\n"
+        f"┣ ❏ Username  ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
+        f"┣ ❏ Date      ➳ `{today}`\n"
+        f"┣ ❏ Time      ➳ `{now}`\n"
+        f"┣ ❏ Credits   ➳ `{credits}`\n"
+        f"┣ ❏ Plan      ➳ `{escape_markdown(plan, version=2)}`\n"
+        f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
+        f"_Use the buttons below to get started_"
+    )
 
-keyboard = [
-    [
-        InlineKeyboardButton("💀 Killers", callback_data="killers_menu"),
-        InlineKeyboardButton("🛠 Tools", callback_data="tools_menu")
-    ],
-    [
-        InlineKeyboardButton("🧾 Plans", callback_data="plans_menu"),
-        InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
+    keyboard = [
+        [
+            InlineKeyboardButton("💀 Killers", callback_data="killers_menu"),
+            InlineKeyboardButton("🛠 Tools", callback_data="tools_menu")
+        ],
+        [
+            InlineKeyboardButton("🧾 Plans", callback_data="plans_menu"),
+            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
+        ]
     ]
-]
-reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-try:
-    if update.message:
-        await update.message.reply_text(
-            welcome_message,
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-    elif update.callback_query:
-        query = update.callback_query
-        await query.answer()
-        await query.edit_message_text(
-            welcome_message,
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-except BadRequest as e:
-    if "Message is not modified" not in str(e):
-        logger.warning(f"Error editing message: {e}")
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=welcome_message,
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    try:
+        if update.message:
+            await update.message.reply_text(
+                welcome_message,
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+        elif update.callback_query:
+            query = update.callback_query
+            await query.answer()
+            await query.edit_message_text(
+                welcome_message,
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+    except BadRequest as e:
+        if "Message is not modified" not in str(e):
+            logger.warning(f"Error editing message: {e}")
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=welcome_message,
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
