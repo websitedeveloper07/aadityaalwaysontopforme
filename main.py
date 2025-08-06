@@ -813,6 +813,7 @@ escaped_card_type = escape_markdown_v2(card_type)
 escaped_level = escape_markdown_v2(level)
 escaped_scheme = escape_markdown_v2(scheme)
 escaped_user_full_name = escape_markdown_v2(user.full_name)
+escaped_cards_list = escape_markdown_v2(cards_list)
 
 # BIN Info block
 bin_info_block = (
@@ -833,24 +834,25 @@ user_info_block = (
     f"╰━━━━━━━━━━━━━━━━━━⬣"
 )
 
-# Replace newlines with "> " for quote styling
+# Add "> " for quote block
 quoted_bin_info = bin_info_block.replace('\n', '\n> ')
 quoted_user_info = user_info_block.replace('\n', '\n> ')
 
 # Final message
 final_message = (
     f"> *Generated 10 Cards 💳*\n\n"
-    f"{cards_list}\n\n"
+    f"{escaped_cards_list}\n\n"
     f"> {quoted_bin_info}\n"
     f">\n"
     f"> {quoted_user_info}"
 )
 
-# Send the message
-await update.effective_message.reply_text(
-    final_message,
-    parse_mode=ParseMode.MARKDOWN_V2
-)
+# Inside an async function only
+async def send_result(update):
+    await update.effective_message.reply_text(
+        final_message,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
 
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
