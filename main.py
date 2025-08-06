@@ -855,6 +855,12 @@ async def send_result(update):
     )
 
 
+from telegram.constants import ParseMode
+
+def escape_markdown_v2(text: str) -> str:
+    escape_chars = r"\_*[]()~`>#+-=|{}.!"
+    return ''.join(['\\' + char if char in escape_chars else char for char in text])
+
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup."""
     if not await check_authorization(update, context):
@@ -894,18 +900,24 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_input = bin_input[:6]
     bin_details = await get_bin_details(bin_input)
 
-    # Escape all MarkdownV2 content
+    if not bin_details:
+        return await update.effective_message.reply_text(
+            "❌ BIN not found or invalid\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Escape and extract data safely
     escaped_bin = escape_markdown_v2(bin_input)
-    escaped_scheme = escape_markdown_v2(bin_details["scheme"])
-    escaped_bank = escape_markdown_v2(bin_details["bank"])
-    escaped_card_type = escape_markdown_v2(bin_details["card_type"])
-    escaped_level = escape_markdown_v2(bin_details["level"])
-    escaped_country_name = escape_markdown_v2(bin_details["country_name"])
-    escaped_country_emoji = escape_markdown_v2(bin_details["country_emoji"])
-    vbv_status = bin_details["vbv_status"]
+    escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
+    escaped_bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
+    escaped_card_type = escape_markdown_v2(bin_details.get("card_type", "N/A"))
+    escaped_level = escape_markdown_v2(bin_details.get("level", "N/A"))
+    escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
+    escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
+    vbv_status = bin_details.get("vbv_status", "Unknown")
     escaped_user = escape_markdown_v2(user.full_name)
 
-    # Custom emojis/status display
+    # Custom emojis/status
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
 
@@ -913,7 +925,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_info_box = (
         f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
         f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
-        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{status_display}`\n"
+        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{escape_markdown_v2(status_display)}`\n"
         f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
         f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
         f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
@@ -928,9 +940,10 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    result = f"{bin_info_box}\n\n{user_info_box}"
+    final_message = f"{bin_info_box}\n\n{user_info_box}"
 
-    await update.effective_message.reply_text(result, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
