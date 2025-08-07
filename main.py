@@ -284,6 +284,13 @@ from config import OFFICIAL_GROUP_LINK  # Ensure this is defined in your config
 
 logger = logging.getLogger(__name__)
 
+from telegram.helpers import escape_markdown  # Ensure you're using telegram>=20
+
+def escape_markdown_v2(text: str) -> str:
+    """Custom MarkdownV2 escaper (if you want full control)."""
+    import re
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /start command, displaying user info and main menu."""
     user = update.effective_user
@@ -297,15 +304,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'Free')
 
+    # Escape everything properly for MarkdownV2
+    escaped_user_id = escape_markdown_v2(user.id)
+    escaped_username = escape_markdown_v2(user.username or 'N/A')
+    escaped_today = escape_markdown_v2(today)
+    escaped_now = escape_markdown_v2(now)
+    escaped_credits = escape_markdown_v2(credits)
+    escaped_plan = escape_markdown_v2(plan)
+
     welcome_message = (
-        f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
+        f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝓵𝒕𝑿* ⚡\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
-        f"🆔 ID: {user.id}\n"
-        f"👤 Username: @{escape_markdown(user.username or 'N/A', version=2)}\n"
-        f"📅 Date: {today}\n"
-        f"🕒 Time: {now}\n"
-        f"💳 Credits: {credits}\n"
-        f"📋 Plan: {escape_markdown(plan, version=2)}\n\n"
+        f"🆔 ID: `{escaped_user_id}`\n"
+        f"👤 Username: @{escaped_username}\n"
+        f"📅 Date: `{escaped_today}`\n"
+        f"🕒 Time: `{escaped_now}`\n"
+        f"💳 Credits: `{escaped_credits}`\n"
+        f"📋 Plan: `{escaped_plan}`\n\n"
         f"Use the buttons below to get started 👇"
     )
 
@@ -345,6 +360,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.MARKDOWN_V2
             )
+
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -493,25 +509,42 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "back_to_start":
         await start(update, context)
 
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    import re
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the user's detailed information."""
     if not await check_authorization(update, context):
         return
+
     user = update.effective_user
     user_data = await get_user(user.id)
 
+    # Escape all dynamic values
+    first_name = escape_markdown_v2(user.first_name or 'N/A')
+    user_id = escape_markdown_v2(str(user.id))
+    username = escape_markdown_v2(user.username or 'N/A')
+    status = escape_markdown_v2(user_data.get('status', 'N/A'))
+    credits = escape_markdown_v2(str(user_data.get('credits', 0)))
+    plan = escape_markdown_v2(user_data.get('plan', 'N/A'))
+    plan_expiry = escape_markdown_v2(user_data.get('plan_expiry', 'N/A'))
+    keys_redeemed = escape_markdown_v2(str(user_data.get('keys_redeemed', 0)))
+    registered_at = escape_markdown_v2(user_data.get('registered_at', 'N/A'))
+
     info_message = (
-        "🔍 Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 ⚡\n"
+        "🔍 *Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
         "━━━━━━━━━━━━━━\n"
-        f"👤 First Name: ㅤ{user.first_name or 'N/A'}\n"
-        f"🆔 ID: {user.id}\n"
-        f"📛 Username: @{user.username or 'N/A'}\n\n"
-        f"📋 Status: {user_data.get('status', 'N/A')}\n"
-        f"💳 Credit: {user_data.get('credits', 0)}\n"
-        f"💼 Plan: {user_data.get('plan', 'N/A')}\n"
-        f"📅 Plan Expiry: {user_data.get('plan_expiry', 'N/A')}\n"
-        f"🔑 Keys Redeemed: {user_data.get('keys_redeemed', 0)}\n"
-        f"🗓 Registered At: {user_data.get('registered_at', 'N/A')}\n"
+        f"👤 First Name: `{first_name}`\n"
+        f"🆔 ID: `{user_id}`\n"
+        f"📛 Username: `@{username}`\n\n"
+        f"📋 Status: `{status}`\n"
+        f"💳 Credit: `{credits}`\n"
+        f"💼 Plan: `{plan}`\n"
+        f"📅 Plan Expiry: `{plan_expiry}`\n"
+        f"🔑 Keys Redeemed: `{keys_redeemed}`\n"
+        f"🗓 Registered At: `{registered_at}`\n"
     )
 
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
@@ -576,8 +609,12 @@ async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # Escape card string for MarkdownV2 display
+    from telegram.helpers import escape_markdown
+    escaped_card_str = escape_markdown(full_card_str, version=2)
+
     initial_message = await update.effective_message.reply_text(
-        "🔪 Kɪʟʟɪɴɢ\\.\\.\\.",
+        f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\\n`{escaped_card_str}`",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
@@ -602,7 +639,7 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args or len(context.args) != 1:
         return await update.effective_message.reply_text(
-            "❌ Invalid format\\. Usage: /kmc CC|MM|YY|CVV",
+            "❌ Invalid format\\. Usage: `/kmc CC|MM|YY|CVV`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -610,7 +647,7 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = full_card_str.split('|')
     if len(parts) != 4 or not all(p.isdigit() for p in parts):
         return await update.effective_message.reply_text(
-            "❌ Invalid card format\\. Use CC|MM|YY|CVV",
+            "❌ Invalid card format\\. Use `CC|MM|YY|CVV`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -644,22 +681,28 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    from telegram.helpers import escape_markdown
+    escaped_card_str = escape_markdown(full_card_str, version=2)
+
     initial_message = await update.effective_message.reply_text(
-        "🔪 Kɪʟʟɪɴɢ\\.\\.\\.",
+        f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\\n`{escaped_card_str}`",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
     asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message, bin_details))
 
 
+from telegram.helpers import escape_markdown
+import re
+
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message, bin_details):
-    """
-    Handles the long-running kill animation and final message.
-    Modified to use the requested animation frames.
-    """
     start_time = time.time()
     kill_time = random.uniform(40, 87)
+
     animation_frames = [
         "▱▱▱▱▱▱▱▱▱▱ 0%",
         "█▱▱▱▱▱▱▱▱▱ 10%",
@@ -673,14 +716,19 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         "█████████▱ 90%",
         "██████████ 100%"
     ]
+
     frame_interval = kill_time / len(animation_frames)
     elapsed_animation_time = 0
     frame_index = 0
+
     while elapsed_animation_time < kill_time:
         current_frame = animation_frames[frame_index % len(animation_frames)]
         escaped_frame = escape_markdown_v2(current_frame)
         try:
-            await initial_message.edit_text(f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n```{escaped_frame}```", parse_mode=ParseMode.MARKDOWN_V2)
+            await initial_message.edit_text(
+                f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n`{escaped_frame}`",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
         except BadRequest as e:
             if "Message is not modified" in str(e):
                 logger.debug("Message not modified.")
@@ -688,40 +736,48 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
                 logger.warning(f"Flood control hit during animation for {full_card_str}: {e}")
             else:
                 logger.warning(f"Failed to edit message during animation (BadRequest): {e}")
+
         sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
         if sleep_duration <= 0:
             break
         await asyncio.sleep(sleep_duration)
         elapsed_animation_time = time.time() - start_time
         frame_index += 1
+
     final_frame = animation_frames[-1]
     escaped_final_frame = escape_markdown_v2(final_frame)
     try:
-        await initial_message.edit_text(f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n```{escaped_final_frame}```", parse_mode=ParseMode.MARKDOWN_V2)
+        await initial_message.edit_text(
+            f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n`{escaped_final_frame}`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
     except Exception as e:
         logger.warning(f"Failed to edit message to final frame: {e}")
-    
-    time_taken = round(time.time() - start_time)
-    bank_name = escape_markdown_v2(bin_details["bank"])
-    level = escape_markdown_v2(bin_details["level"])
-    level_emoji = get_level_emoji(bin_details["level"])
-    brand = escape_markdown_v2(bin_details["scheme"])
-    header_title = "⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
 
-    if bin_details["scheme"].lower() == 'mastercard':
-        percentage = random.randint(68, 100)
+    # Final result details
+    time_taken = round(time.time() - start_time)
+    bank_name = escape_markdown_v2(bin_details.get("bank", "N/A"))
+    level = escape_markdown_v2(bin_details.get("level", "N/A"))
+    level_emoji = get_level_emoji(bin_details.get("level", "N/A"))
+    brand = escape_markdown_v2(bin_details.get("scheme", "N/A"))
+    escaped_card_str = escape_markdown_v2(full_card_str)
+    time_taken_str = escape_markdown_v2(f"{time_taken} seconds")
+
+    header_title = "⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
+    if bin_details.get("scheme", "").lower() == "mastercard":
+        percentage = escape_markdown_v2(str(random.randint(68, 100)))
         header_title = f"⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%"
 
     final_message_text_formatted = (
-        f"╭───\\[ {header_title} \\]───╮\n" # FIX: Escaped the closing bracket ']'
+        f"╭───\\[ {header_title} \\]───╮\n"
         f"\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : {escape_markdown_v2(full_card_str)}\n"
-        f"• 𝗕𝗿𝗮𝗻𝗱        : {brand}\n"
-        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : {bank_name}\n"
-        f"• 𝗟𝗲𝘃𝗲𝗹        : {level_emoji} {level}\n"
-        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      :  『𝗥ᴏᴄ𝗸ʏ』\n"
-        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : {escape_markdown_v2(f'{time_taken:.0f} seconds')}\n"
+        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escaped_card_str}`\n"
+        f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
+        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
+        f"• 𝗟𝗲𝘃𝗲𝗹        : {level_emoji} `{level}`\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      :  `『𝗥ᴏᴄ𝗸ʏ』`\n"
+        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : `{time_taken_str}`\n"
         f"\n"
         f"╰────────────────────╯"
     )
@@ -930,6 +986,11 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    import re
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /credits command, showing user info and credits."""
     if not await check_authorization(update, context):
@@ -937,25 +998,29 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user = update.effective_user
     user_data = await get_user(user.id)
-    credits = user_data.get('credits', 0)
+
+    credits = str(user_data.get('credits', 0))
     plan = user_data.get('plan', 'N/A')
 
-    # Escape for MarkdownV2
+    # Escape user inputs
     escaped_username = escape_markdown_v2(user.username or 'N/A')
     escaped_user_id = escape_markdown_v2(str(user.id))
     escaped_plan = escape_markdown_v2(plan)
-    escaped_credits = escape_markdown_v2(str(credits))
+    escaped_credits = escape_markdown_v2(credits)
 
     credit_message = (
         f"💳 *Your Credit Info* 💳\n"
         f"━━━━━━━━━━━━━━\n"
-        f"👤 Username: @{escaped_username}\n"
-        f"🆔 User ID: {escaped_user_id}\n"
-        f"📋 Plan: {escaped_plan}\n"
-        f"💳 Credits: {escaped_credits}\n"
+        f"👤 Username: `@{escaped_username}`\n"
+        f"🆔 User ID: `{escaped_user_id}`\n"
+        f"📋 Plan: `{escaped_plan}`\n"
+        f"💳 Credits: `{escaped_credits}`\n"
     )
 
-    await update.effective_message.reply_text(credit_message, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(
+        credit_message,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
 
 
 from faker import Faker
@@ -1030,8 +1095,12 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 import re
 
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
 async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Extracts all cards from any dump or text."""
+    """Extracts all cards from a dump (message or reply)."""
     if not await check_authorization(update, context):
         return
 
@@ -1044,9 +1113,14 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    if not context.args:
+    # Determine input text (from reply or args)
+    if update.message.reply_to_message and update.message.reply_to_message.text:
+        dump = update.message.reply_to_message.text
+    elif context.args:
+        dump = " ".join(context.args)
+    else:
         return await update.effective_message.reply_text(
-            "❌ Please provide a dump or text to extract cards from\\. Usage: `/fl <dump or text>`",
+            "❌ Please provide or reply to a dump containing cards\\. Usage: `/fl <dump or reply>`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -1056,21 +1130,18 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    dump = " ".join(context.args)
-    cards_found = re.findall(r'\d{13,16}(?:\|\d{2}\|\d{2}(?:\|\d{3,4})?)?', dump)
+    # Match CCs with optional |MM|YY|CVV
+    cards_found = re.findall(r'\b\d{13,16}(?:\|\d{2}\|\d{2}(?:\|\d{3,4})?)?\b', dump)
     count = len(cards_found)
 
-    extracted_cards_text = "\n".join([f"`{escape_markdown_v2(card)}`" for card in cards_found])
-    if not cards_found:
+    if cards_found:
+        extracted_cards_text = "\n".join([f"`{escape_markdown_v2(card)}`" for card in cards_found])
+    else:
         extracted_cards_text = "_No cards found in the provided text\\._"
 
-    escaped_user = escape_markdown_v2(update.effective_user.full_name)
-
     msg = (
-        f"╭━━━ [ 💳 𝘊𝘢𝘳𝘥 𝘓𝘪𝘴𝘵 𝘌𝘹𝘵𝘳𝘢𝘤𝘵𝘦𝘥 ] ━━━⬣\n"
-        f"┣ ❏ Total Cards ➳ `{count}`\n"
-        f"┣ ❏ Requested by ➳ `{escaped_user}`\n"
-        f"┣ ❏ Bot by ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
+        f"╭━━━ [ 💳 𝗘𝘅𝘁𝗿𝗮𝗰𝘁𝗲𝗱 𝗖𝗮𝗿𝗱𝘀 ] ━━━⬣\n"
+        f"┣ ❏ Total ➳ `{count}`\n"
         f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
         f"{extracted_cards_text}"
     )
@@ -1078,10 +1149,23 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
+
 import psutil
+from telegram.constants import ParseMode
+import re
+
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
+async def get_total_users():
+    """Returns total number of users from the PostgreSQL database."""
+    from db import get_all_users  # Adjust this to your actual DB call
+    users = await get_all_users()
+    return len(users)
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Checks and reports on bot system status."""
+    """Checks and reports bot system status."""
     if not await check_authorization(update, context):
         return
 
@@ -1102,20 +1186,23 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cpu_usage = psutil.cpu_percent(interval=1)
     memory_info = psutil.virtual_memory()
-    total_memory = memory_info.total / (1024 ** 2)  # in MB
-    used_memory = memory_info.used / (1024 ** 2)    # in MB
+    total_memory = memory_info.total / (1024 ** 2)  # MB
     memory_percent = memory_info.percent
+    total_users = await get_total_users()
 
     status_message = (
         "╭━━━ 𝐁𝐨𝐭 𝐒𝐭𝐚𝐭𝐮𝐬 ━━━━⬣\n"
         f"┣ ❏ 𝖢𝖯𝖴 𝖴𝗌𝖺𝗀𝖾 ➳ `{cpu_usage}%`\n"
         f"┣ ❏ 𝖱𝖠𝖬 𝖴𝗌𝖺𝗀𝖾 ➳ `{memory_percent}%`\n"
         f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖱𝖠𝖬 ➳ `{total_memory:.2f} MB`\n"
-        f"┣ ❏ 𝖴𝗌𝖾𝖽 𝖱𝖠𝖬  ➳ `{used_memory:.2f} MB`\n"
+        f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖴𝗌𝖾𝗋𝗌 ➳ `{total_users}`\n"
         f"╰━━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    await update.effective_message.reply_text(status_message, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(
+        status_message,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
 
 
 # === OWNER-ONLY COMMANDS ===
@@ -1124,13 +1211,14 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-# Function to escape MarkdownV2 special characters
 def escape_markdown_v2(text: str) -> str:
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', text)
+    """Escapes special characters for Telegram MarkdownV2."""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows all admin commands, authorized groups, and users."""
+    """Shows all admin commands, authorized groups, and private plan users."""
 
+    # Admin commands list
     admin_commands_list = (
         "• `/give_starter <user_id>`: Give 7\\-day Starter Plan\n"
         "• `/give_premium <user_id>`: Give 30\\-day Premium Plan\n"
@@ -1142,33 +1230,44 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/gen_codes`: Generate 10 Starter Plan codes\n"
     )
 
-    authorized_groups_list = (
-        "\n".join([f"• `{escape_markdown_v2(str(chat_id))}`" for chat_id in AUTHORIZED_CHATS])
-        if AUTHORIZED_CHATS else "No groups authorized."
-    )
+    # Authorized Groups (name + ID)
+    authorized_groups_list = []
+    for chat_id in AUTHORIZED_CHATS:
+        try:
+            chat = await context.bot.get_chat(chat_id)
+            name = escape_markdown_v2(chat.title or "N/A")
+        except Exception:
+            name = "Unknown or Left Group"
+        escaped_id = escape_markdown_v2(str(chat_id))
+        authorized_groups_list.append(f"• `{escaped_id}` → *{name}*")
+    authorized_groups_str = "\n".join(authorized_groups_list) if authorized_groups_list else "No groups authorized."
 
+    # Authorized Users (ID + @username) with valid plan
     authorized_users_list = []
     for user_id in AUTHORIZED_PRIVATE_USERS:
         user_data = USER_DATA_DB.get(user_id)
         if user_data:
-            uid = escape_markdown_v2(str(user_id))
-            plan = escape_markdown_v2(user_data.get("plan", "N/A"))
-            authorized_users_list.append(f"• ID: `{uid}` | Plan: `{plan}`")
-    authorized_users_list_str = (
-        "\n".join(authorized_users_list) if authorized_users_list else "No private users authorized."
-    )
+            plan = user_data.get("plan", "N/A")
+            if plan and plan.lower() not in ["free", "n/a"]:
+                uid = escape_markdown_v2(str(user_id))
+                uname = escape_markdown_v2(user_data.get("username", "N/A"))
+                plan_escaped = escape_markdown_v2(plan)
+                authorized_users_list.append(f"• ID: `{uid}` | Username: `@{uname}` | Plan: `{plan_escaped}`")
+    authorized_users_str = "\n".join(authorized_users_list) if authorized_users_list else "No private users with plans."
 
+    # Final formatted message
     admin_dashboard_message = (
         "╭━━━━━『 𝐀𝐃𝐌𝐈𝐍 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃 』━━━━━╮\n"
         "┣ 🤖 *Owner Commands:*\n"
-        f"╰─\\> {admin_commands_list}"
-        "╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐆𝐫𝐨𝐮𝐩𝐬 』━━━╮\n"
-        f"╰─\\> {escape_markdown_v2(authorized_groups_list)}\n"
-        "╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐔𝐬𝐞𝐫𝐬 \\(Private\\) 』━━━╮\n"
-        f"╰─\\> {escape_markdown_v2(authorized_users_list_str)}"
+        f"{admin_commands_list}"
+        "\n╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐆𝐫𝐨𝐮𝐩𝐬 』━━━╮\n"
+        f"{authorized_groups_str}\n"
+        "\n╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐔𝐬𝐞𝐫𝐬 \\(Private Plans\\) 』━━━╮\n"
+        f"{authorized_users_str}"
     )
 
     await update.effective_message.reply_text(admin_dashboard_message, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 from datetime import datetime, timedelta
 
@@ -1194,82 +1293,86 @@ async def _update_user_plan(user_id: int, plan_name: str, credits: int, duration
     return user_data
 
 
-async def give_starter(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS:
-        return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
-    if not context.args or not context.args[0].isdigit():
-        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_starter [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
-    user_id = int(context.args[0])
-    await _update_user_plan(user_id, 'Starter Plan', 300, 7)
-    await update.effective_message.reply_text(f"✅ Starter Plan activated for user `{user_id}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+from datetime import datetime, timedelta
+from telegram.constants import ParseMode
 
-async def give_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS:
-        return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
-    if not context.args or not context.args[0].isdigit():
-        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_premium [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
-    user_id = int(context.args[0])
-    await _update_user_plan(user_id, 'Premium Plan', 1000, 30)
-    await update.effective_message.reply_text(f"✅ Premium Plan activated for user `{user_id}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+PLAN_DEFINITIONS = {
+    "starter": {"name": "Starter Plan", "credits": 300, "days": 7},
+    "premium": {"name": "Premium Plan", "credits": 1000, "days": 30},
+    "plus": {"name": "Plus Plan", "credits": 2000, "days": 60},
+    "custom": {"name": "Custom Plan", "credits": 3000, "days": None},
+}
 
-async def give_plus(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS:
-        return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
-    if not context.args or not context.args[0].isdigit():
-        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_plus [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
-    user_id = int(context.args[0])
-    await _update_user_plan(user_id, 'Plus Plan', 2000, 60)
-    await update.effective_message.reply_text(f"✅ Plus Plan activated for user `{user_id}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+def escape_markdown_v2(text: str) -> str:
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
-async def give_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS:
-        return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
-    if not context.args or not context.args[0].isdigit():
-        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_custom [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
-    user_id = int(context.args[0])
-    await _update_user_plan(user_id, 'Custom Plan', 3000)
-    await update.effective_message.reply_text(f"✅ Custom Plan activated for user `{user_id}` with 3000 credits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-async def take_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Removes a user's current plan and revokes private access."""
-    if update.effective_user.id not in ADMIN_IDS:
-        return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
-
-    if not context.args or not context.args[0].isdigit():
-        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/take_plan [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
-    
+async def notify_user_plan(bot, user_id: int, plan_name: str, credits: int, duration_days: int = None):
     try:
-        user_id = int(context.args[0])
-        user_data = await get_user(user_id)  # ✅ FIXED: was `user.id` before (wrong variable)
-        
-        # Reset plan and credits
-        user_data['plan'] = 'Free'
-        user_data['status'] = 'Free'
-        user_data['plan_expiry'] = 'N/A'
-        user_data['credits'] = DEFAULT_FREE_CREDITS
-        
-        # Persist the update
-        await update_user(
-            user_id,
-            plan='Free',
-            status='Free',
-            plan_expiry='N/A',
-            credits=DEFAULT_FREE_CREDITS
+        chat = await bot.get_chat(user_id)
+        username = chat.username or 'N/A'
+        full_name = chat.full_name or 'N/A'
+        expiry = (
+            (datetime.now() + timedelta(days=duration_days)).strftime('%d-%m-%Y')
+            if duration_days else 'N/A'
         )
 
-        # Remove from private authorized users
-        AUTHORIZED_PRIVATE_USERS.discard(user_id)
-
-        await update.effective_message.reply_text(
-            f"✅ Plan and private access have been removed for user `{user_id}`\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+        message = (
+            "🎉 *Congratulations \\!* 🎉\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 *User:* `{escape_markdown_v2(full_name)}` (`{user_id}`)\n"
+            f"📛 *Username:* @{escape_markdown_v2(username)}\n"
+            f"💼 *Plan:* `{escape_markdown_v2(plan_name)}`\n"
+            f"💳 *Credits:* `{credits}`\n"
+            f"📅 *Expiry:* `{escape_markdown_v2(expiry)}`\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "_Enjoy your premium access on CardVaultX_ ⚡"
         )
 
-    except ValueError:
+        await bot.send_message(chat_id=user_id, text=message, parse_mode=ParseMode.MARKDOWN_V2)
+    except Exception as e:
+        logger.warning(f"Could not notify user {user_id}: {e}")
+
+
+async def give_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_IDS:
         return await update.effective_message.reply_text(
-            "❌ Invalid user ID format\\. Please provide a valid integer user ID\\.",
+            "🚫 You are not authorized to use this command."
+        )
+
+    if len(context.args) != 2:
+        return await update.effective_message.reply_text(
+            "❌ Invalid format\\. Usage: `/give_plan <starter|premium|plus|custom> <user_id>`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
+    plan_type = context.args[0].lower()
+    user_id_str = context.args[1]
+
+    if plan_type not in PLAN_DEFINITIONS:
+        return await update.effective_message.reply_text(
+            f"❌ Invalid plan type `{plan_type}`\\. Choose from: starter, premium, plus, custom\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    if not user_id_str.isdigit():
+        return await update.effective_message.reply_text(
+            "❌ User ID must be a number\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    user_id = int(user_id_str)
+    plan = PLAN_DEFINITIONS[plan_type]
+    plan_name = plan["name"]
+    credits = plan["credits"]
+    duration_days = plan["days"]
+
+    await _update_user_plan(user_id, plan_name, credits, duration_days)
+    await update.effective_message.reply_text(
+        f"✅ {plan_name} activated for user `{user_id}`\\.",
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+    await notify_user_plan(context.bot, user_id, plan_name, credits, duration_days)
 
 
 async def auth_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
