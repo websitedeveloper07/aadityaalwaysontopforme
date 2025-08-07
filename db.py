@@ -54,6 +54,6 @@ async def update_user(user_id, **kwargs):
 
 async def get_all_users():
     conn = await connect()
-    rows = await conn.fetch("SELECT * FROM users")
+    rows = await conn.fetch("SELECT id, plan FROM users")
     await conn.close()
     return [dict(row) for row in rows]
