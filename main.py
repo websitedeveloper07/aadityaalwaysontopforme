@@ -690,18 +690,19 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message, bin_details))
 
 
-from telegram.helpers import escape_markdown
+import time
+import random
+import asyncio
 import re
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from telegram.error import BadRequest
 
 def escape_markdown_v2(text: str) -> str:
-    """Escapes special characters for Telegram MarkdownV2."""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message, bin_details):
-    import time, random, asyncio
-    from telegram.constants import ParseMode
-    from telegram.error import BadRequest
-
     start_time = time.time()
     kill_time = random.uniform(40, 87)
 
@@ -729,18 +730,16 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         escaped_percent = escape_markdown_v2(percent)
 
         animation_text = (
-            "*🔪 Kɪʟʟɪɴɢ 𝐂𝐚𝐫𝐝...*\n"
-            "╭──────────────╮\n"
-            f"{escaped_bar}\n"
-            f"📊 *Pʀᴏɢʀᴇss:* {escaped_percent}\n"
-            "╰──────────────╯"
+            "🔪 *Kɪʟʟɪɴɢ 𝐂𝐚𝐫𝐝...*\n\n"
+            f"`{escaped_bar}`\n"
+            f"📊 *Pʀᴏɢʀᴇss:* `{escaped_percent}`"
         )
 
         try:
             await initial_message.edit_text(animation_text, parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
             if "Message is not modified" not in str(e):
-                logger.warning(f"Edit error: {e}")
+                print(f"Edit error: {e}")
 
         sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
         if sleep_duration <= 0:
@@ -750,31 +749,29 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         elapsed_animation_time = time.time() - start_time
         frame_index += 1
 
-    # Final frame
+    # Final animation
     final_bar, final_percent = animation_frames[-1]
     escaped_bar = escape_markdown_v2(final_bar)
     escaped_percent = escape_markdown_v2(final_percent)
 
     final_animation = (
-        "*🔪 Kɪʟʟɪɴɢ Cᴏᴍᴘʟᴇᴛᴇ\\!* ✅\n"
-        "╭──────────────╮\n"
-        f"{escaped_bar}\n"
-        f"📊 *Fɪɴᴀʟ:* {escaped_percent}\n"
-        "╰──────────────╯"
+        "🔪 *Kɪʟʟɪɴɢ Cᴏᴍᴘʟᴇᴛᴇ\\!* ✅\n\n"
+        f"`{escaped_bar}`\n"
+        f"📊 *Fɪɴᴀʟ:* `{escaped_percent}`"
     )
 
     try:
         await initial_message.edit_text(final_animation, parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e:
-        logger.warning(f"Final frame edit error: {e}")
+        print(f"Final animation error: {e}")
 
-    # Final Result Box
+    # Final box — UNCHANGED format
     time_taken = round(time.time() - start_time)
+    card = escape_markdown_v2(full_card_str)
     brand = escape_markdown_v2(bin_details.get("scheme", "N/A"))
     bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
     level = escape_markdown_v2(bin_details.get("level", "N/A"))
     level_emoji = get_level_emoji(bin_details.get("level", "N/A"))
-    card = escape_markdown_v2(full_card_str)
     taken = escape_markdown_v2(f"{time_taken} seconds")
 
     title = "⚡ Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
@@ -795,6 +792,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
     await initial_message.edit_text(result_box, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 from telegram.constants import ParseMode
