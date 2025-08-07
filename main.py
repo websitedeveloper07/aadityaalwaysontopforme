@@ -284,10 +284,8 @@ from config import OFFICIAL_GROUP_LINK  # Ensure this is defined in your config
 
 logger = logging.getLogger(__name__)
 
-from telegram.helpers import escape_markdown  # Ensure you're using telegram>=20
-
+# Custom MarkdownV2 escaper
 def escape_markdown_v2(text: str) -> str:
-    """Custom MarkdownV2 escaper (if you want full control)."""
     import re
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
@@ -304,12 +302,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'Free')
 
-    # Escape everything properly for MarkdownV2
-    escaped_user_id = escape_markdown_v2(user.id)
+    # Escape all values for MarkdownV2
+    escaped_user_id = escape_markdown_v2(str(user.id))
     escaped_username = escape_markdown_v2(user.username or 'N/A')
     escaped_today = escape_markdown_v2(today)
     escaped_now = escape_markdown_v2(now)
-    escaped_credits = escape_markdown_v2(credits)
+    escaped_credits = escape_markdown_v2(str(credits))
     escaped_plan = escape_markdown_v2(plan)
 
     welcome_message = (
@@ -700,6 +698,10 @@ def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message, bin_details):
+    import time, random
+    from telegram.constants import ParseMode
+    from telegram.error import BadRequest
+
     start_time = time.time()
     kill_time = random.uniform(40, 87)
 
@@ -726,7 +728,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         escaped_frame = escape_markdown_v2(current_frame)
         try:
             await initial_message.edit_text(
-                f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n`{escaped_frame}`",
+                f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\\n{escaped_frame}",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
         except BadRequest as e:
@@ -744,11 +746,10 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         elapsed_animation_time = time.time() - start_time
         frame_index += 1
 
-    final_frame = animation_frames[-1]
-    escaped_final_frame = escape_markdown_v2(final_frame)
+    final_frame = escape_markdown_v2(animation_frames[-1])
     try:
         await initial_message.edit_text(
-            f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\n`{escaped_final_frame}`",
+            f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\\n{final_frame}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     except Exception as e:
@@ -1211,6 +1212,10 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+# Import your config/database
+from config import AUTHORIZED_CHATS, AUTHORIZED_PRIVATE_USERS
+from db import USER_DATA_DB
+
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
@@ -1218,7 +1223,6 @@ def escape_markdown_v2(text: str) -> str:
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows all admin commands, authorized groups, and private plan users."""
 
-    # Admin commands list
     admin_commands_list = (
         "• `/give_starter <user_id>`: Give 7\\-day Starter Plan\n"
         "• `/give_premium <user_id>`: Give 30\\-day Premium Plan\n"
@@ -1227,7 +1231,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/take_plan <user_id>`: Remove plan & private access\n"
         "• `/au <chat_id>`: Authorize a group\n"
         "• `/rauth <user_id>`: Remove private user auth\n"
-        "• `/gen_codes`: Generate 10 Starter Plan codes\n"
+        "• `/gen_codes`: Generate 10 Starter Plan codes"
     )
 
     # Authorized Groups (name + ID)
@@ -1235,41 +1239,46 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for chat_id in AUTHORIZED_CHATS:
         try:
             chat = await context.bot.get_chat(chat_id)
-            name = escape_markdown_v2(chat.title or "N/A")
+            chat_title = escape_markdown_v2(chat.title or "N/A")
         except Exception:
-            name = "Unknown or Left Group"
+            chat_title = "Unknown or Left Group"
         escaped_id = escape_markdown_v2(str(chat_id))
-        authorized_groups_list.append(f"• `{escaped_id}` → *{name}*")
-    authorized_groups_str = "\n".join(authorized_groups_list) if authorized_groups_list else "No groups authorized."
+        authorized_groups_list.append(f"• `{escaped_id}` → *{chat_title}*")
+    authorized_groups_str = (
+        "\n".join(authorized_groups_list) if authorized_groups_list else "_No groups authorized\\._"
+    )
 
     # Authorized Users (ID + @username) with valid plan
     authorized_users_list = []
     for user_id in AUTHORIZED_PRIVATE_USERS:
         user_data = USER_DATA_DB.get(user_id)
         if user_data:
-            plan = user_data.get("plan", "N/A")
-            if plan and plan.lower() not in ["free", "n/a"]:
+            plan = user_data.get("plan", "Free")
+            if plan.lower() not in ["free", "n/a"]:
                 uid = escape_markdown_v2(str(user_id))
                 uname = escape_markdown_v2(user_data.get("username", "N/A"))
                 plan_escaped = escape_markdown_v2(plan)
-                authorized_users_list.append(f"• ID: `{uid}` | Username: `@{uname}` | Plan: `{plan_escaped}`")
-    authorized_users_str = "\n".join(authorized_users_list) if authorized_users_list else "No private users with plans."
+                authorized_users_list.append(
+                    f"• ID: `{uid}` | Username: `@{uname}` | Plan: `{plan_escaped}`"
+                )
+    authorized_users_str = (
+        "\n".join(authorized_users_list) if authorized_users_list else "_No private users with plans\\._"
+    )
 
-    # Final formatted message
     admin_dashboard_message = (
         "╭━━━━━『 𝐀𝐃𝐌𝐈𝐍 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃 』━━━━━╮\n"
         "┣ 🤖 *Owner Commands:*\n"
-        f"{admin_commands_list}"
-        "\n╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐆𝐫𝐨𝐮𝐩𝐬 』━━━╮\n"
+        f"{admin_commands_list}\n"
+        "╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐆𝐫𝐨𝐮𝐩𝐬 』━━━╮\n"
         f"{authorized_groups_str}\n"
-        "\n╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐔𝐬𝐞𝐫𝐬 \\(Private Plans\\) 』━━━╮\n"
+        "╭━━━『 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞𝐝 𝐔𝐬𝐞𝐫𝐬 \\(Private Plans\\) 』━━━╮\n"
         f"{authorized_users_str}"
     )
 
-    await update.effective_message.reply_text(admin_dashboard_message, parse_mode=ParseMode.MARKDOWN_V2)
-
-
-from datetime import datetime, timedelta
+    await update.effective_message.reply_text(
+        admin_dashboard_message,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
 
 async def _update_user_plan(user_id: int, plan_name: str, credits: int, duration_days: int = None):
     """Updates user's subscription plan and expiry."""
