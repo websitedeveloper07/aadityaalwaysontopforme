@@ -1212,12 +1212,10 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-# Import your config/database
 from config import AUTHORIZED_CHATS, AUTHORIZED_PRIVATE_USERS
-from db import USER_DATA_DB
+from db import get_all_users  # ✅ Make sure this exists
 
 def escape_markdown_v2(text: str) -> str:
-    """Escapes special characters for Telegram MarkdownV2."""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1239,32 +1237,32 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for chat_id in AUTHORIZED_CHATS:
         try:
             chat = await context.bot.get_chat(chat_id)
-            chat_title = escape_markdown_v2(chat.title or "N/A")
+            title = escape_markdown_v2(chat.title or "N/A")
         except Exception:
-            chat_title = "Unknown or Left Group"
+            title = "Unknown or Left Group"
         escaped_id = escape_markdown_v2(str(chat_id))
-        authorized_groups_list.append(f"• `{escaped_id}` → *{chat_title}*")
+        authorized_groups_list.append(f"• `{escaped_id}` → *{title}*")
     authorized_groups_str = (
         "\n".join(authorized_groups_list) if authorized_groups_list else "_No groups authorized\\._"
     )
 
-    # Authorized Users (ID + @username) with valid plan
+    # Authorized Private Users with Plans
+    all_users = await get_all_users()
     authorized_users_list = []
-    for user_id in AUTHORIZED_PRIVATE_USERS:
-        user_data = USER_DATA_DB.get(user_id)
-        if user_data:
-            plan = user_data.get("plan", "Free")
-            if plan.lower() not in ["free", "n/a"]:
-                uid = escape_markdown_v2(str(user_id))
-                uname = escape_markdown_v2(user_data.get("username", "N/A"))
-                plan_escaped = escape_markdown_v2(plan)
-                authorized_users_list.append(
-                    f"• ID: `{uid}` | Username: `@{uname}` | Plan: `{plan_escaped}`"
-                )
+    for user in all_users:
+        user_id = user.get("id")
+        plan = user.get("plan", "Free")
+
+        if user_id in AUTHORIZED_PRIVATE_USERS and plan.lower() not in ["free", "n/a"]:
+            uid = escape_markdown_v2(str(user_id))
+            uname = f"user{str(user_id)[-4:]}"  # fallback username
+            plan_escaped = escape_markdown_v2(plan)
+            authorized_users_list.append(f"• ID: `{uid}` | Username: `@{uname}` | Plan: `{plan_escaped}`")
     authorized_users_str = (
         "\n".join(authorized_users_list) if authorized_users_list else "_No private users with plans\\._"
     )
 
+    # Final Message
     admin_dashboard_message = (
         "╭━━━━━『 𝐀𝐃𝐌𝐈𝐍 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃 』━━━━━╮\n"
         "┣ 🤖 *Owner Commands:*\n"
@@ -1275,10 +1273,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{authorized_users_str}"
     )
 
-    await update.effective_message.reply_text(
-        admin_dashboard_message,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+    await update.effective_message.reply_text(admin_dashboard_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 async def _update_user_plan(user_id: int, plan_name: str, credits: int, duration_days: int = None):
     """Updates user's subscription plan and expiry."""
