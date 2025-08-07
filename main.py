@@ -1323,41 +1323,178 @@ def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 
+from datetime import datetime
+
 async def give_starter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_IDS:
         return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
+
     if not context.args or not context.args[0].isdigit():
-        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_starter [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text(
+            "❌ Invalid format\\. Usage: `/give_starter [user_id]`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
     user_id = int(context.args[0])
     await _update_user_plan(user_id, 'Starter Plan', 300, 7)
-    await update.effective_message.reply_text(f"✅ Starter Plan activated for user `{user_id}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(
+        f"✅ Starter Plan activated for user `{user_id}`\\.",
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+    # Fetch user info and send congratulation
+    try:
+        chat = await context.bot.get_chat(user_id)
+        first_name = chat.first_name or "Warrior"
+    except Exception:
+        first_name = "Warrior"
+
+    date_str = datetime.now().strftime('%d %B %Y')
+    congrats_text = generate_congrats_box(user_id, "Starter", "KILLER + TOOLS", date_str, first_name)
+
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=congrats_text,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except Exception as e:
+        await update.effective_message.reply_text(f"⚠️ Failed to send congratulatory message to user `{user_id}`\\.\nError: `{e}`", parse_mode=ParseMode.MARKDOWN_V2)
+
+from datetime import datetime
 
 async def give_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_IDS:
         return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
+
     if not context.args or not context.args[0].isdigit():
-        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_premium [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text(
+            "❌ Invalid format\\. Usage: `/give_premium [user_id]`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
     user_id = int(context.args[0])
     await _update_user_plan(user_id, 'Premium Plan', 1000, 30)
-    await update.effective_message.reply_text(f"✅ Premium Plan activated for user `{user_id}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(
+        f"✅ Premium Plan activated for user `{user_id}`\\.",
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+    # Fetch user details
+    try:
+        chat = await context.bot.get_chat(user_id)
+        first_name = chat.first_name or "Warrior"
+    except Exception:
+        first_name = "Warrior"
+
+    date_str = datetime.now().strftime('%d %B %Y')
+    congrats_text = generate_congrats_box(user_id, "Premium", "KILLER + TOOLS", date_str, first_name)
+
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=congrats_text,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except Exception as e:
+        await update.effective_message.reply_text(
+            f"⚠️ Failed to send congratulatory message to user `{user_id}`\\.\nError: `{e}`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+
+from datetime import datetime
 
 async def give_plus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_IDS:
         return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
+
     if not context.args or not context.args[0].isdigit():
-        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_plus [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text(
+            "❌ Invalid format\\. Usage: `/give_plus [user_id]`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
     user_id = int(context.args[0])
     await _update_user_plan(user_id, 'Plus Plan', 2000, 60)
-    await update.effective_message.reply_text(f"✅ Plus Plan activated for user `{user_id}`\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    await update.effective_message.reply_text(
+        f"✅ Plus Plan activated for user `{user_id}`\\.",
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+    # Fetch user's name
+    try:
+        chat = await context.bot.get_chat(user_id)
+        first_name = chat.first_name or "Warrior"
+    except Exception:
+        first_name = "Warrior"
+
+    # Create and send congratulations box
+    date_str = datetime.now().strftime('%d %B %Y')
+    congrats_text = generate_congrats_box(user_id, "Plus", "KILLER + TOOLS", date_str, first_name)
+
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=congrats_text,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except Exception as e:
+        await update.effective_message.reply_text(
+            f"⚠️ Failed to send congratulatory message to user `{user_id}`\\.\nError: `{e}`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+from datetime import datetime
 
 async def give_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_IDS:
         return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
+
     if not context.args or not context.args[0].isdigit():
-        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: `/give_custom [user_id]`", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text(
+            "❌ Invalid format\\. Usage: `/give_custom [user_id]`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
     user_id = int(context.args[0])
     await _update_user_plan(user_id, 'Custom Plan', 3000)
-    await update.effective_message.reply_text(f"✅ Custom Plan activated for user `{user_id}` with 3000 credits\\.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    await update.effective_message.reply_text(
+        f"✅ Custom Plan activated for user `{user_id}` with 3000 credits\\.",
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+    # Get first name for congrats message
+    try:
+        chat = await context.bot.get_chat(user_id)
+        first_name = chat.first_name or "Warrior"
+    except Exception:
+        first_name = "Warrior"
+
+    # Generate & send congratulatory message
+    date_str = datetime.now().strftime('%d %B %Y')
+    congrats_text = generate_congrats_box(
+        user_id=user_id,
+        plan="Custom",
+        access_level="KILLER + TOOLS",
+        date=date_str,
+        first_name=first_name
+    )
+
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=congrats_text,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except Exception as e:
+        await update.effective_message.reply_text(
+            f"⚠️ Failed to send congratulatory message to user `{user_id}`\\.\nError: `{e}`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
 
 async def take_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Removes a user's current plan and revokes private access."""
@@ -1399,6 +1536,28 @@ async def take_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ Invalid user ID format\\. Please provide a valid integer user ID\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
+
+def generate_congrats_box(user_id: int, plan: str, access_level: str, date: str, first_name: str) -> str:
+    from telegram.helpers import escape_markdown
+    return (
+        f"╭━━━[ 🎉 𝐂𝐨𝐧𝐠𝐫𝐚𝐭𝐬, {escape_markdown(first_name, version=2)}\\! ]━━━╮\n"
+        f"┃\n"
+        f"┃ ✨ *Access to* ⚡ `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽𝑿` *has been granted\\.*\n"
+        f"┃\n"
+        f"┃ 🆔 *ID*             : `{user_id}`\n"
+        f"┃ 💎 *Plan*           : `{plan}`\n"
+        f"┃ 🧰 *Access Level*   : `{access_level}`\n"
+        f"┃ 📅 *Date*           : `{date}`\n"
+        f"┃ 🔓 *Status*         : `✔ Activated`\n"
+        f"┃\n"
+        f"╰━━━━━━━━━━━━━━━━━━━━━━━╯\n"
+        f"\n"
+        f"💠 *Welcome to CardVaultX* — where limits don't exist\\.\n"
+        f"You’re now a proud member of the *𝗘𝗹𝗶𝘁𝗲 {escape_markdown(plan, version=2)} 𝗧𝗶𝗲𝗿*\\.\n"
+        f"\n"
+        f"🍷 *Thanks for choosing CardVaultX\\!* Your vault is now open\\."
+    )
 
 
 async def auth_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
