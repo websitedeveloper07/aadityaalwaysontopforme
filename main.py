@@ -313,13 +313,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_message = (
         f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝓵𝒕𝑿* ⚡\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
-        f"🆔 ID: `{escaped_user_id}`\n"
-        f"👤 Username: @{escaped_username}\n"
-        f"📅 Date: `{escaped_today}`\n"
-        f"🕒 Time: `{escaped_now}`\n"
-        f"💳 Credits: `{escaped_credits}`\n"
-        f"📋 Plan: `{escaped_plan}`\n\n"
-        f"Use the buttons below to get started 👇"
+        f"🆔 𝙄𝘿: `{escaped_user_id}`\n"
+        f"👤 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{escaped_username}\n"
+        f"📅 𝘿𝙖𝙩𝙚: `{escaped_today}`\n"
+        f"🕒 𝙏𝙞𝙢𝙚: `{escaped_now}`\n"
+        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩𝙨: `{escaped_credits}`\n"
+        f"📋 𝙋𝙡𝙖𝙣: `{escaped_plan}`\n\n"
+        f"𝓤𝓼𝓮 𝓽𝓱𝓮 𝓫𝓾𝓽𝓽𝓸𝓷𝓼 𝓫𝓮𝓵𝓸𝔀 𝓽𝓸 𝓰𝓮𝓽 𝓼𝓽𝓪𝓻𝓽𝓮𝓭 👇"
     )
 
     keyboard = [
@@ -534,15 +534,15 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     info_message = (
         "🔍 *Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
         "━━━━━━━━━━━━━━\n"
-        f"👤 First Name: `{first_name}`\n"
-        f"🆔 ID: `{user_id}`\n"
-        f"📛 Username: `@{username}`\n\n"
-        f"📋 Status: `{status}`\n"
-        f"💳 Credit: `{credits}`\n"
-        f"💼 Plan: `{plan}`\n"
-        f"📅 Plan Expiry: `{plan_expiry}`\n"
-        f"🔑 Keys Redeemed: `{keys_redeemed}`\n"
-        f"🗓 Registered At: `{registered_at}`\n"
+        f"👤 𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: {first_name}\n"
+        f"🆔 𝙄𝘿: `{user_id}`\n"
+        f"📛 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{username}\n\n"
+        f"📋 𝙎𝙩𝙖𝙩𝙪𝙨: {status}\n"
+        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩: {credits}\n"
+        f"💼 𝙋𝙡𝙖𝙣: {plan}\n"
+        f"📅 𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: {plan_expiry}\n"
+        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: {keys_redeemed}\n"
+        f"🗓 𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: {registered_at}\n"
     )
 
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
