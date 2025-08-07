@@ -700,6 +700,7 @@ from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
 def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message, bin_details):
@@ -730,10 +731,10 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         escaped_percent = escape_markdown_v2(percent)
 
         animation_text = (
-            "*🔪 Kɪʟʟɪɴɢ 𝐂𝐚𝐫𝐝\\.\\.\\.\\*\\n"
-            "╭──────────────╮\\n"
-            f"{escaped_bar}\\n"
-            f"📊 Pʀᴏɢʀᴇss: {escaped_percent}\\n"
+            "*🔪 Kɪʟʟɪɴɢ 𝐂𝐚𝐫𝐝\\.\\.\\.*\n"
+            "╭──────────────╮\n"
+            f"`{escaped_bar}`\n"
+            f"📊 *Pʀᴏɢʀᴇss:* `{escaped_percent}`\n"
             "╰──────────────╯"
         )
 
@@ -757,10 +758,10 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     escaped_percent = escape_markdown_v2(final_percent)
 
     final_animation = (
-        "*🔪 Kɪʟʟɪɴɢ Cᴏᴍᴘʟᴇᴛᴇ\\!* ✅\\n"
-        "╭──────────────╮\\n"
-        f"{escaped_bar}\\n"
-        f"📊 Fɪɴᴀʟ: {escaped_percent}\\n"
+        "*🔪 Kɪʟʟɪɴɢ Cᴏᴍᴘʟᴇᴛᴇ\\!* ✅\n"
+        "╭──────────────╮\n"
+        f"`{escaped_bar}`\n"
+        f"📊 *Fɪɴᴀʟ:* `{escaped_percent}`\n"
         "╰──────────────╯"
     )
 
