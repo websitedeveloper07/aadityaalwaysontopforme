@@ -534,15 +534,15 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     info_message = (
         "🔍 *Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
         "━━━━━━━━━━━━━━\n"
-        f"👤 𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: {first_name}\n"
+        f"👤 𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: `{first_name}`\n"
         f"🆔 𝙄𝘿: `{user_id}`\n"
         f"📛 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{username}\n\n"
-        f"📋 𝙎𝙩𝙖𝙩𝙪𝙨: {status}\n"
-        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩: {credits}\n"
-        f"💼 𝙋𝙡𝙖𝙣: {plan}\n"
-        f"📅 𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: {plan_expiry}\n"
-        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: {keys_redeemed}\n"
-        f"🗓 𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: {registered_at}\n"
+        f"📋 𝙎𝙩𝙖𝙩𝙪𝙨: `{status}`\n"
+        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩: `{credits}`\n"
+        f"💼 𝙋𝙡𝙖𝙣: `{plan}`\n"
+        f"📅 𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: `{plan_expiry}`\n"
+        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: `{keys_redeemed}`\n"
+        f"🗓 𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: `{registered_at}`\n"
     )
 
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
@@ -698,7 +698,7 @@ def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message, bin_details):
-    import time, random
+    import time, random, asyncio
     from telegram.constants import ParseMode
     from telegram.error import BadRequest
 
@@ -706,17 +706,17 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     kill_time = random.uniform(40, 87)
 
     animation_frames = [
-        "▱▱▱▱▱▱▱▱▱▱ 0%",
-        "█▱▱▱▱▱▱▱▱▱ 10%",
-        "██▱▱▱▱▱▱▱▱ 20%",
-        "███▱▱▱▱▱▱▱ 30%",
-        "████▱▱▱▱▱▱ 40%",
-        "█████▱▱▱▱▱ 50%",
-        "██████▱▱▱▱ 60%",
-        "███████▱▱▱ 70%",
-        "████████▱▱ 80%",
-        "█████████▱ 90%",
-        "██████████ 100%"
+        ("▱▱▱▱▱▱▱▱▱▱", "0%"),
+        ("█▱▱▱▱▱▱▱▱▱", "10%"),
+        ("██▱▱▱▱▱▱▱▱", "20%"),
+        ("███▱▱▱▱▱▱▱", "30%"),
+        ("████▱▱▱▱▱▱", "40%"),
+        ("█████▱▱▱▱▱", "50%"),
+        ("██████▱▱▱▱", "60%"),
+        ("███████▱▱▱", "70%"),
+        ("████████▱▱", "80%"),
+        ("█████████▱", "90%"),
+        ("██████████", "100%")
     ]
 
     frame_interval = kill_time / len(animation_frames)
@@ -724,69 +724,77 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     frame_index = 0
 
     while elapsed_animation_time < kill_time:
-        current_frame = animation_frames[frame_index % len(animation_frames)]
-        escaped_frame = escape_markdown_v2(current_frame)
+        bar, percent = animation_frames[frame_index % len(animation_frames)]
+        escaped_bar = escape_markdown_v2(bar)
+        escaped_percent = escape_markdown_v2(percent)
+
+        animation_text = (
+            "*🔪 Kɪʟʟɪɴɢ 𝐂𝐚𝐫𝐝...*\n"
+            "╭──────────────╮\n"
+            f"{escaped_bar}\n"
+            f"📊 *Pʀᴏɢʀᴇss:* {escaped_percent}\n"
+            "╰──────────────╯"
+        )
+
         try:
-            await initial_message.edit_text(
-                f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\\n{escaped_frame}",
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
+            await initial_message.edit_text(animation_text, parse_mode=ParseMode.MARKDOWN_V2)
         except BadRequest as e:
-            if "Message is not modified" in str(e):
-                logger.debug("Message not modified.")
-            elif "Flood control exceeded" in str(e):
-                logger.warning(f"Flood control hit during animation for {full_card_str}: {e}")
-            else:
-                logger.warning(f"Failed to edit message during animation (BadRequest): {e}")
+            if "Message is not modified" not in str(e):
+                logger.warning(f"Edit error: {e}")
 
         sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
         if sleep_duration <= 0:
             break
+
         await asyncio.sleep(sleep_duration)
         elapsed_animation_time = time.time() - start_time
         frame_index += 1
 
-    final_frame = escape_markdown_v2(animation_frames[-1])
-    try:
-        await initial_message.edit_text(
-            f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\\n{final_frame}",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-    except Exception as e:
-        logger.warning(f"Failed to edit message to final frame: {e}")
+    # Final frame
+    final_bar, final_percent = animation_frames[-1]
+    escaped_bar = escape_markdown_v2(final_bar)
+    escaped_percent = escape_markdown_v2(final_percent)
 
-    # Final result details
+    final_animation = (
+        "*🔪 Kɪʟʟɪɴɢ Cᴏᴍᴘʟᴇᴛᴇ\\!* ✅\n"
+        "╭──────────────╮\n"
+        f"{escaped_bar}\n"
+        f"📊 *Fɪɴᴀʟ:* {escaped_percent}\n"
+        "╰──────────────╯"
+    )
+
+    try:
+        await initial_message.edit_text(final_animation, parse_mode=ParseMode.MARKDOWN_V2)
+    except Exception as e:
+        logger.warning(f"Final frame edit error: {e}")
+
+    # Final Result Box
     time_taken = round(time.time() - start_time)
-    bank_name = escape_markdown_v2(bin_details.get("bank", "N/A"))
+    brand = escape_markdown_v2(bin_details.get("scheme", "N/A"))
+    bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
     level = escape_markdown_v2(bin_details.get("level", "N/A"))
     level_emoji = get_level_emoji(bin_details.get("level", "N/A"))
-    brand = escape_markdown_v2(bin_details.get("scheme", "N/A"))
-    escaped_card_str = escape_markdown_v2(full_card_str)
-    time_taken_str = escape_markdown_v2(f"{time_taken} seconds")
+    card = escape_markdown_v2(full_card_str)
+    taken = escape_markdown_v2(f"{time_taken} seconds")
 
-    header_title = "⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
+    title = "⚡ Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
     if bin_details.get("scheme", "").lower() == "mastercard":
-        percentage = escape_markdown_v2(str(random.randint(68, 100)))
-        header_title = f"⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%"
+        percent = escape_markdown_v2(str(random.randint(68, 100)))
+        title = f"⚡ Cᴀʀᴅ Kɪʟʟᴇᴅ \\- {percent}\\% Sᴜᴄᴄᴇss"
 
-    final_message_text_formatted = (
-        f"╭───\\[ {header_title} \\]───╮\n"
-        f"\n"
-        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : `{escaped_card_str}`\n"
-        f"• 𝗕𝗿𝗮𝗻𝗱        : `{brand}`\n"
-        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : `{bank_name}`\n"
-        f"• 𝗟𝗲𝘃𝗲𝗹        : {level_emoji} `{level}`\n"
-        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
-        f"• 𝗕𝒐𝒕 𝒃𝒚      :  `『𝗥ᴏᴄ𝗸ʏ』`\n"
-        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : `{time_taken_str}`\n"
-        f"\n"
+    result_box = (
+        f"╭───『 {title} 』───╮\n\n"
+        f"• 𝘾𝙖𝙧𝙙        : `{card}`\n"
+        f"• 𝘽𝙧𝙖𝙣𝙙       : `{brand}`\n"
+        f"• 𝙄𝙨𝙨𝙪𝙚𝙧      : `{bank}`\n"
+        f"• 𝙇𝙚𝙫𝙚𝙡       : {level_emoji} `{level}`\n"
+        f"• 𝙆𝙞𝙡𝙡𝙚𝙧     : `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
+        f"• 𝘽𝙤𝙩 𝘽𝙮     : `『𝗥ᴏᴄ𝗸ʏ』`\n"
+        f"• 𝙏𝙞𝙢𝙚 𝙏𝙖𝙠𝙚𝙣 : `{taken}`\n\n"
         f"╰────────────────────╯"
     )
 
-    await initial_message.edit_text(
-        final_message_text_formatted,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+    await initial_message.edit_text(result_box, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 from telegram.constants import ParseMode
