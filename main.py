@@ -1307,102 +1307,80 @@ def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 
-async def notify_user_plan(bot, user_id: int, plan_name: str, credits: int, duration_days: int = None):
-    try:
-        chat = await bot.get_chat(user_id)
-        username = chat.username or 'N/A'
-        full_name = chat.full_name or 'N/A'
-        expiry = (
-            (datetime.now() + timedelta(days=duration_days)).strftime('%d-%m-%Y')
-            if duration_days else 'N/A'
-        )
-
-        message = (
-            "🎉 *Congratulations \\!* 🎉\n"
-            "━━━━━━━━━━━━━━━━━━━\n"
-            f"👤 *User:* `{escape_markdown_v2(full_name)}` (`{user_id}`)\n"
-            f"📛 *Username:* @{escape_markdown_v2(username)}\n"
-            f"💼 *Plan:* `{escape_markdown_v2(plan_name)}`\n"
-            f"💳 *Credits:* `{credits}`\n"
-            f"📅 *Expiry:* `{escape_markdown_v2(expiry)}`\n"
-            "━━━━━━━━━━━━━━━━━━━\n"
-            "_Enjoy your premium access on CardVaultX_ ⚡"
-        )
-
-        await bot.send_message(chat_id=user_id, text=message, parse_mode=ParseMode.MARKDOWN_V2)
-    except Exception as e:
-        logger.warning(f"Could not notify user {user_id}: {e}")
-
-
-async def give_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def give_starter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_IDS:
-        return await update.effective_message.reply_text(
-            "🚫 You are not authorized to use this command."
-        )
+        return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
+    if not context.args or not context.args[0].isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: /give_starter [user_id]", parse_mode=ParseMode.MARKDOWN_V2)
+    user_id = int(context.args[0])
+    await _update_user_plan(user_id, 'Starter Plan', 300, 7)
+    await update.effective_message.reply_text(f"✅ Starter Plan activated for user {user_id}\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    if len(context.args) != 2:
-        return await update.effective_message.reply_text(
-            "❌ Invalid format\\. Usage: `/give_plan <starter|premium|plus|custom> <user_id>`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+async def give_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_IDS:
+        return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
+    if not context.args or not context.args[0].isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: /give_premium [user_id]", parse_mode=ParseMode.MARKDOWN_V2)
+    user_id = int(context.args[0])
+    await _update_user_plan(user_id, 'Premium Plan', 1000, 30)
+    await update.effective_message.reply_text(f"✅ Premium Plan activated for user {user_id}\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    plan_type = context.args[0].lower()
-    user_id_str = context.args[1]
+async def give_plus(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_IDS:
+        return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
+    if not context.args or not context.args[0].isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: /give_plus [user_id]", parse_mode=ParseMode.MARKDOWN_V2)
+    user_id = int(context.args[0])
+    await _update_user_plan(user_id, 'Plus Plan', 2000, 60)
+    await update.effective_message.reply_text(f"✅ Plus Plan activated for user {user_id}\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    if plan_type not in PLAN_DEFINITIONS:
-        return await update.effective_message.reply_text(
-            f"❌ Invalid plan type `{plan_type}`\\. Choose from: starter, premium, plus, custom\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+async def give_custom(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_IDS:
+        return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
+    if not context.args or not context.args[0].isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: /give_custom [user_id]", parse_mode=ParseMode.MARKDOWN_V2)
+    user_id = int(context.args[0])
+    await _update_user_plan(user_id, 'Custom Plan', 3000)
+    await update.effective_message.reply_text(f"✅ Custom Plan activated for user {user_id} with 3000 credits\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
-    if not user_id_str.isdigit():
-        return await update.effective_message.reply_text(
-            "❌ User ID must be a number\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    user_id = int(user_id_str)
-    plan = PLAN_DEFINITIONS[plan_type]
-    plan_name = plan["name"]
-    credits = plan["credits"]
-    duration_days = plan["days"]
-
-    await _update_user_plan(user_id, plan_name, credits, duration_days)
-    await update.effective_message.reply_text(
-        f"✅ {plan_name} activated for user `{user_id}`\\.",
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
-    await notify_user_plan(context.bot, user_id, plan_name, credits, duration_days)
-
-
-async def auth_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Authorizes a group to use the bot."""
+async def take_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Removes a user's current plan and revokes private access."""
     if update.effective_user.id not in ADMIN_IDS:
         return await update.effective_message.reply_text("🚫 You are not authorized to use this command.")
 
-    if not context.args or not context.args[0].strip('-').isdigit():
-        return await update.effective_message.reply_text(
-            "❌ Invalid format\\. Usage: `/au [chat_id]`", 
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    if not context.args or not context.args[0].isdigit():
+        return await update.effective_message.reply_text("❌ Invalid format\\. Usage: /take_plan [user_id]", parse_mode=ParseMode.MARKDOWN_V2)
     
     try:
-        chat_id = int(context.args[0])
-        if chat_id > 0:
-            return await update.effective_message.reply_text(
-                "❌ That is not a group chat ID\\. Make sure you provide a valid group chat ID that starts with `-`\\.", 
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
+        user_id = int(context.args[0])
+        user_data = await get_user(user_id)  # ✅ FIXED: was user.id before (wrong variable)
+        
+        # Reset plan and credits
+        user_data['plan'] = 'Free'
+        user_data['status'] = 'Free'
+        user_data['plan_expiry'] = 'N/A'
+        user_data['credits'] = DEFAULT_FREE_CREDITS
+        
+        # Persist the update
+        await update_user(
+            user_id,
+            plan='Free',
+            status='Free',
+            plan_expiry='N/A',
+            credits=DEFAULT_FREE_CREDITS
+        )
 
-        AUTHORIZED_CHATS.add(chat_id)
+        # Remove from private authorized users
+        AUTHORIZED_PRIVATE_USERS.discard(user_id)
+
         await update.effective_message.reply_text(
-            f"✅ Group with chat ID `{chat_id}` has been authorized\\.", 
+            f"✅ Plan and private access have been removed for user {user_id}\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     except ValueError:
         return await update.effective_message.reply_text(
-            "❌ Invalid chat ID format\\. Please provide a valid integer chat ID\\.", 
+            "❌ Invalid user ID format\\. Please provide a valid integer user ID\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
