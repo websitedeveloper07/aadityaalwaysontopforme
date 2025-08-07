@@ -51,3 +51,9 @@ async def update_user(user_id, **kwargs):
         f"UPDATE users SET {', '.join(sets)} WHERE id = ${i}", *values
     )
     await conn.close()
+
+async def get_all_users():
+    conn = await connect()
+    rows = await conn.fetch("SELECT * FROM users")
+    await conn.close()
+    return [dict(row) for row in rows]
