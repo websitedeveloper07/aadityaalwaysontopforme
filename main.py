@@ -730,9 +730,11 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         escaped_percent = escape_markdown_v2(percent)
 
         animation_text = (
-            "🔪 *Kɪʟʟɪɴɢ 𝐂𝐚𝐫𝐝...*\n\n"
-            f"`{escaped_bar}`\n"
-            f"📊 *Pʀᴏɢʀᴇss:* `{escaped_percent}`"
+            "*🔪 Kɪʟʟɪɴɢ 𝐂𝐚𝐫𝐝\\.\\.\\.\\*\\n"
+            "╭──────────────╮\\n"
+            f"{escaped_bar}\\n"
+            f"📊 Pʀᴏɢʀᴇss: {escaped_percent}\\n"
+            "╰──────────────╯"
         )
 
         try:
@@ -749,15 +751,17 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         elapsed_animation_time = time.time() - start_time
         frame_index += 1
 
-    # Final animation
+    # Final animation frame
     final_bar, final_percent = animation_frames[-1]
     escaped_bar = escape_markdown_v2(final_bar)
     escaped_percent = escape_markdown_v2(final_percent)
 
     final_animation = (
-        "🔪 *Kɪʟʟɪɴɢ Cᴏᴍᴘʟᴇᴛᴇ\\!* ✅\n\n"
-        f"`{escaped_bar}`\n"
-        f"📊 *Fɪɴᴀʟ:* `{escaped_percent}`"
+        "*🔪 Kɪʟʟɪɴɢ Cᴏᴍᴘʟᴇᴛᴇ\\!* ✅\\n"
+        "╭──────────────╮\\n"
+        f"{escaped_bar}\\n"
+        f"📊 Fɪɴᴀʟ: {escaped_percent}\\n"
+        "╰──────────────╯"
     )
 
     try:
@@ -765,7 +769,7 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
     except Exception as e:
         print(f"Final animation error: {e}")
 
-    # Final box — UNCHANGED format
+    # Final result box (unchanged)
     time_taken = round(time.time() - start_time)
     card = escape_markdown_v2(full_card_str)
     brand = escape_markdown_v2(bin_details.get("scheme", "N/A"))
