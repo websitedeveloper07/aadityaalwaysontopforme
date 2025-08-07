@@ -298,15 +298,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     plan = user_data.get('plan', 'Free')
 
     welcome_message = (
-        f"╭━━━[ 𝙒𝙀𝙇𝘾𝙊𝙈𝙀 𝙏𝙊 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ]━━━⬣\n"
-        f"┣ ❏ 𝐈𝐃        ➳ `{user.id}`\n"
-        f"┣ ❏ 𝐔𝐬𝐞𝐫𝐧𝐚𝐦𝐞  ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
-        f"┣ ❏ 𝐃𝐚𝐭𝐞      ➳ `{today}`\n"
-        f"┣ ❏ 𝐓𝐢𝐦𝐞      ➳ `{now}`\n"
-        f"┣ ❏ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   ➳ `{credits}`\n"
-        f"┣ ❏ 𝐏𝐥𝐚𝐧      ➳ `{escape_markdown(plan, version=2)}`\n"
-        f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
-        f"_Use the buttons below to get started_"
+        f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"🆔 ID: {user.id}\n"
+        f"👤 Username: @{escape_markdown(user.username or 'N/A', version=2)}\n"
+        f"📅 Date: {today}\n"
+        f"🕒 Time: {now}\n"
+        f"💳 Credits: {credits}\n"
+        f"📋 Plan: {escape_markdown(plan, version=2)}\n\n"
+        f"Use the buttons below to get started 👇"
     )
 
     keyboard = [
@@ -501,17 +501,17 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
 
     info_message = (
-        f"╭━━━[ 𝙐𝙎𝙀𝙍 𝙄𝙉𝙁𝙊 – 𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝓵𝓽ₓ ⚡ ]━━━⬣\n"
-        f"┣ ❏ 𝐅𝐢𝐫𝐬𝐭 𝐍𝐚𝐦𝐞     ➳ `{user.first_name or 'N/A'}`\n"
-        f"┣ ❏ 𝐈𝐃             ➳ `{user.id}`\n"
-        f"┣ ❏ 𝐔𝐬𝐞𝐫𝐧𝐚𝐦𝐞       ➳ `@{escape_markdown(user.username or 'N/A', version=2)}`\n"
-        f"┣ ❏ 𝐒𝐭𝐚𝐭𝐮𝐬         ➳ `{user_data.get('status', 'N/A')}`\n"
-        f"┣ ❏ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬        ➳ `{user_data.get('credits', 0)}`\n"
-        f"┣ ❏ 𝐏𝐥𝐚𝐧           ➳ `{escape_markdown(user_data.get('plan', 'N/A'), version=2)}`\n"
-        f"┣ ❏ 𝐏𝐥𝐚𝐧 𝐄𝐱𝐩𝐢𝐫𝐲    ➳ `{user_data.get('plan_expiry', 'N/A')}`\n"
-        f"┣ ❏ 𝐊𝐞𝐲𝐬 𝐑𝐞𝐝𝐞𝐞𝐦𝐞𝐝  ➳ `{user_data.get('keys_redeemed', 0)}`\n"
-        f"┣ ❏ 𝐑𝐞𝐠𝐢𝐬𝐭𝐞𝐫𝐞𝐝 𝐀𝐭  ➳ `{user_data.get('registered_at', 'N/A')}`\n"
-        f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
+        "🔍 Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 ⚡\n"
+        "━━━━━━━━━━━━━━\n"
+        f"👤 First Name: ㅤ{user.first_name or 'N/A'}\n"
+        f"🆔 ID: {user.id}\n"
+        f"📛 Username: @{user.username or 'N/A'}\n\n"
+        f"📋 Status: {user_data.get('status', 'N/A')}\n"
+        f"💳 Credit: {user_data.get('credits', 0)}\n"
+        f"💼 Plan: {user_data.get('plan', 'N/A')}\n"
+        f"📅 Plan Expiry: {user_data.get('plan_expiry', 'N/A')}\n"
+        f"🔑 Keys Redeemed: {user_data.get('keys_redeemed', 0)}\n"
+        f"🗓 Registered At: {user_data.get('registered_at', 'N/A')}\n"
     )
 
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
@@ -713,15 +713,17 @@ async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TY
         header_title = f"⚡Cᴀʀd Kɪʟʟeᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ \\- {percentage}\\%"
 
     final_message_text_formatted = (
-        f"╭━━━[ {header_title} ]━━━⬣\n"
-        f"┣ ❏ 𝐂𝐚𝐫𝐝 𝐍𝐮𝐦𝐛𝐞𝐫     ➳ `{escape_markdown_v2(full_card_str)}`\n"
-        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝           ➳ `{brand}`\n"
-        f"┣ ❏ 𝐈𝐬𝐬𝐮𝐞𝐫          ➳ `{bank_name}`\n"
-        f"┣ ❏ 𝐋𝐞𝐯𝐞𝐥           ➳ `{level_emoji} {level}`\n"
-        f"┣ ❏ 𝐊𝐢𝐥𝐥𝐞𝐫          ➳ `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
-        f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲          ➳ `『𝗥ᴏᴄ𝗸ʏ』`\n"
-        f"┣ ❏ 𝐓𝐢𝐦𝐞 𝐓𝐚𝐤𝐞𝐧      ➳ `{escape_markdown_v2(f'{time_taken:.0f} seconds')}`\n"
-        f"╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━⬣"
+        f"╭───\\[ {header_title} \\]───╮\n" # FIX: Escaped the closing bracket ']'
+        f"\n"
+        f"• 𝗖𝗮𝗿𝗱 𝗡𝗼\\.  : {escape_markdown_v2(full_card_str)}\n"
+        f"• 𝗕𝗿𝗮𝗻𝗱        : {brand}\n"
+        f"• 𝗜𝘀𝘀𝘂𝗲𝗿       : {bank_name}\n"
+        f"• 𝗟𝗲𝘃𝗲𝗹        : {level_emoji} {level}\n"
+        f"• 𝗞𝗶𝗹𝗹𝗲𝗿       :  𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿\n"
+        f"• 𝗕𝒐𝒕 𝒃𝒚      :  『𝗥ᴏᴄ𝗸ʏ』\n"
+        f"• 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻  : {escape_markdown_v2(f'{time_taken:.0f} seconds')}\n"
+        f"\n"
+        f"╰────────────────────╯"
     )
 
     await initial_message.edit_text(
@@ -945,12 +947,12 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_credits = escape_markdown_v2(str(credits))
 
     credit_message = (
-        f"╭━━━[ 💳 𝐂𝐑𝐄𝐃𝐈𝐓 𝐈𝐍𝐅𝐎 💳 ]━━━⬣\n"
-        f"┣ ❏ 𝐔𝐬𝐞𝐫𝐧𝐚𝐦𝐞   ➳ `@{escaped_username}`\n"
-        f"┣ ❏ 𝐔𝐬𝐞𝐫 𝐈𝐃    ➳ `{escaped_user_id}`\n"
-        f"┣ ❏ 𝐏𝐥𝐚𝐧       ➳ `{escaped_plan}`\n"
-        f"┣ ❏ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬    ➳ `{escaped_credits}`\n"
-        f"╰━━━━━━━━━━━━━━━━━━⬣"
+        f"💳 *Your Credit Info* 💳\n"
+        f"━━━━━━━━━━━━━━\n"
+        f"👤 Username: @{escaped_username}\n"
+        f"🆔 User ID: {escaped_user_id}\n"
+        f"📋 Plan: {escaped_plan}\n"
+        f"💳 Credits: {escaped_credits}\n"
     )
 
     await update.effective_message.reply_text(credit_message, parse_mode=ParseMode.MARKDOWN_V2)
