@@ -1213,7 +1213,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from config import AUTHORIZED_CHATS
-from db import get_all_users  # You must have this in db.py to fetch all users
+from db import get_all_users  # Ensure this exists in db.py
 
 def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
@@ -1254,7 +1254,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if plan.lower() not in ["free", "n/a"]:
             uid = escape_markdown_v2(str(user["id"]))
             plan_escaped = escape_markdown_v2(plan)
-            plan_users.append(f"• ID: `{uid}` | Plan: `{plan_escaped}`")
+            plan_users.append(f"• ID: `{uid}` \\| Plan: `{plan_escaped}`")
     authorized_users_str = (
         "\n".join(plan_users) if plan_users else "_No private users with plans\\._"
     )
@@ -1273,6 +1273,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         admin_dashboard_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 async def _update_user_plan(user_id: int, plan_name: str, credits: int, duration_days: int = None):
