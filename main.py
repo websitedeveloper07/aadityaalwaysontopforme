@@ -581,8 +581,9 @@ async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_number = card_number[:6]
     bin_details = await get_bin_details(bin_number)
     scheme = bin_details.get("scheme", "N/A").lower()
-    card_type = bin_details.get("type", "N/A").lower()
+    level = bin_details.get("level", "N/A").lower()  # ✅ Using level instead of type
 
+    # Block non-Visa
     if "mastercard" in scheme:
         return await update.effective_message.reply_text(
             "❌ 𝙊𝙣𝙡𝙮 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
@@ -595,7 +596,8 @@ async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    if "prepaid" in card_type:
+    # ✅ Block prepaid from level field
+    if "prepaid" in level:
         return await update.effective_message.reply_text(
             "🚫 𝙏𝙝𝙞𝙨 𝙘𝙖𝙧𝙙 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚 𝙖𝙣𝙙 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\.",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -653,8 +655,9 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_number = card_number[:6]
     bin_details = await get_bin_details(bin_number)
     scheme = bin_details.get("scheme", "N/A").lower()
-    card_type = bin_details.get("type", "N/A").lower()
+    level = bin_details.get("level", "N/A").lower()  # ✅ Check level instead of type
 
+    # Block non-MasterCard
     if "visa" in scheme:
         return await update.effective_message.reply_text(
             "❌ 𝙊𝙣𝙡𝙮 𝙈𝙖𝙨𝙩𝙚𝙧𝘾𝙖𝙧𝙙 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
@@ -667,7 +670,8 @@ async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    if "prepaid" in card_type:
+    # ✅ Block prepaid from level
+    if "prepaid" in level:
         return await update.effective_message.reply_text(
             "🚫 𝙏𝙝𝙞𝙨 𝙘𝙖𝙧𝙙 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚 𝙖𝙣𝙙 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\.",
             parse_mode=ParseMode.MARKDOWN_V2
