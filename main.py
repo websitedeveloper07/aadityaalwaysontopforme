@@ -459,6 +459,27 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
 
+import random
+from datetime import datetime
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# Your utility functions assumed:
+# async def check_authorization(update, context): ...
+# async def enforce_cooldown(user_id, update): ...
+# async def get_user(user_id): ...
+# async def consume_credit(user_id): ...
+# async def get_bin_details(bin_number): ...
+# def luhn_checksum(card_number): ...
+# def get_level_emoji(level: str) -> str: ...
+# def get_vbv_status_display(vbv_status) -> str: ...
+
+def escape_markdown_v2(text: str) -> str:
+    escape_chars = r"\_*[]()~`>#+-=|{}.!"
+    return ''.join(['\\' + char if char in escape_chars else char for char in text])
+
+
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN."""
     if not await check_authorization(update, context):
@@ -469,13 +490,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_data = await get_user(user.id)
-    if user_data['credits'] <= 0:
+    if user_data.get('credits', 0) <= 0:
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Get BIN input
     bin_input = None
     if context.args:
         bin_input = context.args[0]
@@ -496,14 +516,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # BIN lookup
     bin_details = await get_bin_details(bin_input)
-    brand = bin_details["scheme"]
-    bank = bin_details["bank"]
-    country_name = bin_details["country_name"]
-    country_emoji = bin_details["country_emoji"]
+    brand = bin_details.get("scheme", "N/A")
+    bank = bin_details.get("bank", "N/A")
+    country_name = bin_details.get("country_name", "N/A")
+    country_emoji = bin_details.get("country_emoji", "")
 
-    # Generate cards
     cards = []
     while len(cards) < 10:
         card_length = 15 if brand.lower() in ["american express", "amex"] else 16
@@ -524,16 +542,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    cards_list = "\n".join(cards)  # Don't escape cards to preserve monospace
+    cards_list = "\n".join(cards)
 
-    # Escape fields safely
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
 
-    # BIN Info block (minimalist)
     bin_info_block = (
         f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
         f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
@@ -542,7 +558,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    # Final output message
     final_message = (
         f"> *Generated 10 Cards 💳*\n\n"
         f"{cards_list}\n"
@@ -556,16 +571,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-
-from telegram.constants import ParseMode
-
-def escape_markdown_v2(text: str) -> str:
-    escape_chars = r"\_*[]()~`>#+-=|{}.!"
-    return ''.join(['\\' + char if char in escape_chars else char for char in text])
-
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown as escape_markdown_v2
-
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup."""
     if not await check_authorization(update, context):
@@ -576,7 +581,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_data = await get_user(user.id)
-    if user_data['credits'] <= 0:
+    if user_data.get('credits', 0) <= 0:
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -611,7 +616,6 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Escape and extract data safely
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
     escaped_bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
@@ -620,13 +624,12 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
     escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
     vbv_status = bin_details.get("vbv_status", "Unknown")
-    escaped_user = escape_markdown_v2(user.full_name)
 
-    # Custom emojis/status
+    escaped_user = escape_markdown_v2(user.full_name or user.username or "User")
+
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
 
-    # BIN info box (no space after country)
     bin_info_box = (
         f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
         f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
