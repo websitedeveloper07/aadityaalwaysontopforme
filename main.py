@@ -29,7 +29,7 @@ OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@K4linuxx"
 OFFICIAL_GROUP_LINK = "https://t.me/+gtvJT4SoimBjYjQ1"
-DEFAULT_FREE_CREDITS = 50  # A non-expiring credit pool for free users
+DEFAULT_FREE_CREDITS = 500  # A non-expiring credit pool for free users
 
 # === PERSISTENCE WARNING ===
 # The following dictionaries store data in-memory and will be LOST when the bot
@@ -114,7 +114,7 @@ def luhn_checksum(card_number):
 from db import get_user, update_user  # your async DB functions
 from datetime import datetime
 
-DEFAULT_FREE_CREDITS = 30
+DEFAULT_FREE_CREDITS = 500
 DEFAULT_PLAN = "Free"
 DEFAULT_STATUS = "Free"
 DEFAULT_PLAN_EXPIRY = "N/A"
@@ -313,8 +313,7 @@ def escape_markdown_v2(text: str) -> str:
     import re
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
     
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /start command, displaying user info and main menu."""
+async def start(update, context):
     user = update.effective_user
     logger.info(f"/start called by user: {user.id} (@{user.username})")
 
@@ -326,13 +325,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits = user_data.get('credits', 0)
     plan = user_data.get('plan', 'Free')
 
-    # Escape all values for MarkdownV2
-    escaped_user_id = escape_markdown_v2(str(user.id))
-    escaped_username = escape_markdown_v2(user.username or 'N/A')
-    escaped_today = escape_markdown_v2(today)
-    escaped_now = escape_markdown_v2(now)
-    escaped_credits = escape_markdown_v2(str(credits))
-    escaped_plan = escape_markdown_v2(plan)
+    escaped_user_id = escape_markdown(str(user.id), version=2)
+    escaped_username = escape_markdown(user.username or 'N/A', version=2)
+    escaped_today = escape_markdown(today, version=2)
+    escaped_now = escape_markdown(now, version=2)
+    escaped_credits = escape_markdown(str(credits), version=2)
+    escaped_plan = escape_markdown(plan, version=2)
 
     welcome_message = (
         f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝓵𝒕𝑿* ⚡\n"
@@ -349,7 +347,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
             InlineKeyboardButton("🛠 Tools", callback_data="tools_menu"),
-            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
+            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK),
+            InlineKeyboardButton("🚪 Gates", callback_data="gates_menu"),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -379,6 +378,90 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode=ParseMode.MARKDOWN_V2
             )
 
+# Handler for Gates submenu
+async def gates_menu_handler(update, context):
+    query = update.callback_query
+    await query.answer()
+
+    gates_message = "🚪 *Gates Menu*\n\nChoose a command:"
+    keyboard = [
+        [InlineKeyboardButton("💳 /chk — Stripe Auth Check", callback_data="cmd_chk")],
+        [InlineKeyboardButton("📋 /mchk — Mass Stripe Check (up to 10 cards)", callback_data="cmd_mchk")],
+        [InlineKeyboardButton("⬅️ Back", callback_data="start_menu")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        gates_message,
+        reply_markup=reply_markup,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+# Optional: handler to go back to main menu
+async def start_menu_handler(update, context):
+    query = update.callback_query
+    await query.answer()
+    # Reuse start function logic but edit message instead of sending new
+    user = update.effective_user
+    indian_timezone = pytz.timezone('Asia/Kolkata')
+    now = datetime.now(indian_timezone).strftime('%I:%M %p')
+    today = datetime.now(indian_timezone).strftime('%d-%m-%Y')
+
+    user_data = await get_user(user.id)
+    credits = user_data.get('credits', 0)
+    plan = user_data.get('plan', 'Free')
+
+    escaped_user_id = escape_markdown(str(user.id), version=2)
+    escaped_username = escape_markdown(user.username or 'N/A', version=2)
+    escaped_today = escape_markdown(today, version=2)
+    escaped_now = escape_markdown(now, version=2)
+    escaped_credits = escape_markdown(str(credits), version=2)
+    escaped_plan = escape_markdown(plan, version=2)
+
+    welcome_message = (
+        f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝓵𝒕𝑿* ⚡\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"🆔 𝙄𝘿: `{escaped_user_id}`\n"
+        f"👤 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{escaped_username}\n"
+        f"📅 𝘿𝙖𝙩𝙚: `{escaped_today}`\n"
+        f"🕒 𝙏𝙞𝙢𝙚: `{escaped_now}`\n"
+        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩𝙨: `{escaped_credits}`\n"
+        f"📋 𝙋𝙡𝙖𝙣: `{escaped_plan}`\n\n"
+        f"𝓤𝓼𝓮 𝓽𝓱𝓮 𝓫𝓾𝓽𝓽𝓸𝓷𝓼 𝓫𝓮𝓵𝓸𝔀 𝓽𝓸 𝓰𝓮𝓽 𝓼𝓽𝓪𝓻𝓽𝓮𝓓 👇"
+    )
+    keyboard = [
+        [
+            InlineKeyboardButton("🛠 Tools", callback_data="tools_menu"),
+            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK),
+            InlineKeyboardButton("🚪 Gates", callback_data="gates_menu"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(
+        welcome_message,
+        reply_markup=reply_markup,
+        parse_mode=ParseMode.MARKDOWN_V2,
+    )
+
+
+
+async def cmd_handler(update, context):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data == "cmd_chk":
+        await query.edit_message_text(
+            "Use the /chk command to perform a Stripe Auth check for a single card.\n\nExample:\n`/chk 1234567890123456|12|24|123`",
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+    elif data == "cmd_mchk":
+        await query.edit_message_text(
+            "Use the /mchk command to perform a mass Stripe check for up to 10 cards.\n\nExample:\n`/mchk 1234567890123456|12|24|123 2345678901234567|11|23|456`",
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+    else:
+        await query.answer("Unknown command", show_alert=True)
 
 
 
@@ -428,10 +511,28 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Main callback handler for all inline keyboard buttons."""
     query = update.callback_query
     await query.answer()
-    if query.data == "tools_menu":
+
+    data = query.data
+
+    if data == "tools_menu":
         await show_tools_menu(update, context)
-    elif query.data == "back_to_start":
-        await start(update, context)
+
+    elif data == "gates_menu":
+        # Show gates submenu
+        await gates_menu_handler(update, context)
+
+    elif data == "start_menu" or data == "back_to_start":
+        # Go back to main start menu
+        await start_menu_handler(update, context)
+
+    elif data.startswith("cmd_"):
+        # Handle commands like /chk and /mchk info
+        await cmd_handler(update, context)
+
+    else:
+        # Unknown callback data (optional fallback)
+        await query.answer("Unknown option selected.", show_alert=True)
+
 
 
 
