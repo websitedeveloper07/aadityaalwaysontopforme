@@ -150,17 +150,17 @@ logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
     bin_data = {
-        "scheme": "N/A",         # Brand / Card scheme
+        "scheme": "N/A",         # Card scheme
         "type": "N/A",           # Credit/Debit
-        "level": "N/A",          # Card level
+        "level": "N/A",          # Card level/category
         "bank": "N/A",           # Bank name
         "country_name": "N/A",   # Country name
-        "country_emoji": "",     # Flag emoji
+        "country_emoji": "",     # Country flag emoji
         "vbv_status": None,      # Placeholder
-        "card_type": "N/A"       # Duplicate of type
+        "card_type": "N/A"       # Same as type
     }
 
-    url = f"https://bintable.com/api/{bin_number}?api_key=f65ff6abeadc72d2c44a4b4c20abe8493e1f5d72"
+    url = f"https://api.bintable.com/v1/{bin_number}?api_key=f65ff6abeadc72d2c44a4b4c20abe8493e1f5d72"
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Accept": "application/json"
@@ -179,14 +179,19 @@ async def get_bin_details(bin_number):
                         logger.warning(f"Invalid JSON from Bintable for {bin_number}")
                         return bin_data
 
-                    # Map fields from Bintable API to bot keys
-                    bin_data["scheme"] = str(data.get("scheme", "N/A")).upper()
-                    bin_data["type"] = str(data.get("type", "N/A")).title()
-                    bin_data["card_type"] = bin_data["type"]
-                    bin_data["level"] = str(data.get("category", data.get("level", "N/A"))).title()
-                    bin_data["bank"] = str(data.get("issuer", data.get("bank", "N/A"))).title()
-                    bin_data["country_name"] = str(data.get("country_name") or data.get("country", "N/A")).title()
-                    bin_data["country_emoji"] = data.get("country_flag", "")
+                    if data.get("result") == 200 and "data" in data:
+                        card_info = data["data"].get("card", {})
+                        country_info = data["data"].get("country", {})
+                        bank_info = data["data"].get("bank", {})
+
+                        bin_data["scheme"] = str(card_info.get("scheme", "N/A")).upper()
+                        bin_data["type"] = str(card_info.get("type", "N/A")).title()
+                        bin_data["card_type"] = bin_data["type"]
+                        bin_data["level"] = str(card_info.get("category", "N/A")).title()
+
+                        bin_data["bank"] = str(bank_info.get("name", "N/A")).title()
+                        bin_data["country_name"] = str(country_info.get("name", "N/A")).title()
+                        bin_data["country_emoji"] = country_info.get("flag", "")
 
                 else:
                     logger.warning(f"Bintable API returned {response.status} for BIN {bin_number}")
