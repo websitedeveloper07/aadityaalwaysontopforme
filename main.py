@@ -636,7 +636,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_info_box = (
         f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ `{escaped_user}`\n"
-        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
+        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ [kคli liຖนxx](https://t.me/K4linuxx)\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -710,7 +710,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not await check_authorization(update, context):
             return await update.effective_message.reply_text(
                 "❌ Private access is blocked\\.\n"
-                "Contact @YourOwnerUsername to buy subscription\\.",
+                "Contact @K4linuxx to buy subscription\\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
 
