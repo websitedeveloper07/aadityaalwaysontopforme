@@ -111,34 +111,58 @@ def luhn_checksum(card_number):
         total += digit
     return total % 10 == 0
 
-# --- User Data & Credits Functions ---
-def get_user_from_db(user_id):
-    """Fetches or initializes user data from the in-memory 'database'."""
-    if user_id not in USER_DATA_DB:
-        USER_DATA_DB[user_id] = {
-            'credits': DEFAULT_FREE_CREDITS,
-            'plan': 'Free',
-            'status': 'Free',
-            'plan_expiry': 'N/A',
-            'keys_redeemed': 0,
-            'registered_at': datetime.now().strftime('%d-%m-%Y')
-        }
-    return USER_DATA_DB.get(user_id)
-    
-async def consume_credit(user_id):
+from db import get_user, update_user  # your async DB functions
+from datetime import datetime
+
+DEFAULT_FREE_CREDITS = 30
+DEFAULT_PLAN = "Free"
+DEFAULT_STATUS = "Free"
+DEFAULT_PLAN_EXPIRY = "N/A"
+DEFAULT_KEYS_REDEEMED = 0
+
+async def get_user_data(user_id):
+    """
+    Fetch user data from DB; if not exists, create with defaults then fetch.
+    """
     user_data = await get_user(user_id)
+    if not user_data:
+        now_str = datetime.now().strftime('%d-%m-%Y')
+        # Insert new user with defaults
+        await update_user(
+            user_id,
+            credits=DEFAULT_FREE_CREDITS,
+            plan=DEFAULT_PLAN,
+            status=DEFAULT_STATUS,
+            plan_expiry=DEFAULT_PLAN_EXPIRY,
+            keys_redeemed=DEFAULT_KEYS_REDEEMED,
+            registered_at=now_str
+        )
+        # Fetch again after insertion
+        user_data = await get_user(user_id)
+    return user_data
+
+
+async def consume_credit(user_id: int) -> bool:
+    """
+    Deduct 1 credit if available. Return True if succeeded.
+    """
+    user_data = await get_user_data(user_id)
     if user_data and user_data.get('credits', 0) > 0:
-        await update_user(user_id, credits=user_data['credits'] - 1)
+        new_credits = user_data['credits'] - 1
+        await update_user(user_id, credits=new_credits)
         return True
     return False
 
 
-async def add_credits_to_user(user_id, amount):
-    user_data = await get_user(user_id)
+async def add_credits_to_user(user_id: int, amount: int):
+    """
+    Add credits to user, creating user if needed.
+    Return updated credits or None if failure.
+    """
+    user_data = await get_user_data(user_id)
     if not user_data:
-        return None  # or raise an exception / handle as needed
-    current_credits = user_data.get('credits', 0)
-    new_credits = current_credits + amount
+        return None
+    new_credits = user_data.get('credits', 0) + amount
     await update_user(user_id, credits=new_credits)
     return new_credits
 
@@ -694,41 +718,41 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-# --- In-memory data stores ---
-user_cooldowns = {}
-user_data_store = {}
+# Import your database functions here
+from db import get_user, update_user
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
-    last_run_time = user_cooldowns.get(user_id, 0)
-    current_time = time.time()
+    # You can keep your existing cooldown logic or adapt as needed
     cooldown_seconds = 5
+    if not hasattr(enforce_cooldown, "user_cooldowns"):
+        enforce_cooldown.user_cooldowns = {}
+    last_run_time = enforce_cooldown.user_cooldowns.get(user_id, 0)
+    current_time = time.time()
+
     if current_time - last_run_time < cooldown_seconds:
         remaining_time = round(cooldown_seconds - (current_time - last_run_time), 2)
-        message_text = f"⏳ Cooldown in effect. Please wait {remaining_time} seconds before trying again."
         await update.effective_message.reply_text(
-            escape_markdown(message_text, version=2),
-            parse_mode=ParseMode.MARKDOWN_V2
+            escape_markdown(f"⏳ Cooldown in effect. Please wait {remaining_time} seconds.", version=2),
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
         return False
-    user_cooldowns[user_id] = current_time
+    enforce_cooldown.user_cooldowns[user_id] = current_time
     return True
 
-async def get_user(user_id: int) -> dict:
-    """Fetch or initialize user data."""
-    if user_id not in user_data_store:
-        # Initialize with default credits and plan
-        user_data_store[user_id] = {'credits': 5, 'plan': 'Free'}
-    return user_data_store[user_id]
-
 async def consume_credit(user_id: int) -> bool:
+    """
+    Consume 1 credit from DB user if available.
+    """
     user_data = await get_user(user_id)
-    if user_data['credits'] > 0:
-        user_data['credits'] -= 1
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
         return True
     return False
 
 def get_bin_details_sync(bin_number: str) -> dict:
-    time.sleep(1.5)  # Simulate delay
+    # Simulate BIN lookup or call your actual BIN service here
+    time.sleep(1.5)
     return {
         "scheme": "Visa",
         "type": "Credit",
@@ -740,8 +764,6 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
     try:
         bin_number = parts[0][:6]
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
-        if bin_details is None:
-            bin_details = {}
         brand = (bin_details.get("scheme") or "N/A").upper()
         issuer = (bin_details.get("type") or "N/A").upper()
         country_name = (bin_details.get("country_name") or "N/A").upper()
@@ -776,7 +798,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
             f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
-            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
+            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
             "✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
             f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
@@ -793,17 +815,28 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
+    # Check cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
+    # Get user data from DB
     user_data = await get_user(user_id)
-    if user_data.get('credits', 0) <= 0:
+    if not user_data:
         await update.effective_message.reply_text(
-            "❌ You have no credits left.",
+            "❌ Could not fetch your user data. Try again later.",
             parse_mode=None
         )
         return
 
+    # Check if user has credits
+    if user_data.get("credits", 0) <= 0:
+        await update.effective_message.reply_text(
+            "❌ You have no credits left. Please buy a plan to get more credits.",
+            parse_mode=None
+        )
+        return
+
+    # Parse card input
     raw = context.args[0] if context.args else None
     if not raw or "|" not in raw:
         await update.effective_message.reply_text(
@@ -820,18 +853,20 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Normalize year
     if len(parts[2]) == 4:
         parts[2] = parts[2][-2:]
     cc_normalized = "|".join(parts)
 
-    # Deduct one credit
+    # Deduct credit in DB
     if not await consume_credit(user_id):
         await update.effective_message.reply_text(
-            "❌ No credits left.",
+            "❌ No credits left to consume.",
             parse_mode=None
         )
         return
 
+    # Show processing message
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
         f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
@@ -844,7 +879,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-    # Run background check asynchronously (non-blocking)
+    # Start background check task (async)
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 import asyncio
@@ -856,11 +891,11 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-# Set your bot owner user ID here (int)
-OWNER_ID = 123456789  # <-- Replace with your Telegram user ID
+from db import get_user, update_user  # your DB functions here
+
+OWNER_ID = 8438505794  # Replace with your Telegram user ID
 
 user_cooldowns = {}
-user_data_store = {}
 
 async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     # Only allow OWNER_ID in private chats
@@ -882,15 +917,11 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     user_cooldowns[user_id] = now
     return True
 
-async def get_user(user_id: int) -> dict:
-    if user_id not in user_data_store:
-        user_data_store[user_id] = {'credits': 5, 'plan': 'Free'}
-    return user_data_store[user_id]
-
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
-    if user_data['credits'] > 0:
-        user_data['credits'] -= 1
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
         return True
     return False
 
@@ -972,7 +1003,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 parse_mode=ParseMode.MARKDOWN_V2
             )
         except Exception:
-            # Avoid crash on edit failure
             pass
 
     final_time_taken = round(time.time() - start_time, 2)
@@ -990,7 +1020,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Private chat: only OWNER_ID allowed
@@ -1038,10 +1067,18 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=None
         )
 
+    # Fetch fresh user data from DB (credits and plan)
     user_data = await get_user(user_id)
+    if not user_data:
+        await update.effective_message.reply_text(
+            "❌ Could not fetch your user data. Try again later.",
+            parse_mode=None
+        )
+        return
+
     if user_data.get('credits', 0) <= 0:
         await update.effective_message.reply_text(
-            "❌ You have no credits left.",
+            "❌ You have no credits left. Please buy a plan to get more credits.",
             parse_mode=None
         )
         return
@@ -1049,7 +1086,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_msg = await update.effective_message.reply_text("Processing...", parse_mode=None)
     start_time = time.time()
 
-    # Run background task — non-blocking
+    # Run background task (non-blocking)
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
