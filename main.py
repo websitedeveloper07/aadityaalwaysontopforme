@@ -705,8 +705,9 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     cooldown_seconds = 10
     if current_time - last_run_time < cooldown_seconds:
         remaining_time = round(cooldown_seconds - (current_time - last_run_time), 2)
+        message_text = f"⏳ Cooldown in effect. Please wait {remaining_time} seconds before trying again."
         await update.effective_message.reply_text(
-            f"⏳ Cooldown in effect. Please wait {remaining_time} seconds before trying again.",
+            escape_markdown(message_text, version=2),
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
@@ -800,34 +801,38 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_data = await get_user(user_id)
     if user_data.get('credits', 0) <= 0:
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\.",
+        await update.effective_message.reply_text(
+            escape_markdown("❌ You have no credits left.", version=2),
             parse_mode=ParseMode.MARKDOWN_V2
         )
+        return
 
     raw = context.args[0] if context.args else None
     if not raw or "|" not in raw:
-        return await update.effective_message.reply_text(
-            "Usage: /chk number\\|mm\\|yy\\|cvv",
+        await update.effective_message.reply_text(
+            escape_markdown("Usage: /chk number|mm|yy|cvv", version=2),
             parse_mode=ParseMode.MARKDOWN_V2
         )
+        return
 
     parts = raw.split("|")
     if len(parts) != 4:
-        return await update.effective_message.reply_text(
-            "Invalid format\\. Use number\\|mm\\|yy\\|cvv \\(or yyyy for year\\)\\.",
+        await update.effective_message.reply_text(
+            escape_markdown("Invalid format. Use number|mm|yy|cvv (or yyyy for year).", version=2),
             parse_mode=ParseMode.MARKDOWN_V2
         )
+        return
 
     if len(parts[2]) == 4:
         parts[2] = parts[2][-2:]
     cc_normalized = "|".join(parts)
 
     if not await consume_credit(user_id):
-        return await update.effective_message.reply_text(
-            "❌ No credits left\\.",
+        await update.effective_message.reply_text(
+            escape_markdown("❌ No credits left.", version=2),
             parse_mode=ParseMode.MARKDOWN_V2
         )
+        return
 
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
@@ -841,8 +846,9 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-    # Start the card check in background — bot stays responsive immediately
+    # Run background check asynchronously
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+
 
 
 
