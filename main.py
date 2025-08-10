@@ -29,7 +29,7 @@ OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@enough69s"
 OFFICIAL_GROUP_LINK = "https://t.me/+gtvJT4SoimBjYjQ1"
-DEFAULT_FREE_CREDITS = 50  # A non-expiring credit pool for free users
+DEFAULT_FREE_CREDITS = 200  # A non-expiring credit pool for free users
 
 # === PERSISTENCE WARNING ===
 # The following dictionaries store data in-memory and will be LOST when the bot
@@ -797,7 +797,6 @@ import aiohttp
 import re
 from telegram import Update
 from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Placeholder functions that must be implemented for the bot to run.
@@ -812,7 +811,7 @@ async def enforce_cooldown(user_id, update):
 
 async def get_user(user_id):
     """Placeholder to get user data from a database or storage."""
-    return {"credits": 100}  # Example user with 100 credits
+    return {"credits": 200}  # Example user with 100 credits
 
 async def consume_credit(user_id):
     """Placeholder to consume one credit from a user."""
@@ -830,7 +829,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not await check_authorization(update, context):
             return await update.effective_message.reply_text(
                 "❌ Private access is blocked.\n"
-                "Contact @YourOwnerUsername to buy subscription.",
+                "Contact @K4linuxx to buy subscription.",
                 parse_mode=None
             )
 
@@ -911,7 +910,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             current_time_taken = round(time.time() - start_time, 2)
             current_summary = (
                 f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                f"✧ 𝗖𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                 f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
@@ -920,7 +919,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"──────── ⸙ ─────────"
             )
             current_results = "\n──────── ⸙ ─────────\n".join(results)
-            await processing_msg.edit_text(current_summary + "\n\n" + current_results, parse_mode=None)
+            await processing_msg.edit_text(current_summary + "\n\n" + current_results, parse_mode=ParseMode.MARKDOWN_V2)
             continue
 
         api_status = (data.get("status") or "Unknown").title()
@@ -937,13 +936,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             error_count += 1
         checked_count += 1
         
-        formatted_response = api_response
-
+        # The card number is now in a monospace font, while the status text is not.
         card_result = (
-            f"```\n"
-            f"{cc_normalized}\n"
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {formatted_response}"
-            f"```"
+            f"`{cc_normalized}`\n"
+            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {api_response}"
         )
         results.append(card_result)
         
@@ -959,7 +955,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"──────── ⸙ ─────────"
         )
         current_results_str = "\n──────── ⸙ ─────────\n".join(results)
-        await processing_msg.edit_text(current_summary + "\n\n" + current_results_str, parse_mode=None)
+        await processing_msg.edit_text(current_summary + "\n\n" + current_results_str, parse_mode=ParseMode.MARKDOWN_V2)
 
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
@@ -974,7 +970,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     final_text = final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────"
-    await processing_msg.edit_text(final_text, parse_mode=None)
+    await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
     
 
 def escape_markdown_v2(text: str) -> str:
