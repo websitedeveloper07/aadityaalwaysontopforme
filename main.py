@@ -150,14 +150,14 @@ logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
     bin_data = {
-        "scheme": "N/A",            # Card brand (e.g., VISA, Mastercard)
-        "type": "N/A",              # Credit/Debit
-        "level": "N/A",             # Card level (e.g., Classic, Business)
-        "bank": "N/A",              # Bank name
-        "country_name": "N/A",      # Full country name
-        "country_emoji": "",        # Country flag emoji
-        "vbv_status": None,         # Placeholder, not provided by API
-        "card_type": "N/A"          # Redundant with type, still kept
+        "scheme": "N/A",         # Card brand
+        "type": "N/A",           # Credit/Debit
+        "level": "N/A",          # Card level
+        "bank": "N/A",           # Bank name
+        "country_name": "N/A",   # Full country name
+        "country_emoji": "",     # Country flag emoji
+        "vbv_status": None,      # Placeholder
+        "card_type": "N/A"       # Redundant with type, still kept
     }
 
     url = f"https://bins.antipublic.cc/bins/{bin_number}"
@@ -170,16 +170,26 @@ async def get_bin_details(bin_number):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=7) as response:
                 if response.status == 200:
-                    data = await response.json()
-                    # Mapping the API response keys to the internal dictionary keys
-                    bin_data["scheme"] = data.get("brand", "N/A").upper()
-                    bin_data["type"] = data.get("type", "N/A").title()
-                    bin_data["card_type"] = data.get("type", "N/A").title()
-                    bin_data["level"] = data.get("level", "N/A").title()
-                    bin_data["bank"] = data.get("bank", "N/A").title()
-                    bin_data["country_name"] = data.get("country_name", "N/A")
+                    try:
+                        data = await response.json()
+                    except Exception:
+                        logger.warning(f"Non-JSON response for BIN {bin_number}")
+                        return bin_data
+                    
+                    bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                    bin_data["type"] = str(data.get("type", "N/A")).title()
+                    bin_data["card_type"] = bin_data["type"]
+                    bin_data["level"] = str(data.get("level", "N/A")).title()
+                    bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                    
+                    # Handle both 'country_name' and 'country'
+                    bin_data["country_name"] = (
+                        data.get("country_name") or 
+                        data.get("country") or 
+                        "N/A"
+                    )
                     bin_data["country_emoji"] = data.get("country_flag", "")
-                    return bin_data
+                    
                 else:
                     logger.warning(f"Antipublic API returned status {response.status} for BIN {bin_number}")
     except aiohttp.ClientError as e:
@@ -187,8 +197,8 @@ async def get_bin_details(bin_number):
     except Exception as e:
         logger.warning(f"Error processing Antipublic response for {bin_number}: {e}")
 
-    logger.warning(f"Failed to get BIN details for {bin_number} from antipublic.cc.")
     return bin_data
+
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     """Enforces a 5-second cooldown per user."""
@@ -490,7 +500,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_data = await get_user(user.id)
-    if user_data['credits'] <= 0:
+    if user_data.get('credits', 0) <= 0:
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -519,12 +529,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # BIN lookup
     bin_details = await get_bin_details(bin_input)
-    
-    # Corrected: Access the 'scheme' key, which is what get_bin_details returns
-    brand = bin_details["scheme"]
-    bank = bin_details["bank"]
-    country_name = bin_details["country_name"]
-    country_emoji = bin_details["country_emoji"]
+
+    # Use .get() to avoid KeyError and handle API differences
+    brand = bin_details.get("scheme", "N/A")
+    bank = bin_details.get("bank", "N/A")
+    country_name = bin_details.get("country_name") or bin_details.get("country", "N/A")
+    country_emoji = bin_details.get("country_emoji", "")
 
     # Generate cards
     cards = []
@@ -547,7 +557,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    cards_list = "\n".join(cards)  # Don't escape cards to preserve monospace
+    cards_list = "\n".join(cards)
 
     # Escape fields safely
     escaped_bin = escape_markdown_v2(bin_input)
@@ -556,16 +566,15 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
 
-    # BIN Info block (minimalist)
+    # BIN Info block
     bin_info_block = (
-        f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
-        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
-        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
+        f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
+        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
+        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    # Final output message
     final_message = (
         f"> *Generated 10 Cards 💳*\n\n"
         f"{cards_list}\n"
