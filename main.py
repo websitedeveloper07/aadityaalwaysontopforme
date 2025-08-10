@@ -371,54 +371,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┣ ❏ `/help` \\- Shows this help message\n"
         "┣ ❏ `/gen <bin>` \\- Generate cards from BIN\n"
         "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
-        "┣ ❏ `/kill <cc|mm|yy|cvv>` \\-  kill a card\n"
         "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
         "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
         "┣ ❏ `/status` \\- Bot system status info\n"
         "┣ ❏ `/credits` \\- Check your remaining credits\n"
-        "┣ ❏ `/plans` \\- Check available subscription plans\n"
         "┣ ❏ `/info` \\- Shows your user info\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
     await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
 
-async def show_killers_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows the detailed Killer menu."""
-    query = update.callback_query
-    await query.answer()
-    killer_message = (
-        "╭━━━〔 𝐊𝟏𝐋𝐋𝐄𝐑 𝗚𝗔𝗧𝗘𝗦 – 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 〕━━━╮\n"
-        "│ 🛠 Status: 𝘼𝙘𝙩𝙞𝙫𝙚 ✅\n"
-        "│ 👑 Owner: @enough69s\n"
-        "│ ⚙️ Mode: 𝙆𝟭𝙇𝙇𝙀𝙍 𝙀𝙉𝙂𝙄𝙉𝙀\n"
-        "╰━━━━━━━━━━━━━━━━━━━━━━╯\n\n"
-        "🔹 𝗩𝗜𝗦𝗔 𝗢𝗡𝗟𝗬 𝗚𝗔𝗧𝗘\n"
-        "┗ 📛 Name: `Standard K1LL`\n"
-        "┗ 💬 Command: `/kill cc|mm|yy|cvv`\n"
-        "┗ 🧾 Format: `CC\\|MM\\|YY\\|CVV`\n"
-        "┗ 🟢 Status: `Online`\n"
-        "┗ 📅 Updated: `08 Aug 2025`\n"
-        "┗ 🕐 Avg Time: `45s`\n"
-        "┗ 💉 Health: `100%`\n"
-        "┗ 📝 Note: Only for Visa\n\n"
-        "🔸 𝗠𝗔𝗦𝗧𝗘𝗥 𝗚𝗔𝗧𝗘\n"
-        "┗ 📛 Name: `Advanced K1LL`\n"
-        "┗ 💬 Command: `/kmc cc|mm|yy|cvv`\n"
-        "┗ 🧾 Format: `CC\\|MM\\|YY\\|CVV`\n"
-        "┗ 🟢 Status: `Online`\n"
-        "┗ 📅 Updated: `08 Aug 2025`\n"
-        "┗ 🕐 Avg Time: `65s`\n"
-        "┗ 💉 Health: `89%`\n"
-        "┗ 📝 Note: Only MasterCard supported\n\n"
-        "📊 Total Gates: `2`"
-    )
-    keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        killer_message,
-        reply_markup=reply_markup,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the list of tools and their status."""
@@ -441,69 +402,13 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(tools_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
 
-async def show_plans_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows the detailed bot plans."""
-    query = update.callback_query
-    if query:
-        await query.answer()
-    plans_message = (
-        "📦 *𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿 Subscription Plans*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "🔹 *Starter Plan*\n"
-        "• Access: `Full Access`\n"
-        "• Duration: `7 Days`\n"
-        "• Credits: `300`\n"
-        "• Price: `₹219`\n\n"
-        "🥈 *Premium Plan*\n"
-        "• Access: `Full Access`\n"
-        "• Duration: `30 Days`\n"
-        "• Credits: `1000`\n"
-        "• Price: `₹349`\n\n"
-        "🥇 *Plus Plan*\n"
-        "• Access: `Full Access \\+ MasterCard Killer`\n"
-        "• Duration: `60 Days`\n"
-        "• Credits: `2000`\n"
-        "• Price: `₹639`\n\n"
-        "👑 *Custom Plan*\n"
-        "• Access: `Everything \\+ Private Queue \\+ Dedicated Support`\n"
-        "• Duration: `Custom`\n"
-        "• Credits: `Based on Request`\n"
-        "• Price: DM @enough69s\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "📝 *Note:*\n"
-        "• Credits do *not* expire\n"
-        "• After expiry, plan access will be locked unless renewed\n"
-        "• 🚫 No refunds \\| 🔒 Plans are non\\-transferable\n\n"
-        "✅ *Full Access includes:*\n"
-        "Private use of Visa/MasterCard killer and advanced tools only available to paid users\n\n"
-        "🛒 *To subscribe or redeem a key:*\n"
-        "Contact → @enough69s"
-    )
-    keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    if update.message:
-        await update.message.reply_text(
-            plans_message,
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-    elif query:
-        await query.edit_message_text(
-            plans_message,
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Main callback handler for all inline keyboard buttons."""
     query = update.callback_query
     await query.answer()
-    if query.data == "killers_menu":
-        await show_killers_menu(update, context)
     elif query.data == "tools_menu":
         await show_tools_menu(update, context)
-    elif query.data == "plans_menu":
-        await show_plans_menu(update, context)
     elif query.data == "back_to_start":
         await start(update, context)
 
@@ -546,262 +451,6 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
-
-async def kill_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /kill command for Visa cards."""
-    if not await check_authorization(update, context):
-        return
-
-    user = update.effective_user
-    if not await enforce_cooldown(user.id, update):
-        return
-
-    user_data = await get_user(user.id)
-    if user_data['credits'] <= 0:
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    if not context.args or len(context.args) != 1:
-        return await update.effective_message.reply_text(
-            "❌ Invalid format\\. Usage: `/kill CC|MM|YY|CVV`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    full_card_str = context.args[0]
-    parts = full_card_str.split('|')
-    if len(parts) != 4 or not all(p.isdigit() for p in parts):
-        return await update.effective_message.reply_text(
-            "❌ Invalid card format\\. Use `CC|MM|YY|CVV`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    card_number = parts[0]
-    bin_number = card_number[:6]
-    bin_details = await get_bin_details(bin_number)
-    scheme = bin_details.get("scheme", "N/A").lower()
-    level = bin_details.get("level", "N/A").lower()  # ✅ Using level instead of type
-
-    # Block non-Visa
-    if "mastercard" in scheme:
-        return await update.effective_message.reply_text(
-            "❌ 𝙊𝙣𝙡𝙮 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    if "amex" in scheme or "american express" in scheme:
-        return await update.effective_message.reply_text(
-            "❌ 𝙊𝙣𝙡𝙮 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    # ✅ Block prepaid from level field
-    if "prepaid" in level:
-        return await update.effective_message.reply_text(
-            "🚫 𝙏𝙝𝙞𝙨 𝙘𝙖𝙧𝙙 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚 𝙖𝙣𝙙 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    if not await consume_credit(user.id):
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    # Escape card string for MarkdownV2 display
-    from telegram.helpers import escape_markdown
-    escaped_card_str = escape_markdown(full_card_str, version=2)
-
-    initial_message = await update.effective_message.reply_text(
-        f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\\n`{escaped_card_str}`",
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
-
-    asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message, bin_details))
-
-
-async def kmc_kill(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /kmc command for MasterCard only."""
-    if not await check_authorization(update, context):
-        return
-
-    user = update.effective_user
-    if not await enforce_cooldown(user.id, update):
-        return
-
-    user_data = await get_user(user.id)
-    if user_data['credits'] <= 0:
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    if not context.args or len(context.args) != 1:
-        return await update.effective_message.reply_text(
-            "❌ Invalid format\\. Usage: `/kmc CC|MM|YY|CVV`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    full_card_str = context.args[0]
-    parts = full_card_str.split('|')
-    if len(parts) != 4 or not all(p.isdigit() for p in parts):
-        return await update.effective_message.reply_text(
-            "❌ Invalid card format\\. Use `CC|MM|YY|CVV`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    card_number = parts[0]
-    bin_number = card_number[:6]
-    bin_details = await get_bin_details(bin_number)
-    scheme = bin_details.get("scheme", "N/A").lower()
-    level = bin_details.get("level", "N/A").lower()  # ✅ Check level instead of type
-
-    # Block non-MasterCard
-    if "visa" in scheme:
-        return await update.effective_message.reply_text(
-            "❌ 𝙊𝙣𝙡𝙮 𝙈𝙖𝙨𝙩𝙚𝙧𝘾𝙖𝙧𝙙 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    if "amex" in scheme or "american express" in scheme:
-        return await update.effective_message.reply_text(
-            "❌ 𝙊𝙣𝙡𝙮 𝙈𝙖𝙨𝙩𝙚𝙧𝘾𝙖𝙧𝙙 𝙘𝙖𝙧𝙙𝙨 𝙖𝙧𝙚 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙛𝙤𝙧 𝙩𝙝𝙞𝙨 𝙘𝙤𝙢𝙢𝙖𝙣𝙙\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    # ✅ Block prepaid from level
-    if "prepaid" in level:
-        return await update.effective_message.reply_text(
-            "🚫 𝙏𝙝𝙞𝙨 𝙘𝙖𝙧𝙙 𝙞𝙨 𝙖 𝙥𝙧𝙚𝙥𝙖𝙞𝙙 𝙩𝙮𝙥𝙚 𝙖𝙣𝙙 𝙣𝙤𝙩 𝙖𝙡𝙡𝙤𝙬𝙚𝙙 𝙩𝙤 𝙠𝙞𝙡𝙡 💳\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    if not await consume_credit(user.id):
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    from telegram.helpers import escape_markdown
-    escaped_card_str = escape_markdown(full_card_str, version=2)
-
-    initial_message = await update.effective_message.reply_text(
-        f"🔪 Kɪʟʟɪɴɢ\\.\\.\\.\\n`{escaped_card_str}`",
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
-
-    asyncio.create_task(_execute_kill_process(update, context, full_card_str, initial_message, bin_details))
-
-
-import time
-import random
-import asyncio
-import re
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-from telegram.error import BadRequest
-
-def escape_markdown_v2(text: str) -> str:
-    """Escapes special characters for Telegram MarkdownV2."""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-
-async def _execute_kill_process(update: Update, context: ContextTypes.DEFAULT_TYPE, full_card_str: str, initial_message, bin_details):
-    start_time = time.time()
-    kill_time = random.uniform(40, 87)
-
-    animation_frames = [
-        ("▱▱▱▱▱▱▱▱▱▱", "0%"),
-        ("█▱▱▱▱▱▱▱▱▱", "10%"),
-        ("██▱▱▱▱▱▱▱▱", "20%"),
-        ("███▱▱▱▱▱▱▱", "30%"),
-        ("████▱▱▱▱▱▱", "40%"),
-        ("█████▱▱▱▱▱", "50%"),
-        ("██████▱▱▱▱", "60%"),
-        ("███████▱▱▱", "70%"),
-        ("████████▱▱", "80%"),
-        ("█████████▱", "90%"),
-        ("██████████", "100%")
-    ]
-
-    frame_interval = kill_time / len(animation_frames)
-    elapsed_animation_time = 0
-    frame_index = 0
-
-    while elapsed_animation_time < kill_time:
-        bar, percent = animation_frames[frame_index % len(animation_frames)]
-        escaped_bar = escape_markdown_v2(bar)
-        escaped_percent = escape_markdown_v2(percent)
-
-        animation_text = (
-            "*🔪 Kɪʟʟɪɴɢ 𝐂𝐚𝐫𝐝\\.\\.\\.*\n"
-            "╭──────────────╮\n"
-            f"`{escaped_bar}`\n"
-            f"📊 *Pʀᴏɢʀᴇss:* `{escaped_percent}`\n"
-            "╰──────────────╯"
-        )
-
-        try:
-            await initial_message.edit_text(animation_text, parse_mode=ParseMode.MARKDOWN_V2)
-        except BadRequest as e:
-            if "Message is not modified" not in str(e):
-                print(f"Edit error: {e}")
-
-        sleep_duration = min(frame_interval, kill_time - elapsed_animation_time)
-        if sleep_duration <= 0:
-            break
-
-        await asyncio.sleep(sleep_duration)
-        elapsed_animation_time = time.time() - start_time
-        frame_index += 1
-
-    # Final animation frame
-    final_bar, final_percent = animation_frames[-1]
-    escaped_bar = escape_markdown_v2(final_bar)
-    escaped_percent = escape_markdown_v2(final_percent)
-
-    final_animation = (
-        "*🔪 Kɪʟʟɪɴɢ Cᴏᴍᴘʟᴇᴛᴇ\\!* ✅\n"
-        "╭──────────────╮\n"
-        f"`{escaped_bar}`\n"
-        f"📊 *Fɪɴᴀʟ:* `{escaped_percent}`\n"
-        "╰──────────────╯"
-    )
-
-    try:
-        await initial_message.edit_text(final_animation, parse_mode=ParseMode.MARKDOWN_V2)
-    except Exception as e:
-        print(f"Final animation error: {e}")
-
-    # Final result box (unchanged)
-    time_taken = round(time.time() - start_time)
-    card = escape_markdown_v2(full_card_str)
-    brand = escape_markdown_v2(bin_details.get("scheme", "N/A"))
-    bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
-    level = escape_markdown_v2(bin_details.get("level", "N/A"))
-    level_emoji = get_level_emoji(bin_details.get("level", "N/A"))
-    taken = escape_markdown_v2(f"{time_taken} seconds")
-
-    title = "⚡ Cᴀʀᴅ Kɪʟʟᴇᴅ Sᴜᴄᴄᴇssꜰᴜʟʟʏ"
-    if bin_details.get("scheme", "").lower() == "mastercard":
-        percent = escape_markdown_v2(str(random.randint(68, 100)))
-        title = f"⚡ Cᴀʀᴅ Kɪʟʟᴇᴅ \\- {percent}\\% Sᴜᴄᴄᴇss"
-
-    result_box = (
-        f"╭───『 {title} 』───╮\n\n"
-        f"• 𝘾𝙖𝙧𝙙        : `{card}`\n"
-        f"• 𝘽𝙧𝙖𝙣𝙙       : `{brand}`\n"
-        f"• 𝙄𝙨𝙨𝙪𝙚𝙧      : `{bank}`\n"
-        f"• 𝙇𝙚𝙫𝙚𝙡       : {level_emoji} `{level}`\n"
-        f"• 𝙆𝙞𝙡𝙡𝙚𝙧     : `𝓒𝓪𝓻𝓭𝓥𝓪𝓾𝒍𝒕𝑿`\n"
-        f"• 𝘽𝙤𝙩 𝘽𝙮     : `『𝗥ᴏᴄ𝗸ʏ』`\n"
-        f"• 𝙏𝙞𝙢𝙚 𝙏𝙖𝙠𝙚𝙣 : `{taken}`\n\n"
-        f"╰────────────────────╯"
-    )
-
-    await initial_message.edit_text(result_box, parse_mode=ParseMode.MARKDOWN_V2)
-
 
 
 from telegram.constants import ParseMode
@@ -1755,14 +1404,11 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("info", info))
     application.add_handler(CommandHandler("credits", credits_command))
-    application.add_handler(CommandHandler("kill", kill_card))
-    application.add_handler(CommandHandler("kmc", kmc_kill))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("fk", fk_command))
     application.add_handler(CommandHandler("fl", fl_command))
     application.add_handler(CommandHandler("status", status_command))
-    application.add_handler(CommandHandler("plans", show_plans_menu))
     application.add_handler(CommandHandler("redeem", redeem_command))
 
     # 🔐 Admin Commands
