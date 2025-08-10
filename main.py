@@ -149,7 +149,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
-    """Fetches BIN details from bins.antipublic.cc."""
+    """Fetches BIN details from bins.antipublic.cc with comprehensive logging."""
     logger.info(f"Attempting to fetch BIN details for {bin_number} from antipublic.cc.")
     bin_data = {
         "scheme": "N/A",            # Card brand (e.g., VISA, Mastercard)
@@ -172,21 +172,21 @@ async def get_bin_details(bin_number):
                 response.raise_for_status()
                 data = await response.json()
                 
-                # Log the full API response
-                logger.debug(f"Received antipublic.cc API response for {bin_number}: {data}")
+                # Log the full API response for debugging
+                logger.info(f"Received antipublic.cc API response for {bin_number}: {data}")
 
-                # Check for successful response with data
-                if data and data.get("brand"):
+                # Check for a successful response and parse the flat structure
+                if data and "brand" in data:
                     bin_data["scheme"] = data.get("brand", "N/A").upper()
                     bin_data["type"] = data.get("type", "N/A").title()
                     bin_data["level"] = data.get("level", "N/A").title()
                     bin_data["bank"] = data.get("bank", "N/A").title()
-                    bin_data["country_name"] = data.get("country", "N/A")
+                    bin_data["country_name"] = data.get("country_name", "N/A")
                     bin_data["country_emoji"] = data.get("country_flag", "")
-                    logger.info(f"Successfully fetched details for BIN {bin_number}.")
+                    logger.info(f"Successfully parsed BIN details for {bin_number}.")
                     return bin_data
                 else:
-                    logger.warning(f"antipublic.cc API returned no data for BIN {bin_number}: {data}")
+                    logger.warning(f"antipublic.cc API returned no data for BIN {bin_number}. Response: {data}")
 
     except aiohttp.ClientError as e:
         logger.error(f"antipublic.cc API call failed for {bin_number} with client error: {e}", exc_info=True)
@@ -481,7 +481,7 @@ from telegram.constants import ParseMode
 logger = logging.getLogger(__name__)
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Generates cards from a given BIN."""
+    """Generates cards from a given BIN with detailed logging."""
     user = update.effective_user
     logger.info(f"User {user.id} ({user.username}) started /gen command with args: {context.args}")
 
@@ -601,7 +601,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"An unexpected error occurred in gen command for user {user.id}: {e}", exc_info=True)
         final_message = "An unexpected error occurred\\. Please try again later\\."
         await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
-        logger.info(f"Replied to user {user.id} with: {final_message}")
+        logger.info(f"Replied to user {user.id} with: {final_message}"
 
 from telegram.constants import ParseMode
 
