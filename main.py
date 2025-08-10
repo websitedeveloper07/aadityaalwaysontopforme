@@ -858,7 +858,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_lines:
         return await update.effective_message.reply_text(
-            "Invalid format. Please provide at least one card in the format: number|mm|yy|cvv.",
+            "⚠️Please provide at least one card in the format: number|mm|yy|cvv.",
             parse_mode=None
         )
     
@@ -870,7 +870,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_cards = len(cards_to_check)
     approved_count, declined_count, error_count, checked_count = 0, 0, 0, 0
     
-    processing_text = "Processing..."
+    processing_text = "🔎Processing...."
     processing_msg = await update.effective_message.reply_text(processing_text, parse_mode=None)
     
     start_time = time.time()
