@@ -818,6 +818,32 @@ def format_stylish_text(text):
         formatted_text += unicode_map.get(char, char)
     return formatted_text
 
+import time
+import aiohttp
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from telegram.ext import Application, CommandHandler, ContextTypes
+
+# This function creates the stylish, bolded italic text using Unicode characters.
+# It is now used to format the card status response.
+def format_stylish_text(text):
+    """Converts text to a specific stylish, bolded italic Unicode font."""
+    unicode_map = {
+        'A': '𝘈', 'B': '𝘉', 'C': '𝘊', 'D': '𝘋', 'E': '𝘌', 'F': '𝘍', 'G': '𝘎',
+        'H': '𝘏', 'I': '𝘐', 'J': '𝘑', 'K': '𝘒', 'L': '𝘓', 'M': '𝘔', 'N': '𝘕',
+        'O': '𝘖', 'P': '𝘗', 'Q': '𝘲', 'R': '𝘙', 'S': '𝙎', 'T': '𝘛', 'U': '𝘜',
+        'V': '𝘝', 'W': '𝘞', 'X': '𝘟', 'Y': '𝘠', 'Z': '𝘡', 'a': '𝘢', 'b': '𝘣',
+        'c': '𝘤', 'd': '𝘥', 'e': '𝘦', 'f': '𝘧', 'g': '𝘨', 'h': '𝘩', 'i': '𝘪',
+        'j': '𝘫', 'k': '𝘬', 'l': '𝘭', 'm': '𝘮', 'n': '�', 'o': '𝘰', 'p': '𝘱',
+        'q': '𝘲', 'r': '𝘳', 's': '𝘴', 't': '𝘵', 'u': '𝘶', 'v': '𝘷', 'w': '𝘸',
+        'x': '𝘹', 'y': '𝘺', 'z': '𝘻', ' ': ' '
+    }
+    formatted_text = ""
+    for char in text:
+        formatted_text += unicode_map.get(char, char)
+    return formatted_text
+
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Checks multiple cards on the same API with a detailed summary at the end."""
 
@@ -837,23 +863,37 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Parse card input, limited to 10 cards
-    if not context.args:
+    # --- Start of updated input parsing logic ---
+    raw_cards = ""
+    # Check if the command has arguments (cards on the same line)
+    if context.args:
+        raw_cards = ' '.join(context.args)
+    # If no arguments, check if it's a reply to a message containing cards
+    elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
+        raw_cards = update.effective_message.reply_to_message.text
+
+    # If no cards are found, send usage message
+    if not raw_cards:
         return await update.effective_message.reply_text(
             "Usage: /mchk number|mm|yy|cvv",
             parse_mode=None
         )
 
-    raw_cards = ' '.join(context.args)
     card_lines = [line.strip() for line in raw_cards.splitlines() if line.strip()]
-    
+
     if not card_lines:
         return await update.effective_message.reply_text(
             "Invalid format. Please provide at least one card on a separate line.",
             parse_mode=None
         )
-        
-    cards_to_check = card_lines[:10]  # Limit to max 10 cards
+    
+    cards_to_check = card_lines
+    # Handle the case where more than 10 cards are provided
+    if len(card_lines) > 10:
+        await update.effective_message.reply_text("Only the first 10 cards are allowed. Checking these now.")
+        cards_to_check = card_lines[:10]
+    # --- End of updated input parsing logic ---
+    
     total_cards = len(cards_to_check)
     
     # Initialize counters for the summary
@@ -914,7 +954,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         raise Exception(f"HTTP {resp.status}")
                     data = await resp.json()
         except Exception as e:
-            results.append(f"❌ API Error for cards {raw}: {str(e)}")
+            results.append(f"❌ API Error for card {raw}: {str(e)}")
             error_count += 1
             checked_count += 1
             
@@ -938,21 +978,25 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_status = (data.get("status") or "Unknown").title()
         api_response = data.get("response") or "N/A"
 
-        # Update counters
+        # --- Start of updated emoji logic ---
+        emoji = "❓"  # Default emoji for unknown/error status
         if api_status.lower() == "approved":
             approved_count += 1
+            emoji = "✅"
         elif api_status.lower() == "declined":
             declined_count += 1
+            emoji = "❌"
         else:
             error_count += 1
         checked_count += 1
+        # --- End of updated emoji logic ---
         
         # The response is now formatted with the stylish font.
         formatted_response = format_stylish_text(api_response)
 
         card_result = (
             f"{cc_normalized}\n"
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {formatted_response}"
+            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {formatted_response}"
         )
         results.append(card_result)
         
@@ -986,9 +1030,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     final_text = final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────"
     await processing_msg.edit_text(final_text, parse_mode=None)
-
-
-
+    
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
