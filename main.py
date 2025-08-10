@@ -827,7 +827,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
         "――――――――――――――――\n"
         f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
-        "✘ Developer   ➜ kคli liຖนxx\n"
+        "✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
         f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
         "――――――――――――――――"
     )
