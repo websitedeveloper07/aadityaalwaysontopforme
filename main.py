@@ -322,17 +322,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"𝓤𝓼𝓮 𝓽𝓱𝓮 𝓫𝓾𝓽𝓽𝓸𝓷𝓼 𝓫𝓮𝓵𝓸𝔀 𝓽𝓸 𝓰𝓮𝓽 𝓼𝓽𝓪𝓻𝓽𝓮𝓭 👇"
     )
 
-    keyboard = [
-        [
-            InlineKeyboardButton("💀 Killers", callback_data="killers_menu"),
-            InlineKeyboardButton("🛠 Tools", callback_data="tools_menu")
-        ],
-        [
-            InlineKeyboardButton("🧾 Plans", callback_data="plans_menu"),
-            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
-        ]
+keyboard = [
+    [
+        InlineKeyboardButton("🛠 Tools", callback_data="tools_menu"),
+        InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+]
+
+reply_markup = InlineKeyboardMarkup(keyboard)
+
+
 
     try:
         if update.message:
@@ -407,10 +406,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Main callback handler for all inline keyboard buttons."""
     query = update.callback_query
     await query.answer()
-    elif query.data == "tools_menu":
+    if query.data == "tools_menu":
         await show_tools_menu(update, context)
     elif query.data == "back_to_start":
         await start(update, context)
+
+
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
