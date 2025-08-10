@@ -150,12 +150,12 @@ logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
     bin_data = {
-        "scheme": "N/A",         # Card scheme
+        "scheme": "N/A",         # Brand / Card scheme
         "type": "N/A",           # Credit/Debit
         "level": "N/A",          # Card level/category
         "bank": "N/A",           # Bank name
         "country_name": "N/A",   # Country name
-        "country_emoji": "",     # Country flag emoji
+        "country_emoji": "",     # Flag emoji
         "vbv_status": None,      # Placeholder
         "card_type": "N/A"       # Same as type
     }
@@ -200,6 +200,7 @@ async def get_bin_details(bin_number):
         logger.warning(f"Error fetching BIN from Bintable for {bin_number}: {e}")
 
     return bin_data
+
 
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
