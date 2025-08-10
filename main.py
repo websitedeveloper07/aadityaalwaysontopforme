@@ -470,38 +470,38 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
 
+import aiohttp
+import logging
 import random
 from datetime import datetime
 from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
-# Your utility functions assumed:
-# async def check_authorization(update, context): ...
-# async def enforce_cooldown(user_id, update): ...
-# async def get_user(user_id): ...
-# async def consume_credit(user_id): ...
-# async def get_bin_details(bin_number): ...
-# def luhn_checksum(card_number): ...
-# def get_level_emoji(level: str) -> str: ...
-# def get_vbv_status_display(vbv_status) -> str: ...
+# Assume these functions are defined elsewhere in your code
+# from bot_utils import check_authorization, enforce_cooldown, get_user, consume_credit, escape_markdown_v2, luhn_checksum
+# from bin_lookup_service import get_bin_details
 
-def escape_markdown_v2(text: str) -> str:
-    escape_chars = r"\_*[]()~`>#+-=|{}.!"
-    return ''.join(['\\' + char if char in escape_chars else char for char in text])
-
+# Your Bintable API key
+BINTABLE_API_KEY = "f65ff6abeadc72d2c44a4b4c20abe8493e1f5d72"
+logger = logging.getLogger(__name__)
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN."""
+    user = update.effective_user
+    logger.info(f"User {user.id} ({user.username}) used /gen with args: {context.args}")
+
     if not await check_authorization(update, context):
+        logger.warning(f"Authorization failed for user {user.id}.")
         return
 
-    user = update.effective_user
     if not await enforce_cooldown(user.id, update):
+        logger.info(f"Cooldown active for user {user.id}.")
         return
 
     user_data = await get_user(user.id)
     if user_data.get('credits', 0) <= 0:
+        logger.info(f"User {user.id} has no credits remaining.")
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -517,76 +517,96 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bin_input = command_text[1]
 
     if not bin_input or not bin_input.isdigit() or len(bin_input) != 6:
+        logger.warning(f"User {user.id} provided an invalid BIN: {bin_input}")
         return await update.effective_message.reply_text(
             "❌ Please provide a valid 6\\-digit BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
+    
+    # Consume credit and log the action
     if not await consume_credit(user.id):
+        logger.warning(f"Failed to consume credit for user {user.id}.")
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
+    logger.info(f"Credit consumed for user {user.id} for /gen command.")
 
     # BIN lookup from Bintable
-    bin_details = await get_bin_details(bin_input)
+    try:
+        bin_details = await get_bin_details(bin_input)
+        logger.info(f"Bintable API response for BIN {bin_input}: {bin_details}")
 
-    # Extract fields from Bintable's nested response structure
-    brand = bin_details.get("scheme", "N/A")
-    bank = bin_details.get("bank", "N/A")
-    country_name = bin_details.get("country_name", "N/A")
-    country_emoji = bin_details.get("country_emoji", "")
+        # Check if the BIN lookup was successful before proceeding
+        if bin_details.get("scheme", "N/A") == "N/A":
+            logger.warning(f"BIN lookup failed for {bin_input}. API response indicates failure.")
+            return await update.effective_message.reply_text(
+                "❌ BIN not found or invalid\\. Please try again with a valid 6\\-digit BIN\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
 
-    # Generate cards
-    cards = []
-    while len(cards) < 10:
-        card_length = 15 if brand.lower() in ["american express", "amex"] else 16
-        suffix_len = card_length - len(bin_input)
-        card_number = bin_input + ''.join(str(random.randint(0, 9)) for _ in range(suffix_len))
+        # Extract fields from Bintable's nested response structure
+        brand = bin_details.get("scheme", "N/A")
+        bank = bin_details.get("bank", "N/A")
+        country_name = bin_details.get("country_name", "N/A")
+        country_emoji = bin_details.get("country_emoji", "")
 
-        if not luhn_checksum(card_number):
-            continue
+        # Generate cards
+        cards = []
+        while len(cards) < 10:
+            card_length = 15 if brand.lower() in ["american express", "amex"] else 16
+            suffix_len = card_length - len(bin_input)
+            card_number = bin_input + ''.join(str(random.randint(0, 9)) for _ in range(suffix_len))
 
-        mm = str(random.randint(1, 12)).zfill(2)
-        yyyy = str(datetime.now().year + random.randint(1, 5))
+            if not luhn_checksum(card_number):
+                continue
 
-        cvv = (
-            str(random.randint(0, 9999)).zfill(4)
-            if brand.lower() in ["american express", "amex"]
-            else str(random.randint(0, 999)).zfill(3)
+            mm = str(random.randint(1, 12)).zfill(2)
+            yyyy = str(datetime.now().year + random.randint(1, 5))
+
+            cvv = (
+                str(random.randint(0, 9999)).zfill(4)
+                if brand.lower() in ["american express", "amex"]
+                else str(random.randint(0, 999)).zfill(3)
+            )
+            cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
+        
+        cards_list = "\n".join(cards)
+        
+        # Escape safely for MarkdownV2
+        escaped_bin = escape_markdown_v2(bin_input)
+        escaped_brand = escape_markdown_v2(brand)
+        escaped_bank = escape_markdown_v2(bank)
+        escaped_country_name = escape_markdown_v2(country_name)
+        escaped_country_emoji = escape_markdown_v2(country_emoji)
+        
+        bin_info_block = (
+            f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
+            f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
+            f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
+            f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
+            f"╰━━━━━━━━━━━━━━━━━━⬣"
         )
 
-        cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
+        final_message = (
+            f"> *Generated 10 Cards 💳*\n\n"
+            f"{cards_list}\n"
+            f">\n"
+            f"> {bin_info_block.replace(chr(10), '\n> ')}"
+        )
 
-    cards_list = "\n".join(cards)
+        await update.effective_message.reply_text(
+            final_message,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        logger.info(f"Successfully generated cards for BIN {bin_input} for user {user.id}.")
 
-    # Escape safely for MarkdownV2
-    escaped_bin = escape_markdown_v2(bin_input)
-    escaped_brand = escape_markdown_v2(brand)
-    escaped_bank = escape_markdown_v2(bank)
-    escaped_country_name = escape_markdown_v2(country_name)
-    escaped_country_emoji = escape_markdown_v2(country_emoji)
-
-    # BIN Info block
-    bin_info_block = (
-        f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
-        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
-        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
-        f"╰━━━━━━━━━━━━━━━━━━⬣"
-    )
-
-    final_message = (
-        f"> *Generated 10 Cards 💳*\n\n"
-        f"{cards_list}\n"
-        f">\n"
-        f"> {bin_info_block.replace(chr(10), '\n> ')}"
-    )
-
-    await update.effective_message.reply_text(
-        final_message,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+    except Exception as e:
+        logger.error(f"Error in gen command for user {user.id}: {e}", exc_info=True)
+        await update.effective_message.reply_text(
+            "An unexpected error occurred\\. Please try again later\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
 from telegram.constants import ParseMode
 
