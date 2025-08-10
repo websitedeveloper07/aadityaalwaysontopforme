@@ -519,7 +519,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # BIN lookup
     bin_details = await get_bin_details(bin_input)
-    brand = bin_details["brand"]
+    
+    # Corrected: Access the 'scheme' key, which is what get_bin_details returns
+    brand = bin_details["scheme"]
     bank = bin_details["bank"]
     country_name = bin_details["country_name"]
     country_emoji = bin_details["country_emoji"]
@@ -556,10 +558,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # BIN Info block (minimalist)
     bin_info_block = (
-        f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
-        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
-        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
+        f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
+        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
+        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -575,8 +577,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
-
 
 from telegram.constants import ParseMode
 
