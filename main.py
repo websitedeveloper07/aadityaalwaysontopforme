@@ -400,10 +400,16 @@ async def gates_menu_handler(update, context):
     gates_message = (
         "🚪 *Gates Menu*\n\n"
         "Use the following commands:\n\n"
-        "• `/chk` \\- Checks single card on stripe auth\n"
-        "Example:\n`/chk 1234567890123456|12|24|123`\n\n"
-        "• `/mchk` \\- Checks up to 10 cards on stripe auth"
-        "Example:\n`/mchk 1234567890123456|12|24|123 2345678901234567|11|23|456`"
+        "• `/chk` \\- *Check a single card on Stripe Auth*\n"
+        "  Example:\n"
+        "  ```\n"
+        "  /chk 1234567890123456|12|24|123\n"
+        "  ```\n\n"
+        "• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
+        "  Example:\n"
+        "  ```\n"
+        "  /mchk 1234567890123456|12|24|123 2345678901234567|11|23|456\n"
+        "  ```"
     )
 
     escaped_message = escape_markdown_v2(gates_message)
