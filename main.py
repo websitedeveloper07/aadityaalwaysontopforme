@@ -313,6 +313,18 @@ def escape_markdown_v2(text: str) -> str:
     import re
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
     
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.error import BadRequest
+from telegram.helpers import escape_markdown
+from datetime import datetime
+import pytz
+import logging
+
+logger = logging.getLogger(__name__)
+
+OFFICIAL_GROUP_LINK = "https://t.me/yourgroup"  # replace with your group link
+
 async def start(update, context):
     user = update.effective_user
     logger.info(f"/start called by user: {user.id} (@{user.username})")
@@ -347,8 +359,10 @@ async def start(update, context):
     keyboard = [
         [
             InlineKeyboardButton("🛠 Tools", callback_data="tools_menu"),
-            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK),
             InlineKeyboardButton("🚪 Gates", callback_data="gates_menu"),
+        ],
+        [
+            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -378,30 +392,32 @@ async def start(update, context):
                 parse_mode=ParseMode.MARKDOWN_V2
             )
 
-# Handler for Gates submenu
+# Gates menu handler
 async def gates_menu_handler(update, context):
     query = update.callback_query
     await query.answer()
 
-    gates_message = "🚪 *Gates Menu*\n\nChoose a command:"
-    keyboard = [
-        [InlineKeyboardButton("💳 /chk — Stripe Auth Check", callback_data="cmd_chk")],
-        [InlineKeyboardButton("📋 /mchk — Mass Stripe Check (up to 10 cards)", callback_data="cmd_mchk")],
-        [InlineKeyboardButton("⬅️ Back", callback_data="start_menu")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    gates_message = (
+        "🚪 *Gates Menu*\n\n"
+        "Use the following commands:\n"
+        "\n"
+        "• `/chk` — Stripe Auth Check for a single card\n"
+        "Example:\n`/chk 1234567890123456|12|24|123`\n"
+        "\n"
+        "• `/mchk` — Mass Stripe Check (up to 10 cards)\n"
+        "Example:\n`/mchk 1234567890123456|12|24|123 2345678901234567|11|23|456`"
+    )
 
     await query.edit_message_text(
         gates_message,
-        reply_markup=reply_markup,
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-# Optional: handler to go back to main menu
+# Handler to go back to main start menu (from buttons)
 async def start_menu_handler(update, context):
     query = update.callback_query
     await query.answer()
-    # Reuse start function logic but edit message instead of sending new
+    # Reuse start() function’s keyboard & message formatting but edit message instead of sending new
     user = update.effective_user
     indian_timezone = pytz.timezone('Asia/Kolkata')
     now = datetime.now(indian_timezone).strftime('%I:%M %p')
@@ -432,8 +448,10 @@ async def start_menu_handler(update, context):
     keyboard = [
         [
             InlineKeyboardButton("🛠 Tools", callback_data="tools_menu"),
-            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK),
             InlineKeyboardButton("🚪 Gates", callback_data="gates_menu"),
+        ],
+        [
+            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -444,24 +462,22 @@ async def start_menu_handler(update, context):
     )
 
 
-
-async def cmd_handler(update, context):
+# Main callback query handler, example usage:
+async def handle_callback(update, context):
     query = update.callback_query
     await query.answer()
+
     data = query.data
 
-    if data == "cmd_chk":
-        await query.edit_message_text(
-            "Use the /chk command to perform a Stripe Auth check for a single card.\n\nExample:\n`/chk 1234567890123456|12|24|123`",
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
-    elif data == "cmd_mchk":
-        await query.edit_message_text(
-            "Use the /mchk command to perform a mass Stripe check for up to 10 cards.\n\nExample:\n`/mchk 1234567890123456|12|24|123 2345678901234567|11|23|456`",
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+    if data == "tools_menu":
+        await show_tools_menu(update, context)
+    elif data == "gates_menu":
+        await gates_menu_handler(update, context)
+    elif data in ["start_menu", "back_to_start"]:
+        await start_menu_handler(update, context)
     else:
-        await query.answer("Unknown command", show_alert=True)
+        await query.answer("Unknown option selected.", show_alert=True)
+
 
 
 
@@ -492,7 +508,6 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tools_message = (
         "*✦ All Commands ✦*\n"
         "All commands are live, `Online`, and have `100%` health\\.\n"
-        "For MasterCard and Visa, different messages will be shown for prepaid bins\\.\n\n"
         "• `/gen <BIN>` \\- Generates 10 cards\n"
         "• `/fk <country>` \\- Generates fake info\n"
         "• `/fl <dump>` \\- Extracts cards from dumps\n"
@@ -500,7 +515,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/bin <BIN>` \\- Performs BIN lookup\n"
         "• `/status` \\- Checks bot health\n"
         "• `/info` \\- Shows your info\n"
-        "• `/plans` \\- Shows subscription plans"
+        "• `/chk` \\- Checks card on stripe auth"
+        "• `/mchk` \\- Checks 10 cards on stripe auth"
     )
     keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -900,7 +916,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
             f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
-            "✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
+            "✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
             f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
         )
