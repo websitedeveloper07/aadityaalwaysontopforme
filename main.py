@@ -146,21 +146,22 @@ async def add_credits_to_user(user_id, amount):
 import aiohttp
 import logging
 
+# Your Bintable API key
+BINTABLE_API_KEY = "f65ff6abeadc72d2c44a4b4c20abe8493e1f5d72"
 logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
+    """Fetches BIN details from bintable.com."""
     bin_data = {
-        "scheme": "N/A",         # Brand / Card scheme
-        "type": "N/A",           # Credit/Debit
-        "level": "N/A",          # Card level/category
-        "bank": "N/A",           # Bank name
-        "country_name": "N/A",   # Country name
-        "country_emoji": "",     # Flag emoji
-        "vbv_status": None,      # Placeholder
-        "card_type": "N/A"       # Same as type
+        "scheme": "N/A",            # Card brand (e.g., VISA, Mastercard)
+        "type": "N/A",              # Credit/Debit
+        "level": "N/A",             # Card level (e.g., Classic, Business)
+        "bank": "N/A",              # Bank name
+        "country_name": "N/A",      # Full country name
+        "country_emoji": "",        # Country flag emoji
     }
 
-    url = f"https://api.bintable.com/v1/{bin_number}?api_key=f65ff6abeadc72d2c44a4b4c20abe8493e1f5d72"
+    url = f"https://api.bintable.com/v1/{bin_number}?api_key={BINTABLE_API_KEY}"
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Accept": "application/json"
@@ -169,38 +170,35 @@ async def get_bin_details(bin_number):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=7) as response:
-                raw_text = await response.text()
-                logger.info(f"Bintable API raw response for {bin_number}: {raw_text}")
+                response.raise_for_status()
+                data = await response.json()
+                
+                if data.get("result", 404) == 200 and "data" in data:
+                    api_data = data["data"]
+                    
+                    # Extracting data from nested keys
+                    card_data = api_data.get("card", {})
+                    country_data = api_data.get("country", {})
+                    bank_data = api_data.get("bank", {})
 
-                if response.status == 200:
-                    try:
-                        data = await response.json()
-                    except Exception:
-                        logger.warning(f"Invalid JSON from Bintable for {bin_number}")
-                        return bin_data
-
-                    if data.get("result") == 200 and "data" in data:
-                        card_info = data["data"].get("card", {})
-                        country_info = data["data"].get("country", {})
-                        bank_info = data["data"].get("bank", {})
-
-                        bin_data["scheme"] = str(card_info.get("scheme", "N/A")).upper()
-                        bin_data["type"] = str(card_info.get("type", "N/A")).title()
-                        bin_data["card_type"] = bin_data["type"]
-                        bin_data["level"] = str(card_info.get("category", "N/A")).title()
-
-                        bin_data["bank"] = str(bank_info.get("name", "N/A")).title()
-                        bin_data["country_name"] = str(country_info.get("name", "N/A")).title()
-                        bin_data["country_emoji"] = country_info.get("flag", "")
-
+                    bin_data["scheme"] = card_data.get("scheme", "N/A").upper()
+                    bin_data["type"] = card_data.get("type", "N/A").title()
+                    bin_data["level"] = card_data.get("category", "N/A").title()
+                    bin_data["bank"] = bank_data.get("name", "N/A").title()
+                    bin_data["country_name"] = country_data.get("name", "N/A")
+                    bin_data["country_emoji"] = country_data.get("flag", "")
+                    
+                    return bin_data
                 else:
-                    logger.warning(f"Bintable API returned {response.status} for BIN {bin_number}")
+                    logger.warning(f"Bintable API returned an error for BIN {bin_number}: {data.get('message', 'No message')}")
 
+    except aiohttp.ClientError as e:
+        logger.warning(f"Bintable API call failed for {bin_number}: {e}")
     except Exception as e:
-        logger.warning(f"Error fetching BIN from Bintable for {bin_number}: {e}")
+        logger.warning(f"Error processing Bintable response for {bin_number}: {e}")
 
+    logger.warning(f"Failed to get BIN details for {bin_number} from bintable.com.")
     return bin_data
-
 
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
