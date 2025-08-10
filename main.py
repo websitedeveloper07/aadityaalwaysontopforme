@@ -288,7 +288,7 @@ logger = logging.getLogger(__name__)
 def escape_markdown_v2(text: str) -> str:
     import re
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-
+    
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /start command, displaying user info and main menu."""
     user = update.effective_user
@@ -322,16 +322,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"𝓤𝓼𝓮 𝓽𝓱𝓮 𝓫𝓾𝓽𝓽𝓸𝓷𝓼 𝓫𝓮𝓵𝓸𝔀 𝓽𝓸 𝓰𝓮𝓽 𝓼𝓽𝓪𝓻𝓽𝓮𝓭 👇"
     )
 
-keyboard = [
-    [
-        InlineKeyboardButton("🛠 Tools", callback_data="tools_menu"),
-        InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
+    keyboard = [
+        [
+            InlineKeyboardButton("🛠 Tools", callback_data="tools_menu"),
+            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
+        ]
     ]
-]
-
-reply_markup = InlineKeyboardMarkup(keyboard)
-
-
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
     try:
         if update.message:
@@ -357,6 +354,7 @@ reply_markup = InlineKeyboardMarkup(keyboard)
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.MARKDOWN_V2
             )
+
 
 
 
