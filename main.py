@@ -744,11 +744,12 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # Processing box
+    # Escape the square brackets which were breaking the MarkdownV2 parser
     processing_text = (
-        "╔═══[ PROCESSING ]═══╗\n"
+        "╔═══\\[ PROCESSING \\]═══╗\n"
         f"• Card ➜ `{escape_md(cc_normalized)}`\n"
         "• Gateway ➜ Stripe Auth\n"
-        "• Status ➜ Checking\\.\\.\\.\n"  # Periods escaped here
+        "• Status ➜ Checking\\.\\.\\.\n"
         "╚═════════════════════╝"
     )
     processing_msg = await update.effective_message.reply_text(
@@ -776,12 +777,13 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     api_response = data.get("response") or "N/A"
     time_taken = round(time.time() - start_time, 2)
 
+    # Escape the square brackets which were breaking the MarkdownV2 parser
     if api_status.lower() == "approved":
-        header = "╔════[ APPROVED ✅ ]════╗"
+        header = "╔════\\[ APPROVED ✅ \\]════╗"
     elif api_status.lower() == "declined":
-        header = "╔════[ DECLINED ❌ ]════╗"
+        header = "╔════\\[ DECLINED ❌ \\]════╗"
     else:
-        header = f"╔════[ {escape_md(api_status)} ]════╗"
+        header = f"╔════\\[ {escape_md(api_status)} \\]════╗"
 
     final_text = (
         f"{header}\n"
