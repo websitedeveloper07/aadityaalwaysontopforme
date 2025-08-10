@@ -648,18 +648,17 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-import aiohttp
 import time
+import aiohttp
 from telegram import Update
 from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-
-# Use this helper to escape text for MarkdownV2, including pipes
-def escape_markdown_v2(text: str) -> str:
-    # telegram.helpers.escape_markdown escapes all needed chars for MarkdownV2 including '|'
+def escape_md(text):
+    # Ensure input is string, then escape for MarkdownV2
+    if not isinstance(text, str):
+        text = str(text)
     return escape_markdown(text, version=2)
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -733,7 +732,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Processing box
     processing_text = (
         "╔═══[ PROCESSING ]═══╗\n"
-        f"• Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+        f"• Card ➜ `{escape_md(cc_normalized)}`\n"
         "• Gateway ➜ Stripe Auth\n"
         "• Status ➜ Checking...\n"
         "╚═════════════════════╝"
@@ -755,7 +754,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 data = await resp.json()
     except Exception as e:
         return await processing_msg.edit_text(
-            f"❌ API Error: `{escape_markdown_v2(str(e))}`",
+            f"❌ API Error: `{escape_md(str(e))}`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -768,26 +767,25 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif api_status.lower() == "declined":
         header = "╔════[ DECLINED ❌ ]════╗"
     else:
-        header = f"╔════[ {escape_markdown_v2(api_status)} ]════╗"
+        header = f"╔════[ {escape_md(api_status)} ]════╗"
 
     final_text = (
         f"{header}\n"
-        f"• Card       ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+        f"• Card       ➜ `{escape_md(cc_normalized)}`\n"
         f"• Gateway    ➜ Stripe Auth\n"
-        f"• Response   ➜ {escape_markdown_v2(api_response)}\n"
+        f"• Response   ➜ {escape_md(api_response)}\n"
         f"════════════════════════\n"
-        f"• Brand      ➜ {escape_markdown_v2(brand)}\n"
-        f"• Issuer     ➜ {escape_markdown_v2(issuer)}\n"
-        f"• Country    ➜ {escape_markdown_v2(country_name)}\n"
+        f"• Brand      ➜ {escape_md(brand)}\n"
+        f"• Issuer     ➜ {escape_md(issuer)}\n"
+        f"• Country    ➜ {escape_md(country_name)}\n"
         f"════════════════════════\n"
-        f"• Request By ➜ {escape_markdown_v2(user.first_name)}[{escape_markdown_v2(user_data.get('plan','Free'))}]\n"
+        f"• Request By ➜ {escape_md(user.first_name)}[{escape_md(user_data.get('plan','Free'))}]\n"
         f"• Developer  ➜ Darkboy X7\n"
         f"• Time       ➜ {time_taken} seconds\n"
         f"╚════════════════════════╝"
     )
 
     await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
-
 
 
 
