@@ -650,28 +650,26 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import time
 import aiohttp
 from telegram import Update
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-# Updated function to correctly escape the pipe character and period for MarkdownV2
-def escape_md(text):
-    """
-    Escapes special characters in text for MarkdownV2.
-    This includes the pipe character '|' and the period '.', which were
-    not handled by the default helper in the context of the user's code.
-    """
-    # Ensure input is string, then escape for MarkdownV2
-    if not isinstance(text, str):
-        text = str(text)
-    
-    # Manually escape the pipe character and period because they were causing issues
-    # The official escape_markdown function should handle most others.
-    text = text.replace('|', r'\|')
-    text = text.replace('.', r'\.')
-    
-    # Use the built-in helper to escape all other reserved MarkdownV2 characters
-    return escape_markdown(text, version=2)
+# A helper function to create the stylish, bolded text using Unicode characters.
+# This does not rely on Markdown and will display correctly as plain text.
+def format_stylish_text(text):
+    """Converts text to a specific stylish, bolded Unicode font."""
+    unicode_map = {
+        'A': '𝗔', 'B': '𝗕', 'C': '𝗖', 'D': '𝗗', 'E': '𝗘', 'F': '𝗙', 'G': '𝗚',
+        'H': '𝗛', 'I': '𝗜', 'J': '𝗝', 'K': '𝗞', 'L': '�', 'M': '𝗠', 'N': '𝗡',
+        'O': '𝗢', 'P': '𝗣', 'Q': '𝗤', 'R': '𝗥', 'S': '𝗦', 'T': '𝗧', 'U': '𝗨',
+        'V': '𝗩', 'W': '𝗪', 'X': '𝗫', 'Y': '𝗬', 'Z': '𝗭', 'a': '𝗮', 'b': '𝗯',
+        'c': '𝗰', 'd': '𝗱', 'e': '𝗲', 'f': '𝗳', 'g': '𝗴', 'h': '𝗵', 'i': '𝗶',
+        'j': '𝗷', 'k': '𝗸', 'l': '𝗹', 'm': '𝗺', 'n': '𝗻', 'o': '𝗼', 'p': '𝗽',
+        'q': '𝗾', 'r': '𝗿', 's': '𝘀', 't': '𝘁', 'u': '𝘂', 'v': '𝘃', 'w': '𝘄',
+        'x': '𝘅', 'y': '𝘆', 'z': '𝘇', ' ': ' '
+    }
+    formatted_text = ""
+    for char in text:
+        formatted_text += unicode_map.get(char, char)
+    return formatted_text
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box.
@@ -680,11 +678,10 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Block private usage unless authorized
     if update.effective_chat.type == "private":
         if not await check_authorization(update, context):
-            # Escaping the period character in the usage message
             return await update.effective_message.reply_text(
-                "❌ Private access is blocked\\.\n"
-                "Contact @YourOwnerUsername to buy subscription\\.",
-                parse_mode=ParseMode.MARKDOWN_V2
+                "❌ Private access is blocked.\n"
+                "Contact @YourOwnerUsername to buy subscription.",
+                parse_mode=None  # Use no parse mode
             )
 
     user = update.effective_user
@@ -698,8 +695,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
     if user_data.get('credits', 0) <= 0:
         return await update.effective_message.reply_text(
-            "❌ You have no credits left\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "❌ You have no credits left.",
+            parse_mode=None  # Use no parse mode
         )
 
     # Parse card input
@@ -711,17 +708,16 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw = parts[1] if len(parts) > 1 else None
 
     if not raw or "|" not in raw:
-        # Escaping the pipe characters in the usage message
         return await update.effective_message.reply_text(
-            "Usage: /chk number\\|mm\\|yy\\|cvv",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "Usage: /chk number|mm|yy|cvv",
+            parse_mode=None  # Use no parse mode
         )
 
     parts = raw.split("|")
     if len(parts) != 4:
         return await update.effective_message.reply_text(
-            "Invalid format\\. Use number\\|mm\\|yy\\|cvv \\(or yyyy for year\\)\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+            parse_mode=None  # Use no parse mode
         )
 
     # Normalize year to 2 digits
@@ -739,22 +735,21 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deduct credit
     if not await consume_credit(user_id):
         return await update.effective_message.reply_text(
-            "❌ No credits left\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "❌ No credits left.",
+            parse_mode=None  # Use no parse mode
         )
 
     # Processing box
-    # Escape the square brackets which were breaking the MarkdownV2 parser
     processing_text = (
-        "╔═══\\[ PROCESSING \\]═══╗\n"
-        f"• Card ➜ `{escape_md(cc_normalized)}`\n"
+        "╔═══[ PROCESSING ]═══╗\n"
+        f"• Card ➜ `{cc_normalized}`\n"
         "• Gateway ➜ Stripe Auth\n"
-        "• Status ➜ Checking\\.\\.\\.\n"
+        "• Status ➜ Checking...\n"
         "╚═════════════════════╝"
     )
     processing_msg = await update.effective_message.reply_text(
         processing_text,
-        parse_mode=ParseMode.MARKDOWN_V2
+        parse_mode=None  # Use no parse mode
     )
 
     start_time = time.time()
@@ -769,40 +764,42 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 data = await resp.json()
     except Exception as e:
         return await processing_msg.edit_text(
-            f"❌ API Error: `{escape_md(str(e))}`",
-            parse_mode=ParseMode.MARKDOWN_V2
+            f"❌ API Error: {str(e)}",
+            parse_mode=None  # Use no parse mode
         )
 
     api_status = (data.get("status") or "Unknown").title()
     api_response = data.get("response") or "N/A"
     time_taken = round(time.time() - start_time, 2)
 
-    # Escape the square brackets which were breaking the MarkdownV2 parser
+    # Format the headers and the response text
     if api_status.lower() == "approved":
-        header = "╔════\\[ APPROVED ✅ \\]════╗"
+        header = "╔════[ APPROVED ✅ ]════╗"
+        formatted_response = format_stylish_text(api_response)
     elif api_status.lower() == "declined":
-        header = "╔════\\[ DECLINED ❌ \\]════╗"
+        header = "╔════[ DECLINED ❌ ]════╗"
+        formatted_response = format_stylish_text(api_response)
     else:
-        header = f"╔════\\[ {escape_md(api_status)} \\]════╗"
+        header = f"╔════[ {api_status} ]════╗"
+        formatted_response = format_stylish_text(api_response)
 
     final_text = (
         f"{header}\n"
-        f"• Card        ➜ `{escape_md(cc_normalized)}`\n"
+        f"• Card        ➜ `{cc_normalized}`\n"
         f"• Gateway     ➜ Stripe Auth\n"
-        f"• Response    ➜ {escape_md(api_response)}\n"
-        f"════════════════════════\n"
-        f"• Brand       ➜ {escape_md(brand)}\n"
-        f"• Issuer      ➜ {escape_md(issuer)}\n"
-        f"• Country     ➜ {escape_md(country_name)}\n"
-        f"════════════════════════\n"
-        f"• Request By  ➜ {escape_md(user.first_name)}[{escape_md(user_data.get('plan','Free'))}]\n"
+        f"• Response    ➜ {formatted_response}\n"
+        f"═════════════════════\n"
+        f"• Brand       ➜ {brand}\n"
+        f"• Issuer      ➜ {issuer}\n"
+        f"• Country     ➜ {country_name}\n"
+        f"═════════════════════\n"
+        f"• Request By  ➜ {user.first_name}[{user_data.get('plan','Free')}]\n"
         f"• Developer   ➜ Darkboy X7\n"
-        f"• Time        ➜ {escape_md(str(time_taken))} seconds\n"
-        f"╚════════════════════════╝"
+        f"• Time        ➜ {time_taken} seconds\n"
+        f"╚═════════════════════╝"
     )
 
-    await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
-
+    await processing_msg.edit_text(final_text, parse_mode=None)
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
