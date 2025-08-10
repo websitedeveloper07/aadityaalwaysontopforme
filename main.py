@@ -402,17 +402,13 @@ async def gates_menu_handler(update, context):
         "Use the following commands:\n\n"
         "• `/chk` \\- *Check a single card on Stripe Auth*\n"
         "  Example:\n"
-        "  ```\n"
-        "  /chk 1234567890123456|12|24|123\n"
-        "  ```\n\n"
+        "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
         "• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
         "  Example:\n"
-        "  ```\n"
-        "  /mchk 1234567890123456|12|24|123 2345678901234567|11|23|456\n"
-        "  ```"
+        "  `\\/mchk 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456`\n"
     )
 
-    escaped_message = escape_markdown_v2(gates_message)
+    # No additional escaping needed if you write carefully above, else use escape_markdown_v2
 
     keyboard = [
         [InlineKeyboardButton("🔙 Back", callback_data="back_to_start")]
@@ -420,7 +416,7 @@ async def gates_menu_handler(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.edit_message_text(
-        escaped_message,
+        gates_message,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=reply_markup
     )
