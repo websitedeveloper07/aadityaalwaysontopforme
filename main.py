@@ -653,33 +653,14 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-# A comprehensive function to escape all special characters for MarkdownV2.
-# This prevents unwanted formatting and ensures only intentional formatting is applied.
-def escape_md_v2(text):
-    """
-    Escapes all special MarkdownV2 characters in text.
-    """
-    if not isinstance(text, str):
-        text = str(text)
-
-    # List of all special characters in MarkdownV2
-    special_chars = '_*[]()~`>#+-=|{}.!'
-    
-    # Escape each special character with a backslash
-    for char in special_chars:
-        text = text.replace(char, f'\\{char}')
-        
-    return text
-
-# A helper function to create italic text using Unicode characters.
-# This is a fallback if the MarkdownV2 italic doesn't work as expected, but
-# using `parse_mode=ParseMode.MARKDOWN_V2` with `_text_` should be preferred.
-def format_italic_text(text):
-    """Converts text to an italic Unicode font."""
+# A helper function to create the stylish, bolded italic text using Unicode characters.
+# This does not rely on Markdown and will display correctly as plain text.
+def format_stylish_text(text):
+    """Converts text to a specific stylish, bolded italic Unicode font."""
     unicode_map = {
         'A': '𝘈', 'B': '𝘉', 'C': '𝘊', 'D': '𝘋', 'E': '𝘌', 'F': '𝘍', 'G': '𝘎',
         'H': '𝘏', 'I': '𝘐', 'J': '𝘑', 'K': '𝘒', 'L': '𝘓', 'M': '𝘔', 'N': '𝘕',
-        'O': '𝘖', 'P': '�', 'Q': '𝘘', 'R': '𝘙', 'S': '𝘚', 'T': '𝘛', 'U': '𝘜',
+        'O': '𝘖', 'P': '𝘗', 'Q': '𝘘', 'R': '𝘙', 'S': '𝙎', 'T': '𝘛', 'U': '𝘜',
         'V': '𝘝', 'W': '𝘞', 'X': '𝘟', 'Y': '𝘠', 'Z': '𝘡', 'a': '𝘢', 'b': '𝘣',
         'c': '𝘤', 'd': '𝘥', 'e': '𝘦', 'f': '𝘧', 'g': '𝘨', 'h': '𝘩', 'i': '𝘪',
         'j': '𝘫', 'k': '𝘬', 'l': '𝘭', 'm': '𝘮', 'n': '𝘯', 'o': '𝘰', 'p': '𝘱',
@@ -699,9 +680,9 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private":
         if not await check_authorization(update, context):
             return await update.effective_message.reply_text(
-                "❌ Private access is blocked\\.\n"
-                "Contact @YourOwnerUsername to buy subscription\\.",
-                parse_mode=ParseMode.MARKDOWN_V2
+                "❌ Private access is blocked.\n"
+                "Contact @YourOwnerUsername to buy subscription.",
+                parse_mode=None
             )
 
     user = update.effective_user
@@ -715,8 +696,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
     if user_data.get('credits', 0) <= 0:
         return await update.effective_message.reply_text(
-            "❌ You have no credits left\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "❌ You have no credits left.",
+            parse_mode=None
         )
 
     # Parse card input
@@ -729,15 +710,15 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not raw or "|" not in raw:
         return await update.effective_message.reply_text(
-            "Usage: /chk number\\|mm\\|yy\\|cvv",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "Usage: /chk number|mm|yy|cvv",
+            parse_mode=None
         )
 
     parts = raw.split("|")
     if len(parts) != 4:
         return await update.effective_message.reply_text(
-            "Invalid format\\. Use number\\|mm\\|yy\\|cvv \\(or yyyy for year\\)\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+            parse_mode=None
         )
 
     # Normalize year to 2 digits
@@ -748,6 +729,9 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # BIN lookup
     bin_number = parts[0][:6]
     bin_details = await get_bin_details(bin_number)
+    # Handle the case where antipublic.cc returns None
+    if bin_details is None:
+        bin_details = {}
     brand = (bin_details.get("scheme") or "N/A").upper()
     issuer = (bin_details.get("type") or "N/A").upper()
     country_name = (bin_details.get("country_name") or "N/A").upper()
@@ -755,21 +739,21 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deduct credit
     if not await consume_credit(user_id):
         return await update.effective_message.reply_text(
-            "❌ No credits left\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "❌ No credits left.",
+            parse_mode=None
         )
 
-    # Processing box with MarkdownV2
+    # Processing box
     processing_text = (
-        "╔═══\\[ PROCESSING \\]═══╗\n"
-        f"• Card ➜ `{escape_md_v2(cc_normalized)}`\n"
+        "╔═══[ PROCESSING ]═══╗\n"
+        f"• Card ➜ `{cc_normalized}`\n"
         "• Gateway ➜ Stripe Auth\n"
-        "• Status ➜ Checking\\.\\.\\.\n"
+        "• Status ➜ Checking...\n"
         "╚═════════════════════╝"
     )
     processing_msg = await update.effective_message.reply_text(
         processing_text,
-        parse_mode=ParseMode.MARKDOWN_V2
+        parse_mode=None
     )
 
     start_time = time.time()
@@ -784,42 +768,42 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 data = await resp.json()
     except Exception as e:
         return await processing_msg.edit_text(
-            f"❌ API Error: `{escape_md_v2(str(e))}`",
-            parse_mode=ParseMode.MARKDOWN_V2
+            f"❌ API Error: {str(e)}",
+            parse_mode=None
         )
 
     api_status = (data.get("status") or "Unknown").title()
     api_response = data.get("response") or "N/A"
     time_taken = round(time.time() - start_time, 2)
 
-    # Final headers and text with MarkdownV2 for formatting
+    # Format the headers and the response text
     if api_status.lower() == "approved":
-        header = "╔════\\[ APPROVED ✅ \\]════╗"
+        header = "╔════[ APPROVED ✅ ]════╗"
+        formatted_response = format_stylish_text(api_response)
     elif api_status.lower() == "declined":
-        header = "╔════\\[ DECLINED ❌ \\]════╗"
+        header = "╔════[ DECLINED ❌ ]════╗"
+        formatted_response = format_stylish_text(api_response)
     else:
-        header = f"╔════\\[ {escape_md_v2(api_status)} \\]════╗"
-    
-    # Use MarkdownV2 italic syntax `_text_` for the response
-    formatted_response = f"_{api_response}_"
+        header = f"╔════[ {api_status} ]════╗"
+        formatted_response = format_stylish_text(api_response)
 
     final_text = (
         f"{header}\n"
-        f"• Card        ➜ `{escape_md_v2(cc_normalized)}`\n"
-        "• Gateway     ➜ Stripe Auth\n"
+        f"• Card        ➜ `{cc_normalized}`\n"
+        f"• Gateway     ➜ Stripe Auth\n"
         f"• Response    ➜ {formatted_response}\n"
-        "════════════════════════\n"
-        f"• Brand       ➜ {escape_md_v2(brand)}\n"
-        f"• Issuer      ➜ {escape_md_v2(issuer)}\n"
-        f"• Country     ➜ {escape_md_v2(country_name)}\n"
-        "════════════════════════\n"
-        f"• Request By  ➜ {escape_md_v2(user.first_name)}\\[{escape_md_v2(user_data.get('plan','Free'))}\\]\n"
-        "• Developer   ➜ Darkboy X7\n"
-        f"• Time        ➜ {escape_md_v2(str(time_taken))} seconds\n"
-        "╚════════════════════════╝"
+        f"════════════════════════\n"
+        f"• Brand       ➜ {brand}\n"
+        f"• Issuer      ➜ {issuer}\n"
+        f"• Country     ➜ {country_name}\n"
+        f"════════════════════════\n"
+        f"• Request By  ➜ {user.first_name}[{user_data.get('plan','Free')}]\n"
+        f"• Developer   ➜ Darkboy X7\n"
+        f"• Time        ➜ {time_taken} seconds\n"
+        f"╚════════════════════════╝"
     )
 
-    await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+    await processing_msg.edit_text(final_text, parse_mode=None)
 
 
 def escape_markdown_v2(text: str) -> str:
