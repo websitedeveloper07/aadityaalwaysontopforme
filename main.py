@@ -797,6 +797,7 @@ import aiohttp
 import re
 from telegram import Update
 from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Placeholder functions that must be implemented for the bot to run.
@@ -811,7 +812,7 @@ async def enforce_cooldown(user_id, update):
 
 async def get_user(user_id):
     """Placeholder to get user data from a database or storage."""
-    return {"credits": 200}  # Example user with 100 credits
+    return {"credits": 100}  # Example user with 100 credits
 
 async def consume_credit(user_id):
     """Placeholder to consume one credit from a user."""
@@ -829,7 +830,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not await check_authorization(update, context):
             return await update.effective_message.reply_text(
                 "❌ Private access is blocked.\n"
-                "Contact @K4linuxx to buy subscription.",
+                "Contact @YourOwnerUsername to buy subscription.",
                 parse_mode=None
             )
 
@@ -858,7 +859,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_lines:
         return await update.effective_message.reply_text(
-            "⚠️Please provide at least one card in the format: number|mm|yy|cvv.",
+            "Invalid format. Please provide at least one card in the format: number|mm|yy|cvv.",
             parse_mode=None
         )
     
@@ -870,7 +871,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_cards = len(cards_to_check)
     approved_count, declined_count, error_count, checked_count = 0, 0, 0, 0
     
-    processing_text = "🔎Processing...."
+    processing_text = "Processing..."
     processing_msg = await update.effective_message.reply_text(processing_text, parse_mode=None)
     
     start_time = time.time()
@@ -903,14 +904,14 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         raise Exception(f"HTTP {resp.status}")
                     data = await resp.json()
         except Exception as e:
-            results.append(f"❌ API Error for card `{raw}`: {str(e)}")
+            results.append(f"❌ API Error for card `{escape_markdown(raw, version=2)}`: {escape_markdown(str(e), version=2)}")
             error_count += 1
             checked_count += 1
             
             current_time_taken = round(time.time() - start_time, 2)
             current_summary = (
                 f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✧ 𝗖𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                 f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
@@ -938,8 +939,8 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # The card number is now in a monospace font, while the status text is not.
         card_result = (
-            f"`{cc_normalized}`\n"
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {api_response}"
+            f"`{escape_markdown(cc_normalized, version=2)}`\n"
+            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
         )
         results.append(card_result)
         
@@ -971,7 +972,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     final_text = final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────"
     await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
-    
+
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
