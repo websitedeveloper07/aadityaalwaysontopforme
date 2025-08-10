@@ -325,7 +325,7 @@ logger = logging.getLogger(__name__)
 
 OFFICIAL_GROUP_LINK = "https://t.me/yourgroup"  # replace with your group link
 
-async def start(update, context):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     logger.info(f"/start called by user: {user.id} (@{user.username})")
 
@@ -353,7 +353,7 @@ async def start(update, context):
         f"🕒 𝙏𝙞𝙢𝙚: `{escaped_now}`\n"
         f"💳 𝘾𝙧𝙚𝙙𝙞𝙩𝙨: `{escaped_credits}`\n"
         f"📋 𝙋𝙡𝙖𝙣: `{escaped_plan}`\n\n"
-        f"𝓤𝓼𝓮 𝓽𝓱𝓮 𝓫𝓾𝓽𝓽𝓸𝓷𝓼 𝓫𝓮𝓵𝓸𝔀 𝓽𝓸 𝓰𝓮𝓽 𝓼𝓽𝓪𝓻𝓽𝓮𝓭 👇"
+        f"𝓤𝓼𝓮 𝓽𝓱𝓮 𝓫𝓾𝓽𝓽𝓸𝓷𝓼 𝓫𝓮𝓵𝓸𝔀 𝓽𝓸 𝓰𝓮𝓽 𝓼𝓽𝓪𝓻𝓽𝓮𝓓 👇"
     )
 
     keyboard = [
@@ -382,15 +382,9 @@ async def start(update, context):
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.MARKDOWN_V2
             )
-    except BadRequest as e:
-        if "Message is not modified" not in str(e):
-            logger.warning(f"Error editing message: {e}")
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=welcome_message,
-                reply_markup=reply_markup,
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
+    except Exception as e:
+        logger.warning(f"Error sending start message: {e}")
+
 
 # Gates menu handler
 from telegram.constants import ParseMode
@@ -405,28 +399,34 @@ async def gates_menu_handler(update, context):
 
     gates_message = (
         "🚪 *Gates Menu*\n\n"
-        "Use the following commands:\n"
-        "\n"
+        "Use the following commands:\n\n"
         "• `/chk` — Stripe Auth Check for a single card\n"
-        "Example:\n`/chk 1234567890123456|12|24|123`\n"
-        "\n"
+        "Example:\n`/chk 1234567890123456|12|24|123`\n\n"
         "• `/mchk` — Mass Stripe Check (up to 10 cards)\n"
         "Example:\n`/mchk 1234567890123456|12|24|123 2345678901234567|11|23|456`"
     )
 
     escaped_message = escape_markdown_v2(gates_message)
 
+    keyboard = [
+        [InlineKeyboardButton("🔙 Back", callback_data="back_to_start")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     await query.edit_message_text(
         escaped_message,
-        parse_mode=ParseMode.MARKDOWN_V2
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=reply_markup
     )
+
 
 
 # Handler to go back to main start menu (from buttons)
 async def start_menu_handler(update, context):
     query = update.callback_query
     await query.answer()
-    # Reuse start() function’s keyboard & message formatting but edit message instead of sending new
+    # Simply call start() with the update & context to reuse the start message & keyboard
+    # But start() expects update.message for sending, so we must do similar logic here
     user = update.effective_user
     indian_timezone = pytz.timezone('Asia/Kolkata')
     now = datetime.now(indian_timezone).strftime('%I:%M %p')
@@ -488,8 +488,6 @@ async def handle_callback(update, context):
         await query.answer("Unknown option selected.", show_alert=True)
 
 
-
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's help menu with a list of commands."""
     if not await check_authorization(update, context):
@@ -515,8 +513,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     tools_message = (
-        "*✦ All Commands ✦*\n"
-        "All commands are live, `Online`, and have `100%` health\\.\n"
+        "*✦ All Commands ✦*\n\n"
+        "All commands are live, `Online`, and have `100%` health\\.\n\n"
         "• `/gen <BIN>` \\- Generates 10 cards\n"
         "• `/fk <country>` \\- Generates fake info\n"
         "• `/fl <dump>` \\- Extracts cards from dumps\n"
@@ -524,8 +522,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/bin <BIN>` \\- Performs BIN lookup\n"
         "• `/status` \\- Checks bot health\n"
         "• `/info` \\- Shows your info\n"
-        "• `/chk` \\- Checks card on stripe auth"
-        "• `/mchk` \\- Checks 10 cards on stripe auth"
+        "• `/chk` \\- Checks card on stripe auth\n"
+        "• `/mchk` \\- Checks up to 10 cards on stripe auth"
     )
     keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
