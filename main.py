@@ -795,13 +795,11 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"════════════════════════\n"
         f"• Request By  ➜ {escape_md(user.first_name)}[{escape_md(user_data.get('plan','Free'))}]\n"
         f"• Developer   ➜ Darkboy X7\n"
-        f"• Time        ➜ {time_taken} seconds\n"
+        f"• Time        ➜ {escape_md(str(time_taken))} seconds\n"
         f"╚════════════════════════╝"
     )
 
     await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
-
-
 
 
 def escape_markdown_v2(text: str) -> str:
