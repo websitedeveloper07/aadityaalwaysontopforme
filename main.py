@@ -767,29 +767,29 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Final headers and text with MarkdownV2 for formatting
     if api_status.lower() == "approved":
-        header = "╔════\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]════╗"
+        header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
     elif api_status.lower() == "declined":
-        header = "╔════\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]════╗"
+        header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
     else:
-        header = f"╔════\\[ {escape_markdown(api_status, version=2)} \\]════╗"
+        header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
     
     # Use MarkdownV2 italic syntax `_text_` for the response
     formatted_response = f"_{escape_markdown(api_response, version=2)}_"
 
     final_text = (
         f"{header}\n"
-        f"• 𝘾𝙖𝙧𝙙        ➜ `{cc_normalized}`\n"
-        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
-        f"• 𝙍𝙚𝙨𝙥𝙤𝙣𝙨𝙚    ➜ {formatted_response}\n"
-        "═════════════════════\n"
-        f"• 𝘽𝙧𝙖𝙣𝙙       ➜ {escape_markdown(brand, version=2)}\n"
-        f"• 𝙄𝙨𝙨𝙪𝙚𝙧      ➜ {escape_markdown(issuer, version=2)}\n"
-        f"• 𝘾𝙤𝙪𝙣𝙩𝙧𝙮    ➜ {escape_markdown(country_name, version=2)}\n"
-        "═════════════════════\n"
-        f"• 𝙍𝙚𝙦𝙪𝙚𝙨𝙩 𝘽𝙮  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
-        "• 𝘿𝙚𝙫𝙚𝙡𝙤𝙥𝙚𝙧   ➜ Darkboy X7\n"
-        f"• 𝙏𝙞𝙢𝙚        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
-        "═════════════════════"
+        f"✘ 𝘾𝙖𝙧𝙙        ➜ `{cc_normalized}`\n"
+        "✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+        f"✘ 𝙍𝙚𝙨𝙥𝙤𝙣𝙨𝙚    ➜ {formatted_response}\n"
+        "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"✘ 𝘽𝙧𝙖𝙣𝙙       ➜ {escape_markdown(brand, version=2)}\n"
+        f"✘ 𝙄𝙨𝙨𝙪𝙚𝙧      ➜ {escape_markdown(issuer, version=2)}\n"
+        f"✘ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮    ➜ {escape_markdown(country_name, version=2)}\n"
+        "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"✘ 𝙍𝙚𝙦𝙪𝙚𝙨𝙩 𝘽𝙮  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
+        "✘ 𝘿𝙚𝙫𝙚𝙡𝙤𝙥𝙚𝙧   ➜ Darkboy X7\n"
+        f"✘ 𝙏𝙞𝙢𝙚        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
+        "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
     )
 
     await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
