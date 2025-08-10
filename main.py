@@ -146,12 +146,11 @@ async def add_credits_to_user(user_id, amount):
 import aiohttp
 import logging
 
-# Your Bintable API key
-BINTABLE_API_KEY = "f65ff6abeadc72d2c44a4b4c20abe8493e1f5d72"
 logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
-    """Fetches BIN details from bintable.com."""
+    """Fetches BIN details from bins.antipublic.cc."""
+    logger.info(f"Attempting to fetch BIN details for {bin_number} from antipublic.cc.")
     bin_data = {
         "scheme": "N/A",            # Card brand (e.g., VISA, Mastercard)
         "type": "N/A",              # Credit/Debit
@@ -161,7 +160,7 @@ async def get_bin_details(bin_number):
         "country_emoji": "",        # Country flag emoji
     }
 
-    url = f"https://api.bintable.com/v1/{bin_number}?api_key={BINTABLE_API_KEY}"
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Accept": "application/json"
@@ -173,31 +172,28 @@ async def get_bin_details(bin_number):
                 response.raise_for_status()
                 data = await response.json()
                 
-                if data.get("result", 404) == 200 and "data" in data:
-                    api_data = data["data"]
-                    
-                    # Extracting data from nested keys
-                    card_data = api_data.get("card", {})
-                    country_data = api_data.get("country", {})
-                    bank_data = api_data.get("bank", {})
+                # Log the full API response
+                logger.debug(f"Received antipublic.cc API response for {bin_number}: {data}")
 
-                    bin_data["scheme"] = card_data.get("scheme", "N/A").upper()
-                    bin_data["type"] = card_data.get("type", "N/A").title()
-                    bin_data["level"] = card_data.get("category", "N/A").title()
-                    bin_data["bank"] = bank_data.get("name", "N/A").title()
-                    bin_data["country_name"] = country_data.get("name", "N/A")
-                    bin_data["country_emoji"] = country_data.get("flag", "")
-                    
+                # Check for successful response with data
+                if data and data.get("brand"):
+                    bin_data["scheme"] = data.get("brand", "N/A").upper()
+                    bin_data["type"] = data.get("type", "N/A").title()
+                    bin_data["level"] = data.get("level", "N/A").title()
+                    bin_data["bank"] = data.get("bank", "N/A").title()
+                    bin_data["country_name"] = data.get("country", "N/A")
+                    bin_data["country_emoji"] = data.get("country_flag", "")
+                    logger.info(f"Successfully fetched details for BIN {bin_number}.")
                     return bin_data
                 else:
-                    logger.warning(f"Bintable API returned an error for BIN {bin_number}: {data.get('message', 'No message')}")
+                    logger.warning(f"antipublic.cc API returned no data for BIN {bin_number}: {data}")
 
     except aiohttp.ClientError as e:
-        logger.warning(f"Bintable API call failed for {bin_number}: {e}")
+        logger.error(f"antipublic.cc API call failed for {bin_number} with client error: {e}", exc_info=True)
     except Exception as e:
-        logger.warning(f"Error processing Bintable response for {bin_number}: {e}")
+        logger.error(f"Error processing antipublic.cc response for {bin_number}: {e}", exc_info=True)
 
-    logger.warning(f"Failed to get BIN details for {bin_number} from bintable.com.")
+    logger.warning(f"Failed to get BIN details for {bin_number} from antipublic.cc.")
     return bin_data
 
 
@@ -482,30 +478,28 @@ from telegram.constants import ParseMode
 # from bot_utils import check_authorization, enforce_cooldown, get_user, consume_credit, escape_markdown_v2, luhn_checksum
 # from bin_lookup_service import get_bin_details
 
-# Your Bintable API key
-BINTABLE_API_KEY = "f65ff6abeadc72d2c44a4b4c20abe8493e1f5d72"
 logger = logging.getLogger(__name__)
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN."""
     user = update.effective_user
-    logger.info(f"User {user.id} ({user.username}) used /gen with args: {context.args}")
+    logger.info(f"User {user.id} ({user.username}) started /gen command with args: {context.args}")
 
     if not await check_authorization(update, context):
         logger.warning(f"Authorization failed for user {user.id}.")
         return
 
     if not await enforce_cooldown(user.id, update):
-        logger.info(f"Cooldown active for user {user.id}.")
+        logger.info(f"Cooldown active for user {user.id}, skipping command.")
         return
 
     user_data = await get_user(user.id)
     if user_data.get('credits', 0) <= 0:
         logger.info(f"User {user.id} has no credits remaining.")
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+        final_message = "❌ You have no credits left\\. Please get a subscription to use this command\\."
+        await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+        logger.info(f"Replied to user {user.id} with: {final_message}")
+        return
 
     # Get BIN input
     bin_input = None
@@ -518,40 +512,41 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not bin_input or not bin_input.isdigit() or len(bin_input) != 6:
         logger.warning(f"User {user.id} provided an invalid BIN: {bin_input}")
-        return await update.effective_message.reply_text(
-            "❌ Please provide a valid 6\\-digit BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+        final_message = "❌ Please provide a valid 6\\-digit BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\."
+        await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+        logger.info(f"Replied to user {user.id} with: {final_message}")
+        return
     
     # Consume credit and log the action
     if not await consume_credit(user.id):
         logger.warning(f"Failed to consume credit for user {user.id}.")
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+        final_message = "❌ You have no credits left\\. Please get a subscription to use this command\\."
+        await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+        logger.info(f"Replied to user {user.id} with: {final_message}")
+        return
     logger.info(f"Credit consumed for user {user.id} for /gen command.")
 
-    # BIN lookup from Bintable
+    # BIN lookup from antipublic.cc
     try:
         bin_details = await get_bin_details(bin_input)
-        logger.info(f"Bintable API response for BIN {bin_input}: {bin_details}")
+        logger.info(f"BIN details retrieved for {bin_input}: {bin_details}")
 
         # Check if the BIN lookup was successful before proceeding
         if bin_details.get("scheme", "N/A") == "N/A":
-            logger.warning(f"BIN lookup failed for {bin_input}. API response indicates failure.")
-            return await update.effective_message.reply_text(
-                "❌ BIN not found or invalid\\. Please try again with a valid 6\\-digit BIN\\.",
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
+            logger.warning(f"BIN lookup failed for {bin_input}. No details found.")
+            final_message = "❌ BIN not found or invalid\\. Please try again with a valid 6\\-digit BIN\\."
+            await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+            logger.info(f"Replied to user {user.id} with: {final_message}")
+            return
 
-        # Extract fields from Bintable's nested response structure
+        # Extract fields from the response structure
         brand = bin_details.get("scheme", "N/A")
         bank = bin_details.get("bank", "N/A")
         country_name = bin_details.get("country_name", "N/A")
         country_emoji = bin_details.get("country_emoji", "")
-
-        # Generate cards
+        
+        # Log card generation process
+        logger.info(f"Starting card generation for BIN {bin_input}...")
         cards = []
         while len(cards) < 10:
             card_length = 15 if brand.lower() in ["american express", "amex"] else 16
@@ -572,6 +567,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
         
         cards_list = "\n".join(cards)
+        logger.info(f"Generated 10 cards for BIN {bin_input}.")
         
         # Escape safely for MarkdownV2
         escaped_bin = escape_markdown_v2(bin_input)
@@ -599,14 +595,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        logger.info(f"Successfully generated cards for BIN {bin_input} for user {user.id}.")
+        logger.info(f"Replied to user {user.id} with final success message.")
 
     except Exception as e:
-        logger.error(f"Error in gen command for user {user.id}: {e}", exc_info=True)
-        await update.effective_message.reply_text(
-            "An unexpected error occurred\\. Please try again later\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+        logger.error(f"An unexpected error occurred in gen command for user {user.id}: {e}", exc_info=True)
+        final_message = "An unexpected error occurred\\. Please try again later\\."
+        await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+        logger.info(f"Replied to user {user.id} with: {final_message}")
 
 from telegram.constants import ParseMode
 
