@@ -519,7 +519,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # BIN lookup
     bin_details = await get_bin_details(bin_input)
-    brand = bin_details["scheme"]
+    brand = bin_details["brand"]
     bank = bin_details["bank"]
     country_name = bin_details["country_name"]
     country_emoji = bin_details["country_emoji"]
