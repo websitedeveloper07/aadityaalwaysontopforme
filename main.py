@@ -529,13 +529,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # BIN lookup
+    # BIN lookup from Bintable
     bin_details = await get_bin_details(bin_input)
 
-    # Use .get() to avoid KeyError and handle API differences
+    # Extract fields from Bintable's nested response structure
     brand = bin_details.get("scheme", "N/A")
     bank = bin_details.get("bank", "N/A")
-    country_name = bin_details.get("country_name") or bin_details.get("country", "N/A")
+    country_name = bin_details.get("country_name", "N/A")
     country_emoji = bin_details.get("country_emoji", "")
 
     # Generate cards
@@ -561,7 +561,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cards_list = "\n".join(cards)
 
-    # Escape fields safely
+    # Escape safely for MarkdownV2
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
