@@ -150,14 +150,14 @@ logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
     bin_data = {
-        "scheme": "N/A",         # Brand
-        "type": "N/A",           # Credit/Debit
-        "level": "N/A",          # Card level
-        "bank": "N/A",           # Bank name
-        "country_name": "N/A",   # Country name
-        "country_emoji": "",     # Flag
-        "vbv_status": None,      # Placeholder
-        "card_type": "N/A"       # Redundant with type
+        "scheme": "N/A",
+        "type": "N/A",
+        "level": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": "",
+        "vbv_status": None,
+        "card_type": "N/A"
     }
 
     url = f"https://bins.antipublic.cc/bins/{bin_number}"
@@ -169,6 +169,9 @@ async def get_bin_details(bin_number):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=7) as response:
+                raw_text = await response.text()
+                logger.info(f"BIN API raw response for {bin_number}: {raw_text}")
+
                 if response.status == 200:
                     try:
                         data = await response.json()
@@ -176,7 +179,6 @@ async def get_bin_details(bin_number):
                         logger.warning(f"Invalid JSON from BIN API for {bin_number}")
                         return bin_data
 
-                    # Correct mapping for your BIN API
                     bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
                     bin_data["type"] = str(data.get("type", "N/A")).title()
                     bin_data["card_type"] = bin_data["type"]
@@ -184,13 +186,13 @@ async def get_bin_details(bin_number):
                     bin_data["bank"] = str(data.get("bank", "N/A")).title()
                     bin_data["country_name"] = str(data.get("country_name") or data.get("country") or "N/A").title()
                     bin_data["country_emoji"] = data.get("country_flag", "")
+                else:
+                    logger.warning(f"Antipublic API returned status {response.status} for BIN {bin_number}")
 
     except Exception as e:
         logger.warning(f"Error fetching BIN details for {bin_number}: {e}")
 
     return bin_data
-
-
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     """Enforces a 5-second cooldown per user."""
