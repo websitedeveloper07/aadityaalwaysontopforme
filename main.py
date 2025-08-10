@@ -654,6 +654,14 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+
+# Use this helper to escape text for MarkdownV2, including pipes
+def escape_markdown_v2(text: str) -> str:
+    # telegram.helpers.escape_markdown escapes all needed chars for MarkdownV2 including '|'
+    return escape_markdown(text, version=2)
+
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box.
        Blocks private usage unless authorized, shows subscription message if blocked.
