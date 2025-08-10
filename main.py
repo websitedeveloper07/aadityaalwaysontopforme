@@ -865,7 +865,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     cards_to_check = card_lines
     if len(card_lines) > 10:
-        await update.effective_message.reply_text("Only 10 cards are allowed. Checking the first 10 now.")
+        await update.effective_message.reply_text("⚠️ Only 10 cards are allowed. Checking the first 10 now.")
         cards_to_check = card_lines[:10]
     
     total_cards = len(cards_to_check)
