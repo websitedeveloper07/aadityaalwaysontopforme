@@ -323,7 +323,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-OFFICIAL_GROUP_LINK = "https://t.me/yourgroup"  # replace with your group link
+OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"  # replace with your group link
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -400,9 +400,9 @@ async def gates_menu_handler(update, context):
     gates_message = (
         "🚪 *Gates Menu*\n\n"
         "Use the following commands:\n\n"
-        "• `/chk` — Stripe Auth Check for a single card\n"
+        "• `/chk` \\- Checks single card on stripe auth\n"
         "Example:\n`/chk 1234567890123456|12|24|123`\n\n"
-        "• `/mchk` — Mass Stripe Check (up to 10 cards)\n"
+        "• `/mchk` \\- Checks up to 10 cards on stripe auth"
         "Example:\n`/mchk 1234567890123456|12|24|123 2345678901234567|11|23|456`"
     )
 
@@ -503,6 +503,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┣ ❏ `/status` \\- Bot system status info\n"
         "┣ ❏ `/credits` \\- Check your remaining credits\n"
         "┣ ❏ `/info` \\- Shows your user info\n"
+        "┣ ❏ `/chk` \\- Checks card on stripe auth\n"
+        "┣ ❏ `/mchk` \\- Checks upto 10 cards on stripe auth\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
     await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
