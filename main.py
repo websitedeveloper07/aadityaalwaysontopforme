@@ -797,32 +797,6 @@ import aiohttp
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from telegram.ext import ContextTypes
-
-# This function creates the stylish, bolded italic text using Unicode characters.
-# It is now used to format the card status response.
-def format_stylish_text(text):
-    """Converts text to a specific stylish, bolded italic Unicode font."""
-    unicode_map = {
-        'A': '𝘈', 'B': '𝘉', 'C': '𝘊', 'D': '𝘋', 'E': '𝘌', 'F': '𝘍', 'G': 'H',
-        'H': '𝘏', 'I': '𝘐', 'J': '𝘑', 'K': '𝘒', 'L': '𝘓', 'M': '𝘔', 'N': '𝘕',
-        'O': '𝘖', 'P': '𝘗', 'Q': '𝘲', 'R': '𝘙', 'S': '𝙎', 'T': '𝘛', 'U': '𝘜',
-        'V': '𝘝', 'W': '𝘞', 'X': '𝘟', 'Y': '𝘠', 'Z': '𝘡', 'a': '𝘢', 'b': '𝘣',
-        'c': '𝘤', 'd': '𝘥', 'e': '𝘦', 'f': '𝘧', 'g': '𝘨', 'h': '𝘩', 'i': '𝘪',
-        'j': '𝘫', 'k': '𝘬', 'l': '𝘭', 'm': '𝘮', 'n': '𝘯', 'o': '𝘰', 'p': '𝘱',
-        'q': '𝘲', 'r': '𝘳', 's': '𝘴', 't': '𝘵', 'u': '𝘶', 'v': '𝘷', 'w': '𝘸',
-        'x': '𝘹', 'y': '𝘺', 'z': '𝘻', ' ': ' '
-    }
-    formatted_text = ""
-    for char in text:
-        formatted_text += unicode_map.get(char, char)
-    return formatted_text
-
-import time
-import aiohttp
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # This function creates the stylish, bolded italic text using Unicode characters.
@@ -835,7 +809,7 @@ def format_stylish_text(text):
         'O': '𝘖', 'P': '𝘗', 'Q': '𝘲', 'R': '𝘙', 'S': '𝙎', 'T': '𝘛', 'U': '𝘜',
         'V': '𝘝', 'W': '𝘞', 'X': '𝘟', 'Y': '𝘠', 'Z': '𝘡', 'a': '𝘢', 'b': '𝘣',
         'c': '𝘤', 'd': '𝘥', 'e': '𝘦', 'f': '𝘧', 'g': '𝘨', 'h': '𝘩', 'i': '𝘪',
-        'j': '𝘫', 'k': '𝘬', 'l': '𝘭', 'm': '𝘮', 'n': '�', 'o': '𝘰', 'p': '𝘱',
+        'j': '𝘫', 'k': '𝘬', 'l': '𝘭', 'm': '𝘮', 'n': '𝘯', 'o': '𝘰', 'p': '𝘱',
         'q': '𝘲', 'r': '𝘳', 's': '𝘴', 't': '𝘵', 'u': '𝘶', 'v': '𝘷', 'w': '𝘸',
         'x': '𝘹', 'y': '𝘺', 'z': '𝘻', ' ': ' '
     }
@@ -961,7 +935,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Update the message with the current progress
             current_time_taken = round(time.time() - start_time, 2)
             current_summary = (
-                f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+                f"✧ 𝐓�𝐭𝐚𝐥↣{total_cards}\n"
                 f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
