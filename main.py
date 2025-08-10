@@ -189,7 +189,6 @@ async def get_bin_details(bin_number):
     logger.warning(f"Failed to get BIN details for {bin_number} from antipublic.cc.")
     return bin_data
 
-
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     """Enforces a 5-second cooldown per user."""
     current_time = time.time()
@@ -490,12 +489,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_data = await get_user(user.id)
-    if user_data.get('credits', 0) <= 0:
+    if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # Get BIN input
     bin_input = None
     if context.args:
         bin_input = context.args[0]
@@ -516,12 +516,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # BIN lookup
     bin_details = await get_bin_details(bin_input)
-    brand = bin_details.get("scheme", "N/A")
-    bank = bin_details.get("bank", "N/A")
-    country_name = bin_details.get("country_name", "N/A")
-    country_emoji = bin_details.get("country_emoji", "")
+    brand = bin_details["scheme"]
+    bank = bin_details["bank"]
+    country_name = bin_details["country_name"]
+    country_emoji = bin_details["country_emoji"]
 
+    # Generate cards
     cards = []
     while len(cards) < 10:
         card_length = 15 if brand.lower() in ["american express", "amex"] else 16
@@ -542,14 +544,16 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    cards_list = "\n".join(cards)
+    cards_list = "\n".join(cards)  # Don't escape cards to preserve monospace
 
+    # Escape fields safely
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
 
+    # BIN Info block (minimalist)
     bin_info_block = (
         f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
         f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
@@ -558,6 +562,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
+    # Final output message
     final_message = (
         f"> *Generated 10 Cards 💳*\n\n"
         f"{cards_list}\n"
@@ -571,6 +576,16 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+
+from telegram.constants import ParseMode
+
+def escape_markdown_v2(text: str) -> str:
+    escape_chars = r"\_*[]()~`>#+-=|{}.!"
+    return ''.join(['\\' + char if char in escape_chars else char for char in text])
+
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown as escape_markdown_v2
+
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup."""
     if not await check_authorization(update, context):
@@ -581,7 +596,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_data = await get_user(user.id)
-    if user_data.get('credits', 0) <= 0:
+    if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -616,6 +631,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # Escape and extract data safely
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
     escaped_bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
@@ -624,12 +640,13 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
     escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
     vbv_status = bin_details.get("vbv_status", "Unknown")
+    escaped_user = escape_markdown_v2(user.full_name)
 
-    escaped_user = escape_markdown_v2(user.full_name or user.username or "User")
-
+    # Custom emojis/status
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
 
+    # BIN info box (no space after country)
     bin_info_box = (
         f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
         f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
@@ -643,7 +660,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_info_box = (
         f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ `{escaped_user}`\n"
-        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ kคli liຖนxx\n"
+        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ 『𝗥ᴏᴄ𝗸ʏ』\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -831,6 +848,11 @@ async def get_bin_details(bin_number):
     """Placeholder to get BIN details from an external API."""
     return {} # Example placeholder
 
+# Define a new, simple handler for a different command.
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler for the /start command."""
+    await update.effective_message.reply_text("Hello! I'm a multi-handler bot. I can check cards with /mchk.")
+
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Checks multiple cards on the same API with a detailed summary at the end."""
 
@@ -922,10 +944,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                 f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-                f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+                f"✧ 𝐃𝐞𝐜𝐥�𝐧𝐞𝐝↣{declined_count}\n"
                 f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
                 f"✧ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
-                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵�𝗰𝗸\n"
+                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
                 f"──────── ⸙ ─────────", version=2
             )
             current_results = "\n──────── ⸙ ─────────\n".join(results)
