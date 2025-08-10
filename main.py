@@ -647,7 +647,6 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-
 import time
 import aiohttp
 from telegram import Update
@@ -655,18 +654,21 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-# Updated function to correctly escape the pipe character for MarkdownV2
+# Updated function to correctly escape the pipe character and period for MarkdownV2
 def escape_md(text):
     """
     Escapes special characters in text for MarkdownV2.
-    This includes the pipe character '|' which is not handled by the default helper.
+    This includes the pipe character '|' and the period '.', which were
+    not handled by the default helper in the context of the user's code.
     """
     # Ensure input is string, then escape for MarkdownV2
     if not isinstance(text, str):
         text = str(text)
     
-    # Manually escape the pipe character because the helper doesn't
+    # Manually escape the pipe character and period because they were causing issues
+    # The official escape_markdown function should handle most others.
     text = text.replace('|', r'\|')
+    text = text.replace('.', r'\.')
     
     # Use the built-in helper to escape all other reserved MarkdownV2 characters
     return escape_markdown(text, version=2)
@@ -678,7 +680,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Block private usage unless authorized
     if update.effective_chat.type == "private":
         if not await check_authorization(update, context):
-            # Escaping the pipe characters in the usage message
+            # Escaping the period character in the usage message
             return await update.effective_message.reply_text(
                 "❌ Private access is blocked\\.\n"
                 "Contact @YourOwnerUsername to buy subscription\\.",
@@ -746,7 +748,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "╔═══[ PROCESSING ]═══╗\n"
         f"• Card ➜ `{escape_md(cc_normalized)}`\n"
         "• Gateway ➜ Stripe Auth\n"
-        "• Status ➜ Checking...\n"
+        "• Status ➜ Checking\\.\\.\\.\n"  # Periods escaped here
         "╚═════════════════════╝"
     )
     processing_msg = await update.effective_message.reply_text(
