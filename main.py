@@ -701,10 +701,6 @@ user_cooldowns = {}
 user_data_store = {}
 authorized_users = {12345678: True} # Example user ID
 
-async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """Simulates checking if a user is authorized for private chat usage."""
-    return update.effective_user.id in authorized_users
-
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     """Enforces a cooldown period per user."""
     last_run_time = user_cooldowns.get(user_id, 0)
@@ -749,14 +745,6 @@ def get_bin_details_sync(bin_number: str) -> dict:
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box."""
-    # Block private usage unless authorized, shows subscription message if blocked.
-    if update.effective_chat.type == "private":
-        if not await check_authorization(update, context):
-            return await update.effective_message.reply_text(
-                "❌ Private access is blocked\\.\n"
-                "Contact @K4linuxx to buy subscription\\.",
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
 
     user = update.effective_user
     user_id = user.id
@@ -877,6 +865,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ API Error: `{escape_markdown(str(e), version=2)}`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
 
 from faker import Faker
