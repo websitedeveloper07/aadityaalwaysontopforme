@@ -655,22 +655,33 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
+# Updated function to correctly escape the pipe character for MarkdownV2
 def escape_md(text):
+    """
+    Escapes special characters in text for MarkdownV2.
+    This includes the pipe character '|' which is not handled by the default helper.
+    """
     # Ensure input is string, then escape for MarkdownV2
     if not isinstance(text, str):
         text = str(text)
+    
+    # Manually escape the pipe character because the helper doesn't
+    text = text.replace('|', r'\|')
+    
+    # Use the built-in helper to escape all other reserved MarkdownV2 characters
     return escape_markdown(text, version=2)
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box.
-       Blocks private usage unless authorized, shows subscription message if blocked.
+        Blocks private usage unless authorized, shows subscription message if blocked.
     """
     # Block private usage unless authorized
     if update.effective_chat.type == "private":
         if not await check_authorization(update, context):
+            # Escaping the pipe characters in the usage message
             return await update.effective_message.reply_text(
-                "❌ Private access is blocked.\n"
-                "Contact @YourOwnerUsername to buy subscription.",
+                "❌ Private access is blocked\\.\n"
+                "Contact @YourOwnerUsername to buy subscription\\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
 
@@ -685,7 +696,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
     if user_data.get('credits', 0) <= 0:
         return await update.effective_message.reply_text(
-            "❌ You have no credits left.",
+            "❌ You have no credits left\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -698,15 +709,16 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw = parts[1] if len(parts) > 1 else None
 
     if not raw or "|" not in raw:
+        # Escaping the pipe characters in the usage message
         return await update.effective_message.reply_text(
-            "Usage: /chk number|mm|yy|cvv",
+            "Usage: /chk number\\|mm\\|yy\\|cvv",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     parts = raw.split("|")
     if len(parts) != 4:
         return await update.effective_message.reply_text(
-            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+            "Invalid format\\. Use number\\|mm\\|yy\\|cvv \\(or yyyy for year\\)\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -725,7 +737,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deduct credit
     if not await consume_credit(user_id):
         return await update.effective_message.reply_text(
-            "❌ No credits left.",
+            "❌ No credits left\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -771,21 +783,22 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     final_text = (
         f"{header}\n"
-        f"• Card       ➜ `{escape_md(cc_normalized)}`\n"
-        f"• Gateway    ➜ Stripe Auth\n"
-        f"• Response   ➜ {escape_md(api_response)}\n"
+        f"• Card        ➜ `{escape_md(cc_normalized)}`\n"
+        f"• Gateway     ➜ Stripe Auth\n"
+        f"• Response    ➜ {escape_md(api_response)}\n"
         f"════════════════════════\n"
-        f"• Brand      ➜ {escape_md(brand)}\n"
-        f"• Issuer     ➜ {escape_md(issuer)}\n"
-        f"• Country    ➜ {escape_md(country_name)}\n"
+        f"• Brand       ➜ {escape_md(brand)}\n"
+        f"• Issuer      ➜ {escape_md(issuer)}\n"
+        f"• Country     ➜ {escape_md(country_name)}\n"
         f"════════════════════════\n"
-        f"• Request By ➜ {escape_md(user.first_name)}[{escape_md(user_data.get('plan','Free'))}]\n"
-        f"• Developer  ➜ Darkboy X7\n"
-        f"• Time       ➜ {time_taken} seconds\n"
+        f"• Request By  ➜ {escape_md(user.first_name)}[{escape_md(user_data.get('plan','Free'))}]\n"
+        f"• Developer   ➜ Darkboy X7\n"
+        f"• Time        ➜ {time_taken} seconds\n"
         f"╚════════════════════════╝"
     )
 
     await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
