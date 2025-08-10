@@ -150,17 +150,17 @@ logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
     bin_data = {
-        "scheme": "N/A",
-        "type": "N/A",
-        "level": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": "",
-        "vbv_status": None,
-        "card_type": "N/A"
+        "scheme": "N/A",         # Brand / Card scheme
+        "type": "N/A",           # Credit/Debit
+        "level": "N/A",          # Card level
+        "bank": "N/A",           # Bank name
+        "country_name": "N/A",   # Country name
+        "country_emoji": "",     # Flag emoji
+        "vbv_status": None,      # Placeholder
+        "card_type": "N/A"       # Duplicate of type
     }
 
-    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    url = f"https://bintable.com/api/{bin_number}?api_key=f65ff6abeadc72d2c44a4b4c20abe8493e1f5d72"
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Accept": "application/json"
@@ -170,29 +170,32 @@ async def get_bin_details(bin_number):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=7) as response:
                 raw_text = await response.text()
-                logger.info(f"BIN API raw response for {bin_number}: {raw_text}")
+                logger.info(f"Bintable API raw response for {bin_number}: {raw_text}")
 
                 if response.status == 200:
                     try:
                         data = await response.json()
                     except Exception:
-                        logger.warning(f"Invalid JSON from BIN API for {bin_number}")
+                        logger.warning(f"Invalid JSON from Bintable for {bin_number}")
                         return bin_data
 
-                    bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                    # Map fields from Bintable API to bot keys
+                    bin_data["scheme"] = str(data.get("scheme", "N/A")).upper()
                     bin_data["type"] = str(data.get("type", "N/A")).title()
                     bin_data["card_type"] = bin_data["type"]
-                    bin_data["level"] = str(data.get("level", "N/A")).title()
-                    bin_data["bank"] = str(data.get("bank", "N/A")).title()
-                    bin_data["country_name"] = str(data.get("country_name") or data.get("country") or "N/A").title()
+                    bin_data["level"] = str(data.get("category", data.get("level", "N/A"))).title()
+                    bin_data["bank"] = str(data.get("issuer", data.get("bank", "N/A"))).title()
+                    bin_data["country_name"] = str(data.get("country_name") or data.get("country", "N/A")).title()
                     bin_data["country_emoji"] = data.get("country_flag", "")
+
                 else:
-                    logger.warning(f"Antipublic API returned status {response.status} for BIN {bin_number}")
+                    logger.warning(f"Bintable API returned {response.status} for BIN {bin_number}")
 
     except Exception as e:
-        logger.warning(f"Error fetching BIN details for {bin_number}: {e}")
+        logger.warning(f"Error fetching BIN from Bintable for {bin_number}: {e}")
 
     return bin_data
+
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     """Enforces a 5-second cooldown per user."""
