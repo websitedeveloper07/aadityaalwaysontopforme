@@ -1777,6 +1777,40 @@ async def auth_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+import os
+import asyncpg
+from telegram import Update
+from telegram.ext import ContextTypes
+
+ADMIN_USER_ID = 8438505794  # Replace with your admin user ID
+
+async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != ADMIN_USER_ID:
+        await update.message.reply_text("❌ You are not authorized to use this command.")
+        return
+
+    if not context.args or not context.args[0].isdigit():
+        await update.message.reply_text("⚠️ Usage: /reset <amount_of_credits>\nExample: /reset 500")
+        return
+
+    new_credits = int(context.args[0])
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        await update.message.reply_text("❌ DATABASE_URL environment variable not set.")
+        return
+
+    try:
+        conn = await asyncpg.connect(dsn=database_url)
+        await conn.execute("UPDATE users SET credits = $1", new_credits)
+        await conn.close()
+    except Exception as e:
+        await update.message.reply_text(f"❌ Database error: {e}")
+        return
+
+    await update.message.reply_text(f"✅ All user credits have been reset to {new_credits}.")
+
+
 async def remove_authorize_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Removes a user's private access and resets their plan."""
     if not context.args or not context.args[0].isdigit():
@@ -1954,6 +1988,7 @@ def main():
     application.add_handler(CommandHandler("give_custom", give_custom, filters=owner_filter))
     application.add_handler(CommandHandler("take_plan", take_plan, filters=owner_filter))
     application.add_handler(CommandHandler("au", auth_group, filters=owner_filter))
+    application.add_handler(CommandHandler("reset", reset_command))
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
