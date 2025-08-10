@@ -393,6 +393,12 @@ async def start(update, context):
             )
 
 # Gates menu handler
+from telegram.constants import ParseMode
+
+def escape_markdown_v2(text: str) -> str:
+    escape_chars = r'\_*[]()~`>#+-=|{}.!'
+    return ''.join('\\' + c if c in escape_chars else c for c in text)
+
 async def gates_menu_handler(update, context):
     query = update.callback_query
     await query.answer()
@@ -408,10 +414,13 @@ async def gates_menu_handler(update, context):
         "Example:\n`/mchk 1234567890123456|12|24|123 2345678901234567|11|23|456`"
     )
 
+    escaped_message = escape_markdown_v2(gates_message)
+
     await query.edit_message_text(
-        gates_message,
+        escaped_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 # Handler to go back to main start menu (from buttons)
 async def start_menu_handler(update, context):
