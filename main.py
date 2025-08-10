@@ -150,14 +150,14 @@ logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
     bin_data = {
-        "scheme": "N/A",         # Card brand
+        "scheme": "N/A",         # Brand
         "type": "N/A",           # Credit/Debit
         "level": "N/A",          # Card level
         "bank": "N/A",           # Bank name
-        "country_name": "N/A",   # Full country name
-        "country_emoji": "",     # Country flag emoji
+        "country_name": "N/A",   # Country name
+        "country_emoji": "",     # Flag
         "vbv_status": None,      # Placeholder
-        "card_type": "N/A"       # Redundant with type, still kept
+        "card_type": "N/A"       # Redundant with type
     }
 
     url = f"https://bins.antipublic.cc/bins/{bin_number}"
@@ -173,31 +173,23 @@ async def get_bin_details(bin_number):
                     try:
                         data = await response.json()
                     except Exception:
-                        logger.warning(f"Non-JSON response for BIN {bin_number}")
+                        logger.warning(f"Invalid JSON from BIN API for {bin_number}")
                         return bin_data
-                    
+
+                    # Correct mapping for your BIN API
                     bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
                     bin_data["type"] = str(data.get("type", "N/A")).title()
                     bin_data["card_type"] = bin_data["type"]
                     bin_data["level"] = str(data.get("level", "N/A")).title()
                     bin_data["bank"] = str(data.get("bank", "N/A")).title()
-                    
-                    # Handle both 'country_name' and 'country'
-                    bin_data["country_name"] = (
-                        data.get("country_name") or 
-                        data.get("country") or 
-                        "N/A"
-                    )
+                    bin_data["country_name"] = str(data.get("country_name") or data.get("country") or "N/A").title()
                     bin_data["country_emoji"] = data.get("country_flag", "")
-                    
-                else:
-                    logger.warning(f"Antipublic API returned status {response.status} for BIN {bin_number}")
-    except aiohttp.ClientError as e:
-        logger.warning(f"Antipublic API call failed for {bin_number}: {e}")
+
     except Exception as e:
-        logger.warning(f"Error processing Antipublic response for {bin_number}: {e}")
+        logger.warning(f"Error fetching BIN details for {bin_number}: {e}")
 
     return bin_data
+
 
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
