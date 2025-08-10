@@ -143,6 +143,11 @@ async def add_credits_to_user(user_id, amount):
     return new_credits
 
 
+import aiohttp
+import logging
+
+logger = logging.getLogger(__name__)
+
 async def get_bin_details(bin_number):
     bin_data = {
         "scheme": "N/A",         # Card brand (e.g., VISA, Mastercard)
@@ -183,6 +188,7 @@ async def get_bin_details(bin_number):
 
     logger.warning(f"Failed to get BIN details for {bin_number} from antipublic.cc.")
     return bin_data
+
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     """Enforces a 5-second cooldown per user."""
@@ -909,15 +915,15 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             checked_count += 1
             
             current_time_taken = round(time.time() - start_time, 2)
-            current_summary = (
+            current_summary = escape_markdown(
                 f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                 f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                 f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
                 f"✧ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
-                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-                f"──────── ⸙ ─────────"
+                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵�𝗰𝗸\n"
+                f"──────── ⸙ ─────────", version=2
             )
             current_results = "\n──────── ⸙ ─────────\n".join(results)
             await processing_msg.edit_text(current_summary + "\n\n" + current_results, parse_mode=ParseMode.MARKDOWN_V2)
@@ -937,7 +943,6 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             error_count += 1
         checked_count += 1
         
-        # The card number is now in a monospace font, while the status text is not.
         card_result = (
             f"`{escape_markdown(cc_normalized, version=2)}`\n"
             f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
@@ -945,7 +950,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         results.append(card_result)
         
         current_time_taken = round(time.time() - start_time, 2)
-        current_summary = (
+        current_summary = escape_markdown(
             f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
             f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
             f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
@@ -953,13 +958,13 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
             f"✧ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
             f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-            f"──────── ⸙ ─────────"
+            f"──────── ⸙ ─────────", version=2
         )
         current_results_str = "\n──────── ⸙ ─────────\n".join(results)
         await processing_msg.edit_text(current_summary + "\n\n" + current_results_str, parse_mode=ParseMode.MARKDOWN_V2)
 
     final_time_taken = round(time.time() - start_time, 2)
-    final_summary = (
+    final_summary = escape_markdown(
         f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
         f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
         f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
@@ -967,11 +972,12 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
         f"✧ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒"
         f"\n\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-        f"──────── ⸙ ─────────"
+        f"──────── ⸙ ─────────", version=2
     )
     
     final_text = final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────"
     await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 def escape_markdown_v2(text: str) -> str:
