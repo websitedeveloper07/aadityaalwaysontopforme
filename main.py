@@ -150,14 +150,14 @@ logger = logging.getLogger(__name__)
 
 async def get_bin_details(bin_number):
     bin_data = {
-        "scheme": "N/A",         # Card brand (e.g., VISA, Mastercard)
-        "type": "N/A",           # Credit/Debit
-        "level": "N/A",          # Card level (e.g., Classic, Business)
-        "bank": "N/A",           # Bank name
-        "country_name": "N/A",   # Full country name
-        "country_emoji": "",     # Country flag emoji
-        "vbv_status": None,      # Placeholder, not provided by API
-        "card_type": "N/A"       # Redundant with type, still kept
+        "scheme": "N/A",            # Card brand (e.g., VISA, Mastercard)
+        "type": "N/A",              # Credit/Debit
+        "level": "N/A",             # Card level (e.g., Classic, Business)
+        "bank": "N/A",              # Bank name
+        "country_name": "N/A",      # Full country name
+        "country_emoji": "",        # Country flag emoji
+        "vbv_status": None,         # Placeholder, not provided by API
+        "card_type": "N/A"          # Redundant with type, still kept
     }
 
     url = f"https://bins.antipublic.cc/bins/{bin_number}"
@@ -171,6 +171,7 @@ async def get_bin_details(bin_number):
             async with session.get(url, headers=headers, timeout=7) as response:
                 if response.status == 200:
                     data = await response.json()
+                    # Mapping the API response keys to the internal dictionary keys
                     bin_data["scheme"] = data.get("brand", "N/A").upper()
                     bin_data["type"] = data.get("type", "N/A").title()
                     bin_data["card_type"] = data.get("type", "N/A").title()
