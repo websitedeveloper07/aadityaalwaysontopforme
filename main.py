@@ -597,11 +597,11 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         logger.info(f"Replied to user {user.id} with final success message.")
 
-    except Exception as e:
+except Exception as e:
         logger.error(f"An unexpected error occurred in gen command for user {user.id}: {e}", exc_info=True)
         final_message = "An unexpected error occurred\\. Please try again later\\."
         await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
-        logger.info(f"Replied to user {user.id} with: {final_message}"
+        logger.info(f"Replied to user {user.id} with: {final_message}")
 
 from telegram.constants import ParseMode
 
