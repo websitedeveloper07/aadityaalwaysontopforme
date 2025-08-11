@@ -1250,15 +1250,15 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-import asyncio
-import aiohttp
+import asyncio, aiohttp, logging, time
 from urllib.parse import urlparse, urljoin
 from typing import Dict, List, Set
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from telegram.helpers import escape_markdown
+
+logger = logging.getLogger(__name__)
 
 JS_FETCH_LIMIT = 12
 REQUEST_TIMEOUT = 10
@@ -1267,11 +1267,349 @@ USER_AGENT = "Mozilla/5.0 (compatible; GatewayScanner/1.0)"
 RETRY_ATTEMPTS = 2
 RETRY_DELAY = 1
 
+# Strong signatures only (to avoid false positives)
 GATEWAY_SIGNATURES: Dict[str, List[str]] = {
-    "Stripe": ["js.stripe.com", "api.stripe.com", "checkout.stripe.com", "stripe.com"],
-    # Add your full list here...
-    "Crypto.com Pay": ["crypto.com"],
+    "Stripe": [
+        "js.stripe.com",
+        "api.stripe.com",
+        "checkout.stripe.com",
+        "checkout.stripe.network",
+        "payment.stripe.com"
+    ],
+    "PayPal": [
+        "www.paypal.com/sdk/js",
+        "paypalobjects.com",
+        "api.paypal.com",
+        "paypal.com",
+        "paypal.com/webapps",
+        "paypal.com/checkout"
+    ],
+    "Adyen": [
+        "checkoutshopper-live.adyenpayments.com",
+        "live.adyen.com",
+        "checkoutshopper-live.adyen.com",
+        "checkoutshopper-test.adyen.com"
+    ],
+    "Braintree": [
+        "assets.braintreegateway.com",
+        "api.braintreegateway.com",
+        "braintreegateway.com",
+        "payments.braintree-api.com"
+    ],
+    "Square": [
+        "squareup.com",
+        "js.squareup.com",
+        "connect.squareup.com",
+        "checkout.squareup.com"
+    ],
+    "Authorize.Net": [
+        "authorize.net",
+        "secure2.authorize.net",
+        "accept.authorize.net",
+        "js.authorize.net",
+        "api.authorize.net",
+        "payments.authorize.net",
+        "authorize.net/payment",
+        "secure.authorize.net"
+    ],
+    "Worldpay": [
+        "worldpay.com",
+        "secure.worldpay.com",
+        "api.worldpay.com",
+        "worldpayfusion.com"
+    ],
+    "eWAY": [
+        "eway.com.au",
+        "secure.ewaypayments.com",
+        "api.ewaypayments.com"
+    ],
+    "Klarna": [
+        "cdn.klarna.com",
+        "api.klarna.com",
+        "checkout.klarna.com",
+        "payments.klarna.com"
+    ],
+    "Mollie": [
+        "mollie.com",
+        "api.mollie.com",
+        "checkout.mollie.com"
+    ],
+    "Skrill": [
+        "skrill.com",
+        "www.skrill.com"
+    ],
+    "Neteller": [
+        "neteller.com",
+        "www.neteller.com"
+    ],
+    "Coinbase Commerce": [
+        "commerce.coinbase.com",
+        "api.commerce.coinbase.com"
+    ],
+    "BitPay": [
+        "bitpay.com",
+        "checkout.bitpay.com",
+        "bitpaynetwork.com"
+    ],
+    "NOWPayments": [
+        "nowpayments.io",
+        "api.nowpayments.io"
+    ],
+    "Binance Pay": [
+        "pay.binance.com",
+        "binance.com/pay"
+    ],
+    "Apple Pay": [
+        "apple-pay-gateway.apple.com",
+        "apple.com/apple-pay"
+    ],
+    "Google Pay": [
+        "pay.google.com",
+        "google.com/pay",
+        "wallet.google.com"
+    ],
+    "Alipay": [
+        "render.alipay.com",
+        "intl.alipay.com",
+        "alipay.com",
+        "web.alipay.com"
+    ],
+    "WeChat Pay": [
+        "wx.tenpay.com",
+        "pay.wechat.com",
+        "wechat.com/pay"
+    ],
+    "Mercado Pago": [
+        "mercadopago.com",
+        "api.mercadopago.com",
+        "mpago.la"
+    ],
+    "PagSeguro": [
+        "pagseguro.uol.com.br",
+        "api.pagseguro.uol.com.br"
+    ],
+    "PayU": [
+        "secure.payu.com",
+        "payu.in",
+        "api.payu.in",
+        "payu.com"
+    ],
+    "Paytm": [
+        "paytm.com",
+        "securegw.paytm.in",
+        "merchant.paytm.com"
+    ],
+    "Razorpay": [
+        "checkout.razorpay.com",
+        "api.razorpay.com",
+        "razorpay.com"
+    ],
+    "Payoneer": [
+        "payoneer.com",
+        "api.payoneer.com"
+    ],
+    "2Checkout": [
+        "2checkout.com",
+        "2co.com",
+        "www.2checkout.com"
+    ],
+    "2C2P": [
+        "2c2p.com",
+        "checkout.2c2p.com"
+    ],
+    "Checkout.com": [
+        "checkout.com",
+        "api.checkout.com",
+        "cdn.checkout.com"
+    ],
+    "CyberSource": [
+        "secureacceptance.cybersource.com",
+        "cybersource.com"
+    ],
+    "Elavon": [
+        "convergepay.com",
+        "elavon.com"
+    ],
+    "First Data / Fiserv": [
+        "fdms.com",
+        "firstdata.com",
+        "fiserv.com"
+    ],
+    "Ingenico": [
+        "ingenico.com",
+        "paymentpage.ingenico.com",
+        "epayments.ingenico.com"
+    ],
+    "Clover": [
+        "clover.com",
+        "api.clover.com"
+    ],
+    "WooPayments": [
+        "woocommerce.com",
+        "woocommerce-checkout"
+    ],
+    "Shopify Payments": [
+        "cdn.shopify.com",
+        "shopifycloud.com",
+        "myshopify.com"
+    ],
+    "Magento Payments": [
+        "magento.com",
+        "magento2.com"
+    ],
+    "OpenCart": [
+        "opencart.com",
+        "opencart.net"
+    ],
+    "PrestaShop": [
+        "prestashop.com",
+        "prestashop.net"
+    ],
+    "BigCommerce": [
+        "bigcommerce.com",
+        "cdn.bigcommerce.com"
+    ],
+    "Paystack": [
+        "paystack.com",
+        "api.paystack.co"
+    ],
+    "Flutterwave": [
+        "flutterwave.com",
+        "api.flutterwave.com"
+    ],
+    "bKash": [
+        "bkash.com",
+        "secure.bkash.com"
+    ],
+    "M-Pesa": [
+        "safaricom.com",
+        "mpesa.com"
+    ],
+    "PhonePe": [
+        "phonepe.com",
+        "api.phonepe.com"
+    ],
+    "Qiwi": [
+        "qiwi.com",
+        "api.qiwi.com"
+    ],
+    "Sofort": [
+        "sofort.com",
+        "sofortueberweisung.de"
+    ],
+    "iDEAL": [
+        "ideal.nl",
+        "idealpayment.com"
+    ],
+    "Bancontact": [
+        "bancontact.com",
+        "bancontactpay.be"
+    ],
+    "Giropay": [
+        "giropay.de",
+        "giropay.net"
+    ],
+    "BPAY": [
+        "bpay.com.au"
+    ],
+    "PayPoint": [
+        "paypoint.com"
+    ],
+    "Paysafe": [
+        "paysafe.com",
+        "api.paysafe.com"
+    ],
+    "Opayo (Sage Pay)": [
+        "sagepay.com",
+        "opayo.co.uk",
+        "checkout.sagepay.com"
+    ],
+    "Payfast": [
+        "payfast.co.za",
+        "api.payfast.co.za"
+    ],
+    "Paymaya": [
+        "paymaya.com",
+        "api.paymaya.com"
+    ],
+    "Paymentwall": [
+        "paymentwall.com",
+        "api.paymentwall.com"
+    ],
+    "SafeCharge": [
+        "safecharge.com",
+        "api.safecharge.com"
+    ],
+    "CardConnect": [
+        "cardconnect.com",
+        "api.cardconnect.com"
+    ],
+    "Helcim": [
+        "helcim.com",
+        "api.helcim.com"
+    ],
+    "Novalnet": [
+        "novalnet.com",
+        "api.novalnet.com"
+    ],
+    "BlueSnap": [
+        "bluesnap.com",
+        "api.bluesnap.com"
+    ],
+    "Paddle": [
+        "paddle.com",
+        "checkout.paddle.com"
+    ],
+    "FastSpring": [
+        "fastspring.com",
+        "api.fastspring.com"
+    ],
+    "Afterpay": [
+        "afterpay.com",
+        "api.afterpay.com"
+    ],
+    "Sezzle": [
+        "sezzle.com",
+        "api.sezzle.com"
+    ],
+    "PayPay": [
+        "paypay.ne.jp"
+    ],
+    "WePay": [
+        "wepay.com",
+        "api.wepay.com"
+    ],
+    "Trust Payments": [
+        "trustpayments.com",
+        "api.trustpayments.com"
+    ],
+    "USAePay": [
+        "usaepay.com",
+        "api.usaepay.com"
+    ],
+    "Stax": [
+        "staxpayments.com",
+        "api.staxpayments.com"
+    ],
+    "UnionPay": [
+        "unionpaysecure.com",
+        "unionpay.com"
+    ],
+    "Mir": [
+        "mironline.ru"
+    ],
+    "Advcash": [
+        "advcash.com"
+    ],
+    "CoinPayments": [
+        "coinpayments.net"
+    ],
+    "Crypto.com Pay": [
+        "crypto.com",
+        "pay.crypto.com"
+    ],
 }
+
 
 CAPTCHA_SIGNATURES = {
     "Google reCAPTCHA": ["www.google.com/recaptcha", "recaptcha.net"],
@@ -1315,25 +1653,10 @@ def search_signatures(text: str, sigs: Dict[str, List[str]]) -> Set[str]:
 
 def find_cvv(soup: BeautifulSoup) -> bool:
     for inp in soup.find_all("input"):
-        name_id = (inp.get("name", "") + inp.get("id", "")).lower()
         for key in ("cvv", "cvc", "security_code"):
-            if key in name_id:
+            if key in (inp.get("name","").lower() + inp.get("id","").lower()):
                 return True
     return False
-
-def search_attrs_for_gateways(soup: BeautifulSoup, sigs: Dict[str, List[str]]) -> Set[str]:
-    found = set()
-    attrs_to_check = ["src", "href", "action", "data-src"]
-    for tag in soup.find_all(True):
-        for attr in attrs_to_check:
-            val = tag.get(attr, "")
-            val_low = val.lower()
-            for name, patterns in sigs.items():
-                for pat in patterns:
-                    if pat.lower() in val_low:
-                        found.add(name)
-                        break
-    return found
 
 async def scan_site(url: str) -> Dict:
     result = {
@@ -1356,50 +1679,28 @@ async def scan_site(url: str) -> Dict:
             result["status"] = "Unreachable"
             return result
         result["status"] = f"Online ({status})"
-
-        headers_lower = {k.lower(): v for k, v in headers.items()}
-        server_header = headers_lower.get("server", "")
-        if "cloudflare" in server_header.lower():
+        if "cloudflare" in (headers.get("Server","") + str(headers)).lower():
             result["cloudflare"] = True
-        if "strict-transport-security" in headers_lower:
+        if "strict-transport-security" in {k.lower() for k in headers}:
             result["security"].add("HSTS")
-        if "content-security-policy" in headers_lower:
+        if "content-security-policy" in {k.lower() for k in headers}:
             result["security"].add("CSP")
-
         soup = BeautifulSoup(html, "html.parser")
-
-        # Search gateways in html text + tag attributes
         result["gateways"] |= search_signatures(html, GATEWAY_SIGNATURES)
-        result["gateways"] |= search_attrs_for_gateways(soup, GATEWAY_SIGNATURES)
-
-        # Captchas
         result["captchas"] |= search_signatures(html, CAPTCHA_SIGNATURES)
-        result["captchas"] |= search_attrs_for_gateways(soup, CAPTCHA_SIGNATURES)
-
-        # Platforms
         result["platforms"] |= search_signatures(html, PLATFORM_SIGNATURES)
-        result["platforms"] |= search_attrs_for_gateways(soup, PLATFORM_SIGNATURES)
-
         if find_cvv(soup):
             result["cvv"] = True
-
-        # Fetch and scan JS files for gateways, captchas, platforms
-        scripts = soup.find_all("script", src=True)[:JS_FETCH_LIMIT]
-        for tag in scripts:
+        for tag in soup.find_all("script", src=True)[:JS_FETCH_LIMIT]:
             s_url = urljoin(base, tag["src"])
             _, _, js_text = await fetch_text(session, s_url)
-            if not js_text:
-                continue
             result["gateways"] |= search_signatures(js_text, GATEWAY_SIGNATURES)
             result["captchas"] |= search_signatures(js_text, CAPTCHA_SIGNATURES)
             result["platforms"] |= search_signatures(js_text, PLATFORM_SIGNATURES)
-
     return result
 
-def safe_join(items):
-    return " | ".join(escape_markdown(i, version=2) for i in items) if items else "None"
-
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Block command usage in private chats
     if update.effective_chat.type == 'private':
         await update.message.reply_text(
             "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
@@ -1408,15 +1709,12 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not context.args:
-        await update.message.reply_text("Usage: /gate <url>")
-        return
+        return await update.message.reply_text("Usage: /gate <url>")
 
     target = context.args[0]
-
-    # Send initial message
     msg = await update.message.reply_text(
         f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{escape_markdown(target, version=2)}`\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target}`\n"
         f"✘ 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ `Checking...`\n"
         f"═════════════════════",
         parse_mode=ParseMode.MARKDOWN_V2
@@ -1424,25 +1722,28 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = await scan_site(target)
 
-    gateways = safe_join(sorted(data["gateways"]))
-    platforms = safe_join(sorted(data["platforms"]))
-    security = safe_join(sorted(data["security"]))
-    status = escape_markdown(data["status"], version=2)
-    target_esc = escape_markdown(target, version=2)
+    gateways = f"`{' | '.join(sorted(data['gateways']))}`" if data["gateways"] else "`None`"
+    # CAPTCHA yes/no with emoji
+    captcha_emoji = "✅" if data["captchas"] else "❌"
+    captcha_text = f"`Yes {captcha_emoji}`" if data["captchas"] else f"`No {captcha_emoji}`"
+    cloudflare = "`Yes✅`" if data["cloudflare"] else "`No❌`"
+    cvv = "`Required ✅`" if data["cvv"] else "`Not observed ❌`"
+    platforms = f"`{', '.join(sorted(data['platforms']))}`" if data["platforms"] else "`Unknown`"
+    security = f"`{', '.join(sorted(data['security']))}`" if data["security"] else "`None`"
+    status = f"`{data['status']}`"
 
     final_text = (
-        "═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target_esc}`\n"
-        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ `{gateways}`\n"
-        f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {'Yes ✅' if data['cloudflare'] else 'No ❌'}\n"
-        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {'Yes ✅' if data['captchas'] else 'No ❌'}\n"
-        f"✘ 𝘾𝙑𝙑 ➜ {'Required ✅' if data['cvv'] else 'Not observed ❌'}\n"
-        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ `{platforms}`\n"
-        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ `{security}`\n"
-        f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ `{status}`\n"
-        "═════════════════════"
+        f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target}`\n"
+        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ {gateways}\n"
+        f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {cloudflare}\n"
+        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captcha_text}\n"
+        f"✘ 𝘾𝙑𝙑 ➜ {cvv}\n"
+        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ {platforms}\n"
+        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ {security}\n"
+        f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ {status}\n"
+        f"═════════════════════"
     )
-
     await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
 
