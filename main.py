@@ -278,19 +278,19 @@ if chat_type == 'private':
         )
         return False
 
+elif chat_type in ('group', 'supergroup'):
+    if chat_id in AUTHORIZED_CHATS:
+        return True
+    else:
+        await update.effective_message.reply_text(
+            "🚫 This group is not authorized to use this bot\\.\n"
+            "Please contact @K4linuxx to get approved\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return False
 
-    elif chat_type in ('group', 'supergroup'):
-        if chat_id in AUTHORIZED_CHATS:
-            return True
-        else:
-            await update.effective_message.reply_text(
-                "🚫 This group is not authorized to use this bot\\.\n"
-                "Please contact @enough69s to get approved\\.",
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
-            return False
+return False
 
-    return False
 
 
 # === COMMAND HANDLERS ===
