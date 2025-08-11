@@ -12,7 +12,7 @@ async def init_db():
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id BIGINT PRIMARY KEY,
-            credits INT DEFAULT 30,
+            credits INT DEFAULT 200,
             plan TEXT DEFAULT 'Free',
             status TEXT DEFAULT 'Free',
             plan_expiry TEXT DEFAULT 'N/A',
