@@ -1146,12 +1146,12 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
         current_time_taken = round(time.time() - start_time, 2)
         current_summary = (
-            f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-            f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-            f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-            f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-            f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-            f"✧ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+            f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+            f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+            f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+            f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+            f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+            f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
             f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
             f"──────── ⸙ ─────────"
         )
@@ -1165,12 +1165,12 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
-        f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-        f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-        f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-        f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-        f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-        f"✧ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
+        f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+        f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+        f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
         f"──────── ⸙ ─────────"
     )
@@ -1268,17 +1268,17 @@ USER_AGENT = "Mozilla/5.0 (compatible; GatewayScanner/1.0)"
 RETRY_ATTEMPTS = 2
 RETRY_DELAY = 1
 
-# Strong signatures only (to avoid false positives)
+# Expanded gateway signatures including more domains and patterns
 GATEWAY_SIGNATURES: Dict[str, List[str]] = {
-    "Stripe": ["js.stripe.com", "api.stripe.com", "checkout.stripe.com"],
-    "PayPal": ["www.paypal.com/sdk/js", "paypalobjects.com", "api.paypal.com"],
-    "Adyen": ["checkoutshopper-live.adyenpayments.com", "live.adyen.com"],
-    "Braintree": ["assets.braintreegateway.com", "api.braintreegateway.com"],
-    "Square": ["squareup.com", "js.squareup.com"],
-    "Authorize.Net": ["secure2.authorize.net", "accept.authorize.net"],
+    "Stripe": ["js.stripe.com", "api.stripe.com", "checkout.stripe.com", "stripe.com"],
+    "PayPal": ["paypal.com", "paypalobjects.com", "api.paypal.com", "www.paypal.com/sdk/js"],
+    "Adyen": ["adyenpayments.com", "live.adyen.com", "checkoutshopper-live.adyenpayments.com"],
+    "Braintree": ["braintreegateway.com", "assets.braintreegateway.com", "api.braintreegateway.com"],
+    "Square": ["squareup.com", "js.squareup.com", "connect.squareup.com"],
+    "Authorize.Net": ["authorize.net", "secure2.authorize.net", "accept.authorize.net", "authorizenet.com"],
     "Worldpay": ["worldpay.com", "secure.worldpay.com"],
     "eWAY": ["eway.com.au", "secure.ewaypayments.com"],
-    "Klarna": ["cdn.klarna.com", "api.klarna.com"],
+    "Klarna": ["klarna.com", "cdn.klarna.com", "api.klarna.com"],
     "Mollie": ["mollie.com", "api.mollie.com"],
     "Skrill": ["skrill.com"],
     "Neteller": ["neteller.com"],
@@ -1288,24 +1288,24 @@ GATEWAY_SIGNATURES: Dict[str, List[str]] = {
     "Binance Pay": ["pay.binance.com"],
     "Apple Pay": ["apple-pay-gateway.apple.com"],
     "Google Pay": ["pay.google.com", "google.com/pay"],
-    "Alipay": ["render.alipay.com", "intl.alipay.com"],
+    "Alipay": ["alipay.com", "render.alipay.com", "intl.alipay.com"],
     "WeChat Pay": ["wx.tenpay.com", "pay.wechat.com"],
     "Mercado Pago": ["mercadopago.com", "api.mercadopago.com"],
     "PagSeguro": ["pagseguro.uol.com.br"],
-    "PayU": ["secure.payu.com", "payu.in"],
+    "PayU": ["payu.com", "secure.payu.com", "payu.in"],
     "Paytm": ["paytm.com", "securegw.paytm.in"],
-    "Razorpay": ["checkout.razorpay.com", "api.razorpay.com"],
+    "Razorpay": ["razorpay.com", "checkout.razorpay.com", "api.razorpay.com"],
     "Payoneer": ["payoneer.com"],
     "2Checkout": ["2checkout.com", "2co.com"],
     "2C2P": ["2c2p.com"],
     "Checkout.com": ["checkout.com", "api.checkout.com"],
-    "CyberSource": ["secureacceptance.cybersource.com"],
+    "CyberSource": ["cybersource.com", "secureacceptance.cybersource.com"],
     "Elavon": ["convergepay.com"],
     "First Data / Fiserv": ["fdms.com"],
     "Ingenico": ["ingenico.com", "paymentpage.ingenico.com"],
     "Clover": ["clover.com"],
     "WooPayments": ["woocommerce.com", "woocommerce-checkout"],
-    "Shopify Payments": ["cdn.shopify.com", "shopifycloud.com"],
+    "Shopify Payments": ["shopify.com", "cdn.shopify.com", "shopifycloud.com"],
     "Magento Payments": ["magento.com"],
     "OpenCart": ["opencart.com"],
     "PrestaShop": ["prestashop.com"],
@@ -1390,10 +1390,25 @@ def search_signatures(text: str, sigs: Dict[str, List[str]]) -> Set[str]:
 
 def find_cvv(soup: BeautifulSoup) -> bool:
     for inp in soup.find_all("input"):
+        name_id = (inp.get("name","") + inp.get("id","")).lower()
         for key in ("cvv", "cvc", "security_code"):
-            if key in (inp.get("name","").lower() + inp.get("id","").lower()):
+            if key in name_id:
                 return True
     return False
+
+def search_attrs_for_gateways(soup: BeautifulSoup, sigs: Dict[str, List[str]]) -> Set[str]:
+    found = set()
+    attrs_to_check = ["src", "href", "action", "data-src"]
+    for tag in soup.find_all(True):  # all tags
+        for attr in attrs_to_check:
+            val = tag.get(attr, "")
+            val_low = val.lower()
+            for name, patterns in sigs.items():
+                for pat in patterns:
+                    if pat.lower() in val_low:
+                        found.add(name)
+                        break
+    return found
 
 async def scan_site(url: str) -> Dict:
     result = {
@@ -1416,29 +1431,62 @@ async def scan_site(url: str) -> Dict:
             result["status"] = "Unreachable"
             return result
         result["status"] = f"Online ({status})"
-        if "cloudflare" in (headers.get("Server","") + str(headers)).lower():
+
+        headers_lower = {k.lower(): v for k,v in headers.items()}
+        server_header = headers_lower.get("server", "")
+        if "cloudflare" in server_header.lower():
             result["cloudflare"] = True
-        if "strict-transport-security" in {k.lower() for k in headers}:
+        if "strict-transport-security" in headers_lower:
             result["security"].add("HSTS")
-        if "content-security-policy" in {k.lower() for k in headers}:
+        if "content-security-policy" in headers_lower:
             result["security"].add("CSP")
+
         soup = BeautifulSoup(html, "html.parser")
-        result["gateways"] |= search_signatures(html, GATEWAY_SIGNATURES)
-        result["captchas"] |= search_signatures(html, CAPTCHA_SIGNATURES)
-        result["platforms"] |= search_signatures(html, PLATFORM_SIGNATURES)
+
+        # Search gateways in raw html text + attributes (src, href, action, data-src)
+        gateways_html_text = search_signatures(html, GATEWAY_SIGNATURES)
+        gateways_attrs = search_attrs_for_gateways(soup, GATEWAY_SIGNATURES)
+        result["gateways"] |= gateways_html_text | gateways_attrs
+
+        # Captchas detection
+        captchas_html = search_signatures(html, CAPTCHA_SIGNATURES)
+        captchas_attrs = search_attrs_for_gateways(soup, CAPTCHA_SIGNATURES)
+        result["captchas"] |= captchas_html | captchas_attrs
+
+        # Platforms detection
+        platforms_html = search_signatures(html, PLATFORM_SIGNATURES)
+        platforms_attrs = search_attrs_for_gateways(soup, PLATFORM_SIGNATURES)
+        result["platforms"] |= platforms_html | platforms_attrs
+
+        # CVV fields
         if find_cvv(soup):
             result["cvv"] = True
-        for tag in soup.find_all("script", src=True)[:JS_FETCH_LIMIT]:
+
+        # Fetch and scan JS files linked in script src tags (limit JS_FETCH_LIMIT)
+        scripts = soup.find_all("script", src=True)[:JS_FETCH_LIMIT]
+        for tag in scripts:
             s_url = urljoin(base, tag["src"])
             _, _, js_text = await fetch_text(session, s_url)
+            if not js_text:
+                continue
             result["gateways"] |= search_signatures(js_text, GATEWAY_SIGNATURES)
             result["captchas"] |= search_signatures(js_text, CAPTCHA_SIGNATURES)
             result["platforms"] |= search_signatures(js_text, PLATFORM_SIGNATURES)
+
     return result
 
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Block command usage in private chats
+    if update.effective_chat.type == 'private':
+        await update.message.reply_text(
+            "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+
     if not context.args:
         return await update.message.reply_text("Usage: /gate <url>")
+
     target = context.args[0]
     msg = await update.message.reply_text(
         f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
@@ -1447,20 +1495,24 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"═════════════════════",
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
     data = await scan_site(target)
+
     gateways = f"`{' | '.join(sorted(data['gateways']))}`" if data["gateways"] else "`None`"
-    captchas = f"`{', '.join(sorted(data['captchas']))}`" if data["captchas"] else "`None`"
+    captcha_emoji = "✅" if data["captchas"] else "❌"
+    captcha_text = f"`Yes {captcha_emoji}`" if data["captchas"] else f"`No {captcha_emoji}`"
     cloudflare = "`✅`" if data["cloudflare"] else "`❌`"
     cvv = "`Required ✅`" if data["cvv"] else "`Not observed ❌`"
     platforms = f"`{', '.join(sorted(data['platforms']))}`" if data["platforms"] else "`Unknown`"
     security = f"`{', '.join(sorted(data['security']))}`" if data["security"] else "`None`"
     status = f"`{data['status']}`"
+
     final_text = (
         f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
         f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target}`\n"
         f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ {gateways}\n"
         f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {cloudflare}\n"
-        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captchas}\n"
+        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captcha_text}\n"
         f"✘ 𝘾𝙑𝙑 ➜ {cvv}\n"
         f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ {platforms}\n"
         f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ {security}\n"
