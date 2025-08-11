@@ -1250,427 +1250,224 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# gate_full.py
-import asyncio
-import aiohttp
-import logging
-import re
-import time
-from typing import Tuple, Set, Dict, List
+# gate_strict_mono.py
+import asyncio, aiohttp, logging, time
 from urllib.parse import urlparse, urljoin
-
+from typing import Dict, List, Set
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
 logger = logging.getLogger(__name__)
-# -------------------- CONFIG --------------------
-JS_FETCH_LIMIT = 12           # how many external JS files to fetch
-REQUEST_TIMEOUT = 10          # seconds per HTTP request
-USER_AGENT = "Mozilla/5.0 (compatible; GatewayScanner/1.0; +https://example.com/bot)"
-MAX_CONTENT_SIZE = 450_000    # truncate overly large responses
+
+JS_FETCH_LIMIT = 12
+REQUEST_TIMEOUT = 10
+MAX_CONTENT_SIZE = 450_000
+USER_AGENT = "Mozilla/5.0 (compatible; GatewayScanner/1.0)"
 RETRY_ATTEMPTS = 2
-RETRY_DELAY = 1.0
+RETRY_DELAY = 1
 
-# -------------------- SIGNATURE DB --------------------
-# This dictionary maps gateway/platform name -> list of signature tokens (lowercase substrings or regex)
-# It's intentionally large; add more if you want.
+# Strong signatures only (to avoid false positives)
 GATEWAY_SIGNATURES: Dict[str, List[str]] = {
-    # Global / major
-    "Stripe": ["stripe", "checkout.stripe", "js.stripe.com", "elements.stripe"],
-    "PayPal": ["paypal", "paypalobjects.com", "paypal-sdk", "paypal-button"],
-    "Adyen": ["adyen", "checkoutshopper-live.adyenpayments.com", "live.adyen.com"],
-    "Braintree": ["braintree", "braintreegateway"],
-    "Square": ["squareup", "SqPaymentForm", "checkout.square"],
-    "Authorize.Net": ["authorize.net", "accept.js", "secure2.authorize.net"],
-    "Worldpay": ["worldpay", "worldpay.com"],
-    "eWAY": ["eway", "ewaypayments"],
-    "Klarna": ["klarna", "cdn.klarna"],
-    "Mollie": ["mollie", "api.mollie"],
-    "Skrill": ["skrill"],
-    "Neteller": ["neteller"],
-    "Coinbase Commerce": ["commerce.coinbase", "coinbase"],
-    "BitPay": ["bitpay"],
-    "NOWPayments": ["nowpayments"],
-    "Binance Pay": ["binancepay", "binance"],
-    "Apple Pay": ["apple-pay", "applepay"],
-    "Google Pay": ["google-pay", "gpay", "pay.google"],
-    "Alipay": ["alipay", "render.alipay"],
-    "WeChat Pay": ["wx.tenpay", "wechat", "weixin"],
-    "Mercado Pago": ["mercadopago"],
-    "PagSeguro": ["pagseguro"],
-    "PayU": ["payu", "secure.payu"],
-    "Paytm": ["paytm"],
-    "Razorpay": ["razorpay", "checkout.razorpay"],
-    "Payoneer": ["payoneer"],
-    "2Checkout": ["2checkout", "2co"],
-    "2C2P": ["2c2p"],
-    "Checkout.com": ["checkout.com"],
-    "CyberSource": ["cybersource", "secureacceptance"],
-    "Elavon": ["elavon"],
-    "First Data / Fiserv": ["firstdata", "fdms"],
-    "Ingenico": ["ingenico"],
-    "Clover": ["clover"],
-    "WooPayments (WooCommerce)": ["woopayments", "woocommerce", "woocommerce-checkout"],
-    "Shopify Payments": ["cdn.shopify.com", "shopify"],
-    "Magento Payments": ["mage.", "magento"],
-    "OpenCart": ["opencart"],
-    "PrestaShop": ["prestashop"],
-    "BigCommerce": ["bigcommerce"],
-    "Paystack": ["paystack"],
-    "Flutterwave": ["flutterwave"],
-    "bKash": ["bkash"],
-    "M-Pesa": ["mpesa", "safaricom"],
-    "PhonePe": ["phonepe"],
-    "Qiwi": ["qiwi"],
-    "Sofort": ["sofort"],
-    "iDEAL": ["ideal.nl", "ideal"],
-    "Bancontact": ["bancontact"],
-    "Giropay": ["giropay"],
-    "BPAY": ["bpay"],
-    "PayPoint": ["paypoint"],
-    "Paysafe / Paysafecard": ["paysafe", "paysafecard"],
-    "Opayo (Sage Pay)": ["sagepay", "opayo"],
-    "Payfast": ["payfast"],
-    "Paymaya": ["paymaya"],
-    "Paymentwall": ["paymentwall"],
-    "SafeCharge": ["safecharge"],
-    "CardConnect": ["cardconnect"],
-    "Helcim": ["helcim"],
-    "Novalnet": ["novalnet"],
-    "BlueSnap": ["bluesnap"],
-    "Paddle": ["paddle"],
-    "FastSpring": ["fastspring"],
-    "Afterpay / Clearpay": ["afterpay", "clearpay"],
-    "Sezzle": ["sezzle"],
-    "PayPay (Japan)": ["paypay.ne.jp", "paypay"],
-    "WePay": ["wepay"],
-    "Trust Payments": ["trustpayments"],
-    "USAePay": ["usaepay"],
-    "Stax": ["staxpayments"],
-    "UnionPay": ["unionpay"],
-    "Mir": ["mironline", "mir"],
-    "Advcash": ["advcash"],
-    "CoinPayments": ["coinpayments"],
-    "Crypto.com Pay": ["crypto.com", "cryptocom"],
-    "GoCoin": ["gocoin"],
-    # Regional / country-specific (additional)
-    "PayU Latam": ["payulatam"],
-    "PagosOnline / PlaceToPay": ["placetopay"],
-    "Payone (DE)": ["payone"],
-    "Worldline / Atos": ["worldline", "atos", "atosworldline"],
-    "Verifone": ["verifone"],
-    "Verifone (2Checkout)": ["verifone", "2co"],
-    "Paytm Wallet": ["paytm"],
-    "MobiKwik": ["mobikwik"],
-    "bKash (BD)": ["bkash"],
-    "bKash Popup": ["bkash-checkout"],
-    "MercadoPago Checkout": ["mercadopago"],
-    "Payeasy / AlipayHK": ["alipayhk"],
-    "PhonePe UPI": ["phonepe"],
-    # (You may extend this dictionary further: add more entries/synonyms as needed)
+    "Stripe": ["js.stripe.com", "api.stripe.com", "checkout.stripe.com"],
+    "PayPal": ["www.paypal.com/sdk/js", "paypalobjects.com", "api.paypal.com"],
+    "Adyen": ["checkoutshopper-live.adyenpayments.com", "live.adyen.com"],
+    "Braintree": ["assets.braintreegateway.com", "api.braintreegateway.com"],
+    "Square": ["squareup.com", "js.squareup.com"],
+    "Authorize.Net": ["secure2.authorize.net", "accept.authorize.net"],
+    "Worldpay": ["worldpay.com", "secure.worldpay.com"],
+    "eWAY": ["eway.com.au", "secure.ewaypayments.com"],
+    "Klarna": ["cdn.klarna.com", "api.klarna.com"],
+    "Mollie": ["mollie.com", "api.mollie.com"],
+    "Skrill": ["skrill.com"],
+    "Neteller": ["neteller.com"],
+    "Coinbase Commerce": ["commerce.coinbase.com"],
+    "BitPay": ["bitpay.com"],
+    "NOWPayments": ["nowpayments.io"],
+    "Binance Pay": ["pay.binance.com"],
+    "Apple Pay": ["apple-pay-gateway.apple.com"],
+    "Google Pay": ["pay.google.com", "google.com/pay"],
+    "Alipay": ["render.alipay.com", "intl.alipay.com"],
+    "WeChat Pay": ["wx.tenpay.com", "pay.wechat.com"],
+    "Mercado Pago": ["mercadopago.com", "api.mercadopago.com"],
+    "PagSeguro": ["pagseguro.uol.com.br"],
+    "PayU": ["secure.payu.com", "payu.in"],
+    "Paytm": ["paytm.com", "securegw.paytm.in"],
+    "Razorpay": ["checkout.razorpay.com", "api.razorpay.com"],
+    "Payoneer": ["payoneer.com"],
+    "2Checkout": ["2checkout.com", "2co.com"],
+    "2C2P": ["2c2p.com"],
+    "Checkout.com": ["checkout.com", "api.checkout.com"],
+    "CyberSource": ["secureacceptance.cybersource.com"],
+    "Elavon": ["convergepay.com"],
+    "First Data / Fiserv": ["fdms.com"],
+    "Ingenico": ["ingenico.com", "paymentpage.ingenico.com"],
+    "Clover": ["clover.com"],
+    "WooPayments": ["woocommerce.com", "woocommerce-checkout"],
+    "Shopify Payments": ["cdn.shopify.com", "shopifycloud.com"],
+    "Magento Payments": ["magento.com"],
+    "OpenCart": ["opencart.com"],
+    "PrestaShop": ["prestashop.com"],
+    "BigCommerce": ["bigcommerce.com"],
+    "Paystack": ["paystack.com"],
+    "Flutterwave": ["flutterwave.com"],
+    "bKash": ["bkash.com"],
+    "M-Pesa": ["safaricom.com"],
+    "PhonePe": ["phonepe.com"],
+    "Qiwi": ["qiwi.com"],
+    "Sofort": ["sofort.com"],
+    "iDEAL": ["ideal.nl"],
+    "Bancontact": ["bancontact.com"],
+    "Giropay": ["giropay.de"],
+    "BPAY": ["bpay.com.au"],
+    "PayPoint": ["paypoint.com"],
+    "Paysafe": ["paysafe.com"],
+    "Opayo (Sage Pay)": ["sagepay.com", "opayo.co.uk"],
+    "Payfast": ["payfast.co.za"],
+    "Paymaya": ["paymaya.com"],
+    "Paymentwall": ["paymentwall.com"],
+    "SafeCharge": ["safecharge.com"],
+    "CardConnect": ["cardconnect.com"],
+    "Helcim": ["helcim.com"],
+    "Novalnet": ["novalnet.com"],
+    "BlueSnap": ["bluesnap.com"],
+    "Paddle": ["paddle.com"],
+    "FastSpring": ["fastspring.com"],
+    "Afterpay": ["afterpay.com"],
+    "Sezzle": ["sezzle.com"],
+    "PayPay": ["paypay.ne.jp"],
+    "WePay": ["wepay.com"],
+    "Trust Payments": ["trustpayments.com"],
+    "USAePay": ["usaepay.com"],
+    "Stax": ["staxpayments.com"],
+    "UnionPay": ["unionpaysecure.com"],
+    "Mir": ["mironline.ru"],
+    "Advcash": ["advcash.com"],
+    "CoinPayments": ["coinpayments.net"],
+    "Crypto.com Pay": ["crypto.com"],
 }
 
-# Captcha signatures
-CAPTCHA_SIGNATURES: Dict[str, List[str]] = {
-    "Google reCAPTCHA": ["www.google.com/recaptcha", "grecaptcha", "recaptcha"],
-    "hCaptcha": ["hcaptcha.com", "hcaptcha"],
-    "Cloudflare Turnstile": ["challenges.cloudflare.com", "turnstile", "cf-turnstile"],
-    "FunCaptcha": ["funcaptcha"],
+CAPTCHA_SIGNATURES = {
+    "Google reCAPTCHA": ["www.google.com/recaptcha", "recaptcha.net"],
+    "hCaptcha": ["hcaptcha.com"],
+    "Cloudflare Turnstile": ["challenges.cloudflare.com"],
+    "FunCaptcha": ["funcaptcha.com"],
 }
 
-# Platforms / inbuilt shopping systems
-PLATFORM_SIGNATURES: Dict[str, List[str]] = {
-    "WooCommerce": ["woocommerce", "woocommerce-checkout", "wp-woocommerce"],
-    "Shopify": ["cdn.shopify.com", "shopify"],
-    "Magento": ["mage.", "magento"],
+PLATFORM_SIGNATURES = {
+    "WooCommerce": ["woocommerce"],
+    "Shopify": ["shopify"],
+    "Magento": ["magento"],
     "PrestaShop": ["prestashop"],
     "OpenCart": ["opencart"],
     "BigCommerce": ["bigcommerce"],
-    "Wix": ["wix.com", "wixstatic"],
-    "Squarespace": ["squarespace"],
+    "Wix": ["wix.com"],
+    "Squarespace": ["squarespace.com"],
 }
 
-# -------------------- HELPERS --------------------
-async def _fetch_text(session: aiohttp.ClientSession, url: str) -> Tuple[int, dict, str]:
-    """
-    GET a URL and return (status_code, headers, text) with safe timeouts/retries.
-    """
-    last_exc = None
-    for attempt in range(RETRY_ATTEMPTS):
+async def fetch_text(session, url):
+    for _ in range(RETRY_ATTEMPTS):
         try:
-            async with session.get(url, timeout=REQUEST_TIMEOUT) as resp:
-                status = resp.status
-                headers = dict(resp.headers)
-                text = await resp.text(errors="ignore")
+            async with session.get(url, timeout=REQUEST_TIMEOUT) as r:
+                text = await r.text(errors="ignore")
                 if len(text) > MAX_CONTENT_SIZE:
                     text = text[:MAX_CONTENT_SIZE]
-                return status, headers, text
-        except asyncio.TimeoutError as te:
-            last_exc = te
+                return r.status, dict(r.headers), text
+        except Exception:
             await asyncio.sleep(RETRY_DELAY)
-        except Exception as e:
-            last_exc = e
-            await asyncio.sleep(RETRY_DELAY)
-    logger.debug("Failed to fetch %s after retries: %s", url, last_exc)
     return None, {}, ""
 
-def _search_signatures_in_text(text: str, signatures: Dict[str, List[str]]) -> Set[str]:
+def search_signatures(text: str, sigs: Dict[str, List[str]]) -> Set[str]:
     found = set()
-    if not text:
-        return found
-    tl = text.lower()
-    for name, sigs in signatures.items():
-        for s in sigs:
-            if s.lower() in tl:
+    text_low = text.lower()
+    for name, patterns in sigs.items():
+        for pat in patterns:
+            if pat.lower() in text_low:
                 found.add(name)
                 break
     return found
 
-def _extract_js_urls(base_url: str, soup: BeautifulSoup) -> List[str]:
-    urls: List[str] = []
-    for tag in soup.find_all("script", src=True):
-        src = tag.get("src")
-        if src:
-            try:
-                urls.append(urljoin(base_url, src))
-            except:
-                pass
-    # dedupe preserving order
-    seen = set()
-    out = []
-    for u in urls:
-        if u not in seen:
-            seen.add(u)
-            out.append(u)
-    return out
+def find_cvv(soup: BeautifulSoup) -> bool:
+    for inp in soup.find_all("input"):
+        for key in ("cvv", "cvc", "security_code"):
+            if key in (inp.get("name","").lower() + inp.get("id","").lower()):
+                return True
+    return False
 
-def _find_forms_and_cvv(soup: BeautifulSoup) -> Tuple[bool, bool]:
-    cvv_detected = False
-    form_found = False
-    for form in soup.find_all("form"):
-        form_found = True
-        for inp in form.find_all(["input", "textarea", "select"]):
-            name = (inp.get("name") or "").lower()
-            id_ = (inp.get("id") or "").lower()
-            placeholder = (inp.get("placeholder") or "").lower()
-            if any(k in name for k in ("cvv", "cvc", "security_code", "card_security_code")) \
-               or any(k in id_ for k in ("cvv", "cvc", "security_code")) \
-               or any(k in placeholder for k in ("cvv", "cvc")):
-                cvv_detected = True
-                return form_found, True
-    return form_found, cvv_detected
-
-# -------------------- SCANNER CORE --------------------
-async def run_gateway_scan(raw_url: str) -> Dict[str, object]:
-    """
-    Deep scan a site and return a dict of results.
-    """
+async def scan_site(url: str) -> Dict:
     result = {
-        "site": raw_url,
+        "site": url,
         "gateways": set(),
         "captchas": set(),
         "platforms": set(),
         "cloudflare": False,
         "cvv": False,
-        "status": "Unknown",
         "security": set(),
-        "time_taken": 0.0,
+        "status": "Unknown"
     }
-    start = time.time()
-    if not raw_url.startswith("http"):
-        raw_url = "https://" + raw_url
-    parsed = urlparse(raw_url)
+    if not url.startswith("http"):
+        url = "https://" + url
+    parsed = urlparse(url)
     base = f"{parsed.scheme}://{parsed.netloc}"
-    headers = {"User-Agent": USER_AGENT, "Accept": "*/*"}
-
-    # use a single session with connector defaults (can add connector for SSL tweaks)
-    timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT + 5)
-    async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
-        # 1) fetch main page
-        status, resp_headers, html = await _fetch_text(session, raw_url)
-        if status is None:
+    async with aiohttp.ClientSession(headers={"User-Agent": USER_AGENT}) as session:
+        status, headers, html = await fetch_text(session, url)
+        if not status:
             result["status"] = "Unreachable"
-            html = ""
-        else:
-            result["status"] = f"Online ({status})"
-            # security headers
-            if resp_headers:
-                if any(h.lower().startswith("strict-transport-security") for h in resp_headers):
-                    result["security"].add("HSTS")
-                if "content-security-policy" in {k.lower() for k in resp_headers}:
-                    result["security"].add("CSP")
-                server_hdr = resp_headers.get("Server", "") or resp_headers.get("server", "")
-                if server_hdr and "cloudflare" in server_hdr.lower():
-                    result["cloudflare"] = True
-                # check common cloudflare headers
-                if any(h.lower().startswith("cf-") for h in resp_headers):
-                    result["cloudflare"] = True
-
-        # quick content checks
-        lower_html = (html or "").lower()
-
-        # Cloudflare challenge page detection
-        if "checking your browser" in lower_html or "cf-chl-bypass" in lower_html:
+            return result
+        result["status"] = f"Online ({status})"
+        if "cloudflare" in (headers.get("Server","") + str(headers)).lower():
             result["cloudflare"] = True
-
-        # 2) parse main HTML
-        try:
-            soup = BeautifulSoup(html or "", "html.parser")
-        except Exception:
-            soup = BeautifulSoup("", "html.parser")
-
-        # 3) scan HTML & inline scripts for signatures
-        result["gateways"].update(_search_signatures_in_text(html, GATEWAY_SIGNATURES))
-        result["platforms"].update(_search_signatures_in_text(html, PLATFORM_SIGNATURES))
-        result["captchas"].update(_search_signatures_in_text(html, CAPTCHA_SIGNATURES))
-
-        # search inline script contents for signatures
-        for script in soup.find_all("script"):
-            try:
-                stext = script.string or ""
-                if stext:
-                    result["gateways"].update(_search_signatures_in_text(stext, GATEWAY_SIGNATURES))
-                    result["platforms"].update(_search_signatures_in_text(stext, PLATFORM_SIGNATURES))
-                    result["captchas"].update(_search_signatures_in_text(stext, CAPTCHA_SIGNATURES))
-            except Exception:
-                continue
-
-        # 4) extract and deep-scan external JS files (limited)
-        js_urls = _extract_js_urls(base, soup)[:JS_FETCH_LIMIT]
-        if js_urls:
-            tasks = [ _fetch_text(session, u) for u in js_urls ]
-            try:
-                js_results = await asyncio.gather(*tasks, return_exceptions=True)
-            except Exception:
-                js_results = []
-            for res in js_results:
-                if isinstance(res, tuple):
-                    _, _, txt = res
-                    result["gateways"].update(_search_signatures_in_text(txt, GATEWAY_SIGNATURES))
-                    result["platforms"].update(_search_signatures_in_text(txt, PLATFORM_SIGNATURES))
-                    result["captchas"].update(_search_signatures_in_text(txt, CAPTCHA_SIGNATURES))
-
-        # 5) heuristic: check common checkout/cart/payment endpoints
-        candidate_paths = ["/checkout", "/cart", "/shop", "/payment", "/pay", "/order", "/orders", "/basket", "/checkout/cart"]
-        for p in candidate_paths:
-            try:
-                c_url = urljoin(base, p)
-                st, hdrs, txt = await _fetch_text(session, c_url)
-                if st:
-                    result["status"] = result["status"]  # keep original
-                    result["gateways"].update(_search_signatures_in_text(txt, GATEWAY_SIGNATURES))
-                    result["platforms"].update(_search_signatures_in_text(txt, PLATFORM_SIGNATURES))
-                    result["captchas"].update(_search_signatures_in_text(txt, CAPTCHA_SIGNATURES))
-            except Exception:
-                continue
-
-        # 6) detect CVV fields in HTML forms on main page
-        _, cvv_found = _find_forms_and_cvv(soup)
-        result["cvv"] = cvv_found
-
-    # finalize
-    result["time_taken"] = round(time.time() - start, 2)
-    # convert sets to sorted lists for stable output
-    result["gateways"] = sorted(result["gateways"])
-    result["platforms"] = sorted(result["platforms"])
-    result["captchas"] = sorted(result["captchas"])
-    result["security"] = sorted(result["security"])
+        if "strict-transport-security" in {k.lower() for k in headers}:
+            result["security"].add("HSTS")
+        if "content-security-policy" in {k.lower() for k in headers}:
+            result["security"].add("CSP")
+        soup = BeautifulSoup(html, "html.parser")
+        result["gateways"] |= search_signatures(html, GATEWAY_SIGNATURES)
+        result["captchas"] |= search_signatures(html, CAPTCHA_SIGNATURES)
+        result["platforms"] |= search_signatures(html, PLATFORM_SIGNATURES)
+        if find_cvv(soup):
+            result["cvv"] = True
+        for tag in soup.find_all("script", src=True)[:JS_FETCH_LIMIT]:
+            s_url = urljoin(base, tag["src"])
+            _, _, js_text = await fetch_text(session, s_url)
+            result["gateways"] |= search_signatures(js_text, GATEWAY_SIGNATURES)
+            result["captchas"] |= search_signatures(js_text, CAPTCHA_SIGNATURES)
+            result["platforms"] |= search_signatures(js_text, PLATFORM_SIGNATURES)
     return result
 
-# -------------------- COMMAND (background-safe) --------------------
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Usage: /gate <url>
-    Sends immediate Checking... message then spawns background scan which edits the message.
-    """
     if not context.args:
-        try:
-            await update.effective_message.reply_text("Usage: /gate <url>")
-        except Exception as e:
-            logger.warning("Failed to send usage reply: %s", e)
-        return
-
-    raw_url = context.args[0].strip()
-    if not raw_url.startswith("http"):
-        raw_url = "https://" + raw_url
-
-    parsed = urlparse(raw_url)
-    site_domain = parsed.netloc.replace("www.", "")
-
-    # send initial checking message immediately
-    checking_text = (
-        "═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚       ➜ `{escape_markdown(site_domain, version=2)}`\n"
-        f"✘ 𝙎𝙩𝙖𝙩𝙪𝙨     ➜ Checking\\.\\.\\.\n"
-        "═════════════════════"
+        return await update.message.reply_text("Usage: /gate <url>")
+    target = context.args[0]
+    msg = await update.message.reply_text(
+        f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target}`\n"
+        f"✘ 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ `Checking...`\n"
+        f"═════════════════════",
+        parse_mode=ParseMode.MARKDOWN_V2
     )
-
-    try:
-        processing_msg = await update.effective_message.reply_text(checking_text, parse_mode=ParseMode.MARKDOWN_V2)
-    except Exception as e:
-        logger.exception("Failed to send initial checking message: %s", e)
-        try:
-            # fallback simple reply
-            processing_msg = await update.effective_message.reply_text("Checking...") 
-        except Exception as e2:
-            logger.exception("Failed fallback checking message: %s", e2)
-            return
-
-    # Run scan in background to avoid blocking Telegram requests
-    asyncio.create_task(_background_scan_and_edit(raw_url, site_domain, processing_msg))
-
-async def _background_scan_and_edit(raw_url: str, site_domain: str, msg):
-    try:
-        data = await run_gateway_scan(raw_url)
-        # format final stylish message
-        gateways_display = " | ".join(data["gateways"]) if data["gateways"] else "None detected"
-        captchas_display = ", ".join(data["captchas"]) if data["captchas"] else "None detected"
-        cloudflare_display = "✅" if data["cloudflare"] else "❌"
-        cvv_display = "Required ✅" if data["cvv"] else "Not observed ❌"
-        platform_display = ", ".join(data["platforms"]) if data["platforms"] else "Unknown"
-        security_display = ", ".join(data["security"]) if data["security"] else "None"
-        status_display = data["status"]
-        time_taken = f"{data['time_taken']}s"
-
-        final_text = (
-            "═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-            f"✘ 𝙎𝙞𝙩𝙚       ➜ `{escape_markdown(site_domain, version=2)}`\n"
-            f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨  ➜ {escape_markdown(gateways_display, version=2)}\n"
-            f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {cloudflare_display}\n"
-            f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼    ➜ {escape_markdown(captchas_display, version=2)}\n"
-            f"✘ 𝘾𝙑𝙑        ➜ {escape_markdown(cvv_display, version=2)}\n"
-            f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ {escape_markdown(platform_display, version=2)}\n"
-            f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ {escape_markdown(security_display, version=2)}\n"
-            f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ {escape_markdown(status_display, version=2)}\n"
-            f"✘ 𝗧𝗶𝗺𝗲 ➜ {escape_markdown(time_taken, version=2)}\n"
-            "═════════════════════"
-        )
-
-        # edit message
-        try:
-            await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
-        except Exception as e:
-            logger.exception("Failed to edit processing message, sending new message: %s", e)
-            try:
-                await msg.reply_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
-            except Exception as e2:
-                logger.exception("Fallback send failed: %s", e2)
-
-    except Exception as ex:
-        logger.exception("Error during gateway scan: %s", ex)
-        try:
-            await msg.edit_text(
-                "═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-                f"✘ 𝙎𝙞𝙩𝙚       ➜ {escape_markdown(site_domain, version=2)}\n"
-                "✘ 𝙎𝙩𝙖𝙩𝙪𝙨     ➜ Error during scan\n"
-                "═════════════════════",
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
-        except Exception:
-            pass
+    data = await scan_site(target)
+    gateways = f"`{' | '.join(sorted(data['gateways']))}`" if data["gateways"] else "`None`"
+    captchas = f"`{', '.join(sorted(data['captchas']))}`" if data["captchas"] else "`None`"
+    cloudflare = "`✅`" if data["cloudflare"] else "`❌`"
+    cvv = "`Required ✅`" if data["cvv"] else "`Not observed ❌`"
+    platforms = f"`{', '.join(sorted(data['platforms']))}`" if data["platforms"] else "`Unknown`"
+    security = f"`{', '.join(sorted(data['security']))}`" if data["security"] else "`None`"
+    status = f"`{data['status']}`"
+    final_text = (
+        f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target}`\n"
+        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ {gateways}\n"
+        f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {cloudflare}\n"
+        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captchas}\n"
+        f"✘ 𝘾𝙑𝙑 ➜ {cvv}\n"
+        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ {platforms}\n"
+        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ {security}\n"
+        f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ {status}\n"
+        f"═════════════════════"
+    )
+    await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 from faker import Faker
