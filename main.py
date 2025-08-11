@@ -1253,13 +1253,13 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 import aiohttp
 import logging
-import re
 from urllib.parse import urlparse, urljoin
 from typing import Dict, List, Set
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown as escape_markdown_v2
 
 logger = logging.getLogger(__name__)
 
@@ -1270,7 +1270,6 @@ USER_AGENT = "Mozilla/5.0 (compatible; GatewayScanner/1.0)"
 RETRY_ATTEMPTS = 2
 RETRY_DELAY = 1
 
-# Expanded gateway signatures including more domains and patterns
 GATEWAY_SIGNATURES: Dict[str, List[str]] = {
     "Stripe": ["js.stripe.com", "api.stripe.com", "checkout.stripe.com", "stripe.com"],
     "PayPal": ["paypal.com", "paypalobjects.com", "api.paypal.com", "www.paypal.com/sdk/js"],
@@ -1368,12 +1367,6 @@ PLATFORM_SIGNATURES = {
     "Squarespace": ["squarespace.com"],
 }
 
-
-def escape_markdown_v2(text: str) -> str:
-    escape_chars = r'\_*[]()~`>#+-=|{}.!'
-    return re.sub(r'([{}])'.format(re.escape(escape_chars)), r'\\\1', text)
-
-
 async def fetch_text(session, url):
     for _ in range(RETRY_ATTEMPTS):
         try:
@@ -1386,7 +1379,6 @@ async def fetch_text(session, url):
             await asyncio.sleep(RETRY_DELAY)
     return None, {}, ""
 
-
 def search_signatures(text: str, sigs: Dict[str, List[str]]) -> Set[str]:
     found = set()
     text_low = text.lower()
@@ -1397,15 +1389,13 @@ def search_signatures(text: str, sigs: Dict[str, List[str]]) -> Set[str]:
                 break
     return found
 
-
 def find_cvv(soup: BeautifulSoup) -> bool:
     for inp in soup.find_all("input"):
-        name_id = (inp.get("name", "") + inp.get("id", "")).lower()
+        name_id = (inp.get("name","") + inp.get("id","")).lower()
         for key in ("cvv", "cvc", "security_code"):
             if key in name_id:
                 return True
     return False
-
 
 def search_attrs_for_gateways(soup: BeautifulSoup, sigs: Dict[str, List[str]]) -> Set[str]:
     found = set()
@@ -1421,7 +1411,6 @@ def search_attrs_for_gateways(soup: BeautifulSoup, sigs: Dict[str, List[str]]) -
                         break
     return found
 
-
 async def scan_site(url: str) -> Dict:
     result = {
         "site": url,
@@ -1431,7 +1420,7 @@ async def scan_site(url: str) -> Dict:
         "cloudflare": False,
         "cvv": False,
         "security": set(),
-        "status": "Unknown",
+        "status": "Unknown"
     }
     if not url.startswith("http"):
         url = "https://" + url
@@ -1444,7 +1433,7 @@ async def scan_site(url: str) -> Dict:
             return result
         result["status"] = f"Online ({status})"
 
-        headers_lower = {k.lower(): v for k, v in headers.items()}
+        headers_lower = {k.lower(): v for k,v in headers.items()}
         server_header = headers_lower.get("server", "")
         if "cloudflare" in server_header.lower():
             result["cloudflare"] = True
@@ -1490,10 +1479,10 @@ async def scan_site(url: str) -> Dict:
 
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Block command usage in private chats
-    if update.effective_chat.type == "private":
+    if update.effective_chat.type == 'private':
         await update.message.reply_text(
             "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
-            parse_mode=ParseMode.MARKDOWN_V2,
+            parse_mode=ParseMode.MARKDOWN_V2
         )
         return
 
@@ -1507,38 +1496,55 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✘ 𝙎𝙞𝙩𝙚 ➜ `{escape_markdown_v2(target)}`\n"
         f"✘ 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ `Checking...`\n"
         f"═════════════════════",
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.MARKDOWN_V2
     )
 
     data = await scan_site(target)
 
-    gateways = (
-        f"`{' | '.join(sorted(data['gateways']))}`" if data["gateways"] else "`None`"
-    )
-    captcha_emoji = "✅" if data["captchas"] else "❌"
-    captcha_text = f"`Yes {captcha_emoji}`" if data["captchas"] else f"`No {captcha_emoji}`"
-    cloudflare = "`Yes✅`" if data["cloudflare"] else "`No❌`"
-    cvv = "`Required ✅`" if data["cvv"] else "`Not observed ❌`"
-    platforms = (
-        f"`{', '.join(sorted(data['platforms']))}`" if data["platforms"] else "`Unknown`"
-    )
-    security = f"`{', '.join(sorted(data['security']))}`" if data["security"] else "`None`"
-    status = f"`{escape_markdown_v2(data['status'])}`"
+    def md_code(text: str) -> str:
+        return f"`{escape_markdown_v2(text)}`"
+
+    # Prepare gateways text
+    if data["gateways"]:
+        gateways_escaped = [escape_markdown_v2(g) for g in sorted(data["gateways"])]
+        gateways = md_code(" | ".join(gateways_escaped))
+    else:
+        gateways = md_code("None")
+
+    # Prepare platforms text
+    if data["platforms"]:
+        platforms_escaped = [escape_markdown_v2(p) for p in sorted(data["platforms"])]
+        platforms = md_code(", ".join(platforms_escaped))
+    else:
+        platforms = md_code("Unknown")
+
+    # Prepare security text
+    if data["security"]:
+        security_escaped = [escape_markdown_v2(s) for s in sorted(data["security"])]
+        security = md_code(", ".join(security_escaped))
+    else:
+        security = md_code("None")
+
+    status = md_code(data["status"])
+    captcha_text = md_code("Yes ✅") if data["captchas"] else md_code("No ❌")
+    cloudflare = md_code("✅") if data["cloudflare"] else md_code("❌")
+    cvv = md_code("Required ✅") if data["cvv"] else md_code("Not observed ❌")
 
     final_text = (
         f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{escape_markdown_v2(target)}`\n"
-        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ {escape_markdown_v2(gateways)}\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ {md_code(target)}\n"
+        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ {gateways}\n"
         f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {cloudflare}\n"
         f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captcha_text}\n"
         f"✘ 𝘾𝙑𝙑 ➜ {cvv}\n"
-        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ {escape_markdown_v2(platforms)}\n"
-        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ {escape_markdown_v2(security)}\n"
+        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ {platforms}\n"
+        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ {security}\n"
         f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ {status}\n"
         f"═════════════════════"
     )
 
     await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 from faker import Faker
