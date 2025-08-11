@@ -1741,7 +1741,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_esc = mdv2_escape(target)
 
     msg = await update.message.reply_text(
-        f"═══\\[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
+        f"═══\\[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 \\]═══\n"
         f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target_esc}`\n"
         f"✘ 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ `Checking...`\n"
         f"═════════════════════",
@@ -1770,7 +1770,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Construct the final message with proper MarkdownV2 escaping
     final_text = (
-        f"═══\\[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
+        f"═══\\[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 \\]═══\n"
         f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target_esc}`\n"
         f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ `{gateways}`\n"
         f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ `{cloudflare_text}`\n"
