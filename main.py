@@ -1257,6 +1257,7 @@ from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -1633,11 +1634,18 @@ async def fetch_text(session, url):
     for _ in range(RETRY_ATTEMPTS):
         try:
             async with session.get(url, timeout=REQUEST_TIMEOUT) as r:
+                # Check for content size before reading
+                content_length = r.headers.get("Content-Length")
+                if content_length and int(content_length) > MAX_CONTENT_SIZE:
+                    logger.warning(f"Content length of {url} exceeds limit. Skipping.")
+                    return r.status, dict(r.headers), ""
+                
                 text = await r.text(errors="ignore")
                 if len(text) > MAX_CONTENT_SIZE:
                     text = text[:MAX_CONTENT_SIZE]
                 return r.status, dict(r.headers), text
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error fetching {url}: {e}")
             await asyncio.sleep(RETRY_DELAY)
     return None, {}, ""
 
@@ -1691,28 +1699,31 @@ async def scan_site(url: str) -> Dict:
         result["platforms"] |= search_signatures(html, PLATFORM_SIGNATURES)
         if find_cvv(soup):
             result["cvv"] = True
+        
+        js_tasks = []
         for tag in soup.find_all("script", src=True)[:JS_FETCH_LIMIT]:
             s_url = urljoin(base, tag["src"])
-            _, _, js_text = await fetch_text(session, s_url)
+            js_tasks.append(fetch_text(session, s_url))
+
+        js_results = await asyncio.gather(*js_tasks)
+        for _, _, js_text in js_results:
             result["gateways"] |= search_signatures(js_text, GATEWAY_SIGNATURES)
             result["captchas"] |= search_signatures(js_text, CAPTCHA_SIGNATURES)
             result["platforms"] |= search_signatures(js_text, PLATFORM_SIGNATURES)
     return result
 
-import re
-
-MDV2_SPECIAL_CHARS = r'[_*[\]()~`>#+\-=|{}.!\\]'
-
+MDV2_SPECIAL_CHARS = r'([_*[\]()~`>#+\-=|{}.!])'
 def mdv2_escape(text: str) -> str:
+    """Escapes special characters for MarkdownV2 formatting."""
     if not text:
         return ""
-    return re.sub(MDV2_SPECIAL_CHARS, lambda m: '\\' + m.group(0), text)
+    return re.sub(MDV2_SPECIAL_CHARS, r'\\\1', text)
 
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Block command usage in private chats
     if update.effective_chat.type == 'private':
         await update.message.reply_text(
-            "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
+            "🚫 *Private access blocked\\.*\nContact @K4linuxx to buy a subscription or use free in our group\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return
@@ -1721,10 +1732,12 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("Usage: /gate <url>")
 
     target = context.args[0]
+    
+    # Escape target URL for initial message
     target_esc = mdv2_escape(target)
 
     msg = await update.message.reply_text(
-        f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
+        f"═══\\[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
         f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target_esc}`\n"
         f"✘ 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ `Checking...`\n"
         f"═════════════════════",
@@ -1735,43 +1748,37 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     gateways = "None"
     if data["gateways"]:
-        gateways = " | ".join(mdv2_escape(g) for g in sorted(data["gateways"]))
-    gateways = f"`{gateways}`"
-
-    captcha_emoji = "✅" if data["captchas"] else "❌"
-    captcha_text = f"`Yes {captcha_emoji}`" if data["captchas"] else f"`No {captcha_emoji}`"
-
-    cloudflare = "`Yes✅`" if data["cloudflare"] else "`No❌`"
-
-    cvv = "`Required ✅`" if data["cvv"] else "`Not observed ❌`"
+        gateways = " \\| ".join(mdv2_escape(g) for g in sorted(data["gateways"]))
+    
+    captcha_text = f"Yes ✅" if data["captchas"] else f"No ❌"
+    cloudflare_text = f"Yes ✅" if data["cloudflare"] else f"No ❌"
+    cvv_text = f"Required ✅" if data["cvv"] else f"Not observed ❌"
 
     platforms = "Unknown"
     if data["platforms"]:
         platforms = ", ".join(mdv2_escape(p) for p in sorted(data["platforms"]))
-    platforms = f"`{platforms}`"
 
     security = "None"
     if data["security"]:
         security = ", ".join(mdv2_escape(s) for s in sorted(data["security"]))
-    security = f"`{security}`"
-
-    status = mdv2_escape(data["status"])
-    status = f"`{status}`"
-
+    
+    status_text = mdv2_escape(data["status"])
+    
+    # Construct the final message with proper MarkdownV2 escaping
     final_text = (
-        f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
+        f"═══\\[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
         f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target_esc}`\n"
-        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ {gateways}\n"
-        f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {cloudflare}\n"
-        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captcha_text}\n"
-        f"✘ 𝘾𝙑𝙑 ➜ {cvv}\n"
-        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ {platforms}\n"
-        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ {security}\n"
-        f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ {status}\n"
+        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ `{gateways}`\n"
+        f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ `{cloudflare_text}`\n"
+        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ `{captcha_text}`\n"
+        f"✘ 𝘾𝙑𝙑 ➜ `{cvv_text}`\n"
+        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ `{platforms}`\n"
+        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ `{security}`\n"
+        f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ `{status_text}`\n"
         f"═════════════════════"
     )
-    await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
+    await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 
