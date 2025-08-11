@@ -1720,14 +1720,18 @@ def mdv2_escape(text: str) -> str:
     return re.sub(MDV2_SPECIAL_CHARS, r'\\\1', text)
 
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Block command usage in private chats
-    if update.effective_chat.type == 'private':
+    # Owner's Telegram user ID
+    OWNER_ID = 8438505794
+
+    # Block command usage in private chats for everyone except the owner
+    if update.effective_chat.type == 'private' and update.effective_user.id != OWNER_ID:
         await update.message.reply_text(
             "🚫 *Private access blocked\\.*\nContact @K4linuxx to buy a subscription or use free in our group\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return
 
+    # The rest of your function remains the same
     if not context.args:
         return await update.message.reply_text("Usage: /gate <url>")
 
@@ -1774,12 +1778,11 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✘ 𝘾𝙑𝙑 ➜ `{cvv_text}`\n"
         f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ `{platforms}`\n"
         f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ `{security}`\n"
-        f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ `{status_text}`\n"
+        f"✘ 𝗦𝙩𝙖𝙩𝙪𝙨 ➜ `{status_text}`\n"
         f"═════════════════════"
     )
 
     await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
-
 
 
 
