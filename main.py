@@ -1259,6 +1259,7 @@ from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
 
 logger = logging.getLogger(__name__)
 
@@ -1399,7 +1400,7 @@ def find_cvv(soup: BeautifulSoup) -> bool:
 def search_attrs_for_gateways(soup: BeautifulSoup, sigs: Dict[str, List[str]]) -> Set[str]:
     found = set()
     attrs_to_check = ["src", "href", "action", "data-src"]
-    for tag in soup.find_all(True):  # all tags
+    for tag in soup.find_all(True):
         for attr in attrs_to_check:
             val = tag.get(attr, "")
             val_low = val.lower()
@@ -1443,21 +1444,22 @@ async def scan_site(url: str) -> Dict:
 
         soup = BeautifulSoup(html, "html.parser")
 
-        gateways_html_text = search_signatures(html, GATEWAY_SIGNATURES)
-        gateways_attrs = search_attrs_for_gateways(soup, GATEWAY_SIGNATURES)
-        result["gateways"] |= gateways_html_text | gateways_attrs
+        # Search gateways in html text + tag attributes
+        result["gateways"] |= search_signatures(html, GATEWAY_SIGNATURES)
+        result["gateways"] |= search_attrs_for_gateways(soup, GATEWAY_SIGNATURES)
 
-        captchas_html = search_signatures(html, CAPTCHA_SIGNATURES)
-        captchas_attrs = search_attrs_for_gateways(soup, CAPTCHA_SIGNATURES)
-        result["captchas"] |= captchas_html | captchas_attrs
+        # Captchas
+        result["captchas"] |= search_signatures(html, CAPTCHA_SIGNATURES)
+        result["captchas"] |= search_attrs_for_gateways(soup, CAPTCHA_SIGNATURES)
 
-        platforms_html = search_signatures(html, PLATFORM_SIGNATURES)
-        platforms_attrs = search_attrs_for_gateways(soup, PLATFORM_SIGNATURES)
-        result["platforms"] |= platforms_html | platforms_attrs
+        # Platforms
+        result["platforms"] |= search_signatures(html, PLATFORM_SIGNATURES)
+        result["platforms"] |= search_attrs_for_gateways(soup, PLATFORM_SIGNATURES)
 
         if find_cvv(soup):
             result["cvv"] = True
 
+        # Fetch and scan JS files for gateways, captchas, platforms
         scripts = soup.find_all("script", src=True)[:JS_FETCH_LIMIT]
         for tag in scripts:
             s_url = urljoin(base, tag["src"])
@@ -1479,13 +1481,13 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not context.args:
-        return await update.message.reply_text("Usage: /gate <url>")
+        await update.message.reply_text("Usage: /gate <url>")
+        return
 
     target = context.args[0]
-
     msg = await update.message.reply_text(
         f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target}`\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{escape_markdown(target, version=2)}`\n"
         f"✘ 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ `Checking...`\n"
         f"═════════════════════",
         parse_mode=ParseMode.MARKDOWN_V2
@@ -1494,7 +1496,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = await scan_site(target)
 
     def safe_join(items):
-        return " | ".join(items) if items else "None"
+        return " | ".join(escape_markdown(i, version=2) for i in items) if items else "None"
 
     gateways = safe_join(sorted(data["gateways"]))
     captchas = "Yes ✅" if data["captchas"] else "No ❌"
@@ -1502,25 +1504,22 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cvv = "Required ✅" if data["cvv"] else "Not observed ❌"
     platforms = safe_join(sorted(data["platforms"]))
     security = safe_join(sorted(data["security"]))
-    status = data["status"]
+    status = escape_markdown(data["status"], version=2)
 
     final_text = (
         "═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚 ➜ {target}\n"
-        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ {gateways}\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{escape_markdown(target, version=2)}`\n"
+        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ `{gateways}`\n"
         f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {cloudflare}\n"
         f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captchas}\n"
         f"✘ 𝘾𝙑𝙑 ➜ {cvv}\n"
-        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ {platforms}\n"
-        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ {security}\n"
-        f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ {status}\n"
+        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ `{platforms}`\n"
+        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ `{security}`\n"
+        f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ `{status}`\n"
         "═════════════════════"
     )
 
-    # Wrap in triple backticks to avoid MarkdownV2 parse errors
-    await msg.edit_text(f"```{final_text}```", parse_mode=ParseMode.MARKDOWN_V2)
-
-
+    await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 from faker import Faker
