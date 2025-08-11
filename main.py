@@ -1699,6 +1699,15 @@ async def scan_site(url: str) -> Dict:
             result["platforms"] |= search_signatures(js_text, PLATFORM_SIGNATURES)
     return result
 
+import re
+
+MDV2_SPECIAL_CHARS = r'[_*[\]()~`>#+\-=|{}.!\\]'
+
+def mdv2_escape(text: str) -> str:
+    if not text:
+        return ""
+    return re.sub(MDV2_SPECIAL_CHARS, lambda m: '\\' + m.group(0), text)
+
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Block command usage in private chats
     if update.effective_chat.type == 'private':
@@ -1712,9 +1721,11 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("Usage: /gate <url>")
 
     target = context.args[0]
+    target_esc = mdv2_escape(target)
+
     msg = await update.message.reply_text(
         f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target}`\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target_esc}`\n"
         f"✘ 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ `Checking...`\n"
         f"═════════════════════",
         parse_mode=ParseMode.MARKDOWN_V2
@@ -1722,19 +1733,34 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = await scan_site(target)
 
-    gateways = f"`{' | '.join(sorted(data['gateways']))}`" if data["gateways"] else "`None`"
-    # CAPTCHA yes/no with emoji
+    gateways = "None"
+    if data["gateways"]:
+        gateways = " | ".join(mdv2_escape(g) for g in sorted(data["gateways"]))
+    gateways = f"`{gateways}`"
+
     captcha_emoji = "✅" if data["captchas"] else "❌"
     captcha_text = f"`Yes {captcha_emoji}`" if data["captchas"] else f"`No {captcha_emoji}`"
+
     cloudflare = "`Yes✅`" if data["cloudflare"] else "`No❌`"
+
     cvv = "`Required ✅`" if data["cvv"] else "`Not observed ❌`"
-    platforms = f"`{', '.join(sorted(data['platforms']))}`" if data["platforms"] else "`Unknown`"
-    security = f"`{', '.join(sorted(data['security']))}`" if data["security"] else "`None`"
-    status = f"`{data['status']}`"
+
+    platforms = "Unknown"
+    if data["platforms"]:
+        platforms = ", ".join(mdv2_escape(p) for p in sorted(data["platforms"]))
+    platforms = f"`{platforms}`"
+
+    security = "None"
+    if data["security"]:
+        security = ", ".join(mdv2_escape(s) for s in sorted(data["security"]))
+    security = f"`{security}`"
+
+    status = mdv2_escape(data["status"])
+    status = f"`{status}`"
 
     final_text = (
         f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target}`\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target_esc}`\n"
         f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ {gateways}\n"
         f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {cloudflare}\n"
         f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captcha_text}\n"
@@ -1745,6 +1771,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"═════════════════════"
     )
     await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
