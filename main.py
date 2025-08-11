@@ -29,7 +29,7 @@ OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@K4linuxx"
 OFFICIAL_GROUP_LINK = "https://t.me/+gtvJT4SoimBjYjQ1"
-DEFAULT_FREE_CREDITS = 500  # A non-expiring credit pool for free users
+DEFAULT_FREE_CREDITS = 200  # A non-expiring credit pool for free users
 
 # === PERSISTENCE WARNING ===
 # The following dictionaries store data in-memory and will be LOST when the bot
@@ -114,7 +114,7 @@ def luhn_checksum(card_number):
 from db import get_user, update_user  # your async DB functions
 from datetime import datetime
 
-DEFAULT_FREE_CREDITS = 500
+DEFAULT_FREE_CREDITS = 200
 DEFAULT_PLAN = "Free"
 DEFAULT_STATUS = "Free"
 DEFAULT_PLAN_EXPIRY = "N/A"
