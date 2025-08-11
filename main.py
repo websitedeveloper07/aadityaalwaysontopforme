@@ -271,8 +271,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.effective_message.reply_text(
                 "🚫 *Private Usage Blocked*\n"
-                "You cannot use this bot in private chat\\.\n\n"
-                "Use /plans to upgrade or join our group to access tools for free\\.\n"
+                "You cannot use this bot in private chat\\.\n\n
                 "Get a subscription from @enough69s to use this bot\\.",
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.MARKDOWN_V2
@@ -1006,7 +1005,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deduct credit in DB
     if not await consume_credit(user_id):
         await update.effective_message.reply_text(
-            "❌ No credits left to consume.",
+            "❌ No credits left.",
             parse_mode=None
         )
         return
@@ -1228,7 +1227,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    processing_msg = await update.effective_message.reply_text("Processing...", parse_mode=None)
+    processing_msg = await update.effective_message.reply_text("🔎Processing...", parse_mode=None)
     start_time = time.time()
 
     # Run background task (non-blocking)
