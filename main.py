@@ -1472,6 +1472,9 @@ async def scan_site(url: str) -> Dict:
 
     return result
 
+def safe_join(items):
+    return " | ".join(escape_markdown(i, version=2) for i in items) if items else "None"
+
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == 'private':
         await update.message.reply_text(
@@ -1495,27 +1498,26 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = await scan_site(target)
 
-def safe_join(items):
-    return " | ".join(escape_markdown(i, version=2) for i in items) if items else "None"
+    gateways = safe_join(sorted(data["gateways"]))
+    platforms = safe_join(sorted(data["platforms"]))
+    security = safe_join(sorted(data["security"]))
+    status = escape_markdown(data["status"], version=2)
+    target_esc = escape_markdown(target, version=2)
 
-gateways = safe_join(sorted(data["gateways"]))
-platforms = safe_join(sorted(data["platforms"]))
-security = safe_join(sorted(data["security"]))
-status = escape_markdown(data["status"], version=2)
-target_esc = escape_markdown(target, version=2)
+    final_text = (
+        "═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target_esc}`\n"
+        f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ `{gateways}`\n"
+        f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {'Yes ✅' if data['cloudflare'] else 'No ❌'}\n"
+        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {'Yes ✅' if data['captchas'] else 'No ❌'}\n"
+        f"✘ 𝘾𝙑𝙑 ➜ {'Required ✅' if data['cvv'] else 'Not observed ❌'}\n"
+        f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ `{platforms}`\n"
+        f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ `{security}`\n"
+        f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ `{status}`\n"
+        "═════════════════════"
+    )
 
-final_text = (
-    "═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-    f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target_esc}`\n"
-    f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ `{gateways}`\n"
-    f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ { 'Yes ✅' if data['cloudflare'] else 'No ❌' }\n"
-    f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ { 'Yes ✅' if data['captchas'] else 'No ❌' }\n"
-    f"✘ 𝘾𝙑𝙑 ➜ { 'Required ✅' if data['cvv'] else 'Not observed ❌' }\n"
-    f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ `{platforms}`\n"
-    f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ `{security}`\n"
-    f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ `{status}`\n"
-    "═════════════════════"
-)
+    await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 
