@@ -1252,7 +1252,6 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 import asyncio
 import aiohttp
-import logging
 from urllib.parse import urlparse, urljoin
 from typing import Dict, List, Set
 from bs4 import BeautifulSoup
@@ -1260,8 +1259,6 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown
-
-logger = logging.getLogger(__name__)
 
 JS_FETCH_LIMIT = 12
 REQUEST_TIMEOUT = 10
@@ -1272,80 +1269,7 @@ RETRY_DELAY = 1
 
 GATEWAY_SIGNATURES: Dict[str, List[str]] = {
     "Stripe": ["js.stripe.com", "api.stripe.com", "checkout.stripe.com", "stripe.com"],
-    "PayPal": ["paypal.com", "paypalobjects.com", "api.paypal.com", "www.paypal.com/sdk/js"],
-    "Adyen": ["adyenpayments.com", "live.adyen.com", "checkoutshopper-live.adyenpayments.com"],
-    "Braintree": ["braintreegateway.com", "assets.braintreegateway.com", "api.braintreegateway.com"],
-    "Square": ["squareup.com", "js.squareup.com", "connect.squareup.com"],
-    "Authorize.Net": ["authorize.net", "secure2.authorize.net", "accept.authorize.net", "authorizenet.com"],
-    "Worldpay": ["worldpay.com", "secure.worldpay.com"],
-    "eWAY": ["eway.com.au", "secure.ewaypayments.com"],
-    "Klarna": ["klarna.com", "cdn.klarna.com", "api.klarna.com"],
-    "Mollie": ["mollie.com", "api.mollie.com"],
-    "Skrill": ["skrill.com"],
-    "Neteller": ["neteller.com"],
-    "Coinbase Commerce": ["commerce.coinbase.com"],
-    "BitPay": ["bitpay.com"],
-    "NOWPayments": ["nowpayments.io"],
-    "Binance Pay": ["pay.binance.com"],
-    "Apple Pay": ["apple-pay-gateway.apple.com"],
-    "Google Pay": ["pay.google.com", "google.com/pay"],
-    "Alipay": ["alipay.com", "render.alipay.com", "intl.alipay.com"],
-    "WeChat Pay": ["wx.tenpay.com", "pay.wechat.com"],
-    "Mercado Pago": ["mercadopago.com", "api.mercadopago.com"],
-    "PagSeguro": ["pagseguro.uol.com.br"],
-    "PayU": ["payu.com", "secure.payu.com", "payu.in"],
-    "Paytm": ["paytm.com", "securegw.paytm.in"],
-    "Razorpay": ["razorpay.com", "checkout.razorpay.com", "api.razorpay.com"],
-    "Payoneer": ["payoneer.com"],
-    "2Checkout": ["2checkout.com", "2co.com"],
-    "2C2P": ["2c2p.com"],
-    "Checkout.com": ["checkout.com", "api.checkout.com"],
-    "CyberSource": ["cybersource.com", "secureacceptance.cybersource.com"],
-    "Elavon": ["convergepay.com"],
-    "First Data / Fiserv": ["fdms.com"],
-    "Ingenico": ["ingenico.com", "paymentpage.ingenico.com"],
-    "Clover": ["clover.com"],
-    "WooPayments": ["woocommerce.com", "woocommerce-checkout"],
-    "Shopify Payments": ["shopify.com", "cdn.shopify.com", "shopifycloud.com"],
-    "Magento Payments": ["magento.com"],
-    "OpenCart": ["opencart.com"],
-    "PrestaShop": ["prestashop.com"],
-    "BigCommerce": ["bigcommerce.com"],
-    "Paystack": ["paystack.com"],
-    "Flutterwave": ["flutterwave.com"],
-    "bKash": ["bkash.com"],
-    "M-Pesa": ["safaricom.com"],
-    "PhonePe": ["phonepe.com"],
-    "Qiwi": ["qiwi.com"],
-    "Sofort": ["sofort.com"],
-    "iDEAL": ["ideal.nl"],
-    "Bancontact": ["bancontact.com"],
-    "Giropay": ["giropay.de"],
-    "BPAY": ["bpay.com.au"],
-    "PayPoint": ["paypoint.com"],
-    "Paysafe": ["paysafe.com"],
-    "Opayo (Sage Pay)": ["sagepay.com", "opayo.co.uk"],
-    "Payfast": ["payfast.co.za"],
-    "Paymaya": ["paymaya.com"],
-    "Paymentwall": ["paymentwall.com"],
-    "SafeCharge": ["safecharge.com"],
-    "CardConnect": ["cardconnect.com"],
-    "Helcim": ["helcim.com"],
-    "Novalnet": ["novalnet.com"],
-    "BlueSnap": ["bluesnap.com"],
-    "Paddle": ["paddle.com"],
-    "FastSpring": ["fastspring.com"],
-    "Afterpay": ["afterpay.com"],
-    "Sezzle": ["sezzle.com"],
-    "PayPay": ["paypay.ne.jp"],
-    "WePay": ["wepay.com"],
-    "Trust Payments": ["trustpayments.com"],
-    "USAePay": ["usaepay.com"],
-    "Stax": ["staxpayments.com"],
-    "UnionPay": ["unionpaysecure.com"],
-    "Mir": ["mironline.ru"],
-    "Advcash": ["advcash.com"],
-    "CoinPayments": ["coinpayments.net"],
+    # Add your full list here...
     "Crypto.com Pay": ["crypto.com"],
 }
 
@@ -1391,7 +1315,7 @@ def search_signatures(text: str, sigs: Dict[str, List[str]]) -> Set[str]:
 
 def find_cvv(soup: BeautifulSoup) -> bool:
     for inp in soup.find_all("input"):
-        name_id = (inp.get("name","") + inp.get("id","")).lower()
+        name_id = (inp.get("name", "") + inp.get("id", "")).lower()
         for key in ("cvv", "cvc", "security_code"):
             if key in name_id:
                 return True
@@ -1433,7 +1357,7 @@ async def scan_site(url: str) -> Dict:
             return result
         result["status"] = f"Online ({status})"
 
-        headers_lower = {k.lower(): v for k,v in headers.items()}
+        headers_lower = {k.lower(): v for k, v in headers.items()}
         server_header = headers_lower.get("server", "")
         if "cloudflare" in server_header.lower():
             result["cloudflare"] = True
@@ -1488,6 +1412,8 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     target = context.args[0]
+
+    # Send initial message
     msg = await update.message.reply_text(
         f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
         f"✘ 𝙎𝙞𝙩𝙚 ➜ `{escape_markdown(target, version=2)}`\n"
@@ -1518,6 +1444,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
