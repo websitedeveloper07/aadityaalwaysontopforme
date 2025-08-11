@@ -263,7 +263,6 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
         except ValueError:
             pass
 
-async def check_private_usage(chat_type, is_authorized_by_plan, update):
     if chat_type == 'private':
         if is_authorized_by_plan:
             return True
@@ -273,26 +272,25 @@ async def check_private_usage(chat_type, is_authorized_by_plan, update):
             await update.effective_message.reply_text(
                 "🚫 *Private Usage Blocked*\n"
                 "You cannot use this bot in private chat\\.\n\n"
+                "Buy a plan or join our group to access tools for free\\.\n"
                 "Get a subscription from @K4linuxx to use this bot\\.",
                 reply_markup=reply_markup,
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return False
 
+    elif chat_type in ('group', 'supergroup'):
+        if chat_id in AUTHORIZED_CHATS:
+            return True
+        else:
+            await update.effective_message.reply_text(
+                "🚫 This group is not authorized to use this bot\\.\n"
+                "Please contact @K4linuxx to get approved\\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return False
 
-elif chat_type in ('group', 'supergroup'):
-    if chat_id in AUTHORIZED_CHATS:
-        return True
-    else:
-        await update.effective_message.reply_text(
-            "🚫 This group is not authorized to use this bot\\.\n"
-            "Please contact @K4linuxx to get approved\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return False
-
-return False
-
+    return False
 
 
 # === COMMAND HANDLERS ===
