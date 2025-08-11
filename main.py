@@ -263,21 +263,22 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
         except ValueError:
             pass
 
-async def check_chat_authorization(update, context, chat_type, is_authorized_by_plan):
-if chat_type == 'private':
-    if is_authorized_by_plan:
-        return True
-    else:
-        keyboard = [[InlineKeyboardButton("📢 Official Group", url=OFFICIAL_GROUP_LINK)]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.effective_message.reply_text(
-            "🚫 *Private Usage Blocked*\n"
-            "You cannot use this bot in private chat\\.\n\n"
-            "Get a subscription from @K4linuxx to use this bot\\.",
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return False
+async def check_private_usage(chat_type, is_authorized_by_plan, update):
+    if chat_type == 'private':
+        if is_authorized_by_plan:
+            return True
+        else:
+            keyboard = [[InlineKeyboardButton("📢 Official Group", url=OFFICIAL_GROUP_LINK)]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.effective_message.reply_text(
+                "🚫 *Private Usage Blocked*\n"
+                "You cannot use this bot in private chat\\.\n\n"
+                "Get a subscription from @K4linuxx to use this bot\\.",
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return False
+
 
 elif chat_type in ('group', 'supergroup'):
     if chat_id in AUTHORIZED_CHATS:
