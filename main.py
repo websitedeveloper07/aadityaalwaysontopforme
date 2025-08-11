@@ -1259,7 +1259,6 @@ from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from telegram.helpers import escape_markdown as escape_markdown_v2
 
 logger = logging.getLogger(__name__)
 
@@ -1444,26 +1443,21 @@ async def scan_site(url: str) -> Dict:
 
         soup = BeautifulSoup(html, "html.parser")
 
-        # Search gateways in raw html text + attributes (src, href, action, data-src)
         gateways_html_text = search_signatures(html, GATEWAY_SIGNATURES)
         gateways_attrs = search_attrs_for_gateways(soup, GATEWAY_SIGNATURES)
         result["gateways"] |= gateways_html_text | gateways_attrs
 
-        # Captchas detection
         captchas_html = search_signatures(html, CAPTCHA_SIGNATURES)
         captchas_attrs = search_attrs_for_gateways(soup, CAPTCHA_SIGNATURES)
         result["captchas"] |= captchas_html | captchas_attrs
 
-        # Platforms detection
         platforms_html = search_signatures(html, PLATFORM_SIGNATURES)
         platforms_attrs = search_attrs_for_gateways(soup, PLATFORM_SIGNATURES)
         result["platforms"] |= platforms_html | platforms_attrs
 
-        # CVV fields
         if find_cvv(soup):
             result["cvv"] = True
 
-        # Fetch and scan JS files linked in script src tags (limit JS_FETCH_LIMIT)
         scripts = soup.find_all("script", src=True)[:JS_FETCH_LIMIT]
         for tag in scripts:
             s_url = urljoin(base, tag["src"])
@@ -1476,9 +1470,7 @@ async def scan_site(url: str) -> Dict:
 
     return result
 
-
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Block command usage in private chats
     if update.effective_chat.type == 'private':
         await update.message.reply_text(
             "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
@@ -1493,7 +1485,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = await update.message.reply_text(
         f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{escape_markdown_v2(target)}`\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ `{target}`\n"
         f"✘ 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ `Checking...`\n"
         f"═════════════════════",
         parse_mode=ParseMode.MARKDOWN_V2
@@ -1501,49 +1493,33 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = await scan_site(target)
 
-    def md_code(text: str) -> str:
-        return f"`{escape_markdown_v2(text)}`"
+    def safe_join(items):
+        return " | ".join(items) if items else "None"
 
-    # Prepare gateways text
-    if data["gateways"]:
-        gateways_escaped = [escape_markdown_v2(g) for g in sorted(data["gateways"])]
-        gateways = md_code(" | ".join(gateways_escaped))
-    else:
-        gateways = md_code("None")
-
-    # Prepare platforms text
-    if data["platforms"]:
-        platforms_escaped = [escape_markdown_v2(p) for p in sorted(data["platforms"])]
-        platforms = md_code(", ".join(platforms_escaped))
-    else:
-        platforms = md_code("Unknown")
-
-    # Prepare security text
-    if data["security"]:
-        security_escaped = [escape_markdown_v2(s) for s in sorted(data["security"])]
-        security = md_code(", ".join(security_escaped))
-    else:
-        security = md_code("None")
-
-    status = md_code(data["status"])
-    captcha_text = md_code("Yes ✅") if data["captchas"] else md_code("No ❌")
-    cloudflare = md_code("✅") if data["cloudflare"] else md_code("❌")
-    cvv = md_code("Required ✅") if data["cvv"] else md_code("Not observed ❌")
+    gateways = safe_join(sorted(data["gateways"]))
+    captchas = "Yes ✅" if data["captchas"] else "No ❌"
+    cloudflare = "Yes ✅" if data["cloudflare"] else "No ❌"
+    cvv = "Required ✅" if data["cvv"] else "Not observed ❌"
+    platforms = safe_join(sorted(data["platforms"]))
+    security = safe_join(sorted(data["security"]))
+    status = data["status"]
 
     final_text = (
-        f"═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
-        f"✘ 𝙎𝙞𝙩𝙚 ➜ {md_code(target)}\n"
+        "═══[ 𝙂𝘼𝙏𝙀𝙒𝘼𝙔 𝙎𝘾𝘼𝙉 ]═══\n"
+        f"✘ 𝙎𝙞𝙩𝙚 ➜ {target}\n"
         f"✘ 𝙂𝙖𝙩𝙚𝙬𝙖𝙮𝙨 ➜ {gateways}\n"
         f"✘ 𝘾𝙇𝙊𝙐𝘿𝙁𝙇𝘼𝙍𝙀 ➜ {cloudflare}\n"
-        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captcha_text}\n"
+        f"✘ 𝘾𝘼𝙋𝙏𝘾𝙃𝘼 ➜ {captchas}\n"
         f"✘ 𝘾𝙑𝙑 ➜ {cvv}\n"
         f"✘ 𝗜𝗻𝗯𝘂𝗶𝗹𝘁 𝗦𝘆𝘀𝘁𝗲𝗺 ➜ {platforms}\n"
         f"✘ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆 ➜ {security}\n"
         f"✘ 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ {status}\n"
-        f"═════════════════════"
+        "═════════════════════"
     )
 
-    await msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+    # Wrap in triple backticks to avoid MarkdownV2 parse errors
+    await msg.edit_text(f"```{final_text}```", parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
