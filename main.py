@@ -867,7 +867,6 @@ from telegram.ext import ContextTypes
 from db import get_user, update_user
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
-    # You can keep your existing cooldown logic or adapt as needed
     cooldown_seconds = 5
     if not hasattr(enforce_cooldown, "user_cooldowns"):
         enforce_cooldown.user_cooldowns = {}
@@ -896,7 +895,7 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 def get_bin_details_sync(bin_number: str) -> dict:
-    # Simulate BIN lookup or call your actual BIN service here
+    # Simulated BIN lookup
     time.sleep(1.5)
     return {
         "scheme": "Visa",
@@ -935,17 +934,17 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         final_text = (
             f"{header}\n"
-            f"✘ Card        ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
-            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
-            f"✘ Response    ➜ {formatted_response}\n"
+            f"✘ Card        ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
+            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+            f"✘ Response    ➜ {formatted_response}\n"
             "――――――――――――――――\n"
-            f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
-            f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
-            f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
+            f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
+            f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
+            f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
-            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
-            "✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-            f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
+            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
+            "✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+            f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
         )
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -958,13 +957,27 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    chat = update.effective_chat
     user_id = user.id
 
-    # Check cooldown
+    # Block private usage unless plan is active
+    if chat.type == "private":
+        user_data = await get_user(user_id)
+        if not user_data or user_data.get("plan", "").lower() in ["free", "n/a"]:
+            await update.effective_message.reply_text(
+                "🚫 *Private Usage Blocked*\n"
+                "You cannot use this bot in private chat.\n\n"
+                "Buy a plan or join our group to access tools for free.\n"
+                "Get a subscription from @K4linuxx to use this bot.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+    # Cooldown check
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Get user data from DB
+    # Get user data
     user_data = await get_user(user_id)
     if not user_data:
         await update.effective_message.reply_text(
@@ -973,7 +986,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Check if user has credits
+    # Check credits
     if user_data.get("credits", 0) <= 0:
         await update.effective_message.reply_text(
             "❌ You have no credits left. Please buy a plan to get more credits.",
@@ -981,7 +994,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Parse card input
+    # Parse card
     raw = context.args[0] if context.args else None
     if not raw or "|" not in raw:
         await update.effective_message.reply_text(
@@ -1003,7 +1016,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts[2] = parts[2][-2:]
     cc_normalized = "|".join(parts)
 
-    # Deduct credit in DB
+    # Deduct credit
     if not await consume_credit(user_id):
         await update.effective_message.reply_text(
             "❌ No credits left.",
@@ -1011,7 +1024,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Show processing message
+    # Send processing
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
         f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
@@ -1024,7 +1037,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-    # Start background check task (async)
+    # Background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 import asyncio
