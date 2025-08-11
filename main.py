@@ -606,9 +606,8 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
-
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Generates cards from a given BIN."""
+    """Generates cards from a given BIN or partial card."""
     if not await check_authorization(update, context):
         return
 
@@ -623,18 +622,32 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Get BIN input
-    bin_input = None
+    # Get input
     if context.args:
-        bin_input = context.args[0]
+        raw_input = context.args[0]
     elif update.effective_message and update.effective_message.text:
-        command_text = update.effective_message.text.split(maxsplit=1)
-        if len(command_text) > 1:
-            bin_input = command_text[1]
+        parts = update.effective_message.text.split(maxsplit=1)
+        raw_input = parts[1] if len(parts) > 1 else None
+    else:
+        raw_input = None
 
-    if not bin_input or not bin_input.isdigit() or len(bin_input) != 6:
+    if not raw_input:
         return await update.effective_message.reply_text(
-            "❌ Please provide a valid 6\\-digit BIN\\. Usage: `/gen [bin]` or `\\.gen [bin]`\\.",
+            "❌ Please provide BIN, partial card, or pattern\\. Usage:\n"
+            "`/gen 414740`\n`/gen 445769222`\n`/gen 414740|11|2028|777`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Parse input
+    parts = raw_input.split("|")
+    card_base = parts[0].strip()
+    extra_mm = parts[1].zfill(2) if len(parts) > 1 and parts[1].isdigit() else None
+    extra_yyyy = parts[2] if len(parts) > 2 and parts[2].isdigit() else None
+    extra_cvv = parts[3] if len(parts) > 3 and parts[3].isdigit() else None
+
+    if not card_base.isdigit():
+        return await update.effective_message.reply_text(
+            "❌ Card/BIN must contain only digits\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -645,43 +658,46 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # BIN lookup
-    bin_details = await get_bin_details(bin_input)
-    brand = bin_details["scheme"]
-    bank = bin_details["bank"]
-    country_name = bin_details["country_name"]
-    country_emoji = bin_details["country_emoji"]
+    bin_details = await get_bin_details(card_base[:6])
+    brand = bin_details.get("scheme", "Unknown")
+    bank = bin_details.get("bank", "Unknown")
+    country_name = bin_details.get("country_name", "Unknown")
+    country_emoji = bin_details.get("country_emoji", "")
+
+    # Determine card length
+    card_length = 15 if "american express" in brand.lower() or "amex" in brand.lower() else 16
 
     # Generate cards
     cards = []
-    while len(cards) < 10:
-        card_length = 15 if brand.lower() in ["american express", "amex"] else 16
-        suffix_len = card_length - len(bin_input)
-        card_number = bin_input + ''.join(str(random.randint(0, 9)) for _ in range(suffix_len))
+    attempts = 0
+    while len(cards) < 10 and attempts < 100:
+        attempts += 1
+        suffix_len = card_length - len(card_base)
+        if suffix_len < 0:
+            break  # invalid input length
 
+        card_number = card_base + ''.join(str(random.randint(0, 9)) for _ in range(suffix_len))
         if not luhn_checksum(card_number):
             continue
 
-        mm = str(random.randint(1, 12)).zfill(2)
-        yyyy = str(datetime.now().year + random.randint(1, 5))
-
-        cvv = (
-            str(random.randint(0, 9999)).zfill(4)
-            if brand.lower() in ["american express", "amex"]
-            else str(random.randint(0, 999)).zfill(3)
+        mm = extra_mm or str(random.randint(1, 12)).zfill(2)
+        yyyy = extra_yyyy or str(datetime.now().year + random.randint(1, 5))
+        cvv = extra_cvv or (
+            str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3)
         )
 
         cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    cards_list = "\n".join(cards)  # Don't escape cards to preserve monospace
+    cards_list = "\n".join(cards)
 
-    # Escape fields safely
-    escaped_bin = escape_markdown_v2(bin_input)
+    # Escape for MarkdownV2
+    escaped_bin = escape_markdown_v2(card_base)
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
 
-    # BIN Info block (minimalist)
+    # BIN info block
     bin_info_block = (
         f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
         f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
@@ -689,13 +705,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
+    bin_info_for_md = bin_info_block.replace("\n", "\n> ")
 
-    # Final output message
+    # Final output
     final_message = (
         f"> *Generated 10 Cards 💳*\n\n"
         f"{cards_list}\n"
         f">\n"
-        f"> {bin_info_block.replace(chr(10), '\n> ')}"
+        f"> {bin_info_for_md}"
     )
 
     await update.effective_message.reply_text(
