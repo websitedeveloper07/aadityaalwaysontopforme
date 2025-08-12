@@ -693,7 +693,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cards_list = "\n".join(cards)
 
     # Escape for MarkdownV2
-    escaped_bin = escape_markdown_v2(card_base)
+    escaped_bin = escape_markdown_v2(card_base) 
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country_name = escape_markdown_v2(country_name)
