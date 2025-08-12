@@ -1383,19 +1383,18 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import psutil
 from telegram.constants import ParseMode
 import re
+from telegram import Update
+from telegram.ext import ContextTypes
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def get_total_users():
-    """Returns total number of users from the PostgreSQL database."""
-    from db import get_all_users  # Adjust this to your actual DB call
-    users = await get_all_users()
-    return len(users)
+    from db import get_total_users as db_get_total_users
+    return await db_get_total_users()
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Checks and reports bot system status."""
     if not await check_authorization(update, context):
         return
 
@@ -1426,13 +1425,17 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"┣ ❏ 𝖱𝖠𝖬 𝖴𝗌𝖺𝗀𝖾 ➳ `{memory_percent}%`\n"
         f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖱𝖠𝖬 ➳ `{total_memory:.2f} MB`\n"
         f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖴𝗌𝖾𝗋𝗌 ➳ `{total_users}`\n"
-        f"╰━━━━━━━━━━━━━━━━━━━⬣"
+        "╰━━━━━━━━━━━━━━━━━━━⬣"
     )
 
+    # Escape the entire message to avoid MarkdownV2 parse errors (if needed)
+    escaped_message = escape_markdown_v2(status_message)
+
     await update.effective_message.reply_text(
-        status_message,
+        escaped_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 # === OWNER-ONLY COMMANDS ===
