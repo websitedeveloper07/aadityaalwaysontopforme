@@ -9,14 +9,12 @@ DEFAULT_STATUS = "Free"
 DEFAULT_PLAN_EXPIRY = "N/A"
 DEFAULT_KEYS_REDEEMED = 0
 
-DB_URL = "postgresql://cardsuser:yourpassword@localhost/cardsdb"
-
-
+# === Database URL (use environment variable if available) ===
+DB_URL = os.getenv("DATABASE_URL", "postgresql://cardsuser:yourpassword@localhost/cardsdb")
 
 # === Connection helper ===
 async def connect():
     return await asyncpg.connect(DB_URL)
-
 
 # === Initialize DB ===
 async def init_db():
@@ -34,7 +32,6 @@ async def init_db():
     """)
     await conn.close()
 
-
 # === Get or create user ===
 async def get_user(user_id):
     conn = await connect()
@@ -44,7 +41,6 @@ async def get_user(user_id):
         return dict(row)
     else:
         now = datetime.now().strftime('%d-%m-%Y')
-        # Insert new user with Python defaults (never rely on DB defaults)
         await conn.execute(
             """
             INSERT INTO users (id, credits, plan, status, plan_expiry, keys_redeemed, registered_at)
@@ -61,7 +57,6 @@ async def get_user(user_id):
         row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
         await conn.close()
         return dict(row)
-
 
 # === Update user fields ===
 async def update_user(user_id, **kwargs):
@@ -80,7 +75,6 @@ async def update_user(user_id, **kwargs):
         f"UPDATE users SET {', '.join(sets)} WHERE id = ${i}", *values
     )
     await conn.close()
-
 
 # === Get all users ===
 async def get_all_users():
