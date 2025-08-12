@@ -1983,8 +1983,8 @@ from telegram.ext import (
 from db import init_db
 
 # ⛳ Load environment variables from Railway
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-OWNER_ID = int(os.getenv("OWNER_ID", 0))  # Default 0 if not set
+BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
+OWNER_ID = 8438505794
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
