@@ -9,7 +9,8 @@ DEFAULT_STATUS = "Free"
 DEFAULT_PLAN_EXPIRY = "N/A"
 DEFAULT_KEYS_REDEEMED = 0
 
-DB_URL = os.getenv("DATABASE_URL")
+DB_URL = "postgresql://cardsuser:yourpassword@localhost/cardsdb"
+
 
 
 # === Connection helper ===
