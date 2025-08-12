@@ -82,3 +82,10 @@ async def get_all_users():
     rows = await conn.fetch("SELECT id, plan FROM users")
     await conn.close()
     return [dict(row) for row in rows]
+
+# === Get total user count ===
+async def get_total_users():
+    conn = await connect()
+    count = await conn.fetchval("SELECT COUNT(*) FROM users")
+    await conn.close()
+    return count
