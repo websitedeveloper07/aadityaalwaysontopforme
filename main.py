@@ -19,12 +19,11 @@ from config import ADMIN_IDS
 
 
 # === CONFIGURATION ===
-# IMPORTANT: Set these as environment variables before running your bot:
-# export BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
-# export OWNER_ID="YOUR_TELEGRAM_USER_ID" # Your personal Telegram User ID (numeric)
-# export BINTABLE_API_KEY="YOUR_BINTABLE_API_KEY" # Get this from Bintable.com
-TOKEN = os.getenv("BOT_TOKEN")
-OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
+# IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
+TOKEN = "8144383535:AAHzO4HMCJYFREFLtqQ3A5Xc-Xk8qvQ86Xk"
+OWNER_ID = 8438505794
+
+
 
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@K4linuxx"
