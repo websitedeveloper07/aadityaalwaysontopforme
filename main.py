@@ -20,7 +20,7 @@ from config import ADMIN_IDS
 
 # === CONFIGURATION ===
 # IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
-TOKEN = "8144383535:AAHzO4HMCJYFREFLtqQ3A5Xc-Xk8qvQ86Xk"
+TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
 OWNER_ID = 8438505794
 
 
@@ -501,7 +501,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
         "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
         "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
-        "┣ ❏ `/gate <url>` \\- Check a site's payment gateways\n"
         "┣ ❏ `/status` \\- Bot system status info\n"
         "┣ ❏ `/credits` \\- Check your remaining credits\n"
         "┣ ❏ `/info` \\- Shows your user info\n"
@@ -522,7 +521,6 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/gen <BIN>` \\- Generates 10 cards\n"
         "• `/fk <country>` \\- Generates fake info\n"
         "• `/fl <dump>` \\- Extracts cards from dumps\n"
-        "• `/gate <url>` \\- Check a site's payment gateways\n"
         "• `/credits` \\- Shows your credits\n"
         "• `/bin <BIN>` \\- Performs BIN lookup\n"
         "• `/status` \\- Checks bot health\n"
