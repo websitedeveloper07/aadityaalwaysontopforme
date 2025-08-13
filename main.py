@@ -608,7 +608,6 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
-
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN or partial card."""
     if not await check_authorization(update, context):
@@ -621,7 +620,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
+            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -636,10 +635,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not raw_input:
         return await update.effective_message.reply_text(
-            escape_markdown_v2(
-                "❌ Please provide BIN, partial card, or pattern. Usage:\n"
-                "/gen 414740\n/gen 445769222\n/gen 414740|11|2028|777"
-            ),
+            "❌ Please provide BIN, partial card, or pattern\\. Usage:\n"
+            "/gen 414740\n/gen 445769222\n/gen 414740|11|2028|777",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -652,13 +649,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_base.isdigit():
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ Card/BIN must contain only digits."),
+            "❌ Card/BIN must contain only digits\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
+            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -693,9 +690,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cards.append(f"{card_number}|{mm}|{yyyy[-2:]}|{cvv}")
 
+    cards_list = "\n".join(cards)
+
     # Escape for MarkdownV2
-    escaped_cards_list = "\n".join([f"`{escape_markdown_v2(card)}`" for card in cards])
-    escaped_bin = escape_markdown_v2(card_base)
+    escaped_bin = escape_markdown_v2(card_base) 
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country_name = escape_markdown_v2(country_name)
@@ -709,12 +707,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ {escaped_country_name}{escaped_country_emoji}\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
+    bin_info_for_md = bin_info_block.replace("\n", "\n> ")
 
     # Final output
     final_message = (
-        f"*Generated 10 Cards 💳*\n\n"
-        f"{escaped_cards_list}\n\n"
-        f"{bin_info_block}"
+        f"> *Generated 10 Cards 💳*\n\n"
+        f"{cards_list}\n"
+        f">\n"
+        f"> {bin_info_for_md}"
     )
 
     await update.effective_message.reply_text(
