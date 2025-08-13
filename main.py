@@ -226,6 +226,23 @@ from telegram.ext import ContextTypes
 from config import OWNER_ID, OFFICIAL_GROUP_LINK, AUTHORIZED_PRIVATE_USERS, AUTHORIZED_CHATS
 from db import get_user
 
+# 🛡 Global Private Usage Block
+async def global_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Runs before every update to block unauthorized private usage."""
+    if update.effective_chat.type == 'private':
+        if update.effective_user.id != OWNER_ID:
+            if update.message and update.message.text:
+                cmd = update.message.text.strip().split()[0].lower()
+                if cmd not in ("/start", "/plans", "/redeem"):
+                    await update.effective_message.reply_text(
+                        "🚫 *Private Usage Blocked*\n"
+                        "You cannot use this bot in private chat.\n\n"
+                        "Buy a plan or join our group to access tools for free.\n"
+                        "Get a subscription from @K4linuxx to use this bot.",
+                        parse_mode=ParseMode.MARKDOWN_V2
+                    )
+                    return
+
 async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """Checks if a user or group is authorized to use the bot."""
 
@@ -1980,10 +1997,8 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 # === REGISTERING COMMANDS AND HANDLERS ===
 import os
 import logging
-from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, filters, TypeHandler
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, filters
 )
 from db import init_db
 
@@ -1995,25 +2010,13 @@ OWNER_ID = 8438505794
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🧠 Import your command handlers here
-
-
-async def post_init(application):
-    await init_db()
-    logger.info("Database initialized")
-
-
-# 🔐 Global authorization check for private chats
-from telegram.ext import TypeHandler
-
+# 🛡 Global Private Usage Block
 async def global_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Runs before every update to block unauthorized private usage."""
-    # Only block commands in private chats for non-owners
     if update.effective_chat.type == 'private':
         if update.effective_user.id != OWNER_ID:
             if update.message and update.message.text:
                 cmd = update.message.text.strip().split()[0].lower()
-                # Allow only these in private
                 if cmd not in ("/start", "/plans", "/redeem"):
                     await update.effective_message.reply_text(
                         "🚫 *Private Usage Blocked*\n"
@@ -2022,11 +2025,19 @@ async def global_authorization(update: Update, context: ContextTypes.DEFAULT_TYP
                         "Get a subscription from @K4linuxx to use this bot.",
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
-                    return  # stop here
-    # Otherwise, do nothing and let other handlers run
+                    return
 
-# Register BEFORE all command handlers
-application.add_handler(TypeHandler(Update, global_authorization), group=-1)
+# 🧠 Import your command handlers here
+
+async def post_init(application):
+    await init_db()
+    logger.info("Database initialized")
+
+
+
+def main():
+    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+    application.add_handler(TypeHandler(Update, global_authorization), group=-1)
 
 
     # ✨ Public Commands
@@ -2063,7 +2074,6 @@ application.add_handler(TypeHandler(Update, global_authorization), group=-1)
     # 🔁 Start polling (handles its own event loop!)
     logger.info("Bot started and is polling for updates...")
     application.run_polling()
-
 
 if __name__ == '__main__':
     main()
