@@ -606,50 +606,13 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import random
-from datetime import datetime
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
+import random
+from datetime import datetime
 
-# --- Assuming these are your helper functions ---
-async def check_authorization(update, context):
-    """Placeholder for authorization check."""
-    return True
-
-async def enforce_cooldown(user_id, update):
-    """Placeholder for cooldown check."""
-    return True
-
-async def get_user(user_id):
-    """Placeholder for getting user data."""
-    return {'credits': 100}
-
-async def consume_credit(user_id):
-    """Placeholder for consuming a user credit."""
-    return True
-
-async def get_bin_details(bin_number):
-    """Placeholder for BIN lookup."""
-    details = {
-        "414740": {"scheme": "VISA", "bank": "Bank of America", "country_name": "United States", "country_emoji": "🇺🇸"},
-        "445769": {"scheme": "VISA", "bank": "Chase Bank", "country_name": "United States", "country_emoji": "🇺🇸"},
-        "37": {"scheme": "American Express", "bank": "Chase Bank", "country_name": "United States", "country_emoji": "🇺🇸"},
-    }
-    return details.get(bin_number[:2] if len(bin_number) < 6 else bin_number[:6], {})
-
-def luhn_checksum(card_number):
-    """Validates a card number using the Luhn algorithm."""
-    digits = [int(d) for d in card_number]
-    odd_digits = digits[-1::-2]
-    even_digits = digits[-2::-2]
-    total = sum(odd_digits)
-    for d in even_digits:
-        total += sum(divmod(d * 2, 10))
-    return total % 10 == 0
-# --- End of helper functions ---
-
-async def gen(update, context):
-    """Generates cards from a given BIN or partial card."""
+async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Generates 10 valid cards from a given BIN/sequence (at least 6 digits)."""
     if not await check_authorization(update, context):
         return
 
@@ -660,23 +623,25 @@ async def gen(update, context):
     user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
+            escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Get input from command arguments or message text
-    raw_input = ""
+    # Get input
     if context.args:
         raw_input = context.args[0]
     elif update.effective_message and update.effective_message.text:
         parts = update.effective_message.text.split(maxsplit=1)
-        if len(parts) > 1:
-            raw_input = parts[1]
+        raw_input = parts[1] if len(parts) > 1 else None
+    else:
+        raw_input = None
 
     if not raw_input:
         return await update.effective_message.reply_text(
-            "❌ Please provide a BIN, partial card, or pattern\\. Usage:\n"
-            "`/gen 414740`\n`/gen 445769222`\n`/gen 414740|11|2028|777`",
+            escape_markdown_v2(
+                "❌ Please provide BIN or sequence (at least 6 digits).\n"
+                "Usage:\n`/gen 414740`\n`/gen 445769222`\n`/gen 414740|11|2028|777`"
+            ),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -687,91 +652,51 @@ async def gen(update, context):
     extra_yyyy = parts[2] if len(parts) > 2 and parts[2].isdigit() else None
     extra_cvv = parts[3] if len(parts) > 3 and parts[3].isdigit() else None
 
-    if not card_base.isdigit():
+    if not card_base.isdigit() or len(card_base) < 6:
         return await update.effective_message.reply_text(
-            "❌ Card/BIN must contain only digits\\.",
+            escape_markdown_v2("❌ BIN/sequence must be at least 6 digits."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
-    if len(card_base) < 6:
-        return await update.effective_message.reply_text(
-            "❌ Please provide at least the first 6 digits of the BIN\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-    
+
     if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
+            escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     # BIN lookup
-    bin_details = await get_bin_details(card_base)
+    bin_details = await get_bin_details(card_base[:6])
     brand = bin_details.get("scheme", "Unknown")
     bank = bin_details.get("bank", "Unknown")
     country_name = bin_details.get("country_name", "Unknown")
     country_emoji = bin_details.get("country_emoji", "")
 
     # Determine card length
-    card_length = 15 if "american express" in brand.lower() else 16
+    card_length = 15 if "american express" in brand.lower() or "amex" in brand.lower() else 16
 
-    # Generate cards
-    generated_cards = []
+    # Generate 10 valid cards
+    cards = []
     attempts = 0
-    max_attempts = 500  # Avoid infinite loops for complex or impossible patterns
-    
-    while len(generated_cards) < 10 and attempts < max_attempts:
+    while len(cards) < 10 and attempts < 1000:  # enough attempts to ensure 10 valid cards
         attempts += 1
-        
-        # Determine the suffix length needed to complete the card number
         suffix_len = card_length - len(card_base)
         if suffix_len < 0:
-            break  # Invalid input length
-            
-        # Generate random suffix and complete the card number
-        card_number_suffix = ''.join(random.choices("0123456789", k=suffix_len - 1))
-        
-        # The last digit is a Luhn checksum digit.
-        # To make it a valid Luhn number, we can generate a full card and adjust the last digit
-        temp_card_number = card_base + card_number_suffix + "0"
-        
-        # Calculate the correct checksum digit
-        checksum_digit = (10 - (sum_of_digits(temp_card_number) % 10)) % 10
-        card_number = temp_card_number[:-1] + str(checksum_digit)
-        
-        # Validate the final card number with the Luhn algorithm
+            break
+
+        card_number = card_base + ''.join(str(random.randint(0, 9)) for _ in range(suffix_len))
         if not luhn_checksum(card_number):
             continue
-            
-        # Generate MM, YYYY, and CVV if not provided
+
         mm = extra_mm or str(random.randint(1, 12)).zfill(2)
         yyyy = extra_yyyy or str(datetime.now().year + random.randint(1, 5))
-        cvv = extra_cvv or (
-            str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3)
-        )
+        cvv = extra_cvv or (str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3))
 
-        generated_cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
-    
-    # Helper for luhn
-    def sum_of_digits(s):
-        total = 0
-        for i, digit in enumerate(s):
-            n = int(digit)
-            if (len(s) - i) % 2 == 0:
-                n *= 2
-            total += (n // 10) + (n % 10)
-        return total
+        # Wrap card in backticks (monospace)
+        cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    # Handle case where no cards could be generated
-    if not generated_cards:
-        return await update.effective_message.reply_text(
-            "❌ Could not generate any valid cards with the provided BIN/pattern\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    cards_list = "\n".join(cards)
 
-    # Format the list of cards
-    cards_list = "\n".join(generated_cards)
-
-    # Escape for MarkdownV2
+    # Escape BIN info for MarkdownV2
     escaped_bin = escape_markdown_v2(card_base)
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
@@ -780,21 +705,15 @@ async def gen(update, context):
 
     # BIN info block
     bin_info_block = (
-        f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
-        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
-        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
+        f"┣ ❏ 𝐁𝐈𝐍 ➳ `{escaped_bin}`\n"
+        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝 ➳ `{escaped_brand}`\n"
+        f"┣ ❏ 𝐁𝐚𝐧𝐤 ➳ `{escaped_bank}`\n"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
-    bin_info_for_md = bin_info_block.replace("\n", "\n> ")
 
-    # Final output message
-    final_message = (
-        f"> *Generated {len(generated_cards)} Cards 💳*\n\n"
-        f"{cards_list}\n"
-        f">\n"
-        f"> {bin_info_for_md}"
-    )
+    # Final message (header, cards, BIN info, all outside quote)
+    final_message = f"*Generated 10 Cards 💳*\n\n{cards_list}\n\n{bin_info_block}"
 
     await update.effective_message.reply_text(
         final_message,
