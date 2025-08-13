@@ -1,9 +1,3 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, CallbackQueryHandler,
-    ContextTypes, MessageHandler, filters, TypeHandler
-)
 import os
 import time
 import logging
@@ -232,22 +226,7 @@ from telegram.ext import ContextTypes
 from config import OWNER_ID, OFFICIAL_GROUP_LINK, AUTHORIZED_PRIVATE_USERS, AUTHORIZED_CHATS
 from db import get_user
 
-# 🛡 Global Private Usage Block
-async def global_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Runs before every update to block unauthorized private usage."""
-    if update.effective_chat.type == 'private':
-        if update.effective_user.id != OWNER_ID:
-            if update.message and update.message.text:
-                cmd = update.message.text.strip().split()[0].lower()
-                if cmd not in ("/start", "/plans", "/redeem"):
-                    await update.effective_message.reply_text(
-                        "🚫 *Private Usage Blocked*\n"
-                        "You cannot use this bot in private chat.\n\n"
-                        "Buy a plan or join our group to access tools for free.\n"
-                        "Get a subscription from @K4linuxx to use this bot.",
-                        parse_mode=ParseMode.MARKDOWN_V2
-                    )
-                    return
+
 
 async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """Checks if a user or group is authorized to use the bot."""
@@ -2016,22 +1995,6 @@ OWNER_ID = 8438505794
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🛡 Global Private Usage Block
-async def global_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Runs before every update to block unauthorized private usage."""
-    if update.effective_chat.type == 'private':
-        if update.effective_user.id != OWNER_ID:
-            if update.message and update.message.text:
-                cmd = update.message.text.strip().split()[0].lower()
-                if cmd not in ("/start", "/plans", "/redeem"):
-                    await update.effective_message.reply_text(
-                        "🚫 *Private Usage Blocked*\n"
-                        "You cannot use this bot in private chat.\n\n"
-                        "Buy a plan or join our group to access tools for free.\n"
-                        "Get a subscription from @K4linuxx to use this bot.",
-                        parse_mode=ParseMode.MARKDOWN_V2
-                    )
-                    return
 
 # 🧠 Import your command handlers here
 
@@ -2043,7 +2006,6 @@ async def post_init(application):
 
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
-    application.add_handler(TypeHandler(Update, global_authorization), group=-1)
 
 
     # ✨ Public Commands
