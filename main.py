@@ -767,7 +767,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # FIX 2: Correctly format the entire message as a single Markdown quote block.
-    # This ensures that all parts are rendered correctly.
+    # This ensures that all parts are rendered correctly by applying "> " to each line.
     final_message = (
         f"> *Generated 10 Cards 💳*\n"
         f">\n"
@@ -780,7 +780,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
 
 
 from telegram.constants import ParseMode
