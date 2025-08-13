@@ -859,7 +859,7 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-iimport time
+import time
 import asyncio
 import aiohttp
 from telegram import Update
