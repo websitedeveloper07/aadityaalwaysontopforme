@@ -591,18 +591,19 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     info_message = (
         "🔍 *Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
         "━━━━━━━━━━━━━━\n"
-        f"👤 𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: {first_name}\n"
-        f"🆔 𝙄𝘿: {user_id}\n"
+        f"👤 𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: `{first_name}`\n"
+        f"🆔 𝙄𝘿: `{user_id}`\n"
         f"📛 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{username}\n\n"
-        f"📋 𝙎𝙩𝙖𝙩𝙪𝙨: {status}\n"
-        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩: {credits}\n"
-        f"💼 𝙋𝙡𝙖𝙣: {plan}\n"
-        f"📅 𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: {plan_expiry}\n"
-        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: {keys_redeemed}\n"
-        f"🗓 𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: {registered_at}\n"
+        f"📋 𝙎𝙩𝙖𝙩𝙪𝙨: `{status}`\n"
+        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩: `{credits}`\n"
+        f"💼 𝙋𝙡𝙖𝙣: `{plan}`\n"
+        f"📅 𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: `{plan_expiry}`\n"
+        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: `{keys_redeemed}`\n"
+        f"🗓 𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: `{registered_at}`\n"
     )
 
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 from telegram.constants import ParseMode
@@ -796,13 +797,13 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # BIN info box (no space after country)
     bin_info_box = (
         f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
-        f"┣ ❏ *𝐁𝐈𝐍*       ➳ {escaped_bin}\n"
-        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ {escape_markdown_v2(status_display)}\n"
-        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ {escaped_scheme}\n"
-        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ {escaped_card_type}\n"
-        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ {level_emoji} {escaped_level}\n"
-        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ {escaped_bank}\n"
-        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ {escaped_country_name}{escaped_country_emoji}\n"
+        f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
+        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{escape_markdown_v2(status_display)}`\n"
+        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
+        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
+        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
+        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
+        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
     )
 
     user_info_box = (
@@ -847,9 +848,9 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💳 *Your Credit Info* 💳\n"
         f"━━━━━━━━━━━━━━\n"
         f"👤 Username: @{escaped_username}\n"
-        f"🆔 User ID: {escaped_user_id}\n"
-        f"📋 Plan: {escaped_plan}\n"
-        f"💳 Credits: {escaped_credits}\n"
+        f"🆔 User ID: `{escaped_user_id}`\n"
+        f"📋 Plan: `{escaped_plan}`\n"
+        f"💳 Credits: `{escaped_credits}`\n"
     )
 
     await update.effective_message.reply_text(
@@ -938,7 +939,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         final_text = (
             f"{header}\n"
-            f"✘ Card        ➜ {escape_markdown(cc_normalized, version=2)}\n"
+            f"✘ Card        ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
             "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
             f"✘ Response    ➜ {formatted_response}\n"
             "――――――――――――――――\n"
@@ -1031,10 +1032,10 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Send processing
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"• 𝘾𝙖𝙧𝙙 ➜ {escape_markdown(cc_normalized, version=2)}\n"
+        f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
-        "═════════════════════"
+        "═══════════════════"
     )
     processing_msg = await update.effective_message.reply_text(
         processing_text,
@@ -1305,22 +1306,22 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     output = (
         "╭━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━━━━⬣\n"
-        f"┣ ❏ 𝙉𝙖𝙢𝙚      ➳ {name}\n"
-        f"┣ ❏ 𝘿𝙤𝘽       ➳ {dob}\n"
-        f"┣ ❏ 𝙎𝙎𝙉       ➳ {ssn}\n"
-        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡     ➳ {email}\n"
-        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ {username}\n"
-        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚     ➳ {phone}\n"
-        f"┣ ❏ 𝙅𝙤𝙗       ➳ {job}\n"
-        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮   ➳ {company}\n"
-        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩    ➳ {street}\n"
-        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ {address2}\n"
-        f"┣ ❏ 𝘾𝙞𝙩𝙮      ➳ {city}\n"
-        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚     ➳ {state}\n"
-        f"┣ ❏ 𝙕𝙞𝙥       ➳ {zip_code}\n"
-        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮   ➳ {country}\n"
-        f"┣ ❏ 𝙄𝙋        ➳ {ip}\n"
-        f"┣ ❏ 𝙐𝘼        ➳ {ua}\n"
+        f"┣ ❏ 𝙉𝙖𝙢𝙚      ➳ `{name}`\n"
+        f"┣ ❏ 𝘿𝙤𝘽       ➳ `{dob}`\n"
+        f"┣ ❏ 𝙎𝙎𝙉       ➳ `{ssn}`\n"
+        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡     ➳ `{email}`\n"
+        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ `{username}`\n"
+        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚     ➳ `{phone}`\n"
+        f"┣ ❏ 𝙅𝙤𝙗       ➳ `{job}`\n"
+        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮   ➳ `{company}`\n"
+        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩    ➳ `{street}`\n"
+        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ `{address2}`\n"
+        f"┣ ❏ 𝘾𝙞𝙩𝙮      ➳ `{city}`\n"
+        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚     ➳ `{state}`\n"
+        f"┣ ❏ 𝙕𝙞𝙥       ➳ `{zip_code}`\n"
+        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮   ➳ `{country}`\n"
+        f"┣ ❏ 𝙄𝙋        ➳ `{ip}`\n"
+        f"┣ ❏ 𝙐𝘼        ➳ `{ua}`\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -1375,7 +1376,7 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = (
         f"╭━━━ [ 💳 𝗘𝘅𝘁𝗿𝗮𝗰𝘁𝗲𝗱 𝗖𝗮𝗿𝗱𝘀 ] ━━━⬣\n"
-        f"┣ ❏ Total ➳ {count}\n"
+        f"┣ ❏ Total ➳ `{count}`\n"
         f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
         f"{extracted_cards_text}"
     )
