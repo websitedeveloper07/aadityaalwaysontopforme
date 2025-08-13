@@ -689,8 +689,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         yyyy = extra_yyyy or str(datetime.now().year + random.randint(1, 5))
         cvv = extra_cvv or (str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3))
 
-        # Cards in monospace
-        cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
+        # Escape '|' for MarkdownV2 in monospace
+        cards.append(f"`{card_number}\\|{mm}\\|{yyyy[-2:]}\\|{cvv}`")
 
     cards_list = "\n".join(cards)
 
@@ -713,7 +713,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Final message
     final_message = (
-        f"> *Generated 10 Cards 💳*\n\n"
+        f"> *Generated 10 Cards 💳*\n"
+        f">\n"
         f"{cards_list}\n"
         f">\n"
         f"> {bin_info_for_md}"
@@ -723,6 +724,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 from telegram.constants import ParseMode
