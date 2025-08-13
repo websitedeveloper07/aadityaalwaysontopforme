@@ -1321,8 +1321,8 @@ def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def get_total_users():
-    from db import get_total_users as db_get_total_users
-    return await db_get_total_users()
+    from db import get_all_users
+    return await get_all_users()
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
@@ -1358,7 +1358,6 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "╰━━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    # Escape the entire message to avoid MarkdownV2 parse errors (if needed)
     escaped_message = escape_markdown_v2(status_message)
 
     await update.effective_message.reply_text(
