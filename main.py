@@ -569,15 +569,6 @@ def escape_markdown_v2(text: str) -> str:
 
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the user's detailed information."""
-    
-    # Block command usage in private chats
-    if update.effective_chat.type == 'private':
-        await update.message.reply_text(
-            "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
-
     if not await check_authorization(update, context):
         return
 
@@ -598,35 +589,24 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     info_message = (
         "🔍 *Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
         "━━━━━━━━━━━━━━\n"
-        f"👤 𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: `{first_name}`\n"
-        f"🆔 𝙄𝘿: `{user_id}`\n"
+        f"👤 𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: {first_name}\n"
+        f"🆔 𝙄𝘿: {user_id}\n"
         f"📛 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{username}\n\n"
-        f"📋 𝙎𝙩𝙖𝙩𝙪𝙨: `{status}`\n"
-        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩: `{credits}`\n"
-        f"💼 𝙋𝙡𝙖𝙣: `{plan}`\n"
-        f"📅 𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: `{plan_expiry}`\n"
-        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: `{keys_redeemed}`\n"
-        f"🗓 𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: `{registered_at}`\n"
+        f"📋 𝙎𝙩𝙖𝙩𝙪𝙨: {status}\n"
+        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩: {credits}\n"
+        f"💼 𝙋𝙡𝙖𝙣: {plan}\n"
+        f"📅 𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: {plan_expiry}\n"
+        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: {keys_redeemed}\n"
+        f"🗓 𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: {registered_at}\n"
     )
 
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
-
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN or partial card."""
-
-    # Block command usage in private chats
-    if update.effective_chat.type == 'private':
-        await update.message.reply_text(
-            "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
-
     if not await check_authorization(update, context):
         return
 
@@ -653,7 +633,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not raw_input:
         return await update.effective_message.reply_text(
             "❌ Please provide BIN, partial card, or pattern\\. Usage:\n"
-            "`/gen 414740`\n`/gen 445769222`\n`/gen 414740|11|2028|777`",
+            "/gen 414740\n/gen 445769222\n/gen 414740|11|2028|777",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -705,7 +685,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3)
         )
 
-        cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
+        cards.append(f"{card_number}|{mm}|{yyyy[-2:]}|{cvv}")
 
     cards_list = "\n".join(cards)
 
@@ -718,10 +698,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # BIN info block
     bin_info_block = (
-        f"┣ ❏ 𝐁𝐈𝐍        ➳ `{escaped_bin}`\n"
-        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ `{escaped_brand}`\n"
-        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ `{escaped_bank}`\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
+        f"┣ ❏ 𝐁𝐈𝐍        ➳ {escaped_bin}\n"
+        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ {escaped_brand}\n"
+        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ {escaped_bank}\n"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ {escaped_country_name}{escaped_country_emoji}\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
     bin_info_for_md = bin_info_block.replace("\n", "\n> ")
@@ -745,22 +725,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram.constants import ParseMode
 
 def escape_markdown_v2(text: str) -> str:
-    escape_chars = r"\_*[]()~`>#+-=|{}.!"
+    escape_chars = r"\_*[]()~>#+-=|{}.!"
     return ''.join(['\\' + char if char in escape_chars else char for char in text])
 
+from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup."""
-
-    # Block command usage in private chats
-    if update.effective_chat.type == 'private':
-        await update.message.reply_text(
-            "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
-
     if not await check_authorization(update, context):
         return
 
@@ -785,7 +757,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not bin_input or not bin_input.isdigit() or len(bin_input) < 6:
         return await update.effective_message.reply_text(
-            "❌ Please provide a 6\\-digit BIN\\. Usage: `/bin [bin]` or `\\.bin [bin]`\\.",
+            "❌ Please provide a 6\\-digit BIN\\. Usage: /bin [bin] or \\.bin [bin]\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -822,17 +794,17 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # BIN info box (no space after country)
     bin_info_box = (
         f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
-        f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
-        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{escape_markdown_v2(status_display)}`\n"
-        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
-        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
-        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
-        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
-        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
+        f"┣ ❏ *𝐁𝐈𝐍*       ➳ {escaped_bin}\n"
+        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ {escape_markdown_v2(status_display)}\n"
+        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ {escaped_scheme}\n"
+        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ {escaped_card_type}\n"
+        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ {level_emoji} {escaped_level}\n"
+        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ {escaped_bank}\n"
+        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ {escaped_country_name}{escaped_country_emoji}\n"
     )
 
     user_info_box = (
-        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ `{escaped_user}`\n"
+        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
         f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
@@ -847,23 +819,13 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     import re
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+    return re.sub(r'([_*\[\]()~>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /credits command, showing user info and credits."""
-    
-    # Block command usage in private chats
-    if update.effective_chat.type == 'private':
-        await update.message.reply_text(
-            "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
-
     if not await check_authorization(update, context):
         return
 
@@ -882,10 +844,10 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credit_message = (
         f"💳 *Your Credit Info* 💳\n"
         f"━━━━━━━━━━━━━━\n"
-        f"👤 Username: `@{escaped_username}`\n"
-        f"🆔 User ID: `{escaped_user_id}`\n"
-        f"📋 Plan: `{escaped_plan}`\n"
-        f"💳 Credits: `{escaped_credits}`\n"
+        f"👤 Username: @{escaped_username}\n"
+        f"🆔 User ID: {escaped_user_id}\n"
+        f"📋 Plan: {escaped_plan}\n"
+        f"💳 Credits: {escaped_credits}\n"
     )
 
     await update.effective_message.reply_text(
@@ -894,22 +856,17 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+
 import time
 import asyncio
 import aiohttp
 from telegram import Update
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
 
 # Import your database functions here
 from db import get_user, update_user
-
-
-def escape_v2(text: str) -> str:
-    """Safe escape for Telegram MarkdownV2."""
-    return escape_markdown(str(text or ""), version=2)
-
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     cooldown_seconds = 5
@@ -921,23 +878,23 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     if current_time - last_run_time < cooldown_seconds:
         remaining_time = round(cooldown_seconds - (current_time - last_run_time), 2)
         await update.effective_message.reply_text(
-            escape_v2(f"⏳ Cooldown in effect. Please wait {remaining_time} seconds."),
+            escape_markdown(f"⏳ Cooldown in effect. Please wait {remaining_time} seconds.", version=2),
             parse_mode=ParseMode.MARKDOWN_V2,
         )
         return False
     enforce_cooldown.user_cooldowns[user_id] = current_time
     return True
 
-
 async def consume_credit(user_id: int) -> bool:
-    """Consume 1 credit from DB user if available."""
+    """
+    Consume 1 credit from DB user if available.
+    """
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
         await update_user(user_id, credits=new_credits)
         return True
     return False
-
 
 def get_bin_details_sync(bin_number: str) -> dict:
     # Simulated BIN lookup
@@ -948,7 +905,6 @@ def get_bin_details_sync(bin_number: str) -> dict:
         "country_name": "United States"
     }
 
-
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     start_time = time.time()
     try:
@@ -958,11 +914,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         issuer = (bin_details.get("type") or "N/A").upper()
         country_name = (bin_details.get("country_name") or "N/A").upper()
 
-        api_url = (
-            f"https://darkboy-auto-stripe.onrender.com/"
-            f"gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
-        )
-
+        api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=25) as resp:
                 if resp.status != 200:
@@ -978,34 +930,32 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         elif api_status.lower() == "declined":
             header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
         else:
-            header = f"❖❖❖\\[ {escape_v2(api_status)} \\]❖❖❖"
+            header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
 
-        formatted_response = f"_{escape_v2(api_response)}_"
+        formatted_response = f"_{escape_markdown(api_response, version=2)}_"
 
         final_text = (
             f"{header}\n"
-            f"✘ Card        ➜ `{escape_v2(cc_normalized)}`\n"
-            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘁𝗵\n"
+            f"✘ Card        ➜ {escape_markdown(cc_normalized, version=2)}\n"
+            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
             f"✘ Response    ➜ {formatted_response}\n"
             "――――――――――――――――\n"
-            f"✘ Brand       ➜ {escape_v2(brand)}\n"
-            f"✘ Issuer      ➜ {escape_v2(issuer)}\n"
-            f"✘ Country     ➜ {escape_v2(country_name)}\n"
+            f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
+            f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
+            f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
-            f"✘ Request By  ➜ {escape_v2(user.first_name)}"
-            f"\\[{escape_v2(user_data.get('plan', 'Free'))}\\]\n"
-            f"✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-            f"✘ Time        ➜ {escape_v2(str(time_taken))} seconds\n"
+            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
+            "✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+            f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
         )
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
     except Exception as e:
         await processing_msg.edit_text(
-            f"❌ API Error: `{escape_v2(str(e))}`",
+            f"❌ API Error: {escape_markdown(str(e), version=2)}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1020,7 +970,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "🚫 *Private Usage Blocked*\n"
                 "You cannot use this bot in private chat.\n\n"
                 "Buy a plan or join our group to access tools for free.\n"
-                f"Get a subscription from @{escape_v2('K4linuxx')} to use this bot.",
+                "Get a subscription from @K4linuxx to use this bot.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return
@@ -1033,27 +983,33 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
     if not user_data:
         await update.effective_message.reply_text(
-            "❌ Could not fetch your user data. Try again later."
+            "❌ Could not fetch your user data. Try again later.",
+            parse_mode=None
         )
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
         await update.effective_message.reply_text(
-            "❌ You have no credits left. Please buy a plan to get more credits."
+            "❌ You have no credits left. Please buy a plan to get more credits.",
+            parse_mode=None
         )
         return
 
     # Parse card
     raw = context.args[0] if context.args else None
     if not raw or "|" not in raw:
-        await update.effective_message.reply_text("Usage: /chk number|mm|yy|cvv")
+        await update.effective_message.reply_text(
+            "Usage: /chk number|mm|yy|cvv",
+            parse_mode=None
+        )
         return
 
     parts = raw.split("|")
     if len(parts) != 4:
         await update.effective_message.reply_text(
-            "Invalid format. Use number|mm|yy|cvv (or yyyy for year)."
+            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+            parse_mode=None
         )
         return
 
@@ -1064,14 +1020,17 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Deduct credit
     if not await consume_credit(user_id):
-        await update.effective_message.reply_text("❌ No credits left.")
+        await update.effective_message.reply_text(
+            "❌ No credits left.",
+            parse_mode=None
+        )
         return
 
     # Send processing
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_v2(cc_normalized)}`\n"
-        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘁𝗵\n"
+        f"• 𝘾𝙖𝙧𝙙 ➜ {escape_markdown(cc_normalized, version=2)}\n"
+        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
         "═════════════════════"
     )
@@ -1081,9 +1040,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Background task
-    asyncio.create_task(
-        background_check(cc_normalized, parts, user, user_data, processing_msg)
-    )
+    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
 import asyncio
@@ -1143,7 +1100,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
         parts = raw.split("|")
         if len(parts) != 4:
-            results.append(f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`")
+            results.append(f"❌ Invalid card format: {escape_markdown(raw, version=2)}")
             error_count += 1
             continue
 
@@ -1153,7 +1110,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         cc_normalized = "|".join(parts)
 
         if not await consume_credit(user_id):
-            results.append(f"❌ Failed to deduct credit for card `{escape_markdown(raw, version=2)}`.")
+            results.append(f"❌ Failed to deduct credit for card {escape_markdown(raw, version=2)}.")
             error_count += 1
             break
 
@@ -1165,7 +1122,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         raise Exception(f"HTTP {resp.status}")
                     data = await resp.json()
         except Exception as e:
-            results.append(f"❌ API Error for card `{escape_markdown(raw, version=2)}`: {escape_markdown(str(e), version=2)}")
+            results.append(f"❌ API Error for card {escape_markdown(raw, version=2)}: {escape_markdown(str(e), version=2)}")
             error_count += 1
             checked_count += 1
             continue
@@ -1185,7 +1142,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         checked_count += 1
 
         card_result = (
-            f"`{escape_markdown(cc_normalized, version=2)}`\n"
+            f"{escape_markdown(cc_normalized, version=2)}\n"
             f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
         )
         results.append(card_result)
@@ -1297,19 +1254,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 from faker import Faker
 
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
-    # Block command usage in private chats
-    if update.effective_chat.type == 'private':
-        await update.message.reply_text(
-            "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return
-
     if not await check_authorization(update, context):
         return
     if not await enforce_cooldown(update.effective_user.id, update):
@@ -1355,43 +1303,36 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     output = (
         "╭━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━━━━⬣\n"
-        f"┣ ❏ 𝙉𝙖𝙢𝙚      ➳ `{name}`\n"
-        f"┣ ❏ 𝘿𝙤𝘽       ➳ `{dob}`\n"
-        f"┣ ❏ 𝙎𝙎𝙉       ➳ `{ssn}`\n"
-        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡     ➳ `{email}`\n"
-        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ `{username}`\n"
-        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚     ➳ `{phone}`\n"
-        f"┣ ❏ 𝙅𝙤𝙗       ➳ `{job}`\n"
-        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮   ➳ `{company}`\n"
-        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩    ➳ `{street}`\n"
-        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ `{address2}`\n"
-        f"┣ ❏ 𝘾𝙞𝙩𝙮      ➳ `{city}`\n"
-        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚     ➳ `{state}`\n"
-        f"┣ ❏ 𝙕𝙞𝙥       ➳ `{zip_code}`\n"
-        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮   ➳ `{country}`\n"
-        f"┣ ❏ 𝙄𝙋        ➳ `{ip}`\n"
-        f"┣ ❏ 𝙐𝘼        ➳ `{ua}`\n"
+        f"┣ ❏ 𝙉𝙖𝙢𝙚      ➳ {name}\n"
+        f"┣ ❏ 𝘿𝙤𝘽       ➳ {dob}\n"
+        f"┣ ❏ 𝙎𝙎𝙉       ➳ {ssn}\n"
+        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡     ➳ {email}\n"
+        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ {username}\n"
+        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚     ➳ {phone}\n"
+        f"┣ ❏ 𝙅𝙤𝙗       ➳ {job}\n"
+        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮   ➳ {company}\n"
+        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩    ➳ {street}\n"
+        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ {address2}\n"
+        f"┣ ❏ 𝘾𝙞𝙩𝙮      ➳ {city}\n"
+        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚     ➳ {state}\n"
+        f"┣ ❏ 𝙕𝙞𝙥       ➳ {zip_code}\n"
+        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮   ➳ {country}\n"
+        f"┣ ❏ 𝙄𝙋        ➳ {ip}\n"
+        f"┣ ❏ 𝙐𝘼        ➳ {ua}\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
     await update.effective_message.reply_text(output, parse_mode=ParseMode.MARKDOWN_V2)
 
+
 import re
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+    return re.sub(r'([_*\[\]()~>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Extracts full cards from a dump (message or reply)."""
-
-    # Block command usage in private chats
-    if update.effective_chat.type == 'private':
-        return await update.message.reply_text(
-            "🚫 *Private access blocked.*\nContact @K4linuxx to buy a subscription or use free in our group.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
+    """Extracts all cards from a dump (message or reply)."""
     if not await check_authorization(update, context):
         return
 
@@ -1404,14 +1345,14 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Determine input text
+    # Determine input text (from reply or args)
     if update.message.reply_to_message and update.message.reply_to_message.text:
         dump = update.message.reply_to_message.text
     elif context.args:
         dump = " ".join(context.args)
     else:
         return await update.effective_message.reply_text(
-            "❌ Please provide or reply to a dump containing cards\\. Usage: `/fl <dump or reply>`",
+            "❌ Please provide or reply to a dump containing cards\\. Usage: /fl <dump or reply>",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -1421,24 +1362,23 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Strict match for CardNumber|MM|YY|CVV
-    cards_found = re.findall(r'\b\d{13,16}\|\d{2}\|\d{2}\|\d{3,4}\b', dump)
+    # Match CCs with optional |MM|YY|CVV
+    cards_found = re.findall(r'\b\d{13,16}(?:\|\d{2}\|\d{2}(?:\|\d{3,4})?)?\b', dump)
     count = len(cards_found)
 
     if cards_found:
-        extracted_cards_text = "\n".join([f"`{escape_markdown_v2(card)}`" for card in cards_found])
+        extracted_cards_text = "\n".join([f"{escape_markdown_v2(card)}" for card in cards_found])
     else:
         extracted_cards_text = "_No cards found in the provided text\\._"
 
     msg = (
         f"╭━━━ [ 💳 𝗘𝘅𝘁𝗿𝗮𝗰𝘁𝗲𝗱 𝗖𝗮𝗿𝗱𝘀 ] ━━━⬣\n"
-        f"┣ ❏ Total ➳ `{count}`\n"
+        f"┣ ❏ Total ➳ {count}\n"
         f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
         f"{extracted_cards_text}"
     )
 
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
-
 
 
 import psutil
@@ -2040,8 +1980,10 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 # === REGISTERING COMMANDS AND HANDLERS ===
 import os
 import logging
+from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, filters
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, filters, TypeHandler
 )
 from db import init_db
 
@@ -2055,12 +1997,35 @@ logger = logging.getLogger(__name__)
 
 # 🧠 Import your command handlers here
 
+
 async def post_init(application):
     await init_db()
     logger.info("Database initialized")
 
+
+# 🔐 Global authorization check for private chats
+async def global_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Runs before every update to block unauthorized private usage."""
+    if update.effective_chat.type == 'private':
+        if update.effective_user.id != OWNER_ID:
+            if update.message and update.message.text:
+                cmd = update.message.text.strip().split()[0].lower()
+                if cmd not in ("/start", "/plans", "/redeem"):
+                    await update.effective_message.reply_text(
+                        "🚫 *Private Usage Blocked*\n"
+                        "You cannot use this bot in private chat.\n\n"
+                        "Buy a plan or join our group to access tools for free.\n"
+                        "Get a subscription from @K4linuxx to use this bot.",
+                        parse_mode=ParseMode.MARKDOWN_V2
+                    )
+                    return
+
+
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+
+    # ⛔ Add this first so it runs before all other handlers
+    application.add_handler(TypeHandler(Update, global_authorization), group=0)
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
@@ -2096,6 +2061,7 @@ def main():
     # 🔁 Start polling (handles its own event loop!)
     logger.info("Bot started and is polling for updates...")
     application.run_polling()
+
 
 if __name__ == '__main__':
     main()
