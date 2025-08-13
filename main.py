@@ -678,7 +678,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
+            "❌ You have no credits left. Please get a subscription to use this command.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -693,8 +693,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not raw_input:
         return await update.effective_message.reply_text(
-            "❌ Please provide BIN, partial card, or pattern\\. Usage:\n"
-            "/gen 414740\n/gen 445769222\n/gen 414740|11|2028|777",
+            "❌ Please provide BIN, partial card, or pattern.\nUsage:\n/gen 414740\n/gen 445769222\n/gen 414740|11|2028|777",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -707,13 +706,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_base.isdigit():
         return await update.effective_message.reply_text(
-            "❌ Card/BIN must contain only digits\\.",
+            "❌ Card/BIN must contain only digits.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
+            "❌ You have no credits left. Please get a subscription to use this command.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -744,8 +743,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         yyyy = extra_yyyy or str(datetime.now().year + random.randint(1, 5))
         cvv = extra_cvv or (str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3))
 
-        # FIX 1: Removed the unnecessary backslash for escaping the pipe character.
-        # Characters inside a backticked block (` `) are automatically treated as literal.
+        # Use backticks to avoid escaping special chars
         cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
     cards_list = "\n".join(cards)
@@ -766,20 +764,18 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    # FIX 2: Correctly format the entire message as a single Markdown quote block.
-    # This ensures that all parts are rendered correctly by applying "> " to each line.
+    # Final message with proper MarkdownV2 formatting
     final_message = (
-        f"> *Generated 10 Cards 💳*\n"
-        f">\n"
-        f"{cards_list.replace('\n', '\n> ')}\n"
-        f">\n"
-        f"{bin_info_block.replace('\n', '\n> ')}"
+        f"*Generated 10 Cards 💳*\n\n"
+        f"{cards_list}\n\n"
+        f"{bin_info_block}"
     )
 
     await update.effective_message.reply_text(
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 from telegram.constants import ParseMode
