@@ -1320,9 +1320,11 @@ def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
+# ✅ Get total number of users only
 async def get_total_users():
-    from db import get_all_users
-    return await get_all_users()
+    from db import get_all_users  # function that returns list of all users
+    users = await get_all_users()
+    return len(users)  # return only the count
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
@@ -1343,10 +1345,13 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # System stats
     cpu_usage = psutil.cpu_percent(interval=1)
     memory_info = psutil.virtual_memory()
     total_memory = memory_info.total / (1024 ** 2)  # MB
     memory_percent = memory_info.percent
+
+    # Total users
     total_users = await get_total_users()
 
     status_message = (
@@ -1358,6 +1363,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "╰━━━━━━━━━━━━━━━━━━━⬣"
     )
 
+    # Escape for MarkdownV2
     escaped_message = escape_markdown_v2(status_message)
 
     await update.effective_message.reply_text(
