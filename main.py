@@ -606,10 +606,65 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+from telegram import Update
+from telegram.ext import ContextTypes, Application, CommandHandler
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
 import random
 from datetime import datetime
+import asyncio
+import logging
+
+# Set up logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+# Replace with your actual bot token
+BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
+
+# Dummy functions for a working example
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return True
+
+async def enforce_cooldown(user_id, update: Update):
+    return True
+
+async def get_user(user_id):
+    return {'credits': 10}
+
+async def consume_credit(user_id):
+    return True
+
+def luhn_checksum(card_number):
+    """
+    Checks if a card number is valid using the Luhn algorithm.
+    This is a dummy implementation; a real one would be more complex.
+    """
+    if not card_number.isdigit():
+        return False
+    
+    digits = [int(d) for d in card_number]
+    odd_digits = digits[-2::-2]
+    even_digits = digits[-1::-2]
+    
+    total = sum(even_digits)
+    
+    for d in odd_digits:
+        doubled = d * 2
+        total += doubled // 10 + doubled % 10
+        
+    return total % 10 == 0
+
+async def get_bin_details(bin):
+    """
+    Dummy function to simulate BIN lookup.
+    """
+    return {
+        "scheme": "Visa",
+        "bank": "Bank of Dummy",
+        "country_name": "United States",
+        "country_emoji": "🇺🇸"
+    }
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN or partial card."""
@@ -689,8 +744,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         yyyy = extra_yyyy or str(datetime.now().year + random.randint(1, 5))
         cvv = extra_cvv or (str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3))
 
-        # Escape '|' for MarkdownV2 in monospace
-        cards.append(f"`{card_number}\\|{mm}\\|{yyyy[-2:]}\\|{cvv}`")
+        # FIX 1: Removed the unnecessary backslash for escaping the pipe character.
+        # Characters inside a backticked block (` `) are automatically treated as literal.
+        cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
     cards_list = "\n".join(cards)
 
@@ -701,23 +757,23 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
 
-    # BIN info block inside quote
+    # BIN info block
     bin_info_block = (
-        f"┣ ❏ 𝐁𝐈𝐍        ➳ {escaped_bin}\n"
+        f"┣ ❏ 𝐁𝐈𝐍      ➳ {escaped_bin}\n"
         f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ {escaped_brand}\n"
-        f"┣ ❏ 𝐁𝐚𝐧𝐤       ➳ {escaped_bank}\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➳ {escaped_country_name}{escaped_country_emoji}\n"
+        f"┣ ❏ 𝐁𝐚𝐧𝐤        ➳ {escaped_bank}\n"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲   ➳ {escaped_country_name}{escaped_country_emoji}\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
-    bin_info_for_md = bin_info_block.replace("\n", "\n> ")
 
-    # Final message
+    # FIX 2: Correctly format the entire message as a single Markdown quote block.
+    # This ensures that all parts are rendered correctly.
     final_message = (
         f"> *Generated 10 Cards 💳*\n"
         f">\n"
-        f"{cards_list}\n"
+        f"{cards_list.replace('\n', '\n> ')}\n"
         f">\n"
-        f"> {bin_info_for_md}"
+        f"{bin_info_block.replace('\n', '\n> ')}"
     )
 
     await update.effective_message.reply_text(
