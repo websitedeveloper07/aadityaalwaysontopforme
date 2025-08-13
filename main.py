@@ -1,3 +1,9 @@
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler,
+    ContextTypes, MessageHandler, filters, TypeHandler
+)
 import os
 import time
 import logging
@@ -10,8 +16,6 @@ from datetime import datetime, timedelta
 from db import get_user, update_user, init_db
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
-from telegram.ext import TypeHandler
-from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
 from telegram.error import BadRequest
 from faker import Faker
