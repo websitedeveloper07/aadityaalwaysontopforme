@@ -608,6 +608,9 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
+import random
+from datetime import datetime
+
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN or partial card."""
     if not await check_authorization(update, context):
@@ -669,14 +672,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Determine card length
     card_length = 15 if "american express" in brand.lower() or "amex" in brand.lower() else 16
 
-    # Generate cards
+    # Generate 10 valid cards
     cards = []
     attempts = 0
-    while len(cards) < 10 and attempts < 100:
+    while len(cards) < 10 and attempts < 500:
         attempts += 1
         suffix_len = card_length - len(card_base)
         if suffix_len < 0:
-            break  # invalid input length
+            break
 
         card_number = card_base + ''.join(str(random.randint(0, 9)) for _ in range(suffix_len))
         if not luhn_checksum(card_number):
@@ -684,22 +687,21 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         mm = extra_mm or str(random.randint(1, 12)).zfill(2)
         yyyy = extra_yyyy or str(datetime.now().year + random.randint(1, 5))
-        cvv = extra_cvv or (
-            str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3)
-        )
+        cvv = extra_cvv or (str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3))
 
-        cards.append(f"{card_number}|{mm}|{yyyy[-2:]}|{cvv}")
+        # Cards in monospace
+        cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
     cards_list = "\n".join(cards)
 
-    # Escape for MarkdownV2
-    escaped_bin = escape_markdown_v2(card_base) 
+    # Escape BIN info for MarkdownV2
+    escaped_bin = escape_markdown_v2(card_base)
     escaped_brand = escape_markdown_v2(brand)
     escaped_bank = escape_markdown_v2(bank)
     escaped_country_name = escape_markdown_v2(country_name)
     escaped_country_emoji = escape_markdown_v2(country_emoji)
 
-    # BIN info block
+    # BIN info block inside quote
     bin_info_block = (
         f"┣ ❏ 𝐁𝐈𝐍        ➳ {escaped_bin}\n"
         f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝      ➳ {escaped_brand}\n"
@@ -709,7 +711,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     bin_info_for_md = bin_info_block.replace("\n", "\n> ")
 
-    # Final output
+    # Final message
     final_message = (
         f"> *Generated 10 Cards 💳*\n\n"
         f"{cards_list}\n"
@@ -721,7 +723,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
 
 
 from telegram.constants import ParseMode
