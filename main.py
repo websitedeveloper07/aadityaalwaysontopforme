@@ -1317,30 +1317,33 @@ from telegram.ext import ContextTypes
 
 async def get_total_users():
     from db import get_all_users
-    return await get_all_users()
+    users = await get_all_users()
+    return len(users)  # Return only the count
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_authorization(update, context):
         return
 
+    # System stats
     cpu_usage = psutil.cpu_percent(interval=1)
     memory_info = psutil.virtual_memory()
     total_memory = memory_info.total / (1024 ** 2)  # MB
     memory_percent = memory_info.percent
     total_users = await get_total_users()
 
-    # Escape only dynamic values
-    cpu_usage_str = f"`{cpu_usage}%`"
-    memory_percent_str = f"`{memory_percent}%`"
-    total_memory_str = f"`{total_memory:.2f} MB`"
-    total_users_str = f"`{total_users}`"
+    # Wrap all values in monospace using backticks
+    cpu_str = f"`{cpu_usage}%`"
+    mem_str = f"`{memory_percent}%`"
+    total_mem_str = f"`{total_memory:.2f} MB`"
+    users_str = f"`{total_users}`"
 
+    # Status message
     status_message = (
         "╭━━━ 𝐁𝐨𝐭 𝐒𝐭𝐚𝐭𝐮𝖘 ━━━━⬣\n"
-        f"┣ ❏ 𝖢𝖯𝖴 𝖴𝗌𝖺𝗀𝖾 ➳ {cpu_usage_str}\n"
-        f"┣ ❏ 𝖱𝖠𝖬 𝖴𝗌𝖺𝗀𝖾 ➳ {memory_percent_str}\n"
-        f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖱𝖠𝖬 ➳ {total_memory_str}\n"
-        f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖴𝗌𝖾𝗋𝗌 ➳ {total_users_str}\n"
+        f"┣ ❏ 𝖢𝖯𝖴 𝖴𝗌𝖺𝗀𝖾 ➳ {cpu_str}\n"
+        f"┣ ❏ 𝖱𝖠𝖬 𝖴𝗌𝖺𝗀𝖾 ➳ {mem_str}\n"
+        f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖱𝖠𝖬 ➳ {total_mem_str}\n"
+        f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖴𝗌𝖾𝗋𝗌 ➳ {users_str}\n"
         "╰━━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -1348,6 +1351,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         status_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 
