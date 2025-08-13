@@ -2004,12 +2004,16 @@ async def post_init(application):
 
 
 # 🔐 Global authorization check for private chats
+from telegram.ext import TypeHandler
+
 async def global_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Runs before every update to block unauthorized private usage."""
+    # Only block commands in private chats for non-owners
     if update.effective_chat.type == 'private':
         if update.effective_user.id != OWNER_ID:
             if update.message and update.message.text:
                 cmd = update.message.text.strip().split()[0].lower()
+                # Allow only these in private
                 if cmd not in ("/start", "/plans", "/redeem"):
                     await update.effective_message.reply_text(
                         "🚫 *Private Usage Blocked*\n"
@@ -2018,14 +2022,12 @@ async def global_authorization(update: Update, context: ContextTypes.DEFAULT_TYP
                         "Get a subscription from @K4linuxx to use this bot.",
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
-                    return
+                    return  # stop here
+    # Otherwise, do nothing and let other handlers run
 
+# Register BEFORE all command handlers
+application.add_handler(TypeHandler(Update, global_authorization), group=-1)
 
-def main():
-    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
-
-    # ⛔ Add this first so it runs before all other handlers
-    application.add_handler(TypeHandler(Update, global_authorization), group=0)
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
