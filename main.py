@@ -1074,12 +1074,12 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
             f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
             f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
-            f"\𝙈𝙖𝙨𝙨 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
-            f"─────✘─────"
+            f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+            f"────────✘────────"
         )
         try:
             await processing_msg.edit_text(
-                escape_markdown(current_summary, version=2) + "\n\n" + "\n─────✘─────\n".join(results),
+                escape_markdown(current_summary, version=2) + "\n\n" + "\n────────✘────────\n".join(results),
                 parse_mode=ParseMode.MARKDOWN_V2
             )
         except Exception:
@@ -1093,11 +1093,11 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
-        f"\nMass Checker\n"
-        f"─────✘─────"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+        f"────────✘────────"
     )
     await processing_msg.edit_text(
-        escape_markdown(final_summary, version=2) + "\n\n" + "\n─────✘─────\n".join(results) + "\n─────✘─────",
+        escape_markdown(final_summary, version=2) + "\n\n" + "\n────────✘────────\n".join(results) + "\n────────✘────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
