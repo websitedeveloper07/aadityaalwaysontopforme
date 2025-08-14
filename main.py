@@ -1068,18 +1068,18 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
         current_time_taken = round(time.time() - start_time, 2)
         current_summary = (
-            f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-            f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-            f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-            f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-            f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-            f"✧ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
-            f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-            f"──────── ⸙ ─────────"
+            f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+            f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+            f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+            f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+            f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+            f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+            f"\n✘✘✘✘✘✘✘\n"
+            f"──────── ✘ ─────────"
         )
         try:
             await processing_msg.edit_text(
-                escape_markdown(current_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results),
+                escape_markdown(current_summary, version=2) + "\n\n" + "\n──────── ✘ ─────────\n".join(results),
                 parse_mode=ParseMode.MARKDOWN_V2
             )
         except Exception:
@@ -1087,17 +1087,17 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
-        f"✧ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-        f"✧ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-        f"✧ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-        f"✧ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-        f"✧ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-        f"✧ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-        f"──────── ⸙ ─────────"
+        f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+        f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+        f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
+        f"\n✘✘✘✘✘✘✘\n"
+        f"──────── ✘ ─────────"
     )
     await processing_msg.edit_text(
-        escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
+        escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ✘ ─────────\n".join(results) + "\n──────── ✘ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
@@ -1105,7 +1105,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Private chat: only OWNER_ID allowed
     if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
         await update.effective_message.reply_text(
-            "❌ Private access is blocked.\nContact @YourOwnerUsername to buy subscription.",
+            "❌ Private access is blocked.\nContact @K4linuxx to buy subscription.",
             parse_mode=None
         )
         return
