@@ -997,23 +997,21 @@ import aiohttp
 
 from db import get_user, update_user
 
+# Cooldown dictionary
+user_cooldowns = {}
+
 # Cooldown check
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     cooldown_seconds = 5
-    if not hasattr(enforce_cooldown, "user_cooldowns"):
-        enforce_cooldown.user_cooldowns = {}
-    last_run = enforce_cooldown.user_cooldowns.get(user_id, 0)
+    last_run = user_cooldowns.get(user_id, 0)
     now = datetime.now().timestamp()
     if now - last_run < cooldown_seconds:
         await update.effective_message.reply_text(
-            escape_markdown(
-                f"⏳ Cooldown active. Wait {round(cooldown_seconds - (now - last_run), 2)}s.",
-                version=2
-            ),
+            escape_markdown(f"⏳ Cooldown active. Wait {round(cooldown_seconds - (now - last_run),2)}s.", version=2),
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
-    enforce_cooldown.user_cooldowns[user_id] = now
+    user_cooldowns[user_id] = now
     return True
 
 # Deduct 1 credit from user
@@ -1024,9 +1022,8 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# Get BIN info
+# Simulated BIN lookup
 def get_bin_details_sync(bin_number: str) -> dict:
-    # Simulated BIN lookup
     time.sleep(1.5)
     return {
         "scheme": "Visa",
@@ -1053,23 +1050,17 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
 
-        # Determine status from API, fallback to "Declined"
+        # Real response from API
         api_status = str(data.get("status") or "Declined").title()
-        api_response = str(data.get("response") or "Declined")
-        if api_status.lower() not in ["approved", "declined"]:
-            api_status = "Declined"
-            api_response = "Declined ❌"
+        api_response = str(data.get("response") or "N/A")
 
-        time_taken = round(time.time() - start_time, 2)
-
-        # Header based on status
+        # Header logic: only "Approved" shows approved, anything else is Declined
         if api_status.lower() == "approved":
             header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
-            emoji = "✅"
         else:
             header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
-            emoji = "❌"
 
+        time_taken = round(time.time() - start_time, 2)
         formatted_response = f"_{escape_markdown(api_response, version=2)}_"
 
         final_text = (
@@ -1080,13 +1071,14 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             "――――――――――――――――\n"
             f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
             f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
-            f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
+            f"✘ Country     ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
             f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
             "✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
             f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
         )
+
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
     except Exception as e:
@@ -1229,25 +1221,29 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             checked_count += 1
             continue
 
-        # Treat anything other than 'Approved' as Declined
+        # Header logic: only "Approved" shows approved, else Declined
         api_status = str(data.get("status") or "Declined").title()
-        api_response = str(data.get("response") or "Declined")
+        api_response = str(data.get("response") or "N/A")
         if api_status.lower() != "approved":
             api_status = "Declined"
-            api_response = "Declined ❌"
+            emoji = "❌"
+        else:
+            emoji = "✅"
 
-        emoji = "✅" if api_status.lower() == "approved" else "❌"
         if api_status.lower() == "approved":
             approved_count += 1
+            header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
         else:
             declined_count += 1
-        checked_count += 1
+            header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
 
         card_result = (
-            f"`{cc_normalized}`\n"
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
+            f"{header}\n"
+            f"✘ Card     ➜ `{cc_normalized}`\n"
+            f"✘ Response ➜ _{escape_markdown(api_response, version=2)}_"
         )
         results.append(card_result)
+        checked_count += 1
 
         current_time_taken = round(time.time() - start_time, 2)
         current_summary = (
