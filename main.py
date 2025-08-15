@@ -549,9 +549,6 @@ import io
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates a user-specified number of valid cards from a given BIN/sequence."""
-    if not await check_authorization(update, context):
-        return
-
     user = update.effective_user
     if not await enforce_cooldown(user.id, update):
         return
