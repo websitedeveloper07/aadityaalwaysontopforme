@@ -682,6 +682,61 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+
+
+import re
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+import io
+
+async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Extracts credit cards from an uploaded text file."""
+    if not await check_authorization(update, context):
+        return
+
+    user = update.effective_user
+    if not await enforce_cooldown(user.id, update):
+        return
+
+    # Check for an uploaded file
+    if not update.effective_message.document:
+        return await update.effective_message.reply_text(
+            "❌ Please upload a .txt file with the command to extract cards from it.\n"
+            "Usage: `/open` and attach a file."
+        )
+
+    document = update.effective_message.document
+    
+    # Check if the file is a text file
+    if document.mime_type != 'text/plain':
+        return await update.effective_message.reply_text("❌ The file must be a text file (.txt).")
+
+    # Get the file and download its content
+    try:
+        file_obj = await document.get_file()
+        file_content_bytes = await file_obj.download_as_bytearray()
+        file_content = file_content_bytes.decode('utf-8')
+    except Exception as e:
+        return await update.effective_message.reply_text(f"❌ An error occurred while reading the file: {e}")
+
+    # Regex to find credit card patterns
+    card_pattern = re.compile(r'(\d{13,16}\|\d{1,2}\|\d{2,4}\|\d{3,4})')
+    
+    # Find all matches
+    found_cards = card_pattern.findall(file_content)
+
+    if not found_cards:
+        return await update.effective_message.reply_text("❌ No valid cards were found in the file.")
+
+    # Format the output message with count and monospace
+    cards_list = "\n".join([f"`{card}`" for card in found_cards])
+    final_message = f"*Found {len(found_cards)} Cards 💳*\n\n{cards_list}"
+
+    await update.effective_message.reply_text(
+        final_message,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
 from telegram.constants import ParseMode
 
 def escape_markdown_v2(text: str) -> str:
@@ -1957,6 +2012,7 @@ def main():
     application.add_handler(CommandHandler("chk", chk_command))
     application.add_handler(CommandHandler("mchk", mchk_command))
     application.add_handler(CommandHandler("gen", gen))
+    application.add_handler(CommandHandler("open", open_command))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("fk", fk_command))
     application.add_handler(CommandHandler("fl", fl_command))
