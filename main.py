@@ -563,13 +563,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Get input
     if not context.args:
-        # This message contains unescaped periods, so we wrap it in escape_markdown_v2
+        # Corrected and simplified usage message
         return await update.effective_message.reply_text(
-            escape_markdown_v2(
-                "❌ Please provide BIN or sequence.\n"
-                "Usage:\n`/gen 414740` (for default 10 cards)\n`/gen 414740 50` (for 50 cards)\n"
-                "`/gen 414740|11|2028|777`"
-            ),
+            "❌ Please provide BIN or sequence.\n"
+            "Usage:\n`/gen {bin}` (for default 10 cards)\n`/gen {bin} {no. of ccs}`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     
@@ -692,7 +689,7 @@ from telegram.helpers import escape_markdown as escape_markdown_v2
 async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Extracts credit cards from an uploaded text file, or from a file
-    in a replied-to message, and displays them in a stylish box.
+    in a replied-to message, with a maximum limit of 500 cards.
     """
     if not await check_authorization(update, context):
         return
@@ -709,12 +706,13 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         document = update.effective_message.document
     else:
         return await update.effective_message.reply_text(
-            "❌ Please reply to a .txt file with the command or attach a .txt file with the command."
+            escape_markdown_v2("❌ Please reply to a \\.txt file with the command or attach a \\.txt file with the command\\."),
+            parse_mode=ParseMode.MARKDOWN_V2
         )
 
     # Check if the file is a text file
     if document.mime_type != 'text/plain':
-        return await update.effective_message.reply_text("❌ The file must be a text file (.txt).")
+        return await update.effective_message.reply_text(escape_markdown_v2("❌ The file must be a text file \\(\\.txt\\)\\."), parse_mode=ParseMode.MARKDOWN_V2)
 
     # Get the file and download its content
     try:
@@ -722,16 +720,24 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_content_bytes = await file_obj.download_as_bytearray()
         file_content = file_content_bytes.decode('utf-8')
     except Exception as e:
-        return await update.effective_message.reply_text(f"❌ An error occurred while reading the file: {e}")
+        return await update.effective_message.reply_text(escape_markdown_v2(f"❌ An error occurred while reading the file: {e}"), parse_mode=ParseMode.MARKDOWN_V2)
 
     # Regex to find credit card patterns
     card_pattern = re.compile(r'(\d{13,16}\|\d{1,2}\|\d{2,4}\|\d{3,4})')
     
     # Find all matches
     found_cards = card_pattern.findall(file_content)
+    
+    # Apply the 500 card limit
+    initial_card_count = len(found_cards)
+    if initial_card_count > 500:
+        found_cards = found_cards[:500]
+        limit_message = escape_markdown_v2(f"\n\\(‼️ Only the first 500 cards have been processed\\.\)\n")
+    else:
+        limit_message = ""
 
     if not found_cards:
-        return await update.effective_message.reply_text("❌ No valid cards were found in the file.")
+        return await update.effective_message.reply_text("❌ No valid cards were found in the file\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     # Format the output message with count and monospace
     cards_list = "\n".join([f"`{card}`" for card in found_cards])
@@ -742,6 +748,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╭━━━━━━━━━━━━━━━━━━⬣\n"
         f"┣ ❏ 𝐅𝐨𝐮𝐧𝐝 *{len(found_cards)}* 𝐂𝐚𝐫𝐝𝐬\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣\n"
+        f"{limit_message}"
         f"\n{cards_list}"
     )
 
@@ -751,7 +758,6 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
 
 from telegram.constants import ParseMode
 
