@@ -856,12 +856,9 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-from telegram.constants import ParseMode
-
-def escape_markdown_v2(text: str) -> str:
-    escape_chars = r"\_*[]()~>#+-=|{}.!"
-    return ''.join(['\\' + char if char in escape_chars else char for char in text])
-
+import re
+from telegram import Update
+from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
 
@@ -919,14 +916,17 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
     escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
     vbv_status = bin_details.get("vbv_status", "Unknown")
-    escaped_user = escape_markdown_v2(user.full_name)
+    
+    # Get user's full name and ID for a clickable link
+    user_id = user.id
+    user_full_name = user.full_name
+    escaped_user_name = escape_markdown_v2(user_full_name)
 
     # Custom emojis/status
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
 
-    # BIN info box (no space after country)
-  bin_info_box = (
+    bin_info_box = (
         f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
         f"┣ ❏ *𝐁𝐈𝐍* ➳ `{escaped_bin}`\n"
         f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬* ➳ `{escape_markdown_v2(status_display)}`\n"
@@ -949,7 +949,6 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
 
 
 
