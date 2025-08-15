@@ -1226,8 +1226,11 @@ try:
         async with session.get(api_url, timeout=25) as resp:
             if resp.status != 200:
                 raise Exception(f"HTTP {resp.status}")
-            
             data = await resp.json()
+
+    # Parse API response inside the try block
+    api_status = (data.get("status") or "Unknown").title()
+    api_response = data.get("response") or "N/A"
 
 except Exception as e:
     results.append(
@@ -1238,9 +1241,6 @@ except Exception as e:
     checked_count += 1
     continue
 
-
-        api_status = (data.get("status") or "Unknown").title()
-        api_response = data.get("response") or "N/A"
 
         emoji = "❓"
         if api_status.lower() == "approved":
