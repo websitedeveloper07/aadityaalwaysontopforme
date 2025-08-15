@@ -1015,6 +1015,7 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
 
 # Deduct credit
 async def consume_credit(user_id: int) -> bool:
+    """Deduct 1 credit from the user if available."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         await update_user(user_id, credits=user_data["credits"] - 1)
@@ -1023,6 +1024,7 @@ async def consume_credit(user_id: int) -> bool:
 
 # Sync BIN lookup (simulated)
 def get_bin_details_sync(bin_number: str) -> dict:
+    """Simulated BIN lookup (blocking)."""
     time.sleep(1.5)  # Simulate API delay
     return {
         "scheme": "Visa",
@@ -1071,7 +1073,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         final_text = (
             f"{header}\n"
             f"✘ Card        ➜ `{api_card}`\n"
-            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘁𝗵\n"
             f"✘ Result      ➜ _{escape_markdown(api_result_clean, version=2)}_\n"
             "――――――――――――――――\n"
             f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
@@ -1144,6 +1146,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+
 
 
 
