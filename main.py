@@ -1059,17 +1059,19 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                 data = await resp.json()
 
         # The new API response only contains "card" and "status"
-        api_status = (data.get("status") or "Unknown").replace("✅", "").replace("❌", "").replace("❎", "").strip()
+        # Removed emoji stripping to preserve the emojis in the status string
+        api_status = (data.get("status") or "Unknown").strip()
         
         time_taken = round(time.time() - start_time, 2)
 
-        if api_status.lower() == "approved":
+        if api_status.lower() == "approved ✅":
             header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
-        elif api_status.lower() == "declined":
+        elif api_status.lower() == "declined ❌":
             header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
-        elif api_status.lower() == "ccn live":
+        elif api_status.lower() == "ccn live ❎":
             header = "❖❖❖\\[ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎ \\]❖❖❖"
         else:
+            # Use the original api_status which retains emojis and formatting
             header = f"❖❖❖\\[ {escape_markdown(api_status, version=2).upper()} \\]❖❖❖"
 
         # Formatted response from API status
@@ -1158,7 +1160,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Send processing
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"• 𝘾𝙖𝙧𝙙 ➜ {escape_markdown(cc_normalized, version=2)}\n"
+        f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
         "═════════════════════"
@@ -1170,6 +1172,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+
 
 
 
