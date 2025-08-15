@@ -843,18 +843,18 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     new_credits = target_user_data.get('credits', 0) + credits_to_add
     await update_user(user_id, credits=new_credits)
 
-    # Escape variables individually for proper monospace formatting
-    escaped_credits_to_add = escape_markdown_v2(str(credits_to_add))
-    escaped_user_id = escape_markdown_v2(str(user_id))
-    escaped_new_credits = escape_markdown_v2(str(new_credits))
-
-    # Send a confirmation message with proper monospace formatting
-    final_message = f"✅ Successfully added `{escaped_credits_to_add}` credits to user `{escaped_user_id}`. Their new credit balance is `{escaped_new_credits}`."
+    # Send a confirmation message with proper monospace formatting and escaping
+    # The f-string is escaped here to handle the periods correctly.
+    final_message = escape_markdown_v2(f"✅ Successfully added `{credits_to_add}` credits to user `{user_id}`. Their new credit balance is `{new_credits}`.")
 
     await update.effective_message.reply_text(
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
+
+
+
 
 from telegram.constants import ParseMode
 
