@@ -1062,7 +1062,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         api_card = data.get("card", cc_normalized)
         
-        # FIX: Handle the new nested dictionary structure for 'result'
+        # Handle the new nested dictionary structure for 'result'
         result_data = data.get("result")
         if isinstance(result_data, dict) and "status" in result_data:
             raw_result = result_data["status"]
@@ -1074,15 +1074,18 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             raw_result = "Declined"
         
         # Format result using the now-string `raw_result`
-        api_result = await charge_resp(raw_result)
-        api_result_clean = api_result.replace("✅", "").replace("❌", "").strip()
+        # FIX: charge_resp returns a dictionary, so we need to get the 'status' from it.
+        api_result_dict = await charge_resp(raw_result)
+        api_result_string = api_result_dict.get("status", "Unknown") # Get the status string from the dictionary
+        
+        api_result_clean = api_result_string.replace("✅", "").replace("❌", "").strip()
 
         if "Approved" in api_result_clean or "Payment Method Successfully Added" in api_result_clean:
             header = "❖❖❖[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ]❖❖❖"
         elif "CCN Live" in api_result_clean:
             header = "❖❖❖[ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ]❖❖❖"
         elif "3D Challenge" in api_result_clean or "3D Required" in api_result_clean:
-            header = "❖❖❖[ 3𝗗 𝗖𝗛𝗔�𝗟𝗘𝗡𝗚𝗘 ]❖❖❖"
+            header = "❖❖❖[ 3𝗗 𝗖𝗛𝗔ll𝗘𝗡𝗚𝗘 ]❖❖❖"
         else:
             header = "❖❖❖[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ]❖❖❖"
 
@@ -1166,6 +1169,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+
 
 
 
