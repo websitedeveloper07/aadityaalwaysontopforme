@@ -1136,7 +1136,51 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# Background card checker for /mchk without headers
+import re
+import time
+import asyncio
+import aiohttp
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
+
+from db import get_user, update_user
+from defs import charge_resp
+
+OWNER_ID = 8438505794  # Replace with your Telegram ID
+user_cooldowns = {}
+
+# -----------------------------
+# Cooldown check
+# -----------------------------
+async def enforce_cooldown(user_id: int, update: Update) -> bool:
+    cooldown = 5
+    now = time.time()
+    last = user_cooldowns.get(user_id, 0)
+    if now - last < cooldown:
+        remaining = round(cooldown - (now - last), 2)
+        await update.effective_message.reply_text(
+            escape_markdown(f"⏳ Cooldown active. Wait {remaining} seconds.", version=2),
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+# -----------------------------
+# Deduct credit
+# -----------------------------
+async def consume_credit(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        await update_user(user_id, credits=user_data["credits"] - 1)
+        return True
+    return False
+
+# -----------------------------
+# Background card checker for /mchk
+# -----------------------------
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = ccn_live_count = three_ds_count = declined_count = error_count = checked_count = 0
     results = []
@@ -1238,6 +1282,65 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     await processing_msg.edit_text(
         escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+# -----------------------------
+# /mchk command
+# -----------------------------
+async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
+        await update.effective_message.reply_text(
+            "❌ Private access blocked.\nContact @YourOwnerUsername to buy a subscription."
+        )
+        return
+
+    user = update.effective_user
+    user_id = user.id
+
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    raw_cards = ""
+    if context.args:
+        raw_cards = ' '.join(context.args)
+    elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
+        raw_cards = update.effective_message.reply_to_message.text
+
+    if not raw_cards:
+        await update.effective_message.reply_text("⚠️ Usage: /mchk number|mm|yy|cvv")
+        return
+
+    card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
+    card_lines = card_pattern.findall(raw_cards)
+
+    if not card_lines:
+        await update.effective_message.reply_text(
+            "⚠️ Please provide at least one card in the format: number|mm|yy|cvv."
+        )
+        return
+
+    cards_to_check = card_lines[:10]
+    if len(card_lines) > 10:
+        await update.effective_message.reply_text(
+            "⚠️ Only 10 cards are allowed. Checking the first 10 now."
+        )
+
+    user_data = await get_user(user_id)
+    if not user_data:
+        await update.effective_message.reply_text("❌ Could not fetch your user data. Try again later.")
+        return
+
+    if user_data.get('credits', 0) <= 0:
+        await update.effective_message.reply_text(
+            "❌ You have no credits left. Please buy a plan to get more credits."
+        )
+        return
+
+    processing_msg = await update.effective_message.reply_text("🔎Processing cards...")
+    start_time = time.time()
+
+    asyncio.create_task(
+        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
 
 
