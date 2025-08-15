@@ -1,105 +1,95 @@
 import asyncio
+import json
 
 async def charge_resp(result):
     """
-    Parses Stripe/API response and returns concise, meaningful messages.
-    Categories:
-    - Approved ✅
-    - CCN Live ❎
-    - 3D Challenge ❎
-    - Declines / Errors ❌
-    """
+    Parses Stripe response and returns a simplified message for API.
 
+    Categories:
+    - Approved
+    - CCN Live
+    - 3D / Auth Challenge
+    - Declines/Errors
+    """
     try:
+        # Ensure result is string
         if not isinstance(result, str):
-            result = str(result).lower()
-        else:
-            result = result.lower()
+            result = json.dumps(result)
+
+        result_lower = result.lower()
 
         # -------------------------
-        # Approved
+        # Approved responses
         # -------------------------
         approved_keywords = [
-            '{"status":"succeeded"',
+            '"status":"succeeded"',
             '"status":"suceeded"',
             "payment method successfully added"
         ]
-        if any(k in result for k in approved_keywords):
-            return "Approved ✅"
+        for keyword in approved_keywords:
+            if keyword in result_lower:
+                return "Approved"
 
         # -------------------------
-        # CCN Live
+        # CCN Live responses
         # -------------------------
         ccn_live_keys = [
             "incorrect_cvc",
-            "security code is incorrect",
-            "your card's security code is incorrect"
+            "security code is incorrect"
         ]
-        if any(k in result for k in ccn_live_keys):
-            return "CCN Live ❎"
+        for key in ccn_live_keys:
+            if key in result_lower:
+                return "CCN Live"
 
         # -------------------------
-        # 3D / Auth Challenge
+        # 3D / Authentication Challenge
         # -------------------------
         auth_keys = [
             "three_d_secure_redirect",
             "card_error_authentication_required",
-            "stripe_3ds2_fingerprint",
-            "wcpay-confirm-pi:"
+            "stripe_3ds2_fingerprint"
         ]
-        if any(k in result for k in auth_keys):
-            return "3D Challenge ❎"
-
-        # -------------------------
-        # CVV Live
-        # -------------------------
-        if '"cvc_check": "pass"' in result:
-            return "CVV Live ❎"
+        for key in auth_keys:
+            if key in result_lower:
+                return "3D / Auth Challenge"
 
         # -------------------------
         # Declines / Errors
         # -------------------------
         decline_map = {
-            "insufficient funds": "Insufficient Funds ❌",
-            "transaction_not_allowed": "Card Doesn't Support Purchase ❌",
-            "does not support this type of purchase": "Card Doesn't Support Purchase ❌",
-            "generic_decline": "Card Declined ❌",
-            "your card was declined": "Card Declined ❌",
-            "do not honor": "Do Not Honor ❌",
-            "fraudulent": "Fraudulent ❌",
-            "setup_intent_authentication_failure": "Auth Failure ❌",
-            "invalid cvc": "Invalid CVC ❌",
-            "stolen card": "Stolen Card ❌",
-            "lost_card": "Lost Card ❌",
-            "pickup_card": "Pickup Card ❌",
-            "pickup": "Pickup Card ❌",
-            "restricted_card": "Restricted Card ❌",
-            "card velocity exceeded": "Card Velocity Limit ❌",
-            "incorrect_number": "Incorrect Card Number ❌",
-            "your card number is incorrect": "Incorrect Card Number ❌",
-            "expired_card": "Expired Card ❌",
-            "your card has expired": "Expired Card ❌",
-            "card is not supported": "Card Not Supported ❌",
-            "invalid account": "Dead Card ❌",
-            "invalid api key": "API Key Error ❌",
-            "testmode_charges_only": "Test Mode Only ❌",
-            "api_key_expired": "API Key Expired ❌",
-            "please update bearer token": "Token Expired ❌",
-            "your account cannot currently make live charges": "Account Cannot Charge ❌",
-            "intent_confirmation_challenge": "Captcha ❌",
-            "Your card's expiration year is invalid.": "Expiration Year Invalid ❌",
-            "invalid_expiry_month": "Expiration Month Invalid ❌",
-            "Your card's expiration month is invalid.": "Expiration Month Invalid ❌"
+            "insufficient funds": "Insufficient Funds",
+            "transaction_not_allowed": "Card Doesn't Support Purchase",
+            "does not support this type of purchase": "Card Doesn't Support Purchase",
+            "expired_card": "Expired Card",
+            "your card has expired": "Expired Card",
+            "stolen_card": "Stolen Card",
+            "lost_card": "Lost Card",
+            "pickup_card": "Pickup Card",
+            "incorrect_number": "Incorrect Card Number",
+            "your card number is incorrect": "Incorrect Card Number",
+            "invalid_cvc": "Invalid CVC",
+            "generic_decline": "Card Declined",
+            "your card was declined": "Card Declined",
+            "do not honor": "Card Declined",
+            "fraudulent": "Fraudulent",
+            "setup_intent_authentication_failure": "Authentication Failure",
+            "invalid account": "Dead Card",
+            "invalid api key": "Stripe API Key Error",
+            "testmode_charges_only": "Stripe API Key Error",
+            "api_key_expired": "Stripe API Key Error",
+            "please update bearer token": "Token Expired Admin Notified",
+            "pickup": "Pickup Card",
+            "restricted_card": "Restricted Card",
+            "card velocity exceeded": "Card Velocity Limit"
         }
-
         for key, message in decline_map.items():
-            if key in result:
+            if key in result_lower:
                 return message
 
         # -------------------------
-        # Fallback
+        # Fallback: Unknown response
         # -------------------------
-        return "Declined ❌"
+        return result + " - Declined"
 
-    except Exception:
-        return "Error ❌"
+    except Exception as e:
+        return f"Error parsing response: {str(e)}"
