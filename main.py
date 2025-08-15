@@ -693,6 +693,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Extracts credit cards from an uploaded text file, or from a file
     in a replied-to message, with a maximum limit of 100 cards.
+    A single credit is deducted per command use.
     """
     if not await check_authorization(update, context):
         return
@@ -701,6 +702,15 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
+    # Fetch user data to check credits
+    user_data = await get_user(user.id)
+    # Check for at least 1 credit to run the command
+    if not user_data or user_data.get('credits', 0) <= 0:
+        return await update.effective_message.reply_text(
+            escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
     # Check for a replied-to message with a document
     if update.effective_message.reply_to_message and update.effective_message.reply_to_message.document:
         document = update.effective_message.reply_to_message.document
@@ -708,7 +718,6 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif update.effective_message.document:
         document = update.effective_message.document
     else:
-        # Corrected: Removed manual backslashes
         return await update.effective_message.reply_text(
             escape_markdown_v2("❌ Please reply to a txt file with the command or attach a txt file with the command."),
             parse_mode=ParseMode.MARKDOWN_V2
@@ -717,6 +726,9 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check if the file is a text file
     if document.mime_type != 'text/plain':
         return await update.effective_message.reply_text(escape_markdown_v2("❌ The file must be a text file (.txt)."), parse_mode=ParseMode.MARKDOWN_V2)
+
+    # Deduct a single credit for the command
+    await update_user(user.id, credits=user_data['credits'] - 1)
 
     # Get the file and download its content
     try:
@@ -734,7 +746,6 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Check if the number of cards exceeds the 100 limit
     if len(found_cards) > 100:
-        # Corrected: Removed manual backslashes
         return await update.effective_message.reply_text(
             escape_markdown_v2("❌ The maximum number of cards allowed to open is 100. Please upload a smaller file."),
             parse_mode=ParseMode.MARKDOWN_V2
@@ -748,7 +759,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Create the stylish box for the caption/message
     stylish_card_box = (
-        f"💳 𝐂𝐀𝐑𝐃𝐕𝐀𝐔𝐋𝐓 𝐗 𝐂𝐎𝐋𝐋𝐄𝐂𝐓𝐈𝐎𝐍 💳\n\n"
+        f"💳 𝐂𝐀𝐑𝐃𝐕𝐀𝐔𝐋𝐓 𝐗 💳\n\n"
         f"╭━━━━━━━━━━━━━━━━━━⬣\n"
         f"┣ ❏ 𝐅𝐨𝐮𝐧𝐝 *{len(found_cards)}* 𝐂𝐚𝐫𝐝𝐬\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣\n"
@@ -776,6 +787,65 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+import re
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+import io
+from telegram.helpers import escape_markdown as escape_markdown_v2
+
+async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Adds a specified number of credits to a user's account, restricted to a specific owner."""
+    # Owner ID is hardcoded
+    OWNER_ID = 8438505794
+
+    # Check if the user is the owner
+    if update.effective_user.id != OWNER_ID:
+        return await update.effective_message.reply_text(
+            escape_markdown_v2("❌ You are not allowed to use this command\\."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Check for correct number of arguments
+    if len(context.args) != 2:
+        return await update.effective_message.reply_text(
+            escape_markdown_v2("❌ Invalid command usage\\. Correct usage: `/adcr [user_id] [no. of credits]`"),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    try:
+        user_id = int(context.args[0])
+        credits_to_add = int(context.args[1])
+
+        if credits_to_add <= 0:
+            return await update.effective_message.reply_text(
+                escape_markdown_v2("❌ The number of credits must be a positive integer\\."),
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+    except ValueError:
+        return await update.effective_message.reply_text(
+            escape_markdown_v2("❌ Both the user ID and number of credits must be valid numbers\\."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Fetch the target user's data
+    target_user_data = await get_user(user_id)
+
+    if not target_user_data:
+        return await update.effective_message.reply_text(
+            escape_markdown_v2(f"❌ User with ID `{user_id}` not found in the database\\."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Update the user's credits
+    new_credits = target_user_data.get('credits', 0) + credits_to_add
+    await update_user(user_id, credits=new_credits)
+
+    # Send a confirmation message
+    await update.effective_message.reply_text(
+        escape_markdown_v2(f"✅ Successfully added `{credits_to_add}` credits to user `{user_id}`\\. Their new credit balance is `{new_credits}`\\."),
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
 
 from telegram.constants import ParseMode
 
@@ -2053,6 +2123,7 @@ def main():
     application.add_handler(CommandHandler("mchk", mchk_command))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("open", open_command))
+    application.add_handler(CommandHandler("adcr", adcr_command))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("fk", fk_command))
     application.add_handler(CommandHandler("fl", fl_command))
