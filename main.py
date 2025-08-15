@@ -987,15 +987,16 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 import asyncio
+import time
 from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
+import aiohttp
 
 # Import your database functions
 from db import get_user, update_user
-
 
 # Cooldown check
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
@@ -1007,7 +1008,7 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     if now - last_run < cooldown_seconds:
         await update.effective_message.reply_text(
             escape_markdown(
-                f"⏳ Cooldown active. Wait {round(cooldown_seconds - (now - last_run),2)}s.",
+                f"⏳ Cooldown active. Wait {round(cooldown_seconds - (now - last_run), 2)}s.",
                 version=2
             ),
             parse_mode=ParseMode.MARKDOWN_V2
@@ -1024,9 +1025,8 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# Get BIN info
+# Get BIN info (simulated)
 def get_bin_details_sync(bin_number: str) -> dict:
-    # Simulated BIN lookup
     time.sleep(1.5)
     return {
         "scheme": "Visa",
@@ -1038,14 +1038,14 @@ def get_bin_details_sync(bin_number: str) -> dict:
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     start_time = time.time()
     try:
-        # BIN lookup remains the same
+        # BIN lookup
         bin_number = parts[0][:6]
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
         brand = (bin_details.get("scheme") or "N/A").upper()
         issuer = (bin_details.get("type") or "N/A").upper()
         country_name = (bin_details.get("country_name") or "N/A").upper()
 
-        # New API URL
+        # API URL
         api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
         async with aiohttp.ClientSession() as session:
@@ -1054,9 +1054,9 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
 
-        # Assuming the new API returns keys: status, response
-        api_status = (data.get("status") or "Unknown").title()
-        api_response = data.get("response") or "N/A"
+        # Parse API response
+        api_result = data.get("result", "Unknown")
+        api_status = "Approved" if "Approved" in api_result else "Declined" if "Declined" in api_result else "Unknown"
         time_taken = round(time.time() - start_time, 2)
 
         if api_status.lower() == "approved":
@@ -1066,7 +1066,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         else:
             header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
 
-        formatted_response = f"_{escape_markdown(api_response, version=2)}_"
+        formatted_response = f"_{escape_markdown(api_result, version=2)}_"
 
         final_text = (
             f"{header}\n"
@@ -1141,9 +1141,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-    # Run check in background
-    asyncio.create_task(background_check(cc_normalized, user, user_data, processing_msg))
-
+    # Run check in background (pass all required arguments)
+    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
 import time
