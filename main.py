@@ -996,7 +996,6 @@ from telegram.ext import ContextTypes
 import aiohttp
 
 from db import get_user, update_user
-from defs import charge_resp  # Import your charge_resp from defs.py
 
 # Cooldown dictionary
 user_cooldowns = {}
