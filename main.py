@@ -1064,7 +1064,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         
         time_taken = round(time.time() - start_time, 2)
 
-        # Updated header logic to use a stylish box format
+        # Updated header logic to use the original style with proper bolding
         status_text = api_status.upper()
         if api_status.lower() == "approved ✅":
             status_text = "APPROVED ✅"
@@ -1073,12 +1073,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         elif api_status.lower() == "ccn live ❎":
             status_text = "CCN LIVE ❎"
             
-        escaped_status = escape_markdown(status_text, version=2)
-        line_length = len(status_text) + 2
-        top_line = "┌" + "─" * line_length + "┐"
-        middle_line = f"│ {escaped_status} │"
-        bottom_line = "└" + "─" * line_length + "┘"
-        header = f"{top_line}\n{middle_line}\n{bottom_line}"
+        header = f"❖❖❖\\[ **{escape_markdown(status_text, version=2)}** \\]❖❖❖"
 
         # Formatted response from API status
         formatted_response = f"_{escape_markdown(api_status, version=2)}_"
@@ -1165,11 +1160,11 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send processing
     processing_text = (
-        "╔═════[ 𝐏𝐑𝐎𝐂𝐄𝐒𝐒𝐈𝐍𝐆 ]═════╗\n"
+        "╔════[ 𝐏𝐑𝐎𝐂𝐄𝐒𝐒𝐈𝐍𝐆 ]═══╗\n"
         f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
-        "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
-        "╚═════════════════════════════╝"
+        "• 𝙎𝘁𝗮𝘁𝘂𝘀 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
+        "╚══════════════════════╝"
     )
     processing_msg = await update.effective_message.reply_text(
         processing_text,
@@ -1178,7 +1173,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
-
 
 
 import time
