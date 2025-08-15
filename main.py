@@ -1218,59 +1218,62 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             error_count += 1
             break
 
-# New API URL
-api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
+        # New API URL
+        api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
-try:
-    async with aiohttp.ClientSession() as session:
-        async with session.get(api_url, timeout=25) as resp:
-            if resp.status != 200:
-                raise Exception(f"HTTP {resp.status}")
-            data = await resp.json()
-
-    # Parse API response inside the try block
-    api_status = (data.get("status") or "Unknown").title()
-    api_response = data.get("response") or "N/A"
-
-except Exception as e:
-    results.append(
-        f"❌ API Error for card `{escape_markdown(raw, version=2)}`: "
-        f"{escape_markdown(str(e), version=2)}"
-    )
-    error_count += 1
-    checked_count += 1
-    continue
-
-
-        emoji = "❓"
-        if api_status.lower() == "approved":
-            approved_count += 1
-            emoji = "✅"
-        elif api_status.lower() == "declined":
-            declined_count += 1
-            emoji = "❌"
-        else:
-            error_count += 1
-        checked_count += 1
-
-        card_result = (
-            f"`{escape_markdown(cc_normalized, version=2)}`\n"
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
-        )
-        results.append(card_result)
-
-        current_time_taken = round(time.time() - start_time, 2)
-        current_summary = (
-            f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-            f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-            f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-            f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-            f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-            f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
-            f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-            f"────────✘────────"
-        )
         try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, timeout=25) as resp:
+                    if resp.status != 200:
+                        raise Exception(f"HTTP {resp.status}")
+                    data = await resp.json()
+
+            # Parse API response inside the try block
+            api_status = (data.get("status") or "Unknown").title()
+            api_response = data.get("response") or "N/A"
+
+            # Determine emoji based on status
+            emoji = "❓"
+            if api_status.lower() == "approved":
+                approved_count += 1
+                emoji = "✅"
+            elif api_status.lower() == "declined":
+                declined_count += 1
+                emoji = "❌"
+            else:
+                error_count += 1
+
+            checked_count += 1
+
+            # Prepare card result
+            card_result = (
+                f"`{escape_markdown(cc_normalized, version=2)}`\n"
+                f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
+            )
+            results.append(card_result)
+
+        except Exception as e:
+            results.append(
+                f"❌ API Error for card `{escape_markdown(raw, version=2)}`: "
+                f"{escape_markdown(str(e), version=2)}"
+            )
+            error_count += 1
+            checked_count += 1
+            continue
+
+        # Update processing message (optional live update)
+        try:
+            current_time_taken = round(time.time() - start_time, 2)
+            current_summary = (
+                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+                f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+                f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+                f"────────✘────────"
+            )
             await processing_msg.edit_text(
                 escape_markdown(current_summary, version=2) + "\n\n" + "\n────────✘────────\n".join(results),
                 parse_mode=ParseMode.MARKDOWN_V2
