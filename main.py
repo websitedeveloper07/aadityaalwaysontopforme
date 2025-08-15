@@ -563,10 +563,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Get input
     if not context.args:
-        # Corrected and simplified usage message
+        # Corrected usage message with proper escaping
         return await update.effective_message.reply_text(
-            "❌ Please provide BIN or sequence.\n"
-            "Usage:\n`/gen {bin}` (for default 10 cards)\n`/gen {bin} {no. of ccs}`",
+            "❌ Please provide BIN or sequence\\.\n"
+            "Usage:\n`/gen {bin}` \\(for default 10 cards\\)\n`/gen {bin} {no\\. of ccs}`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     
@@ -679,6 +679,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+
 import re
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -690,6 +691,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Extracts credit cards from an uploaded text file, or from a file
     in a replied-to message, with a maximum limit of 500 cards.
+    If the output is too long, it is sent as a document.
     """
     if not await check_authorization(update, context):
         return
@@ -732,34 +734,44 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     initial_card_count = len(found_cards)
     if initial_card_count > 500:
         found_cards = found_cards[:500]
-        # This line is corrected: removed the manual backslashes
         limit_message = escape_markdown_v2(f"\n(‼️ Only the first 500 cards have been processed.)\n")
     else:
         limit_message = ""
 
     if not found_cards:
-        return await update.effective_message.reply_text("❌ No valid cards were found in the file\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text(escape_markdown_v2("❌ No valid cards were found in the file."), parse_mode=ParseMode.MARKDOWN_V2)
 
     # Format the output message with count and monospace
     cards_list = "\n".join([f"`{card}`" for card in found_cards])
     
-    # Create the stylish box for the cards
+    # Create the stylish box for the caption/message
     stylish_card_box = (
         f"💳 𝐂𝐀𝐑𝐃𝐕𝐀𝐔𝐋𝐓 𝐗 𝐂𝐎𝐋𝐋𝐄𝐂𝐓𝐈𝐎𝐍 💳\n\n"
         f"╭━━━━━━━━━━━━━━━━━━⬣\n"
         f"┣ ❏ 𝐅𝐨𝐮𝐧𝐝 *{len(found_cards)}* 𝐂𝐚𝐫𝐝𝐬\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣\n"
-        f"{limit_message}"
-        f"\n{cards_list}"
     )
-
-    final_message = f"{stylish_card_box}"
     
-    await update.effective_message.reply_text(
-        final_message,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
-
+    # Combine the box and the list of cards
+    final_message = f"{stylish_card_box}{limit_message}\n{cards_list}"
+    
+    # Check if the message is too long to be sent normally
+    # A safe limit, as Telegram's is 4096
+    if len(final_message) > 4000:
+        file_content = "\n".join(found_cards)
+        file = io.BytesIO(file_content.encode('utf-8'))
+        file.name = f"extracted_cards.txt"
+        
+        await update.effective_message.reply_document(
+            document=file,
+            caption=f"{stylish_card_box}{limit_message}",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    else:
+        await update.effective_message.reply_text(
+            final_message,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
 
 from telegram.constants import ParseMode
