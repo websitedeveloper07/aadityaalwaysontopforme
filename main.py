@@ -1158,7 +1158,6 @@ from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
 from db import get_user, update_user
-from defs import charge_resp  # import your defs.py parser
 
 OWNER_ID = 8438505794  # Replace with your Telegram ID
 user_cooldowns = {}
