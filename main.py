@@ -1039,13 +1039,9 @@ def get_bin_details_sync(bin_number: str) -> dict:
 
 # Background processing
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    """
-    Handles the background processing for the /chk command.
-    It performs a BIN lookup, calls the external API, and formats the final message.
-    """
     start_time = time.time()
     try:
-        # BIN lookup in separate thread to avoid blocking the event loop
+        # BIN lookup
         bin_number = parts[0][:6]
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
         brand = (bin_details.get("scheme") or "N/A").upper()
@@ -1061,25 +1057,18 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                 data = await resp.json()
 
         api_card = data.get("card", cc_normalized)
-        
-        # Handle the new nested dictionary structure for 'result'
-        result_data = data.get("result")
-        if isinstance(result_data, dict) and "status" in result_data:
-            raw_result = result_data["status"]
-        elif isinstance(result_data, str):
-            # Fallback for cases where 'result' might still be a string
-            raw_result = result_data
+
+        # ✅ Extract status string safely from dict
+        result_data = data.get("result", {})
+        if isinstance(result_data, dict):
+            api_result_string = result_data.get("status", "Unknown")
         else:
-            # Default to a generic declined message if the result is unexpected
-            raw_result = "Declined"
-        
-        # Format result using the now-string `raw_result`
-        api_result_dict = await charge_resp(raw_result)
-        api_result_string = api_result_dict.get("status", "Unknown") 
-        
-        # Clean the status string for display
+            api_result_string = str(result_data)
+
+        # Clean for display
         api_result_clean = api_result_string.replace("✅", "").replace("❌", "").replace("❎", "").strip()
 
+        # Headers
         if "Approved" in api_result_clean or "Payment Method Successfully Added" in api_result_clean:
             header = "❖❖❖[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ]❖❖❖"
         elif "CCN Live" in api_result_clean:
@@ -1091,11 +1080,10 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         time_taken = round(time.time() - start_time, 2)
 
-        # Final message with correct formatting and emojis
         final_text = (
             f"{header}\n"
             f"✘ Card         ➜ `{api_card}`\n"
-            "✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘁𝗵\n"
+            "✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
             f"✘ Result       ➜ _{escape_markdown(api_result_clean, version=2)}_\n"
             "――――――――――――――――\n"
             f"✘ Brand        ➜ {escape_markdown(brand, version=2)}\n"
@@ -1115,6 +1103,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"❌ API Error: {escape_markdown(str(e), version=2)}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
 # /chk command handler
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
