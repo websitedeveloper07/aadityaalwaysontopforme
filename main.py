@@ -432,10 +432,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
         "┣ ❏ `/start` \\- Welcome message\n"
         "┣ ❏ `/help` \\- Shows this help message\n"
-        "┣ ❏ `/gen <bin>` \\- Generate cards from BIN\n"
+        "┣ ❏ `/gen [bin] [no\\. of cards]` \\- Generate cards from BIN\n"
         "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
         "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
         "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
+        "┣ ❏ `/open` \\- Extracts cards from a text file\n"
         "┣ ❏ `/status` \\- Bot system status info\n"
         "┣ ❏ `/credits` \\- Check your remaining credits\n"
         "┣ ❏ `/info` \\- Shows your user info\n"
@@ -453,7 +454,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tools_message = (
         "*✦ All Commands ✦*\n\n"
         "All commands are live, `Online`, and have `100%` health\\.\n\n"
-        "• `/gen <BIN>` \\- Generates 10 cards\n"
+        "• `/gen [bin] [no\\. of cards]` \\- Generates cards from BIN\n"
+        "• `/open` \\- Extracts cards from a text file\n"
         "• `/fk <country>` \\- Generates fake info\n"
         "• `/fl <dump>` \\- Extracts cards from dumps\n"
         "• `/credits` \\- Shows your credits\n"
@@ -802,14 +804,14 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check if the user is the owner
     if update.effective_user.id != OWNER_ID:
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ You are not allowed to use this command\\."),
+            escape_markdown_v2("❌ You are not allowed to use this command."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     # Check for correct number of arguments
     if len(context.args) != 2:
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ Invalid command usage\\. Correct usage: `/adcr [user_id] [no. of credits]`"),
+            escape_markdown_v2("❌ Invalid command usage. Correct usage: `/adcr [user_id] [no. of credits]`"),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -819,12 +821,12 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if credits_to_add <= 0:
             return await update.effective_message.reply_text(
-                escape_markdown_v2("❌ The number of credits must be a positive integer\\."),
+                escape_markdown_v2("❌ The number of credits must be a positive integer."),
                 parse_mode=ParseMode.MARKDOWN_V2
             )
     except ValueError:
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ Both the user ID and number of credits must be valid numbers\\."),
+            escape_markdown_v2("❌ Both the user ID and number of credits must be valid numbers."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -833,7 +835,7 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not target_user_data:
         return await update.effective_message.reply_text(
-            escape_markdown_v2(f"❌ User with ID `{user_id}` not found in the database\\."),
+            escape_markdown_v2(f"❌ User with ID `{user_id}` not found in the database."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -841,9 +843,16 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     new_credits = target_user_data.get('credits', 0) + credits_to_add
     await update_user(user_id, credits=new_credits)
 
-    # Send a confirmation message
+    # Escape variables individually for proper monospace formatting
+    escaped_credits_to_add = escape_markdown_v2(str(credits_to_add))
+    escaped_user_id = escape_markdown_v2(str(user_id))
+    escaped_new_credits = escape_markdown_v2(str(new_credits))
+
+    # Send a confirmation message with proper monospace formatting
+    final_message = f"✅ Successfully added `{escaped_credits_to_add}` credits to user `{escaped_user_id}`. Their new credit balance is `{escaped_new_credits}`."
+
     await update.effective_message.reply_text(
-        escape_markdown_v2(f"✅ Successfully added `{credits_to_add}` credits to user `{user_id}`\\. Their new credit balance is `{new_credits}`\\."),
+        final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
