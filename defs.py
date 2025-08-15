@@ -51,7 +51,8 @@ async def charge_resp(result):
             return output
 
         # ❌ CARD TYPE / PURCHASE SUPPORT
-        if "transaction_not_allowed" in result_lower or "does not support this type of purchase" in result_lower:
+        # FIX: Update the phrase to match the new API response
+        if "transaction_not_allowed" in result_lower or "card doesn't support purchase" in result_lower:
             output["status"] = "Card Doesn't Support Purchase ❎"
             return output
 
@@ -77,7 +78,7 @@ async def charge_resp(result):
             output["status"] = "Dead Card ❌"
             return output
 
-        # ❌ 3D SECURE / CHALLENGE REQUIRED
+        # 3D SECURE / CHALLENGE REQUIRED
         if "three_d_secure_redirect" in result_lower or \
            "card_error_authentication_required" in result_lower or \
            "stripe_3ds2_fingerprint" in result_lower:
