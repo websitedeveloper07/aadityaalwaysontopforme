@@ -8,7 +8,7 @@ async def charge_resp(result):
             '"status":"succeeded"' in result
         ):
             response = "Payment method successfully added ✅"
-
+            
         elif "insufficient funds" in result or "card has insufficient funds." in result:
             response = "Insufficient Funds ❎"
         elif "Your card has insufficient funds." in result:
@@ -46,7 +46,7 @@ async def charge_resp(result):
             response = "Do Not Honor ❌"
         elif "fraudulent" in result:
             response = "Fraudulent ❌ "
-        elif "setup_intent_authentication_failure" in result:
+        elif "setup_intent_authentication_failure" in result: 
             response = "setup_intent_authentication_failure ❌"
         elif "invalid cvc" in result:
             response = "invalid_cvc ❌"
@@ -58,28 +58,28 @@ async def charge_resp(result):
             response = "Pickup Card ❌"
         elif "incorrect_number" in result:
             response = "Incorrect Card Number ❌"
-        elif "Your card has expired." in result or "expired_card" in result:
+        elif "Your card has expired." in result or "expired_card" in result: 
             response = "Expired Card ❌"
-        elif "intent_confirmation_challenge" in result:
+        elif "intent_confirmation_challenge" in result: 
             response = "Captcha ❌"
-        elif "Your card number is incorrect." in result:
+        elif "Your card number is incorrect." in result: 
             response = "Incorrect Card Number ❌"
-        elif (
-            "Your card's expiration year is invalid." in result
+        elif ( 
+            "Your card's expiration year is invalid." in result 
               or "Your card's expiration year is invalid." in result
         ):
             response = "Expiration Year Invalid ❌"
         elif (
-            "Your card's expiration month is invalid." in result
+            "Your card's expiration month is invalid." in result 
             or "invalid_expiry_month" in result
         ):
             response = "Expiration Month Invalid ❌"
         elif "card is not supported." in result:
             response = "Card Not Supported ❌"
-        elif "invalid account" in result:
+        elif "invalid account" in result: 
             response = "Dead Card ❌"
         elif (
-            "Invalid API Key provided" in result
+            "Invalid API Key provided" in result 
             or "testmode_charges_only" in result
             or "api_key_expired" in result
             or "Your account cannot currently make live charges." in result
@@ -95,7 +95,7 @@ async def charge_resp(result):
                 f.write(f"{result}\n")
 
         return response
-
+           
     except Exception as e:
         response = f"{str(e)} ❌"
         return response
@@ -140,3 +140,10 @@ async def one_click_3d_check(json, session):
         await session.get(three_ds_method_url)
     except Exception as e:
         pass
+    
+
+
+
+
+
+
