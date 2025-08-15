@@ -708,14 +708,15 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif update.effective_message.document:
         document = update.effective_message.document
     else:
+        # Corrected: Removed manual backslashes
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ Please reply to a txt file with the command or attach a txt file with the command\."),
+            escape_markdown_v2("❌ Please reply to a txt file with the command or attach a txt file with the command."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     # Check if the file is a text file
     if document.mime_type != 'text/plain':
-        return await update.effective_message.reply_text(escape_markdown_v2("❌ The file must be a text file \\(\\.txt\\)\\."), parse_mode=ParseMode.MARKDOWN_V2)
+        return await update.effective_message.reply_text(escape_markdown_v2("❌ The file must be a text file (.txt)."), parse_mode=ParseMode.MARKDOWN_V2)
 
     # Get the file and download its content
     try:
@@ -733,8 +734,9 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Check if the number of cards exceeds the 100 limit
     if len(found_cards) > 100:
+        # Corrected: Removed manual backslashes
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ The maximum number of cards allowed to open is 100\\. Please upload a smaller file\\."),
+            escape_markdown_v2("❌ The maximum number of cards allowed to open is 100. Please upload a smaller file."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -772,8 +774,6 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
-
 
 
 
