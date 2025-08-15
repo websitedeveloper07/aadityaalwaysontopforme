@@ -1025,8 +1025,11 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 def get_bin_details_sync(bin_number: str) -> dict:
-    # Simulated BIN lookup
-    time.sleep(1.5)
+    """
+    Simulated BIN lookup. In a real-world scenario, this would be an API call.
+    It is wrapped in asyncio.to_thread to run in a separate thread.
+    """
+    time.sleep(1.5)  # Simulate API delay
     return {
         "scheme": "Visa",
         "type": "Credit",
@@ -1061,15 +1064,16 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         
         time_taken = round(time.time() - start_time, 2)
 
+        # Updated header logic to use only bold formatting
         if api_status.lower() == "approved ✅":
-            header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
+            header = "*APPROVED ✅*"
         elif api_status.lower() == "declined ❌":
-            header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
+            header = "*DECLINED ❌*"
         elif api_status.lower() == "ccn live ❎":
-            header = "❖❖❖\\[ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎ \\]❖❖❖"
+            header = "*CCN LIVE ❎*"
         else:
             # Use the original api_status which retains emojis and formatting
-            header = f"❖❖❖\\[ {escape_markdown(api_status, version=2).upper()} \\]❖❖❖"
+            header = f"*{escape_markdown(api_status, version=2).upper()}*"
 
         # Formatted response from API status
         formatted_response = f"_{escape_markdown(api_status, version=2)}_"
@@ -1169,6 +1173,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+
 
 
 
