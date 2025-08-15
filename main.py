@@ -888,7 +888,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not bin_input or not bin_input.isdigit() or len(bin_input) < 6:
         return await update.effective_message.reply_text(
-            "❌ Please provide a 6\\-digit BIN\\. Usage: /bin [bin] or \\.bin [bin]\\.",
+            "❌ Please provide a 6\\-digit BIN\\. ",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
