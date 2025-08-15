@@ -555,6 +555,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_data = await get_user(user.id)
+    # Check for at least 1 credit to run the command
     if not user_data or user_data.get('credits', 0) <= 0:
         return await update.effective_message.reply_text(
             escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
@@ -589,16 +590,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
     else:
         num_cards = 10
-
-    # Check for credits
-    if user_data.get('credits', 0) < num_cards:
-        return await update.effective_message.reply_text(
-            escape_markdown_v2(
-                f"❌ You don't have enough credits to generate {num_cards} cards. You have {user_data.get('credits', 0)} credits."
-            ),
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
+    
     # Send a processing message
     processing_message = await update.effective_message.reply_text("⏳ Generating cards, please wait...")
 
@@ -610,7 +602,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     extra_cvv = parts[3] if len(parts) > 3 and parts[3].isdigit() else None
 
     if not card_base.isdigit() or len(card_base) < 6:
-        # Before returning, edit the processing message to reflect the error
         await context.bot.edit_message_text(
             chat_id=update.effective_chat.id,
             message_id=processing_message.message_id,
@@ -652,8 +643,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
 
-    # Deduct credits based on the number of cards actually generated
-    await update_user(user.id, credits=user_data['credits'] - len(cards))
+    # Deduct a single credit for the command
+    await update_user(user.id, credits=user_data['credits'] - 1)
 
     # Create the BIN info block with escaped values
     escaped_bin_info = (
@@ -670,7 +661,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file = io.BytesIO(file_content.encode('utf-8'))
         file.name = f"generated_cards_{card_base}.txt"
         
-        # Corrected: Delete the processing message and send a new message with the document and caption
+        # Delete the processing message and send a new document
         await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=processing_message.message_id)
         
         await update.effective_message.reply_document(
@@ -682,14 +673,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cards_list = "\n".join(cards)
         final_message = f"*Generated {len(cards)} Cards 💳*\n\n{cards_list}\n\n{escaped_bin_info}"
         
-        # Corrected: Edit the processing message with the final text
+        # Edit the processing message with the final text
         await context.bot.edit_message_text(
             chat_id=update.effective_chat.id,
             message_id=processing_message.message_id,
             text=final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
 
 
 import re
@@ -719,7 +709,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         document = update.effective_message.document
     else:
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ Please reply to a \\.txt file with the command or attach a \\.txt file with the command\\."),
+            escape_markdown_v2("❌ Please reply to a txt file with the command or attach a txt file with the command\."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
