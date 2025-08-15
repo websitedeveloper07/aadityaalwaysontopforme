@@ -51,7 +51,6 @@ async def charge_resp(result):
             return output
 
         # ❌ CARD TYPE / PURCHASE SUPPORT
-        # FIX: Update the phrase to match the new API response
         if "transaction_not_allowed" in result_lower or "card doesn't support purchase" in result_lower:
             output["status"] = "Card Doesn't Support Purchase ❎"
             return output
