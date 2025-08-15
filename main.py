@@ -811,7 +811,7 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check for correct number of arguments
     if len(context.args) != 2:
         return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ Invalid command usage. Correct usage: `/adcr [user_id] [no. of credits]`"),
+            escape_markdown_v2("❌ Invalid command usage. Correct usage: /adcr [user_id] [no. of credits]"),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -835,7 +835,7 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not target_user_data:
         return await update.effective_message.reply_text(
-            escape_markdown_v2(f"❌ User with ID `{user_id}` not found in the database."),
+            escape_markdown_v2(f"❌ User with ID {user_id} not found in the database."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -845,7 +845,7 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send a confirmation message with proper monospace formatting and escaping
     # The f-string is escaped here to handle the periods correctly.
-    final_message = escape_markdown_v2(f"✅ Successfully added `{credits_to_add}` credits to user `{user_id}`. Their new credit balance is `{new_credits}`.")
+    final_message = escape_markdown_v2(f"✅ Successfully added {credits_to_add} credits to user {user_id}. Their new credit balance is {new_credits}.")
 
     await update.effective_message.reply_text(
         final_message,
