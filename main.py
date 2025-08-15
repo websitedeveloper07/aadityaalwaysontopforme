@@ -563,7 +563,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Get input
     if not context.args:
-        # Corrected usage message with proper escaping
         return await update.effective_message.reply_text(
             "❌ Please provide BIN or sequence\\.\n"
             "Usage:\n`/gen {bin}` \\(for default 10 cards\\)\n`/gen {bin} {no\\. of ccs}`",
@@ -577,9 +576,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) > 1:
         try:
             num_cards = int(context.args[1])
-            if num_cards <= 0 or num_cards > 1000:
+            # Check for the new 5000 card limit
+            if num_cards <= 0 or num_cards > 5000:
                 return await update.effective_message.reply_text(
-                    escape_markdown_v2("Quantity must be a positive number up to 1000."),
+                    escape_markdown_v2("❌ The maximum number of cards you can generate is 5000."),
                     parse_mode=ParseMode.MARKDOWN_V2
                 )
             send_as_file = True
@@ -612,6 +612,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             escape_markdown_v2("❌ BIN/sequence must be at least 6 digits."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
+    # Send a processing message
+    processing_message = await update.effective_message.reply_text("⏳ Generating cards, please wait...")
 
     # BIN lookup
     bin_details = await get_bin_details(card_base[:6])
@@ -664,17 +667,23 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file = io.BytesIO(file_content.encode('utf-8'))
         file.name = f"generated_cards_{card_base}.txt"
         
-        await update.effective_message.reply_document(
-            document=file,
+        await context.bot.edit_message_caption(
+            chat_id=update.effective_chat.id,
+            message_id=processing_message.message_id,
             caption=f"*Generated {len(cards)} Cards 💳*\n\n{escaped_bin_info}",
             parse_mode=ParseMode.MARKDOWN_V2
+        )
+        await update.effective_message.reply_document(
+            document=file
         )
     else:
         cards_list = "\n".join(cards)
         final_message = f"*Generated {len(cards)} Cards 💳*\n\n{cards_list}\n\n{escaped_bin_info}"
         
-        await update.effective_message.reply_text(
-            final_message,
+        await context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            message_id=processing_message.message_id,
+            text=final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -691,7 +700,6 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Extracts credit cards from an uploaded text file, or from a file
     in a replied-to message, with a maximum limit of 100 cards.
-    If the output is too long, it is sent as a document.
     """
     if not await check_authorization(update, context):
         return
@@ -730,13 +738,12 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Find all matches
     found_cards = card_pattern.findall(file_content)
     
-    # Apply the 100 card limit
-    initial_card_count = len(found_cards)
-    if initial_card_count > 100:
-        found_cards = found_cards[:100]
-        limit_message = escape_markdown_v2(f"\n(‼️ Only the first 100 cards have been processed.)\n")
-    else:
-        limit_message = ""
+    # Check if the number of cards exceeds the 100 limit
+    if len(found_cards) > 100:
+        return await update.effective_message.reply_text(
+            escape_markdown_v2("❌ The maximum number of cards allowed to open is 100\\. Please upload a smaller file\\."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
 
     if not found_cards:
         return await update.effective_message.reply_text(escape_markdown_v2("❌ No valid cards were found in the file."), parse_mode=ParseMode.MARKDOWN_V2)
@@ -753,7 +760,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     # Combine the box and the list of cards
-    final_message = f"{stylish_card_box}{limit_message}\n{cards_list}"
+    final_message = f"{stylish_card_box}\n{cards_list}"
     
     # Check if the message is too long to be sent normally
     # A safe limit, as Telegram's is 4096
@@ -764,7 +771,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await update.effective_message.reply_document(
             document=file,
-            caption=f"{stylish_card_box}{limit_message}",
+            caption=f"{stylish_card_box}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     else:
@@ -772,6 +779,10 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
+
+
+
 
 from telegram.constants import ParseMode
 
