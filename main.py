@@ -1058,25 +1058,22 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         api_card = data.get("card", cc_normalized)
 
-        # ✅ Extract status string safely from dict
+        # ✅ Extract status safely
         result_data = data.get("result", {})
         if isinstance(result_data, dict):
             api_result_string = result_data.get("status", "Unknown")
         else:
             api_result_string = str(result_data)
 
-        # Clean for display
         api_result_clean = api_result_string.replace("✅", "").replace("❌", "").replace("❎", "").strip()
 
-        # Headers
+        # ✅ Decide header + icon
         if "Approved" in api_result_clean or "Payment Method Successfully Added" in api_result_clean:
-            header = "❖❖❖[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ]❖❖❖"
-        elif "CCN Live" in api_result_clean:
-            header = "❖❖❖[ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ]❖❖❖"
+            header = "❖❖❖[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ ]❖❖❖"
         elif "3D Challenge" in api_result_clean or "3D Required" in api_result_clean:
-            header = "❖❖❖[ 3𝗗 𝗖𝗛𝗔𝗟𝗟𝗘𝗡𝗚𝗘 ]❖❖❖"
+            header = "❖❖❖[ 3𝗗 𝗦𝗘𝗖𝗨𝗥𝗘 🔒 ]❖❖❖"
         else:
-            header = "❖❖❖[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ]❖❖❖"
+            header = "❖❖❖[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ ]❖❖❖"
 
         time_taken = round(time.time() - start_time, 2)
 
