@@ -996,6 +996,7 @@ from telegram.ext import ContextTypes
 import aiohttp
 
 from db import get_user, update_user
+from defs import charge_resp
 
 # Cooldown dictionary
 user_cooldowns = {}
@@ -1158,6 +1159,7 @@ from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
 from db import get_user, update_user
+from defs import charge_resp
 
 OWNER_ID = 8438505794  # Replace with your Telegram ID
 user_cooldowns = {}
