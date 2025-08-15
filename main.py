@@ -690,7 +690,7 @@ from telegram.helpers import escape_markdown as escape_markdown_v2
 async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Extracts credit cards from an uploaded text file, or from a file
-    in a replied-to message, with a maximum limit of 500 cards.
+    in a replied-to message, with a maximum limit of 100 cards.
     If the output is too long, it is sent as a document.
     """
     if not await check_authorization(update, context):
@@ -730,11 +730,11 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Find all matches
     found_cards = card_pattern.findall(file_content)
     
-    # Apply the 500 card limit
+    # Apply the 100 card limit
     initial_card_count = len(found_cards)
-    if initial_card_count > 500:
-        found_cards = found_cards[:500]
-        limit_message = escape_markdown_v2(f"\n(‼️ Only the first 500 cards have been processed.)\n")
+    if initial_card_count > 100:
+        found_cards = found_cards[:100]
+        limit_message = escape_markdown_v2(f"\n(‼️ Only the first 100 cards have been processed.)\n")
     else:
         limit_message = ""
 
@@ -772,7 +772,6 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
 
 from telegram.constants import ParseMode
 
