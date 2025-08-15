@@ -1074,24 +1074,24 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             raw_result = "Declined"
         
         # Format result using the now-string `raw_result`
-        # FIX: charge_resp returns a dictionary, so we need to get the 'status' from it.
         api_result_dict = await charge_resp(raw_result)
-        api_result_string = api_result_dict.get("status", "Unknown") # Get the status string from the dictionary
+        api_result_string = api_result_dict.get("status", "Unknown") 
         
-        api_result_clean = api_result_string.replace("✅", "").replace("❌", "").strip()
+        # Clean the status string for display
+        api_result_clean = api_result_string.replace("✅", "").replace("❌", "").replace("❎", "").strip()
 
         if "Approved" in api_result_clean or "Payment Method Successfully Added" in api_result_clean:
             header = "❖❖❖[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ]❖❖❖"
         elif "CCN Live" in api_result_clean:
             header = "❖❖❖[ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ]❖❖❖"
         elif "3D Challenge" in api_result_clean or "3D Required" in api_result_clean:
-            header = "❖❖❖[ 3𝗗 𝗖𝗛𝗔ll𝗘𝗡𝗚𝗘 ]❖❖❖"
+            header = "❖❖❖[ 3𝗗 𝗖𝗛𝗔𝗟𝗟𝗘𝗡𝗚𝗘 ]❖❖❖"
         else:
             header = "❖❖❖[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ]❖❖❖"
 
         time_taken = round(time.time() - start_time, 2)
 
-        # Final message
+        # Final message with correct formatting and emojis
         final_text = (
             f"{header}\n"
             f"✘ Card         ➜ `{api_card}`\n"
@@ -1103,7 +1103,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"✘ Country      ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
             f"✘ Request By   ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
-            "✘ Developer    ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+            f"✘ Developer    ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
             f"✘ Time         ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
         )
@@ -1157,12 +1157,12 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("❌ No credits left.")
         return
 
-    # Processing message
+    # Processing message with correct formatting
     processing_msg = await update.effective_message.reply_text(
         f"═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
         f"• 𝘾𝙖𝙧𝙙 ➜ `{cc_normalized}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘁𝗵\n"
-        "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
+        f"• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
         "═════════════════════",
         parse_mode=ParseMode.MARKDOWN_V2
     )
