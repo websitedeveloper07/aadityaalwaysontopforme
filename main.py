@@ -576,7 +576,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) > 1:
         try:
             num_cards = int(context.args[1])
-            # Check for the new 5000 card limit
             if num_cards <= 0 or num_cards > 5000:
                 return await update.effective_message.reply_text(
                     escape_markdown_v2("❌ The maximum number of cards you can generate is 5000."),
@@ -600,6 +599,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # Send a processing message
+    processing_message = await update.effective_message.reply_text("⏳ Generating cards, please wait...")
+
     # Parse input
     parts = raw_input.split("|")
     card_base = parts[0].strip()
@@ -608,13 +610,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     extra_cvv = parts[3] if len(parts) > 3 and parts[3].isdigit() else None
 
     if not card_base.isdigit() or len(card_base) < 6:
-        return await update.effective_message.reply_text(
-            escape_markdown_v2("❌ BIN/sequence must be at least 6 digits."),
+        # Before returning, edit the processing message to reflect the error
+        await context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            message_id=processing_message.message_id,
+            text=escape_markdown_v2("❌ BIN/sequence must be at least 6 digits."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
-    # Send a processing message
-    processing_message = await update.effective_message.reply_text("⏳ Generating cards, please wait...")
+        return
 
     # BIN lookup
     bin_details = await get_bin_details(card_base[:6])
@@ -629,7 +632,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Generate the cards
     cards = []
     attempts = 0
-    max_attempts = num_cards * 100  
+    max_attempts = num_cards * 100
     while len(cards) < num_cards and attempts < max_attempts:
         attempts += 1
         suffix_len = card_length - len(card_base)
@@ -648,7 +651,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cards.append(f"{card_number}|{mm}|{yyyy[-2:]}|{cvv}")
         else:
             cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
-    
+
     # Deduct credits based on the number of cards actually generated
     await update_user(user.id, credits=user_data['credits'] - len(cards))
 
@@ -667,19 +670,19 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file = io.BytesIO(file_content.encode('utf-8'))
         file.name = f"generated_cards_{card_base}.txt"
         
-        await context.bot.edit_message_caption(
-            chat_id=update.effective_chat.id,
-            message_id=processing_message.message_id,
+        # Corrected: Delete the processing message and send a new message with the document and caption
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=processing_message.message_id)
+        
+        await update.effective_message.reply_document(
+            document=file,
             caption=f"*Generated {len(cards)} Cards 💳*\n\n{escaped_bin_info}",
             parse_mode=ParseMode.MARKDOWN_V2
-        )
-        await update.effective_message.reply_document(
-            document=file
         )
     else:
         cards_list = "\n".join(cards)
         final_message = f"*Generated {len(cards)} Cards 💳*\n\n{cards_list}\n\n{escaped_bin_info}"
         
+        # Corrected: Edit the processing message with the final text
         await context.bot.edit_message_text(
             chat_id=update.effective_chat.id,
             message_id=processing_message.message_id,
