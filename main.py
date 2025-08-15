@@ -691,7 +691,10 @@ from telegram.constants import ParseMode
 import io
 
 async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Extracts credit cards from an uploaded text file."""
+    """
+    Extracts credit cards from an uploaded text file, or from a file
+    in a replied-to message.
+    """
     if not await check_authorization(update, context):
         return
 
@@ -699,15 +702,17 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
-    # Check for an uploaded file
-    if not update.effective_message.document:
+    # Check for a replied-to message with a document
+    if update.effective_message.reply_to_message and update.effective_message.reply_to_message.document:
+        document = update.effective_message.reply_to_message.document
+    # Fallback to checking the current message for a document
+    elif update.effective_message.document:
+        document = update.effective_message.document
+    else:
         return await update.effective_message.reply_text(
-            "❌ Please upload a .txt file with the command to extract cards from it.\n"
-            "Usage: `/open` and attach a file."
+            "❌ Please reply to a .txt file with the command or attach a .txt file with the command."
         )
 
-    document = update.effective_message.document
-    
     # Check if the file is a text file
     if document.mime_type != 'text/plain':
         return await update.effective_message.reply_text("❌ The file must be a text file (.txt).")
@@ -737,6 +742,8 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
+
 from telegram.constants import ParseMode
 
 def escape_markdown_v2(text: str) -> str:
