@@ -994,7 +994,6 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-from auth import multi_checking
 from defs import charge_resp
 from db import get_user, update_user
 
