@@ -687,11 +687,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 import io
+from telegram.helpers import escape_markdown as escape_markdown_v2
 
 async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Extracts credit cards from an uploaded text file, or from a file
-    in a replied-to message.
+    in a replied-to message, and displays them in a stylish box.
     """
     if not await check_authorization(update, context):
         return
@@ -734,8 +735,18 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Format the output message with count and monospace
     cards_list = "\n".join([f"`{card}`" for card in found_cards])
-    final_message = f"*Found {len(found_cards)} Cards 💳*\n\n{cards_list}"
+    
+    # Create the stylish box for the cards
+    stylish_card_box = (
+        f"💳 𝐂𝐀𝐑𝐃𝐕𝐀𝐔𝐋𝐓 𝐗 𝐂𝐎𝐋𝐋𝐄𝐂𝐓𝐈𝐎𝐍 💳\n\n"
+        f"╭━━━━━━━━━━━━━━━━━━⬣\n"
+        f"┣ ❏ 𝐅𝐨𝐮𝐧𝐝 *{len(found_cards)}* 𝐂𝐚𝐫𝐝𝐬\n"
+        f"╰━━━━━━━━━━━━━━━━━━⬣\n"
+        f"\n{cards_list}"
+    )
 
+    final_message = f"{stylish_card_box}"
+    
     await update.effective_message.reply_text(
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
