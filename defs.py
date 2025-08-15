@@ -7,7 +7,7 @@ async def charge_resp(result):
     """
 
     try:
-        # Ensure we have JSON string form
+        # Ensure we have a string form to parse
         if not isinstance(result, str):
             raw_result = json.dumps(result)
         else:
@@ -19,6 +19,14 @@ async def charge_resp(result):
         output = {
             "status": "Unknown ❌"
         }
+
+        # FIX: Check for simple "approved" or "CCN Live" strings first
+        if "approved" in result_lower:
+            output["status"] = "Approved ✅"
+            return output
+        if "ccn live" in result_lower:
+            output["status"] = "CCN Live ❎"
+            return output
 
         # ✅ SUCCESS CASES
         if '"status":"succeeded"' in result_lower or '"status":"suceeded"' in result_lower:
