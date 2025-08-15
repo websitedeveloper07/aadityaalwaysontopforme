@@ -543,7 +543,7 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
 import random
 from datetime import datetime
-import io  # Import the io module to work with in-memory files
+import io
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates a user-specified number of valid cards from a given BIN/sequence."""
@@ -621,8 +621,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Generate the cards
     cards = []
+    # Significantly increased attempts limit to ensure the correct number of cards are generated
     attempts = 0
-    while len(cards) < num_cards and attempts < num_cards * 5:
+    max_attempts = num_cards * 100 
+    while len(cards) < num_cards and attempts < max_attempts:
         attempts += 1
         suffix_len = card_length - len(card_base)
         if suffix_len < 0:
@@ -641,7 +643,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
     
-    # Deduct credits
+    # Deduct credits based on the number of cards actually generated
     await update_user(user.id, credits=user_data['credits'] - len(cards))
 
     # Escape BIN info for MarkdownV2
@@ -679,7 +681,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
 
 from telegram.constants import ParseMode
 
