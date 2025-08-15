@@ -996,13 +996,12 @@ from telegram.ext import ContextTypes
 
 from auth import multi_checking
 from defs import charge_resp
-from json_format import parse_qs, json  # If needed for card parsing
-from db import get_user, update_user  # Your DB functions
+from db import get_user, update_user
 
-# BIN database (you can expand this)
+# BIN database (expand as needed)
 BIN_DATABASE = {
     "484783": {"brand": "Visa", "issuer": "Bank of SG", "country": "SG"},
-    # Add more BINs if needed
+    # Add more BINs here
 }
 
 # Cooldown decorator
@@ -1014,14 +1013,17 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     now = datetime.datetime.now().timestamp()
     if now - last_run < cooldown_seconds:
         await update.effective_message.reply_text(
-            escape_markdown(f"⏳ Cooldown active. Wait {round(cooldown_seconds - (now - last_run),2)}s.", version=2),
+            escape_markdown(
+                f"⏳ Cooldown active. Wait {round(cooldown_seconds - (now - last_run),2)}s.",
+                version=2
+            ),
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
     enforce_cooldown.user_cooldowns[user_id] = now
     return True
 
-# Deduct user credit
+# Deduct credit
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -1029,25 +1031,25 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# Async BIN lookup
+# BIN lookup
 async def get_bin_details(bin_number: str) -> dict:
     return BIN_DATABASE.get(bin_number, {"brand": "Unknown", "issuer": "Unknown", "country": "Unknown"})
 
-# Background card check using auth.py + defs.py
+# Background check
 async def background_check(cc_normalized, user, user_data, processing_msg):
     parts = cc_normalized.split("|")
     bin_number = parts[0][:6]
     bin_info = await get_bin_details(bin_number)
 
     try:
-        # Use your multi_checking function from auth.py
+        # Call your auth.py multi_checking
         result = await multi_checking(cc_normalized)
         response = await charge_resp(result)
 
         # Timestamp
         time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Format final text
+        # Format final output
         final_text = (
             f"✘ Card        ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
             "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
@@ -1076,7 +1078,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
-    # Check cooldown
+    # Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
@@ -1090,7 +1092,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("❌ You have no credits left.")
         return
 
-    # Parse card input
+    # Card input
     if not context.args or "|" not in context.args[0]:
         await update.effective_message.reply_text("Usage: /chk number|mm|yy|cvv")
         return
@@ -1110,9 +1112,13 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("❌ No credits left.")
         return
 
-    # Show processing message
+    # Processing message
     processing_msg = await update.effective_message.reply_text(
-        f"═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n═════════════════════",
+        f"═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
+        f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
+        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+        "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
+        "═════════════════════",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
