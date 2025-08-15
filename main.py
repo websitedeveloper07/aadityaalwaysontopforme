@@ -732,7 +732,8 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     initial_card_count = len(found_cards)
     if initial_card_count > 500:
         found_cards = found_cards[:500]
-        limit_message = escape_markdown_v2(f"\n\\(‼️ Only the first 500 cards have been processed\\.\)\n")
+        # This line is corrected: removed the manual backslashes
+        limit_message = escape_markdown_v2(f"\n(‼️ Only the first 500 cards have been processed.)\n")
     else:
         limit_message = ""
 
@@ -758,6 +759,8 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
+
 
 from telegram.constants import ParseMode
 
