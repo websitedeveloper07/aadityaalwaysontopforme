@@ -1000,19 +1000,21 @@ from defs import charge_resp  # Ensure defs.py has charge_resp
 
 user_cooldowns = {}
 
+# Enforce cooldown per user
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     cooldown_seconds = 5
     last_run = user_cooldowns.get(user_id, 0)
     now = datetime.now().timestamp()
     if now - last_run < cooldown_seconds:
         await update.effective_message.reply_text(
-            escape_markdown(f"⏳ Cooldown active. Wait {round(cooldown_seconds - (now - last_run),2)}s.", version=2),
+            escape_markdown(f"⏳ Cooldown active. Wait {round(cooldown_seconds - (now - last_run), 2)}s.", version=2),
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
     user_cooldowns[user_id] = now
     return True
 
+# Deduct user credit
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -1020,6 +1022,7 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
+# Dummy synchronous BIN lookup
 def get_bin_details_sync(bin_number: str) -> dict:
     time.sleep(1.5)
     return {
@@ -1028,6 +1031,7 @@ def get_bin_details_sync(bin_number: str) -> dict:
         "country_name": "United States"
     }
 
+# Background task for single card check
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     start_time = time.time()
     try:
@@ -1047,23 +1051,25 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                 data = await resp.json()
 
         api_card = data.get("card", cc_normalized)
-        raw_result = data.get("result", "Declined ❌")
+        raw_result = data.get("result", "Declined")
 
         # Parse result using defs.py
         api_result = await charge_resp(raw_result)
+        # Remove emojis from result
+        api_result_clean = api_result.replace("✅", "").replace("❌", "").strip()
 
-        # Determine proper header
-        if "Approved" in api_result or "Payment Method Successfully Added" in api_result:
-            header = "❖❖❖[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅ ]❖❖❖"
-        elif "CCN Live" in api_result:
-            header = "❖❖❖[ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 🟢 ]❖❖❖"
-        elif "3D Challenge" in api_result or "3D Required" in api_result:
-            header = "❖❖❖[ 3𝗗 𝗖𝗛𝗔𝗟𝗟𝗘𝗡𝗚𝗘 ❎ ]❖❖❖"
+        # Determine header
+        if "Approved" in api_result_clean or "Payment Method Successfully Added" in api_result_clean:
+            header = "❖❖❖[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ]❖❖❖"
+        elif "CCN Live" in api_result_clean:
+            header = "❖❖❖[ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ]❖❖❖"
+        elif "3D Challenge" in api_result_clean or "3D Required" in api_result_clean:
+            header = "❖❖❖[ 3𝗗 𝗖𝗛𝗔𝗟𝗟𝗘𝗡𝗚𝗘 ]❖❖❖"
         else:
-            header = "❖❖❖[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌ ]❖❖❖"
+            header = "❖❖❖[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ]❖❖❖"
 
         time_taken = round(time.time() - start_time, 2)
-        formatted_response = f"_{escape_markdown(api_result, version=2)}_"
+        formatted_response = f"_{escape_markdown(api_result_clean, version=2)}_"
 
         final_text = (
             f"{header}\n"
@@ -1089,10 +1095,12 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+# /chk command
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
+    # Enforce 5-second cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
@@ -1114,6 +1122,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("Invalid format. Use number|mm|yy|cvv")
         return
 
+    # Normalize year
     if len(parts[2]) == 4:
         parts[2] = parts[2][-2:]
     cc_normalized = "|".join(parts)
@@ -1131,6 +1140,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
+    # Run background check
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
