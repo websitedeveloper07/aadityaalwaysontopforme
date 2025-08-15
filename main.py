@@ -563,10 +563,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Get input
     if not context.args:
+        # This message contains unescaped periods, so we wrap it in escape_markdown_v2
         return await update.effective_message.reply_text(
-            "❌ Please provide BIN or sequence.\n"
-            "Usage:\n`/gen 414740` (for default 10 cards)\n`/gen 414740 50` (for 50 cards)\n"
-            "`/gen 414740|11|2028|777`",
+            escape_markdown_v2(
+                "❌ Please provide BIN or sequence.\n"
+                "Usage:\n`/gen 414740` (for default 10 cards)\n`/gen 414740 50` (for 50 cards)\n"
+                "`/gen 414740|11|2028|777`"
+            ),
             parse_mode=ParseMode.MARKDOWN_V2
         )
     
@@ -578,14 +581,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             num_cards = int(context.args[1])
             if num_cards <= 0 or num_cards > 1000:
-                # Correctly escaping the period in this message
                 return await update.effective_message.reply_text(
                     escape_markdown_v2("Quantity must be a positive number up to 1000."),
                     parse_mode=ParseMode.MARKDOWN_V2
                 )
             send_as_file = True
         except ValueError:
-            # Correctly escaping the period in this message
             return await update.effective_message.reply_text(
                 escape_markdown_v2("The quantity must be a valid number."),
                 parse_mode=ParseMode.MARKDOWN_V2
@@ -610,7 +611,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     extra_cvv = parts[3] if len(parts) > 3 and parts[3].isdigit() else None
 
     if not card_base.isdigit() or len(card_base) < 6:
-        # Correctly escaping the period in this message
         return await update.effective_message.reply_text(
             escape_markdown_v2("❌ BIN/sequence must be at least 6 digits."),
             parse_mode=ParseMode.MARKDOWN_V2
@@ -680,6 +680,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
 import re
 from telegram import Update
