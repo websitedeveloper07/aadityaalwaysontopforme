@@ -1064,16 +1064,21 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         
         time_taken = round(time.time() - start_time, 2)
 
-        # Updated header logic to use only bold formatting
+        # Updated header logic to use a stylish box format
+        status_text = api_status.upper()
         if api_status.lower() == "approved ✅":
-            header = "*APPROVED ✅*"
+            status_text = "APPROVED ✅"
         elif api_status.lower() == "declined ❌":
-            header = "*DECLINED ❌*"
+            status_text = "DECLINED ❌"
         elif api_status.lower() == "ccn live ❎":
-            header = "*CCN LIVE ❎*"
-        else:
-            # Use the original api_status which retains emojis and formatting
-            header = f"*{escape_markdown(api_status, version=2).upper()}*"
+            status_text = "CCN LIVE ❎"
+            
+        escaped_status = escape_markdown(status_text, version=2)
+        line_length = len(status_text) + 2
+        top_line = "┌" + "─" * line_length + "┐"
+        middle_line = f"│ {escaped_status} │"
+        bottom_line = "└" + "─" * line_length + "┘"
+        header = f"{top_line}\n{middle_line}\n{bottom_line}"
 
         # Formatted response from API status
         formatted_response = f"_{escape_markdown(api_status, version=2)}_"
@@ -1132,7 +1137,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raw = context.args[0] if context.args else None
     if not raw or "|" not in raw:
         await update.effective_message.reply_text(
-            "Usage: /chk number|mm|yy|cvv",
+            "⚠️Usage: /chk number|mm|yy|cvv",
             parse_mode=None
         )
         return
@@ -1140,7 +1145,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = raw.split("|")
     if len(parts) != 4:
         await update.effective_message.reply_text(
-            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+            "⚠️Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
             parse_mode=None
         )
         return
@@ -1173,7 +1178,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
-
 
 
 
