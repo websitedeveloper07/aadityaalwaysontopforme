@@ -986,7 +986,6 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-
 import asyncio
 from datetime import datetime
 from telegram import Update
@@ -994,14 +993,9 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-from defs import charge_resp
+# Import your database functions
 from db import get_user, update_user
 
-# BIN database
-BIN_DATABASE = {
-    "484783": {"brand": "Visa", "issuer": "Bank of SG", "country": "SG"},
-    # Add more BINs as needed
-}
 
 # Cooldown check
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
@@ -1031,8 +1025,14 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # Get BIN info
-async def get_bin_details(bin_number: str) -> dict:
-    return BIN_DATABASE.get(bin_number, {"brand": "Unknown", "issuer": "Unknown", "country": "Unknown"})
+def get_bin_details_sync(bin_number: str) -> dict:
+    # Simulated BIN lookup
+    time.sleep(1.5)
+    return {
+        "scheme": "Visa",
+        "type": "Credit",
+        "country_name": "United States"
+    }
 
 # Background card check
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
