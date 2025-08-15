@@ -985,7 +985,6 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-
 import asyncio
 import time
 from datetime import datetime
@@ -995,6 +994,8 @@ from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 import aiohttp
 
+# These are placeholder imports for your local files
+# Make sure your actual `db` and `defs` modules are in the same directory or Python path
 from db import get_user, update_user
 from defs import charge_resp
 
@@ -1002,6 +1003,7 @@ user_cooldowns = {}
 
 # Cooldown checker
 async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Enforces a cooldown period for a user to prevent spamming."""
     last_run = user_cooldowns.get(user_id, 0)
     now = datetime.now().timestamp()
     if now - last_run < cooldown_seconds:
@@ -1024,7 +1026,10 @@ async def consume_credit(user_id: int) -> bool:
 
 # Sync BIN lookup (simulated)
 def get_bin_details_sync(bin_number: str) -> dict:
-    """Simulated BIN lookup (blocking)."""
+    """
+    Simulated BIN lookup. In a real-world scenario, this would be an API call.
+    It is wrapped in asyncio.to_thread to run in a separate thread.
+    """
     time.sleep(1.5)  # Simulate API delay
     return {
         "scheme": "Visa",
@@ -1034,9 +1039,13 @@ def get_bin_details_sync(bin_number: str) -> dict:
 
 # Background processing
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
+    """
+    Handles the background processing for the /chk command.
+    It performs a BIN lookup, calls the external API, and formats the final message.
+    """
     start_time = time.time()
     try:
-        # BIN lookup in separate thread
+        # BIN lookup in separate thread to avoid blocking the event loop
         bin_number = parts[0][:6]
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
         brand = (bin_details.get("scheme") or "N/A").upper()
@@ -1052,9 +1061,19 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                 data = await resp.json()
 
         api_card = data.get("card", cc_normalized)
-        raw_result = data.get("result", "Declined")
-
-        # Format result
+        
+        # FIX: Handle the new nested dictionary structure for 'result'
+        result_data = data.get("result")
+        if isinstance(result_data, dict) and "status" in result_data:
+            raw_result = result_data["status"]
+        elif isinstance(result_data, str):
+            # Fallback for cases where 'result' might still be a string
+            raw_result = result_data
+        else:
+            # Default to a generic declined message if the result is unexpected
+            raw_result = "Declined"
+        
+        # Format result using the now-string `raw_result`
         api_result = await charge_resp(raw_result)
         api_result_clean = api_result.replace("✅", "").replace("❌", "").strip()
 
@@ -1063,7 +1082,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         elif "CCN Live" in api_result_clean:
             header = "❖❖❖[ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ]❖❖❖"
         elif "3D Challenge" in api_result_clean or "3D Required" in api_result_clean:
-            header = "❖❖❖[ 3𝗗 𝗖𝗛𝗔𝗟𝗟𝗘𝗡𝗚𝗘 ]❖❖❖"
+            header = "❖❖❖[ 3𝗗 𝗖𝗛𝗔�𝗟𝗘𝗡𝗚𝗘 ]❖❖❖"
         else:
             header = "❖❖❖[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ]❖❖❖"
 
@@ -1072,17 +1091,17 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         # Final message
         final_text = (
             f"{header}\n"
-            f"✘ Card        ➜ `{api_card}`\n"
-            "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘁𝗵\n"
-            f"✘ Result      ➜ _{escape_markdown(api_result_clean, version=2)}_\n"
+            f"✘ Card         ➜ `{api_card}`\n"
+            "✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘁𝗵\n"
+            f"✘ Result       ➜ _{escape_markdown(api_result_clean, version=2)}_\n"
             "――――――――――――――――\n"
-            f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
-            f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
-            f"✘ Country     ➜ {escape_markdown(country_name, version=2)}\n"
+            f"✘ Brand        ➜ {escape_markdown(brand, version=2)}\n"
+            f"✘ Issuer       ➜ {escape_markdown(issuer, version=2)}\n"
+            f"✘ Country      ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
-            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
-            "✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-            f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
+            f"✘ Request By   ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
+            "✘ Developer    ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+            f"✘ Time         ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
         )
 
@@ -1094,8 +1113,9 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-# /chk command
+# /chk command handler
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Entry point for the /chk command. Handles initial checks and starts the background task."""
     user = update.effective_user
     user_id = user.id
 
@@ -1146,8 +1166,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
-
-
 
 
 
