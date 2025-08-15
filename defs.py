@@ -3,63 +3,62 @@ import json
 
 async def charge_resp(result):
     """
-    Parses Stripe response and returns a simplified message for API.
-    Categories:
-    - Approved ✅
-    - CCN Live ✅
-    - 3D / Auth Challenge ✅
-    - Declines/Errors ❌
+    Parses Stripe/API response and returns a simplified status without emojis.
     """
     try:
-        # Ensure result is string
+        # Convert non-string results to string
         if not isinstance(result, str):
             result = json.dumps(result)
 
+        # Try to parse nested JSON if result is a JSON string
+        try:
+            inner = json.loads(result)
+            # If it has a 'success' or 'status' key, reformat result
+            if isinstance(inner, dict):
+                if "success" in inner:
+                    if inner.get("success") is True:
+                        result = inner.get("data", {}).get("status", "Approved")
+                    else:
+                        result = inner.get("data", {}).get("status", "Declined")
+                elif "status" in inner:
+                    result = inner.get("status", "Declined")
+        except json.JSONDecodeError:
+            pass  # Not nested JSON, keep original string
+
         result_lower = result.lower()
 
-        # Helper to append emoji only if missing
-        def append_emoji(msg: str, emoji: str):
-            msg = msg.strip()
-            return msg if emoji in msg else f"{msg} {emoji}"
-
-        # -------------------------
-        # Approved responses
-        # -------------------------
+        # Approved
         approved_keywords = [
-            '"status":"succeeded"',
-            '"status":"suceeded"',
-            "payment method successfully added"
+            "succeeded",
+            "payment method successfully added",
+            "approved",
+            "requires_capture"
         ]
-        for keyword in approved_keywords:
-            if keyword in result_lower:
-                return append_emoji("Approved", "✅")
+        for kw in approved_keywords:
+            if kw in result_lower:
+                return "Approved"
 
-        # -------------------------
-        # CCN Live responses
-        # -------------------------
+        # CCN Live
         ccn_live_keys = [
             "incorrect_cvc",
             "security code is incorrect"
         ]
-        for key in ccn_live_keys:
-            if key in result_lower:
-                return append_emoji("CCN Live", "✅")
+        for kw in ccn_live_keys:
+            if kw in result_lower:
+                return "CCN Live"
 
-        # -------------------------
-        # 3D / Authentication Challenge
-        # -------------------------
+        # 3D / Auth Challenge
         auth_keys = [
+            "requires_action",
             "three_d_secure_redirect",
             "card_error_authentication_required",
             "stripe_3ds2_fingerprint"
         ]
-        for key in auth_keys:
-            if key in result_lower:
-                return append_emoji("3D / Auth Challenge", "✅")
+        for kw in auth_keys:
+            if kw in result_lower:
+                return "3D / Auth Challenge"
 
-        # -------------------------
-        # Declines / Errors
-        # -------------------------
+        # Declines / errors
         decline_map = {
             "insufficient funds": "Insufficient Funds",
             "transaction_not_allowed": "Card Doesn't Support Purchase",
@@ -86,15 +85,12 @@ async def charge_resp(result):
             "restricted_card": "Restricted Card",
             "card velocity exceeded": "Card Velocity Limit"
         }
-
         for key, message in decline_map.items():
             if key in result_lower:
-                return append_emoji(message, "❌")
+                return message
 
-        # -------------------------
-        # Fallback: Unknown response
-        # -------------------------
-        return append_emoji(result, "❌")
+        # fallback unknown
+        return result.strip()
 
     except Exception as e:
-        return append_emoji(f"Error parsing response: {str(e)}", "❌")
+        return f"Error parsing response: {str(e)}"
