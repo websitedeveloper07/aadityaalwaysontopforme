@@ -926,24 +926,24 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_display = get_vbv_status_display(vbv_status)
 
     # BIN info box (no space after country)
-    bin_info_box = (
+  bin_info_box = (
         f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
-        f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
-        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{escape_markdown_v2(status_display)}`\n"
-        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
-        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
-        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
-        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
-        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
+        f"┣ ❏ *𝐁𝐈𝐍* ➳ `{escaped_bin}`\n"
+        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬* ➳ `{escape_markdown_v2(status_display)}`\n"
+        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝* ➳ `{escaped_scheme}`\n"
+        f"┣ ❏ *𝐓𝐲𝐩𝐞* ➳ `{escaped_card_type}`\n"
+        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥* ➳ `{level_emoji} {escaped_level}`\n"
+        f"┣ ❏ *𝐁𝐚𝐧𝐤* ➳ `{escaped_bank}`\n"
+        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
     )
 
     user_info_box = (
-        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
-        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ [{escaped_user_name}](tg://user?id={user_id})\n"
+        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    final_message = f"{bin_info_box}\n\n{user_info_box}"
+    final_message = f"{bin_info_box}{user_info_box}"
 
     await update.effective_message.reply_text(
         final_message,
@@ -1079,7 +1079,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
             f"✘ Country    ➜ {escape_markdown(country_name, version=2)}\n"
             "――――――――――――――――\n"
-            f"✘ Request By  ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
+            f"✘ Request By  ➜ [{escape_markdown_v2(user.first_name)}](tg://user?id={user.id})\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
             "✘ Developer   ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
             f"✘ Time        ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
