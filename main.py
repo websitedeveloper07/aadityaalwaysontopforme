@@ -563,7 +563,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Get input
     if not context.args:
-        # Correctly formatted message with monospace commands
         return await update.effective_message.reply_text(
             "❌ Please provide BIN or sequence.\n"
             "Usage:\n`/gen 414740` (for default 10 cards)\n`/gen 414740 50` (for 50 cards)\n"
@@ -579,12 +578,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             num_cards = int(context.args[1])
             if num_cards <= 0 or num_cards > 1000:
+                # This message now uses escape_markdown_v2()
                 return await update.effective_message.reply_text(
                     escape_markdown_v2("Quantity must be a positive number up to 1000."),
                     parse_mode=ParseMode.MARKDOWN_V2
                 )
             send_as_file = True
         except ValueError:
+            # This message now uses escape_markdown_v2()
             return await update.effective_message.reply_text(
                 escape_markdown_v2("The quantity must be a valid number."),
                 parse_mode=ParseMode.MARKDOWN_V2
@@ -609,6 +610,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     extra_cvv = parts[3] if len(parts) > 3 and parts[3].isdigit() else None
 
     if not card_base.isdigit() or len(card_base) < 6:
+        # This message now uses escape_markdown_v2()
         return await update.effective_message.reply_text(
             escape_markdown_v2("❌ BIN/sequence must be at least 6 digits."),
             parse_mode=ParseMode.MARKDOWN_V2
@@ -650,19 +652,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deduct credits based on the number of cards actually generated
     await update_user(user.id, credits=user_data['credits'] - len(cards))
 
-    # Escape BIN info for MarkdownV2
-    escaped_bin = escape_markdown_v2(card_base)
-    escaped_brand = escape_markdown_v2(brand)
-    escaped_bank = escape_markdown_v2(bank)
-    escaped_country_name = escape_markdown_v2(country_name)
-    escaped_country_emoji = escape_markdown_v2(country_emoji)
-
-    # BIN info block
-    bin_info_block = (
-        f"┣ ❏ 𝐁𝐈𝐍 ➳ `{escaped_bin}`\n"
-        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝 ➳ `{escaped_brand}`\n"
-        f"┣ ❏ 𝐁𝐚𝐧𝐤 ➳ `{escaped_bank}`\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ `{escaped_country_name}`{escaped_country_emoji}\n"
+    # Create the BIN info block with escaped values
+    escaped_bin_info = (
+        f"┣ ❏ 𝐁𝐈𝐍 ➳ `{escape_markdown_v2(card_base)}`\n"
+        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝 ➳ `{escape_markdown_v2(brand)}`\n"
+        f"┣ ❏ 𝐁𝐚𝐧𝐤 ➳ `{escape_markdown_v2(bank)}`\n"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ `{escape_markdown_v2(country_name)}`{escape_markdown_v2(country_emoji)}\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -674,12 +669,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await update.effective_message.reply_document(
             document=file,
-            caption=f"*Generated {len(cards)} Cards 💳*\n\n{bin_info_block}",
+            caption=f"*Generated {len(cards)} Cards 💳*\n\n{escaped_bin_info}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     else:
         cards_list = "\n".join(cards)
-        final_message = f"*Generated {len(cards)} Cards 💳*\n\n{cards_list}\n\n{bin_info_block}"
+        final_message = f"*Generated {len(cards)} Cards 💳*\n\n{cards_list}\n\n{escaped_bin_info}"
         
         await update.effective_message.reply_text(
             final_message,
