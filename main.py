@@ -1025,11 +1025,8 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 def get_bin_details_sync(bin_number: str) -> dict:
-    """
-    Simulated BIN lookup. In a real-world scenario, this would be an API call.
-    It is wrapped in asyncio.to_thread to run in a separate thread.
-    """
-    time.sleep(1.5)  # Simulate API delay
+    # Simulated BIN lookup
+    time.sleep(1.5)
     return {
         "scheme": "Visa",
         "type": "Credit",
@@ -1176,42 +1173,38 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import asyncio
 import time
+import asyncio
 import aiohttp
 import re
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
+from datetime import datetime
 
-from db import get_user, update_user  # your DB functions here
+from db import get_user, update_user # your DB functions here
 
-OWNER_ID = 8438505794  # Replace with your Telegram user ID
-
+# Global variable for user cooldowns
 user_cooldowns = {}
 
-async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    # Only allow OWNER_ID in private chats
-    if update.effective_chat.type == "private":
-        return update.effective_user.id == OWNER_ID
-    return True
-
-async def enforce_cooldown(user_id: int, update: Update) -> bool:
-    cooldown = 5  # seconds
-    now = time.time()
-    last = user_cooldowns.get(user_id, 0)
-    if now - last < cooldown:
-        remaining = round(cooldown - (now - last), 2)
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Enforces a cooldown period for a user to prevent spamming."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
         await update.effective_message.reply_text(
-            escape_markdown(f"⏳ Cooldown active. Wait {remaining} seconds.", version=2),
-            parse_mode=ParseMode.MARKDOWN_V2,
+            escape_markdown(f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds.", version=2),
+            parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
     user_cooldowns[user_id] = now
     return True
 
 async def consume_credit(user_id: int) -> bool:
+    """
+    Consume 1 credit from DB user if available.
+    """
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -1220,6 +1213,10 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
+    """
+    Handles the background processing for the /mchk command.
+    It performs a BIN lookup, calls the external API, and formats the final message.
+    """
     approved_count = declined_count = error_count = checked_count = 0
     results = []
     total_cards = len(cards_to_check)
@@ -1275,7 +1272,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         checked_count += 1
 
         card_result = (
-            f"{escape_markdown(cc_normalized, version=2)}\n"
+            f"`{escape_markdown(cc_normalized, version=2)}`\n"
             f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
         )
         results.append(card_result)
@@ -1307,7 +1304,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝐞𝐜𝐤\n"
         f"──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
@@ -1316,14 +1313,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     )
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Private chat: only OWNER_ID allowed
-    if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
-        await update.effective_message.reply_text(
-            "❌ Private access is blocked.\nContact @YourOwnerUsername to buy subscription.",
-            parse_mode=None
-        )
-        return
-
     user = update.effective_user
     user_id = user.id
 
@@ -1384,7 +1373,6 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
-
 
 
 from faker import Faker
