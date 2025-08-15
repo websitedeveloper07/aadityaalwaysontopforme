@@ -1,96 +1,105 @@
 import asyncio
-import json
 
 async def charge_resp(result):
     """
-    Parses Stripe/API response and returns a simplified status without emojis.
+    Parses Stripe/API response and returns concise, meaningful messages.
+    Categories:
+    - Approved ✅
+    - CCN Live ❎
+    - 3D Challenge ❎
+    - Declines / Errors ❌
     """
+
     try:
-        # Convert non-string results to string
         if not isinstance(result, str):
-            result = json.dumps(result)
+            result = str(result).lower()
+        else:
+            result = result.lower()
 
-        # Try to parse nested JSON if result is a JSON string
-        try:
-            inner = json.loads(result)
-            # If it has a 'success' or 'status' key, reformat result
-            if isinstance(inner, dict):
-                if "success" in inner:
-                    if inner.get("success") is True:
-                        result = inner.get("data", {}).get("status", "Approved")
-                    else:
-                        result = inner.get("data", {}).get("status", "Declined")
-                elif "status" in inner:
-                    result = inner.get("status", "Declined")
-        except json.JSONDecodeError:
-            pass  # Not nested JSON, keep original string
-
-        result_lower = result.lower()
-
+        # -------------------------
         # Approved
+        # -------------------------
         approved_keywords = [
-            "succeeded",
-            "payment method successfully added",
-            "approved",
-            "requires_capture"
+            '{"status":"succeeded"',
+            '"status":"suceeded"',
+            "payment method successfully added"
         ]
-        for kw in approved_keywords:
-            if kw in result_lower:
-                return "Approved"
+        if any(k in result for k in approved_keywords):
+            return "Approved ✅"
 
+        # -------------------------
         # CCN Live
+        # -------------------------
         ccn_live_keys = [
             "incorrect_cvc",
-            "security code is incorrect"
+            "security code is incorrect",
+            "your card's security code is incorrect"
         ]
-        for kw in ccn_live_keys:
-            if kw in result_lower:
-                return "CCN Live"
+        if any(k in result for k in ccn_live_keys):
+            return "CCN Live ❎"
 
+        # -------------------------
         # 3D / Auth Challenge
+        # -------------------------
         auth_keys = [
-            "requires_action",
             "three_d_secure_redirect",
             "card_error_authentication_required",
-            "stripe_3ds2_fingerprint"
+            "stripe_3ds2_fingerprint",
+            "wcpay-confirm-pi:"
         ]
-        for kw in auth_keys:
-            if kw in result_lower:
-                return "3D / Auth Challenge"
+        if any(k in result for k in auth_keys):
+            return "3D Challenge ❎"
 
-        # Declines / errors
+        # -------------------------
+        # CVV Live
+        # -------------------------
+        if '"cvc_check": "pass"' in result:
+            return "CVV Live ❎"
+
+        # -------------------------
+        # Declines / Errors
+        # -------------------------
         decline_map = {
-            "insufficient funds": "Insufficient Funds",
-            "transaction_not_allowed": "Card Doesn't Support Purchase",
-            "does not support this type of purchase": "Card Doesn't Support Purchase",
-            "expired_card": "Expired Card",
-            "your card has expired": "Expired Card",
-            "stolen_card": "Stolen Card",
-            "lost_card": "Lost Card",
-            "pickup_card": "Pickup Card",
-            "incorrect_number": "Incorrect Card Number",
-            "your card number is incorrect": "Incorrect Card Number",
-            "invalid_cvc": "Invalid CVC",
-            "generic_decline": "Card Declined",
-            "your card was declined": "Card Declined",
-            "do not honor": "Card Declined",
-            "fraudulent": "Fraudulent",
-            "setup_intent_authentication_failure": "Authentication Failure",
-            "invalid account": "Dead Card",
-            "invalid api key": "Stripe API Key Error",
-            "testmode_charges_only": "Stripe API Key Error",
-            "api_key_expired": "Stripe API Key Error",
-            "please update bearer token": "Token Expired Admin Notified",
-            "pickup": "Pickup Card",
-            "restricted_card": "Restricted Card",
-            "card velocity exceeded": "Card Velocity Limit"
+            "insufficient funds": "Insufficient Funds ❌",
+            "transaction_not_allowed": "Card Doesn't Support Purchase ❌",
+            "does not support this type of purchase": "Card Doesn't Support Purchase ❌",
+            "generic_decline": "Card Declined ❌",
+            "your card was declined": "Card Declined ❌",
+            "do not honor": "Do Not Honor ❌",
+            "fraudulent": "Fraudulent ❌",
+            "setup_intent_authentication_failure": "Auth Failure ❌",
+            "invalid cvc": "Invalid CVC ❌",
+            "stolen card": "Stolen Card ❌",
+            "lost_card": "Lost Card ❌",
+            "pickup_card": "Pickup Card ❌",
+            "pickup": "Pickup Card ❌",
+            "restricted_card": "Restricted Card ❌",
+            "card velocity exceeded": "Card Velocity Limit ❌",
+            "incorrect_number": "Incorrect Card Number ❌",
+            "your card number is incorrect": "Incorrect Card Number ❌",
+            "expired_card": "Expired Card ❌",
+            "your card has expired": "Expired Card ❌",
+            "card is not supported": "Card Not Supported ❌",
+            "invalid account": "Dead Card ❌",
+            "invalid api key": "API Key Error ❌",
+            "testmode_charges_only": "Test Mode Only ❌",
+            "api_key_expired": "API Key Expired ❌",
+            "please update bearer token": "Token Expired ❌",
+            "your account cannot currently make live charges": "Account Cannot Charge ❌",
+            "intent_confirmation_challenge": "Captcha ❌",
+            "Your card's expiration year is invalid.": "Expiration Year Invalid ❌",
+            "invalid_expiry_month": "Expiration Month Invalid ❌",
+            "Your card's expiration month is invalid.": "Expiration Month Invalid ❌"
         }
+
         for key, message in decline_map.items():
-            if key in result_lower:
+            if key in result:
                 return message
 
-        # fallback unknown
-        return result.strip()
+        # -------------------------
+        # Fallback
+        # -------------------------
+        return "Declined ❌"
 
-    except Exception as e:
-        return f"Error parsing response: {str(e)}"
+    except Exception:
+        return "Error ❌"
