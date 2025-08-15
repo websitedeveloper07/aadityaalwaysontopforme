@@ -1137,7 +1137,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raw = context.args[0] if context.args else None
     if not raw or "|" not in raw:
         await update.effective_message.reply_text(
-            "⚠️Usage: /chk number|mm|yy|cvv",
+            "Usage: /chk number|mm|yy|cvv",
             parse_mode=None
         )
         return
@@ -1145,7 +1145,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = raw.split("|")
     if len(parts) != 4:
         await update.effective_message.reply_text(
-            "⚠️Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
             parse_mode=None
         )
         return
@@ -1165,11 +1165,11 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send processing
     processing_text = (
-        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
+        "╔═════[ 𝐏𝐑𝐎𝐂𝐄𝐒𝐒𝐈𝐍𝐆 ]═════╗\n"
         f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
-        "═════════════════════"
+        "╚═════════════════════════════╝"
     )
     processing_msg = await update.effective_message.reply_text(
         processing_text,
@@ -1178,7 +1178,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
-
 
 
 
