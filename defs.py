@@ -51,7 +51,8 @@ async def charge_resp(result):
             return output
 
         # ❌ CARD TYPE / PURCHASE SUPPORT
-        if "transaction_not_allowed" in result_lower or "card doesn't support purchase" in result_lower:
+        # FIX: Added a more generic check to catch different phrasing of this error
+        if "transaction_not_allowed" in result_lower or "doesn't support purchase" in result_lower:
             output["status"] = "Card Doesn't Support Purchase ❎"
             return output
 
