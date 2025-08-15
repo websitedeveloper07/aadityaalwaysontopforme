@@ -2,12 +2,12 @@ import json
 
 async def charge_resp(result):
     """
-    Parses Stripe API JSON response into a clean message
-    and retains the original raw response for logging.
+    Parses Stripe API JSON response into a clean status message
+    without returning the raw API response.
     """
 
     try:
-        # Convert dict to JSON string if needed
+        # Ensure we have JSON string form
         if not isinstance(result, str):
             raw_result = json.dumps(result)
         else:
@@ -15,22 +15,21 @@ async def charge_resp(result):
 
         result_lower = raw_result.lower()
 
-        # Final structured output
+        # Default output
         output = {
-            "status": "Unknown ❌",
-            "raw": raw_result
+            "status": "Unknown ❌"
         }
 
-        # ✅ SUCCESS
+        # ✅ SUCCESS CASES
         if '"status":"succeeded"' in result_lower or '"status":"suceeded"' in result_lower:
             output["status"] = "Approved ✅"
             return output
 
-        if "payment method successfully added" in result_lower:
+        if "payment method successfully added" in result_lower or "payment_intent_succeeded" in result_lower:
             output["status"] = "Approved ✅"
             return output
 
-        # ❌ Decline Codes & Errors
+        # ❌ FUNDS & CVC
         if "insufficient funds" in result_lower:
             output["status"] = "Insufficient Funds ❎"
             return output
@@ -39,10 +38,16 @@ async def charge_resp(result):
             output["status"] = "CCN Live ❎"
             return output
 
+        if "invalid_cvc" in result_lower:
+            output["status"] = "Invalid CVC ❌"
+            return output
+
+        # ❌ CARD TYPE / PURCHASE SUPPORT
         if "transaction_not_allowed" in result_lower or "does not support this type of purchase" in result_lower:
             output["status"] = "Card Doesn't Support Purchase ❎"
             return output
 
+        # ❌ EXPIRY ERRORS
         if "expired_card" in result_lower or "your card has expired" in result_lower:
             output["status"] = "Expired Card ❌"
             return output
@@ -55,20 +60,23 @@ async def charge_resp(result):
             output["status"] = "Invalid Expiry Year ❌"
             return output
 
+        # ❌ CARD NUMBER ERRORS
         if "incorrect_number" in result_lower or "your card number is incorrect" in result_lower:
             output["status"] = "Incorrect Card Number ❌"
             return output
 
-        if "invalid_cvc" in result_lower:
-            output["status"] = "Invalid CVC ❌"
+        if "invalid account" in result_lower:
+            output["status"] = "Dead Card ❌"
             return output
 
+        # ❌ 3D SECURE / CHALLENGE REQUIRED
         if "three_d_secure_redirect" in result_lower or \
            "card_error_authentication_required" in result_lower or \
            "stripe_3ds2_fingerprint" in result_lower:
             output["status"] = "3D Challenge Required ❎"
             return output
 
+        # ❌ STOLEN / LOST
         if "stolen_card" in result_lower:
             output["status"] = "Stolen Card ❌"
             return output
@@ -81,6 +89,7 @@ async def charge_resp(result):
             output["status"] = "Pickup Card ❌"
             return output
 
+        # ❌ DECLINE REASONS
         if "generic_decline" in result_lower or \
            "your card was declined" in result_lower or \
            "do not honor" in result_lower:
@@ -95,11 +104,7 @@ async def charge_resp(result):
             output["status"] = "Authentication Failure ❌"
             return output
 
-        if "invalid account" in result_lower:
-            output["status"] = "Dead Card ❌"
-            return output
-
-        # ❌ API Key / Token Issues
+        # ❌ STRIPE API / TOKEN ISSUES
         if "invalid api key" in result_lower or \
            "testmode_charges_only" in result_lower or \
            "api_key_expired" in result_lower:
@@ -114,6 +119,5 @@ async def charge_resp(result):
 
     except Exception as e:
         return {
-            "status": f"Error parsing response ❌: {str(e)}",
-            "raw": str(result)
+            "status": f"Error parsing response ❌: {str(e)}"
         }
