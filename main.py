@@ -563,12 +563,11 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Get input
     if not context.args:
+        # Correctly formatted message with monospace commands
         return await update.effective_message.reply_text(
-            escape_markdown_v2(
-                "❌ Please provide BIN or sequence.\n"
-                "Usage:\n`/gen 414740` (for default 10 cards)\n`/gen 414740 50` (for 50 cards)\n"
-                "`/gen 414740|11|2028|777`"
-            ),
+            "❌ Please provide BIN or sequence.\n"
+            "Usage:\n`/gen 414740` (for default 10 cards)\n`/gen 414740 50` (for 50 cards)\n"
+            "`/gen 414740|11|2028|777`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     
@@ -580,10 +579,16 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             num_cards = int(context.args[1])
             if num_cards <= 0 or num_cards > 1000:
-                return await update.effective_message.reply_text("Quantity must be a positive number up to 1000.")
+                return await update.effective_message.reply_text(
+                    escape_markdown_v2("Quantity must be a positive number up to 1000."),
+                    parse_mode=ParseMode.MARKDOWN_V2
+                )
             send_as_file = True
         except ValueError:
-            return await update.effective_message.reply_text("The quantity must be a valid number.")
+            return await update.effective_message.reply_text(
+                escape_markdown_v2("The quantity must be a valid number."),
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
     else:
         num_cards = 10
 
@@ -621,9 +626,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Generate the cards
     cards = []
-    # Significantly increased attempts limit to ensure the correct number of cards are generated
     attempts = 0
-    max_attempts = num_cards * 100 
+    max_attempts = num_cards * 100  
     while len(cards) < num_cards and attempts < max_attempts:
         attempts += 1
         suffix_len = card_length - len(card_base)
@@ -681,7 +685,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
 
 
 import re
