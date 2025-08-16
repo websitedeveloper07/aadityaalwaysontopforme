@@ -1193,6 +1193,7 @@ from db import get_user, update_user  # your DB functions here
 OWNER_ID = 8438505794  # Replace with your Telegram user ID
 user_cooldowns = {}
 
+# ----------------- Authorization & Cooldown -----------------
 async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     if update.effective_chat.type == "private":
         return update.effective_user.id == OWNER_ID
@@ -1212,6 +1213,7 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     user_cooldowns[user_id] = now
     return True
 
+# ----------------- Credit Handling -----------------
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -1220,6 +1222,7 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
+# ----------------- Card Checking -----------------
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = error_count = checked_count = 0
     results = []
@@ -1263,7 +1266,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             continue
 
         api_response = data.get("status", "Unknown")
-        # Remove any emoji from API response
+        # Remove any emoji from API response for clean markdown
         api_response_clean = re.sub(r'[^\w\s\']', '', api_response).strip()
 
         api_response_lower = api_response_clean.lower()
@@ -1285,6 +1288,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         )
         results.append(card_result)
 
+        # Live update
         current_time_taken = round(time.time() - start_time, 2)
         current_summary = (
             f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1304,6 +1308,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         except Exception:
             pass
 
+    # Final summary
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1320,6 +1325,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
+# ----------------- /mchk Command -----------------
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
         await update.effective_message.reply_text(
