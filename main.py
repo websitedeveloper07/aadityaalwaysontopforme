@@ -1645,7 +1645,7 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         summary_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
-�
+
 
 
 
