@@ -1400,142 +1400,144 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-import asyncio
 import aiohttp
+import asyncio
+import time
 from telegram import Update, InputFile
 from telegram.ext import ContextTypes
-import math
-import time
 
-API_URL = "http://31.97.66.195:8000/?key=k4linuxx&card={}"
-MAX_CARDS = 200
-DELAY_BETWEEN_REQUESTS = 1.5  # seconds between requests
-MTCHK_COOLDOWN = 7  # cooldown in seconds
-OWNER_ID = 8438505794  # bot owner ID
+OWNER_ID = 8438505794
+last_mtchk_usage = {}
 
-# Track last usage timestamp
-last_mtchk_time = 0
-
-
+# ─── /mtchk Handler ────────────────────────────────
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global last_mtchk_time
     user_id = update.effective_user.id
+    now = time.time()
 
-    # ✅ Owner bypass (can use anywhere, no cooldown)
+    # Restrict private use except owner
+    if update.effective_chat.type == "private" and user_id != OWNER_ID:
+        await update.message.reply_text("❌ This command is not allowed in private chats.")
+        return
+
+    # Cooldown (7s for non-owner)
     if user_id != OWNER_ID:
-        # ❌ Block private use for non-owners
-        if update.effective_chat.type == "private":
-            await update.message.reply_text("❌ This command is not allowed in private. Use it in a group.")
+        if user_id in last_mtchk_usage and now - last_mtchk_usage[user_id] < 7:
+            remaining = int(7 - (now - last_mtchk_usage[user_id]))
+            await update.message.reply_text(
+                f"⚠️ Slow down!\n"
+                f"⏳ You must wait `{remaining}s` before using /mtchk again."
+            )
             return
+        last_mtchk_usage[user_id] = now
 
-        # ⏳ Cooldown check
-        now = time.time()
-        if now - last_mtchk_time < MTCHK_COOLDOWN:
-            wait = int(MTCHK_COOLDOWN - (now - last_mtchk_time))
-            await update.message.reply_text(f"⏳ Please wait {wait}s before using /mtchk again.")
-            return
-        last_mtchk_time = now  # reset cooldown timer
-
-    # Handle file upload / reply
-    if update.message.reply_to_message and update.message.reply_to_message.document:
-        file = await update.message.reply_to_message.document.get_file()
-    elif update.message.document:
-        file = await update.message.document.get_file()
-    else:
-        await update.message.reply_text("❌ Please upload or reply to a .txt file containing cards.")
+    # Ensure file is attached or replied
+    if not update.message.document and not (
+        update.message.reply_to_message and update.message.reply_to_message.document
+    ):
+        await update.message.reply_text("📂 Please send or reply to a `.txt` file containing up to 200 cards.")
         return
 
-    try:
-        content = await file.download_as_bytearray()
-        lines = [l.strip() for l in content.decode().splitlines() if l.strip()]
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Error reading file: {e}")
+    document = update.message.document or update.message.reply_to_message.document
+    if not document.file_name.endswith(".txt"):
+        await update.message.reply_text("⚠️ Only `.txt` files are supported.")
         return
 
-    if len(lines) > MAX_CARDS:
-        await update.message.reply_text(f"❌ Max {MAX_CARDS} cards allowed!")
-        return
+    file = await context.bot.get_file(document.file_id)
+    file_path = await file.download_to_drive(custom_path="input_cards.txt")
 
-    results = []
-    approved = declined = threed = live = 0
-    total_cards = len(lines)
-    eta_seconds = math.ceil(total_cards * DELAY_BETWEEN_REQUESTS)
-    eta_text = f"{eta_seconds//60}m {eta_seconds%60}s" if eta_seconds >= 60 else f"{eta_seconds}s"
+    with open(file_path, "r", encoding="utf-8") as f:
+        cards = [line.strip() for line in f if line.strip()]
+
+    if len(cards) > 200:
+        await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
+        return
 
     # Initial progress message
-    progress_msg = await update.message.reply_text(
-        f"┌─ 🚀 Checking Cards ─┐\n"
-        f"│ Total : {total_cards} | ETA : {eta_text}\n"
-        f"│ [░░░░░░░░░░░░░░░░] 0%\n"
-        f"│ Gateway: Mass Stripe Auth\n"
-        f"└─────────────────────┘"
+    processing_msg = await update.message.reply_text(
+        "🔄 Preparing Mass Stripe Auth check..."
     )
 
+    # Run background task
+    asyncio.create_task(background_check(update, context, cards, processing_msg))
+
+
+# ─── Background Task ────────────────────────────────
+async def background_check(update, context, cards, processing_msg):
+    results = []
+    approved = declined = threed = live = 0
+    total = len(cards)
+    start_time = time.time()
+
     async with aiohttp.ClientSession() as session:
-        for i, card in enumerate(lines, start=1):
+        for i, card in enumerate(cards, start=1):
             try:
-                async with session.get(API_URL.format(card)) as resp:
+                async with session.get(
+                    f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
+                    timeout=20
+                ) as resp:
                     data = await resp.json()
-                    status = data.get("status", "Unknown ❌")
-                    results.append(f"{card} => {status}")
+                    status = data.get("status", "Unknown")
+            except Exception as e:
+                status = f"Error: {str(e)}"
 
-                    # Count stats
-                    if "Approved" in status or "𝑨𝒑𝒑𝒓𝒐𝒗𝒆𝒅" in status:
-                        approved += 1
-                    elif "Decline" in status or "❌" in status:
-                        declined += 1
-                    elif "3DS" in status or "3d" in status.lower():
-                        threed += 1
-                    else:
-                        live += 1
-            except Exception:
-                results.append(f"{card} => Error ❌")
+            results.append(f"{card} → {status}")
 
-            # Progress update
-            percent = int((i / total_cards) * 100)
-            bar_length = 15
-            filled = int(bar_length * percent // 100)
-            bar = "█" * filled + "░" * (bar_length - filled)
+            # Count summary
+            st_low = status.lower()
+            if "approved" in st_low:
+                approved += 1
+            elif "declined" in st_low:
+                declined += 1
+            elif "3ds" in st_low:
+                threed += 1
+            elif "live" in st_low:
+                live += 1
 
-            remaining = (total_cards - i) * DELAY_BETWEEN_REQUESTS
-            eta_remain = f"{int(remaining//60)}m {int(remaining%60)}s" if remaining >= 60 else f"{int(remaining)}s"
+            # Progress bar (beast level compact box)
+            percent = int((i / total) * 100)
+            filled = "█" * (percent // 10)
+            empty = "░" * (10 - (percent // 10))
+            elapsed = time.time() - start_time
+            eta = int((elapsed / i) * (total - i)) if i > 0 else 0
+
+            progress_text = (
+                "╔══ 🔥 Mass Stripe Auth 🔥 ══╗\n"
+                f"  [{filled}{empty}] {percent}%\n"
+                f"  ✅ Checked: {i}/{total}\n"
+                f"  ⏳ ETA: {eta}s\n"
+                "╚══════════════════════════╝"
+            )
 
             try:
-                await progress_msg.edit_text(
-                    f"┌─ 🚀 Checking Cards ─┐\n"
-                    f"│ Total : {total_cards} | Left : {eta_remain}\n"
-                    f"│ [{bar}] {percent}%\n"
-                    f"│ Gateway: Mass Stripe Auth\n"
-                    f"└─────────────────────┘"
-                )
+                await processing_msg.edit_text(progress_text)
             except:
                 pass
 
-            await asyncio.sleep(DELAY_BETWEEN_REQUESTS)
+            await asyncio.sleep(2)  # delay to avoid API flooding
 
-    # Save checked.txt
+    # Write checked.txt with results + summary
     with open("checked.txt", "w", encoding="utf-8") as f:
         f.write("\n".join(results))
-        f.write("\n\n")
-        f.write("━━━━━━━━━━━━━━━━━━━━━━━\n")
+        f.write("\n\n━━━━━━━━━━━━━━━━━━\n")
         f.write("🌐 Gateway   = Mass Stripe Auth\n")
-        f.write(f"📊 Checked   = {total_cards}\n")
+        f.write(f"📊 Checked   = {total}\n")
         f.write(f"✅ Approved  = {approved}\n")
         f.write(f"❌ Declined  = {declined}\n")
         f.write(f"⚠️ 3DS       = {threed}\n")
         f.write(f"💳 CCN Live  = {live}\n")
-        f.write("━━━━━━━━━━━━━━━━━━━━━━━\n")
+        f.write("━━━━━━━━━━━━━━━━━━")
+
+    # Delete progress box & send results
+    try:
+        await processing_msg.delete()
+    except:
+        pass
 
     await update.message.reply_document(
         document=InputFile("checked.txt"),
-        filename="checked.txt",
-        caption="✅ File Processed & Checked Successfully"
+        caption="✅ Mass Stripe Auth Check Completed!"
     )
 
-    try:
-        await progress_msg.delete()
-    except:
-        pass
 
 
 import asyncio
