@@ -348,13 +348,15 @@ gates_message = (
 keyboard = [
     [InlineKeyboardButton("🔙 Back", callback_data="back_to_start")]
 ]
+
 reply_markup = InlineKeyboardMarkup(keyboard)
 
 await query.edit_message_text(
-    gates_message,
+    text=gates_message,
     parse_mode=ParseMode.MARKDOWN_V2,
     reply_markup=reply_markup
 )
+
 
 
 
