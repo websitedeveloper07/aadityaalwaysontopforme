@@ -1509,17 +1509,17 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
         return
 
-    # Send initial beast-level progress message
-    processing_msg = await update.message.reply_text(
-        f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-        f"💳: {len(cards)} | ⌚: ~{len(cards)*2}s\n"
-        f"╭─────────────╮\n"
-        f"│ [■■■■■■■■■■] 0/{len(cards)} │\n"
-        f"╰──────────────────╯"
-    )
+# Send initial beast-level progress message
+processing_msg = await update.message.reply_text(
+    f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
+    f"💳 : {len(cards)} | ⌚ : ~{len(cards)*2}s\n"
+    f"╭─────────────╮\n"
+    f"│ [□□□□□□□□□□] 0/{len(cards)} │\n"
+    f"╰──────────────────╯"
+)
 
-    # Start background task
-    asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
+# Start background task
+asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
 
 # ─── Background Task ──────────────────────────────
 async def background_check_multi(update, context, cards, processing_msg):
@@ -1555,10 +1555,10 @@ async def background_check_multi(update, context, cards, processing_msg):
             elif st_low.startswith("ccn live"):
                 live += 1
 
-            # Update fancy progress bar every 2 cards
+            # Update fancy progress bar every 2 cards or at the end
             if i % 2 == 0 or i == total:
-                percent = int((i / total) * 100)
-                filled_len = percent // 10  # 10 blocks
+                # Smooth bar calculation: 10 blocks
+                filled_len = round((i / total) * 10)
                 empty_len = 10 - filled_len
                 filled = "■" * filled_len
                 empty = "□" * empty_len
@@ -1566,11 +1566,12 @@ async def background_check_multi(update, context, cards, processing_msg):
 
                 progress_text = (
                     f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-                    f"Cards: {total} | Checked: {i}/{total}\n"
+                    f"💳 : {total} | ✅ : {i}/{total}\n"
                     f"╭─────────────╮\n"
-                    f"│ [{bar}] {i}/{total} │\n"
+                    f"│ [{bar}] │\n"
                     f"╰──────────────────╯"
                 )
+
                 try:
                     await processing_msg.edit_text(progress_text)
                 except BadRequest:
@@ -1579,7 +1580,7 @@ async def background_check_multi(update, context, cards, processing_msg):
                     pass
 
     # Save results
-    output_filename = "checked.txt"
+    output_filename = "CCSchecked.txt"
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(results))
 
