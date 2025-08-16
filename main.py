@@ -1200,7 +1200,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Send processing message
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"• 𝘾𝙖𝙧𝙙 ➜ {escape_markdown(cc_normalized, version=2)}\n"
+        f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
         "═════════════════════"
