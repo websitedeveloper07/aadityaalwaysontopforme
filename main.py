@@ -1510,13 +1510,13 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 # Send initial beast-level progress message
-processing_msg = await update.message.reply_text(
-    f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-    f"💳 : {len(cards)} | ⌚ : ~{len(cards)*2}s\n"
-    f"╭─────────────╮\n"
-    f"│ [□□□□□□□□□□] 0/{len(cards)} │\n"
-    f"╰──────────────────╯"
-)
+    processing_msg = await update.message.reply_text(
+        f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
+        f"💳 : {len(cards)} | ⌚ : ~{len(cards)*2}s\n"
+        f"╭─────────────╮\n"
+        f"│ [□□□□□□□□□□] 0/{len(cards)} │\n"
+        f"╰──────────────────╯"
+    )
 
 # Start background task
 asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
