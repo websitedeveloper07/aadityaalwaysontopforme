@@ -1351,6 +1351,11 @@ from db import get_user, update_user  # your DB functions here
 OWNER_ID = 8438505794  # Replace with your Telegram user ID
 user_cooldowns = {}
 
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    if update.effective_chat.type == "private":
+        return update.effective_user.id == OWNER_ID
+    return True
+
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     cooldown = 5  # seconds
     now = time.time()
@@ -1387,7 +1392,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
         parts = raw.split("|")
         if len(parts) != 4:
-            results.append(f"❌ Invalid card format: {escape_markdown(raw, version=2)}")
+            results.append(f"❌ Invalid card format: `{raw}`")
             error_count += 1
             continue
 
@@ -1397,11 +1402,12 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         cc_normalized = "|".join(parts)
 
         if not await consume_credit(user_id):
-            results.append(f"❌ Failed to deduct credit for card {escape_markdown(raw, version=2)}.")
+            results.append(f"❌ Failed to deduct credit for card `{cc_normalized}`.")
             error_count += 1
             break
 
         api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(api_url, timeout=25) as resp:
@@ -1409,14 +1415,16 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         raise Exception(f"HTTP {resp.status}")
                     data = await resp.json()
         except Exception as e:
-            results.append(f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e), version=2)}")
+            results.append(f"❌ API Error for card `{cc_normalized}`: {str(e)}`")
             error_count += 1
             checked_count += 1
             continue
 
-        api_response = data.get("status", "Unknown ❌")
-        api_response_lower = api_response.lower()
+        api_response = data.get("status", "Unknown")
+        # Remove any emoji from API response
+        api_response_clean = re.sub(r'[^\w\s\']', '', api_response).strip()
 
+        api_response_lower = api_response_clean.lower()
         emoji = "❓"
         if "approved" in api_response_lower:
             approved_count += 1
@@ -1431,7 +1439,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
         card_result = (
             f"`{cc_normalized}`\n"  # monospace
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
+            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response_clean, version=2)}"
         )
         results.append(card_result)
 
@@ -1477,7 +1485,9 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    user_id = update.effective_user.id
+    user = update.effective_user
+    user_id = user.id
+
     if not await enforce_cooldown(user_id, update):
         return
 
@@ -1507,11 +1517,11 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
         return
 
-    processing_msg = await update.effective_message.reply_text("🔎 Processing...")
+    processing_msg = await update.effective_message.reply_text("🔎Processing...")
     start_time = time.time()
 
     asyncio.create_task(
-        check_cards_background(cards_to_check, user_id, update.effective_user.first_name, processing_msg, start_time)
+        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
 
 
