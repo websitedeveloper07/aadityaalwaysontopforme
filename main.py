@@ -1162,11 +1162,16 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Parse card
-    raw = context.args[0] if context.args else None
+    # Get card: reply or argument
+    raw = None
+    if update.message.reply_to_message and update.message.reply_to_message.text:
+        raw = update.message.reply_to_message.text.strip()
+    elif context.args:
+        raw = ' '.join(context.args).strip()
+
     if not raw or "|" not in raw:
         await update.effective_message.reply_text(
-            "Usage: /chk number|mm|yy|cvv",
+            "Usage: reply to a message containing number|mm|yy|cvv or use /chk number|mm|yy|cvv",
             parse_mode=None
         )
         return
@@ -1192,11 +1197,11 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Send processing
+    # Send processing message
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
         f"• 𝘾𝙖𝙧𝙙 ➜ {escape_markdown(cc_normalized, version=2)}\n"
-        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+        "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
         "═════════════════════"
     )
@@ -1205,8 +1210,9 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-    # Background task
+    # Start background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+
 
 import asyncio
 import time
@@ -1517,20 +1523,28 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     )
 
 # --- /mass command ---
+import re
+import time
+import asyncio
+from telegram import Update
+from telegram.ext import ContextTypes
+
 async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Restrict private access if not owner
     if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
         await update.effective_message.reply_text(
-            "❌ Private access is blocked.\nContact @YourOwnerUsername to buy subscription."
+            "❌ Private access is blocked.\nContact @k4linuxx to buy subscription."
         )
         return
 
     user = update.effective_user
     user_id = user.id
 
+    # Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Extract cards from args or reply
+    # Extract cards from command args or replied message
     raw_cards = ""
     if context.args:
         raw_cards = ' '.join(context.args)
@@ -1538,33 +1552,37 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw_cards = update.effective_message.reply_to_message.text
 
     if not raw_cards:
-        await update.effective_message.reply_text("⚠️ Usage: /mass number|mm|yy|cvv")
+        await update.effective_message.reply_text(
+            "⚠️ Usage: reply to a message containing cards or use /mass number|mm|yy|cvv"
+        )
         return
 
+    # Regex to extract valid card lines
     card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
     card_lines = card_pattern.findall(raw_cards)
 
     if not card_lines:
         await update.effective_message.reply_text(
-            "⚠️ Please provide cards in the format: number|mm|yy|cvv."
+            "⚠️ No valid cards found. Format: number|mm|yy|cvv"
         )
         return
 
-    # Limit to 30 cards
+    # Limit to first 30 cards and normalize years
     cards_to_check = []
     for raw in card_lines[:30]:
         parts = raw.split("|")
         if len(parts) != 4:
             continue
-        if len(parts[2]) == 4:  # normalize year
+        if len(parts[2]) == 4:  # convert yyyy to yy
             parts[2] = parts[2][-2:]
         cards_to_check.append("|".join(parts))
 
     if len(card_lines) > 30:
         await update.effective_message.reply_text(
-            "⚠️ Only 30 cards are allowed. Checking the first 30 now."
+            "⚠️ Only the first 30 cards will be processed."
         )
 
+    # Fetch user data and check credits
     user_data = await get_user(user_id)
     if not user_data or user_data.get('credits', 0) <= 0:
         await update.effective_message.reply_text(
@@ -1572,9 +1590,13 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    processing_msg = await update.effective_message.reply_text("🔎 Processing cards...")
+    # Send processing message
+    processing_msg = await update.effective_message.reply_text(
+        f"🔎 Processing {len(cards_to_check)} cards..."
+    )
     start_time = time.time()
 
+    # Launch background task for checking
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
