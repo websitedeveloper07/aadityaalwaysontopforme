@@ -1506,10 +1506,10 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Start background task
-    asyncio.create_task(background_check(update, context, cards, processing_msg))
+    asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
 
 # ─── Background Task ──────────────────────────────
-async def background_check(update, context, cards, processing_msg):
+async def background_check_multi(update, context, cards, processing_msg):
     results = []
     approved = declined = threed = live = 0
     total = len(cards)
