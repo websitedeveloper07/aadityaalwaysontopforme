@@ -926,29 +926,30 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_display = get_vbv_status_display(vbv_status)
 
     # BIN info box (no space after country)
-    bin_info_box = (
-        f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
-        f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
-        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{escape_markdown_v2(status_display)}`\n"
-        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
-        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
-        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
-        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
-        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
-    )
+bin_info_box = (
+    f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
+    f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
+    f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮s*    ➳ `{escape_markdown_v2(status_display)}`\n"
+    f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
+    f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
+    f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
+    f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
+    f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}{escaped_country_emoji}`"
+)
 
-    user_info_box = (
-        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
-        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-        f"╰━━━━━━━━━━━━━━━━━━⬣"
-    )
+user_info_box = (
+    f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
+    f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+    f"╰━━━━━━━━━━━━━━━━━━⬣"
+)
 
-    final_message = f"{bin_info_box}\n\n{user_info_box}"
+final_message = f"{bin_info_box}\n{user_info_box}"  # <-- single newline only
 
-    await update.effective_message.reply_text(
-        final_message,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+await update.effective_message.reply_text(
+    final_message,
+    parse_mode=ParseMode.MARKDOWN_V2
+)
+
 
 
 
