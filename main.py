@@ -497,15 +497,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-def escape_markdown_v2(text: str) -> str:
-    """Escapes special characters for Telegram MarkdownV2."""
-    import re
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown_v2
+from telegram.helpers import escape_markdown as escape_markdown_v2
 
 # This function is a placeholder. You would replace this with your actual
 # logic to retrieve user data from a database or other storage.
@@ -514,7 +509,7 @@ async def get_user(user_id):
     # Dummy data for demonstration
     return {
         'status': 'Active',
-        'credits': 100,
+        'credits': 200,
         'plan': 'Free Tier',
         'plan_expiry': 'N/A',
         'keys_redeemed': 2,
@@ -551,7 +546,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💳 𝘾𝙧𝙚𝙙𝙞𝙩: `{credits}`\n"
         f"💼 𝙋𝙡𝙖𝙣: `{plan}`\n"
         f"📅 𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: `{plan_expiry}`\n"
-        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚�𝙢𝙚𝙙: `{keys_redeemed}`\n"
+        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: `{keys_redeemed}`\n"
         f"🗓 𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: `{registered_at}`\n"
     )
 
