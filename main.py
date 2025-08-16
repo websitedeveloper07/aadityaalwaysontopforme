@@ -571,16 +571,16 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+from telegram import Update
 from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown as escape_markdown_v2
 import random, io
 from datetime import datetime
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN/sequence."""
-    if not await check_authorization(update, context):
-        return
-
+    
     user = update.effective_user
     if not await enforce_cooldown(user.id, update):
         return
@@ -887,26 +887,24 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+from telegram import Update
 from telegram.constants import ParseMode
-
-def escape_markdown_v2(text: str) -> str:
-    escape_chars = r"\_*[]()~>#+-=|{}.!"
-    return ''.join(['\\' + char if char in escape_chars else char for char in text])
-
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown as escape_markdown_v2
+from telegram.ext import ContextTypes
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Performs a BIN lookup."""
-    if not await check_authorization(update, context):
-        return
-
+    """Performs a BIN lookup and deducts 1 credit."""
     user = update.effective_user
-    if not await enforce_cooldown(user.id, update):
-        return
 
+    # Get user data
     user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
+        return await update.effective_message.reply_text(
+            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Consume 1 credit
+    if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -984,6 +982,10 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     import re
@@ -991,9 +993,6 @@ def escape_markdown_v2(text: str) -> str:
 
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /credits command, showing user info and credits."""
-    if not await check_authorization(update, context):
-        return
-
     user = update.effective_user
     user_data = await get_user(user.id)
 
@@ -1019,6 +1018,7 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         credit_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 
@@ -1804,23 +1804,26 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 from faker import Faker
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
-    if not await check_authorization(update, context):
-        return
+
+    # Cooldown check
     if not await enforce_cooldown(update.effective_user.id, update):
         return
 
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
 
+    # Deduct 1 credit if available
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
     if not await consume_credit(user_id):
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
@@ -1852,22 +1855,22 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     output = (
         "╭━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━━━━⬣\n"
-        f"┣ ❏ 𝙉𝙖𝙢𝙚      ➳ `{name}`\n"
-        f"┣ ❏ 𝘿𝙤𝘽       ➳ `{dob}`\n"
-        f"┣ ❏ 𝙎𝙎𝙉       ➳ `{ssn}`\n"
-        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡     ➳ `{email}`\n"
-        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ `{username}`\n"
-        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚     ➳ `{phone}`\n"
-        f"┣ ❏ 𝙅𝙤𝙗       ➳ `{job}`\n"
-        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮   ➳ `{company}`\n"
-        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩    ➳ `{street}`\n"
-        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ `{address2}`\n"
-        f"┣ ❏ 𝘾𝙞𝙩𝙮      ➳ `{city}`\n"
-        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚     ➳ `{state}`\n"
-        f"┣ ❏ 𝙕𝙞𝙥       ➳ `{zip_code}`\n"
-        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮   ➳ `{country}`\n"
-        f"┣ ❏ 𝙄𝙋        ➳ `{ip}`\n"
-        f"┣ ❏ 𝙐𝘼        ➳ `{ua}`\n"
+        f"┣ ❏ 𝙉𝙖𝙢𝙚 ➳ {name}\n"
+        f"┣ ❏ 𝘿𝙤𝘽 ➳ {dob}\n"
+        f"┣ ❏ 𝙎𝙎𝙉 ➳ {ssn}\n"
+        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡 ➳ {email}\n"
+        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ {username}\n"
+        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚 ➳ {phone}\n"
+        f"┣ ❏ 𝙅𝙤𝙗 ➳ {job}\n"
+        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮 ➳ {company}\n"
+        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩 ➳ {street}\n"
+        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ {address2}\n"
+        f"┣ ❏ 𝘾𝙞𝙩𝙮 ➳ {city}\n"
+        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚 ➳ {state}\n"
+        f"┣ ❏ 𝙕𝙞𝙥 ➳ {zip_code}\n"
+        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮 ➳ {country}\n"
+        f"┣ ❏ 𝙄𝙋 ➳ {ip}\n"
+        f"┣ ❏ 𝙐𝘼 ➳ {ua}\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -1886,8 +1889,6 @@ def escape_markdown_v2(text: str) -> str:
 
 async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Extracts all cards from a dump (message or reply)."""
-    if not await check_authorization(update, context):
-        return
 
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
@@ -1952,9 +1953,6 @@ async def get_total_users():
     return len(users)  # Return only the count
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_authorization(update, context):
-        return
-
     # System stats
     cpu_usage = psutil.cpu_percent(interval=1)
     memory_info = psutil.virtual_memory()
