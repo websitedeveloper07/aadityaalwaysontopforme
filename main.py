@@ -321,43 +321,42 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # Gates menu handler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 
 def escape_markdown_v2(text: str) -> str:
     escape_chars = r'\_*[]()~`>#+-=|{}.!'
     return ''.join('\\' + c if c in escape_chars else c for c in text)
 
+# Async handler for the gates menu
 async def gates_menu_handler(update, context):
     query = update.callback_query
-    await query.answer()
+    await query.answer()  # Respond to callback to remove "loading" state
 
-gates_message = (
-    "🚪 *Gates Menu*\n\n"
-    "Use the following commands:\n\n"
-    "• `/chk` \\- *Check a single card on Stripe Auth*\n"
-    "  Example:\n"
-    "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
-    "• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
-    "  Example:\n"
-    "  `\\/mchk 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456`\n\n"
-    "• `/mass` \\- *Check up to 30 cards on Stripe Auth*\n"
-    "  Example:\n"
-    "  `\\/mass 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456 ...`\n"
-)
+    gates_message = (
+        "🚪 *Gates Menu*\n\n"
+        "Use the following commands:\n\n"
+        "• `/chk` \\- *Check a single card on Stripe Auth*\n"
+        "  Example:\n"
+        "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
+        "• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
+        "  Example:\n"
+        "  `\\/mchk 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456`\n\n"
+        "• `/mass` \\- *Check up to 30 cards on Stripe Auth*\n"
+        "  Example:\n"
+        "  `\\/mass 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456 ...`\n"
+    )
 
-keyboard = [
-    [InlineKeyboardButton("🔙 Back", callback_data="back_to_start")]
-]
+    keyboard = [
+        [InlineKeyboardButton("🔙 Back", callback_data="back_to_start")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-reply_markup = InlineKeyboardMarkup(keyboard)
-
-await query.edit_message_text(
-    text=gates_message,
-    parse_mode=ParseMode.MARKDOWN_V2,
-    reply_markup=reply_markup
-)
-
-
+    await query.edit_message_text(
+        text=gates_message,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=reply_markup
+    )
 
 
 
