@@ -1336,36 +1336,39 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
-import time
 import asyncio
+import time
 import aiohttp
 import re
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
-from datetime import datetime
-
 from db import get_user, update_user  # your DB functions here
 
-# Global variable for user cooldowns
+OWNER_ID = 8438505794  # Replace with your Telegram user ID
 user_cooldowns = {}
 
-async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
-    """Enforces a cooldown period for a user to prevent spamming."""
-    last_run = user_cooldowns.get(user_id, 0)
-    now = datetime.now().timestamp()
-    if now - last_run < cooldown_seconds:
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    if update.effective_chat.type == "private":
+        return update.effective_user.id == OWNER_ID
+    return True
+
+async def enforce_cooldown(user_id: int, update: Update) -> bool:
+    cooldown = 5  # seconds
+    now = time.time()
+    last = user_cooldowns.get(user_id, 0)
+    if now - last < cooldown:
+        remaining = round(cooldown - (now - last), 2)
         await update.effective_message.reply_text(
-            escape_markdown(f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds.", version=2),
-            parse_mode=ParseMode.MARKDOWN_V2
+            escape_markdown(f"⏳ Cooldown active. Wait {remaining} seconds.", version=2),
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
         return False
     user_cooldowns[user_id] = now
     return True
 
 async def consume_credit(user_id: int) -> bool:
-    """Consume 1 credit from DB user if available."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -1374,7 +1377,6 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
-    """Background processing for /mass command."""
     approved_count = declined_count = error_count = checked_count = 0
     results = []
     total_cards = len(cards_to_check)
@@ -1402,7 +1404,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             error_count += 1
             break
 
-        api_url = f"https://darkboy-auto-stripe.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+        api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(api_url, timeout=25) as resp:
@@ -1415,24 +1417,20 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             checked_count += 1
             continue
 
-        api_status = (data.get("status") or "Unknown").title()
-        api_response = data.get("response") or "N/A"
-
+        api_status = data.get("status", "Unknown")
         emoji = "❓"
-        if api_status.lower() == "approved":
+        if "approved" in api_status.lower():
             approved_count += 1
             emoji = "✅"
-        elif api_status.lower() == "declined":
+        elif "declined" in api_status.lower() or "incorrect" in api_status.lower():
             declined_count += 1
             emoji = "❌"
         else:
             error_count += 1
+
         checked_count += 1
 
-        card_result = (
-            f"`{escape_markdown(cc_normalized, version=2)}`\n"
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response, version=2)}"
-        )
+        card_result = f"{escape_markdown(cc_normalized, version=2)}\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_status, version=2)}"
         results.append(card_result)
 
         current_time_taken = round(time.time() - start_time, 2)
@@ -1470,8 +1468,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Checks up to 30 cards at once."""
+async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
+        await update.effective_message.reply_text(
+            "❌ Private access is blocked.\nContact @YourOwnerUsername to buy subscription."
+        )
+        return
+
     user = update.effective_user
     user_id = user.id
 
@@ -1485,10 +1488,7 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw_cards = update.effective_message.reply_to_message.text
 
     if not raw_cards:
-        await update.effective_message.reply_text(
-            "⚠️ Usage: /mass number|mm|yy|cvv",
-            parse_mode=None
-        )
+        await update.effective_message.reply_text("⚠️ Usage: /mchk number|mm|yy|cvv")
         return
 
     card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
@@ -1496,40 +1496,30 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_lines:
         await update.effective_message.reply_text(
-            "⚠️ Please provide at least one card in the format: number|mm|yy|cvv.",
-            parse_mode=None
+            "⚠️ Please provide at least one card in the format: number|mm|yy|cvv."
         )
         return
 
-    # Limit cards to first 30
-    cards_to_check = card_lines[:30]
-    if len(card_lines) > 30:
-        await update.effective_message.reply_text(
-            "⚠️ Only 30 cards are allowed. Checking the first 30 now.",
-            parse_mode=None
-        )
+    cards_to_check = card_lines[:10]
+    if len(card_lines) > 10:
+        await update.effective_message.reply_text("⚠️ Only 10 cards are allowed. Checking the first 10 now.")
 
     user_data = await get_user(user_id)
     if not user_data:
-        await update.effective_message.reply_text(
-            "❌ Could not fetch your user data. Try again later.",
-            parse_mode=None
-        )
+        await update.effective_message.reply_text("❌ Could not fetch your user data. Try again later.")
         return
 
     if user_data.get('credits', 0) <= 0:
-        await update.effective_message.reply_text(
-            "❌ You have no credits left. Please buy a plan to get more credits.",
-            parse_mode=None
-        )
+        await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
         return
 
-    processing_msg = await update.effective_message.reply_text("🔎Processing...", parse_mode=None)
+    processing_msg = await update.effective_message.reply_text("🔎Processing...")
     start_time = time.time()
 
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
+
 
 
 
