@@ -940,12 +940,14 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+from telegram import Update
+from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown as escape_markdown_v2
 
+# Custom escape for MarkdownV2
 def escape_markdown_v2_custom(text: str) -> str:
     """Escape special characters for MarkdownV2."""
-    escape_chars = r"\_*[]()~>#+-=|{}.!"`
+    escape_chars = r"\_*[]()~>#+-=|{}.!'"  # removed stray backtick
     return ''.join(['\\' + char if char in escape_chars else char for char in text])
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
