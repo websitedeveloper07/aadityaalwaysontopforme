@@ -1458,7 +1458,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
             f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
             f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
-            f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+            f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 30\n"
             f"──────── ⸙ ─────────"
         )
         try:
@@ -1478,7 +1478,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 30\n"
         f"──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
