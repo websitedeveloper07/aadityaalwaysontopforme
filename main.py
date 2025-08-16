@@ -911,21 +911,21 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # Escape and extract data safely
-    escaped_bin = escape_markdown_v2(bin_input)
-    escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
-    escaped_bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
-    escaped_card_type = escape_markdown_v2(bin_details.get("card_type", "N/A"))
-    escaped_level = escape_markdown_v2(bin_details.get("level", "N/A"))
-    escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
-    escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
-    vbv_status = bin_details.get("vbv_status", "Unknown")
-    escaped_user = escape_markdown_v2(user.full_name)
+escaped_bin = escape_markdown_v2(bin_input)
+escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
+escaped_bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
+escaped_card_type = escape_markdown_v2(bin_details.get("card_type", "N/A"))
+escaped_level = escape_markdown_v2(bin_details.get("level", "N/A"))
+escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
+escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
+vbv_status = bin_details.get("vbv_status", "Unknown")
+escaped_user = escape_markdown_v2(user.full_name)
 
-    # Custom emojis/status
-    level_emoji = get_level_emoji(escaped_level)
-    status_display = get_vbv_status_display(vbv_status)
+# Custom emojis/status
+level_emoji = get_level_emoji(escaped_level)
+status_display = get_vbv_status_display(vbv_status)
 
-    # BIN info box (no space after country)
+# BIN info box (compact, no extra line)
 bin_info_box = (
     f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
     f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
@@ -937,19 +937,21 @@ bin_info_box = (
     f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}{escaped_country_emoji}`"
 )
 
+# User info box (directly below country line)
 user_info_box = (
     f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
     f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
     f"╰━━━━━━━━━━━━━━━━━━⬣"
 )
 
-final_message = f"{bin_info_box}\n{user_info_box}"  # <-- single newline only
+# Combine boxes with single newline only
+final_message = f"{bin_info_box}\n{user_info_box}"
 
+# Send the message
 await update.effective_message.reply_text(
     final_message,
     parse_mode=ParseMode.MARKDOWN_V2
 )
-
 
 
 
