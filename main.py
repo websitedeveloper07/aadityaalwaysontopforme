@@ -561,6 +561,51 @@ import random
 from datetime import datetime
 import io
 
+# Placeholder functions for your bot's logic.
+# These need to be replaced with your actual implementations.
+async def enforce_cooldown(user_id, update):
+    """Enforces a cooldown period for a user to prevent spamming."""
+    return True
+
+async def get_user(user_id):
+    """Simulates fetching user data, e.g., from a database."""
+    return {'credits': 100}
+
+async def update_user(user_id, **kwargs):
+    """Simulates updating user data in a database."""
+    print(f"User {user_id} updated with {kwargs}")
+    return True
+
+async def get_bin_details(bin_number):
+    """
+    Simulates a BIN lookup API call.
+    In a real application, this would fetch data from a live API.
+    """
+    # This is where your actual BIN API call would be.
+    # For this example, we'll simulate a failure for a specific BIN
+    # to demonstrate the fix.
+    if bin_number == "424242":
+        return None # Simulating a failed API lookup
+    
+    # Return a sample response for a successful lookup
+    return {
+        "scheme": "Visa",
+        "type": "debit",
+        "bank": {"name": "Chase"},
+        "country_name": "United States",
+        "country_emoji": "🇺🇸"
+    }
+
+def luhn_checksum(card_number):
+    """Performs the Luhn algorithm checksum."""
+    digits = [int(d) for d in card_number]
+    odd_digits = digits[-1::-2]
+    even_digits = digits[-2::-2]
+    total = sum(odd_digits)
+    for d in even_digits:
+        total += sum(int(c) for c in str(2 * d))
+    return total % 10 == 0
+
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates a user-specified number of valid cards from a given BIN/sequence."""
     user = update.effective_user
@@ -625,10 +670,28 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # BIN lookup
     bin_details = await get_bin_details(card_base[:6])
-    brand = bin_details.get("scheme", "Unknown")
-    bank = bin_details.get("bank", "Unknown")
-    country_name = bin_details.get("country_name", "Unknown")
-    country_emoji = bin_details.get("country_emoji", "")
+
+    # --- FIX START ---
+    # Check if bin_details is None before trying to use it
+    if bin_details:
+        brand = bin_details.get("scheme", "Unknown")
+        bank = bin_details.get("bank", {}).get("name", "Unknown") # Access nested 'name' safely
+        country_name = bin_details.get("country_name", "Unknown")
+        country_emoji = bin_details.get("country_emoji", "")
+    else:
+        # Handle the case where the BIN lookup failed gracefully
+        brand = "Unknown"
+        bank = "Unknown"
+        country_name = "Unknown"
+        country_emoji = "❓"
+        # Also edit the processing message to inform the user
+        await context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            message_id=processing_message.message_id,
+            text=escape_markdown_v2("⚠️ BIN lookup failed for this number. Generating cards with unknown details."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    # --- FIX END ---
 
     # Determine card length
     card_length = 15 if "american express" in brand.lower() or "amex" in brand.lower() else 16
@@ -661,6 +724,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Create the BIN info block with escaped values
     escaped_bin_info = (
+        f"╭━━━[ 💳 *𝐆𝐞𝐧 𝐈𝐧𝐟𝐨* ]━━━⬣\n"
         f"┣ ❏ 𝐁𝐈𝐍 ➳ `{escape_markdown_v2(card_base)}`\n"
         f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝 ➳ `{escape_markdown_v2(brand)}`\n"
         f"┣ ❏ 𝐁𝐚𝐧𝐤 ➳ `{escape_markdown_v2(bank)}`\n"
