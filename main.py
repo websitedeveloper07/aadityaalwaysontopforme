@@ -1405,6 +1405,7 @@ import asyncio
 import aiohttp
 from telegram import Update, InputFile
 from telegram.ext import ContextTypes
+from telegram.error import BadRequest
 
 OWNER_ID = 8438505794
 last_mtchk_usage = {}
@@ -1494,14 +1495,14 @@ async def background_check(update, context, cards, processing_msg):
             results.append(line)
 
             # Count the different statuses
-            st_low = status.lower()
-            if "approved" in st_low:
+            st_low = status.lower().strip()
+            if st_low.startswith("approved"):
                 approved += 1
-            elif "declined" in st_low:
+            elif st_low.startswith("declined"):
                 declined += 1
-            elif "3ds" in st_low:
+            elif st_low.startswith("3ds"):
                 threed += 1
-            elif "live" in st_low:
+            elif st_low.startswith("live") or st_low.startswith("ccn live"):
                 live += 1
 
             # Progress bar update (every 10 cards to reduce edits)
@@ -1521,7 +1522,13 @@ async def background_check(update, context, cards, processing_msg):
                 )
                 try:
                     await processing_msg.edit_text(progress_text)
+                except BadRequest:
+                    # This specific exception is raised when the message has already
+                    # been edited or deleted by the user or another bot instance.
+                    # We pass silently as there's nothing else to do.
+                    pass
                 except Exception:
+                    # Catch any other unexpected exceptions during the edit.
                     pass
             
             # Simple sleep to avoid flooding the API
@@ -1560,6 +1567,7 @@ async def background_check(update, context, cards, processing_msg):
             )
     except Exception as e:
         await update.message.reply_text(f"❌ An error occurred while sending the file: {e}")
+
 
 
 
