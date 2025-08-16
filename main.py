@@ -670,26 +670,10 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # BIN lookup
     bin_details = await get_bin_details(card_base[:6])
-
-    # --- FIX START ---
-    # Check if bin_details is None before trying to use it
-    if bin_details:
-        brand = bin_details.get("scheme", "Unknown")
-        bank = bin_details.get("bank", {}).get("name", "Unknown") # Access nested 'name' safely
-        country_name = bin_details.get("country_name", "Unknown")
-        country_emoji = bin_details.get("country_emoji", "")
-    else:
-        # Handle the case where the BIN lookup failed gracefully
-        brand = "Unknown"
-        bank = "Unknown"
-        country_name = "Unknown"
-        country_emoji = "❓"
-        # Also edit the processing message to inform the user
-        await context.bot.edit_message_text(
-            chat_id=update.effective_chat.id,
-            message_id=processing_message.message_id,
-            text=escape_markdown_v2("⚠️ BIN lookup failed for this number. Generating cards with unknown details."),
-            parse_mode=ParseMode.MARKDOWN_V2
+    brand = bin_details.get("scheme", "Unknown")
+    bank = bin_details.get("bank", "Unknown")
+    country_name = bin_details.get("country_name", "Unknown")
+    country_emoji = bin_details.get("country_emoji", "")
         )
     # --- FIX END ---
 
@@ -955,64 +939,24 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import re
-from telegram import Update
-from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
 
-# These are placeholder functions for your specific bot logic.
-async def check_authorization(update, context):
-    """Placeholder function to check if the user is authorized."""
-    return True
-
-async def enforce_cooldown(user_id, update):
-    """Placeholder function to enforce command cooldowns."""
-    return True
-
-async def get_user(user_id):
-    """Placeholder function to retrieve user data, e.g., from a database."""
-    # Returning dummy data for the purpose of a runnable example.
-    return {
-        'credits': 100
-    }
-
-async def consume_credit(user_id):
-    """Placeholder function to consume a credit for a user."""
-    # Returning dummy data for the purpose of a runnable example.
-    return True
-
-async def get_bin_details(bin_number):
-    """Placeholder function to get BIN details from a service."""
-    # Returning dummy data for the purpose of a runnable example.
-    if bin_number == "457173":
-        return {
-            "scheme": "Visa",
-            "bank": "J.P. Morgan Chase",
-            "card_type": "Debit",
-            "level": "Classic",
-            "country_name": "United States",
-            "country_emoji": "🇺🇸",
-            "vbv_status": "Yes"
-        }
-    return None
-
-def get_level_emoji(level):
-    """Placeholder function for card level emojis."""
-    return "✨"
-
-def get_vbv_status_display(status):
-    """Placeholder function for VBV status display."""
-    return "Verified"
+def escape_markdown_v2_custom(text: str) -> str:
+    """Escape special characters for MarkdownV2."""
+    escape_chars = r"\_*[]()~>#+-=|{}.!"`
+    return ''.join(['\\' + char if char in escape_chars else char for char in text])
 
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Performs a BIN lookup."""
-    # The authorization check has been removed, so all users can access this command.
+    """Performs a BIN lookup without authorization logic."""
 
     user = update.effective_user
+
+    # Enforce cooldown
     if not await enforce_cooldown(user.id, update):
         return
 
+    # Get user data and check credits
     user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
@@ -1020,6 +964,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # Extract BIN input from command
     bin_input = None
     if context.args:
         bin_input = context.args[0]
@@ -1028,19 +973,21 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if len(command_text) > 1:
             bin_input = command_text[1]
 
+    # Validate BIN
     if not bin_input or not bin_input.isdigit() or len(bin_input) < 6:
         return await update.effective_message.reply_text(
-            "❌ Please provide a 6\\-digit BIN\\. ",
+            "❌ Please provide a 6\\-digit BIN\\. Usage: /bin [bin] or \\.bin [bin]\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Note: `consume_credit` check is still here as it's separate from authorization
+    # Consume user credit
     if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # Get BIN details
     bin_input = bin_input[:6]
     bin_details = await get_bin_details(bin_input)
 
@@ -1051,42 +998,39 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # Escape and extract data safely
-    escaped_bin = escape_markdown_v2(bin_input)
-    escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
-    escaped_bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
-    escaped_card_type = escape_markdown_v2(bin_details.get("card_type", "N/A"))
-    escaped_level = escape_markdown_v2(bin_details.get("level", "N/A"))
-    escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
-    escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
+    escaped_bin = escape_markdown_v2_custom(bin_input)
+    escaped_scheme = escape_markdown_v2_custom(bin_details.get("scheme", "N/A"))
+    escaped_bank = escape_markdown_v2_custom(bin_details.get("bank", "N/A"))
+    escaped_card_type = escape_markdown_v2_custom(bin_details.get("card_type", "N/A"))
+    escaped_level = escape_markdown_v2_custom(bin_details.get("level", "N/A"))
+    escaped_country_name = escape_markdown_v2_custom(bin_details.get("country_name", "N/A"))
+    escaped_country_emoji = escape_markdown_v2_custom(bin_details.get("country_emoji", ""))
     vbv_status = bin_details.get("vbv_status", "Unknown")
-    
-    # Get user's full name and ID for a clickable link
-    user_id = user.id
-    user_full_name = user.full_name
-    escaped_user_name = escape_markdown_v2(user_full_name)
+    escaped_user = escape_markdown_v2_custom(user.full_name)
 
     # Custom emojis/status
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
 
+    # BIN info box
     bin_info_box = (
         f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
-        f"┣ ❏ *𝐁𝐈𝐍* ➳ `{escaped_bin}`\n"
-        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬* ➳ `{escape_markdown_v2(status_display)}`\n"
-        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝* ➳ `{escaped_scheme}`\n"
-        f"┣ ❏ *𝐓𝐲𝐩𝐞* ➳ `{escaped_card_type}`\n"
-        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥* ➳ `{level_emoji} {escaped_level}`\n"
-        f"┣ ❏ *𝐁𝐚𝐧𝐤* ➳ `{escaped_bank}`\n"
-        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
+        f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
+        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{escape_markdown_v2_custom(status_display)}`\n"
+        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
+        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
+        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
+        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
+        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
     )
 
     user_info_box = (
-        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ [{escaped_user_name}](tg://user?id={user_id})\n"
-        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
+        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    final_message = f"{bin_info_box}{user_info_box}"
+    final_message = f"{bin_info_box}\n\n{user_info_box}"
 
     await update.effective_message.reply_text(
         final_message,
@@ -1186,16 +1130,14 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 def get_bin_details_sync(bin_number: str) -> dict:
-    """
-    Simulated BIN lookup. In a real-world scenario, this would be an API call.
-    It is wrapped in asyncio.to_thread to run in a separate thread.
-    """
-    time.sleep(1.5)  # Simulate API delay
+    # Simulate BIN lookup or call your actual BIN service here
+    time.sleep(1.5)
     return {
         "scheme": "Visa",
         "type": "Credit",
         "country_name": "United States"
     }
+
 
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     """
