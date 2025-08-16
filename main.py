@@ -168,21 +168,18 @@ async def add_credits_to_user(user_id: int, amount: int):
 
 async def get_bin_details(bin_number):
     bin_data = {
-        "scheme": "N/A",         # Card brand (e.g., VISA, Mastercard)
-        "type": "N/A",           # Credit/Debit
-        "level": "N/A",          # Card level (e.g., Classic, Business)
-        "bank": "N/A",           # Bank name
-        "country_name": "N/A",   # Full country name
-        "country_emoji": "",     # Country flag emoji
-        "vbv_status": None,      # Placeholder, not provided by API
-        "card_type": "N/A"       # Redundant with type, still kept
+        "scheme": "N/A",
+        "type": "N/A",
+        "card_type": "N/A",
+        "level": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": "",
+        "vbv_status": "Unknown"
     }
 
     url = f"https://bins.antipublic.cc/bins/{bin_number}"
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
-    }
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -194,18 +191,14 @@ async def get_bin_details(bin_number):
                     bin_data["card_type"] = data.get("type", "N/A").title()
                     bin_data["level"] = data.get("level", "N/A").title()
                     bin_data["bank"] = data.get("bank", "N/A").title()
-                    bin_data["country_name"] = data.get("country_name", "N/A")
+                    bin_data["country_name"] = data.get("country_name", "N/A").title()
                     bin_data["country_emoji"] = data.get("country_flag", "")
                     return bin_data
-                else:
-                    logger.warning(f"Antipublic API returned status {response.status} for BIN {bin_number}")
-    except aiohttp.ClientError as e:
-        logger.warning(f"Antipublic API call failed for {bin_number}: {e}")
     except Exception as e:
-        logger.warning(f"Error processing Antipublic response for {bin_number}: {e}")
+        logger.warning(f"Failed to fetch BIN {bin_number}: {e}")
 
-    logger.warning(f"Failed to get BIN details for {bin_number} from antipublic.cc.")
     return bin_data
+
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     """Enforces a 5-second cooldown per user."""
