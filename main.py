@@ -1509,7 +1509,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
         return
 
-# Send initial beast-level progress message
+    # Send initial beast-level progress message
     processing_msg = await update.message.reply_text(
         f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
         f"💳 : {len(cards)} | ⌚ : ~{len(cards)*2}s\n"
@@ -1518,15 +1518,13 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╰──────────────────╯"
     )
 
-# Start background task
-asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
+    # Start background task inside the async function
+    asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
 
 # ─── Background Task ──────────────────────────────
 async def background_check_multi(update, context, cards, processing_msg):
-    results = []
     approved = declined = threed = live = 0
     total = len(cards)
-    start_time = time.time()
 
     async with aiohttp.ClientSession() as session:
         for i, card in enumerate(cards, start=1):
@@ -1535,14 +1533,10 @@ async def background_check_multi(update, context, cards, processing_msg):
                     f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
                     timeout=20
                 ) as resp:
-                    if resp.status != 200:
-                        raise aiohttp.ClientError(f"HTTP {resp.status}")
                     data = await resp.json()
                     status = data.get("status", "Unknown")
             except Exception as e:
                 status = f"Error: {str(e)}"
-
-            results.append(f"{card} → {status}")
 
             # Count statuses
             st_low = normalize_status_text(status).lower().strip()
@@ -1555,18 +1549,15 @@ async def background_check_multi(update, context, cards, processing_msg):
             elif st_low.startswith("ccn live"):
                 live += 1
 
-            # Update fancy progress bar every 2 cards or at the end
+            # Update progress bar every 2 cards or at the end
             if i % 2 == 0 or i == total:
-                # Smooth bar calculation: 10 blocks
                 filled_len = round((i / total) * 10)
                 empty_len = 10 - filled_len
-                filled = "■" * filled_len
-                empty = "□" * empty_len
-                bar = f"{filled}{empty}"
+                bar = "■" * filled_len + "□" * empty_len
 
                 progress_text = (
                     f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-                    f"💳 : {total} | ✅ : {i}/{total}\n"
+                    f"💳 Total: {total} | ✅ Checked: {i}/{total}\n"
                     f"╭─────────────╮\n"
                     f"│ [{bar}] │\n"
                     f"╰──────────────────╯"
@@ -1574,11 +1565,10 @@ async def background_check_multi(update, context, cards, processing_msg):
 
                 try:
                     await processing_msg.edit_text(progress_text)
-                except BadRequest:
-                    pass
-                except Exception:
+                except:
                     pass
 
+    
     # Save results
     output_filename = "CCSchecked.txt"
     with open(output_filename, "w", encoding="utf-8") as f:
