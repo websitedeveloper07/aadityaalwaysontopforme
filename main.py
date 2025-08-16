@@ -332,25 +332,30 @@ def escape_markdown_v2(text: str) -> str:
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 
-async def gates_menu_handler(update, context):
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
+
+async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()  # Respond to callback to remove "loading" state
+    await query.answer()  # Remove the "loading" state
 
     gates_message = (
         "🚪 *Gates Menu*\n\n"
         "Use the following commands:\n\n"
-        "• `/chk` \\- *Check a single card on Stripe Auth*\n"
-        "  Example:\n"
-        "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
-        "• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
-        "  Example:\n"
-        "  `\\/mchk 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456`\n\n"
-        "• `/mass` \\- *Check up to 30 cards on Stripe Auth*\n"
-        "  Example:\n"
-        "  `\\/mass 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456 ...`\n\n"
-        "• `/mtchk` \\- *Mass check from a `.txt` file (up to 200 cards)*\n"
-        "  Example:\n"
-        "  Attach or reply to a txt file containing cards."
+        f"• `/chk` \\- *Check a single card on Stripe Auth*\n"
+        f"  Example:\n"
+        f"  `{escape_markdown('/chk 1234567890123456|12|24|123', version=2)}`\n\n"
+        f"• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
+        f"  Example:\n"
+        f"  `{escape_markdown('/mchk 1234567890123456|12|24|123 2345678901234567|11|23|456', version=2)}`\n\n"
+        f"• `/mass` \\- *Check up to 30 cards on Stripe Auth*\n"
+        f"  Example:\n"
+        f"  `{escape_markdown('/mass 1234567890123456|12|24|123 2345678901234567|11|23|456 ...', version=2)}`\n\n"
+        f"• `/mtchk` \\- *Mass check from a `.txt` file (up to 200 cards)*\n"
+        f"  Example:\n"
+        f"  Attach or reply to a txt file containing cards."
     )
 
     keyboard = [
@@ -363,7 +368,6 @@ async def gates_menu_handler(update, context):
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=reply_markup
     )
-
 
 
 
@@ -1523,6 +1527,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ─── Background Task ──────────────────────────────
 async def background_check_multi(update, context, cards, processing_msg):
+    results = []  # <-- define results here
     approved = declined = threed = live = 0
     total = len(cards)
 
@@ -1537,6 +1542,9 @@ async def background_check_multi(update, context, cards, processing_msg):
                     status = data.get("status", "Unknown")
             except Exception as e:
                 status = f"Error: {str(e)}"
+
+            # Append result
+            results.append(f"{card} → {status}")
 
             # Count statuses
             st_low = normalize_status_text(status).lower().strip()
@@ -1565,24 +1573,24 @@ async def background_check_multi(update, context, cards, processing_msg):
 
                 try:
                     await processing_msg.edit_text(progress_text)
-                except:
+                except Exception:
                     pass
 
-    
-    # Save results
+    # Save results to file
     output_filename = "CCSchecked.txt"
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(results))
 
-    # Delete progress bar
+    # Delete progress bar message
     try:
         await processing_msg.delete()
     except Exception:
         pass
 
+
     # Beast-level summary
     summary = (
-        "✦✧✦ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ✦✧✦\n" 
+        "✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n" 
         f"📊 𝗧𝗼𝘁𝗮𝗹     » {total}\n"
         f"✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱  » {approved}\n"
         f"❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱  » {declined}\n"
