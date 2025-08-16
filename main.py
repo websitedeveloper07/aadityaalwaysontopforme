@@ -1456,7 +1456,10 @@ def normalize_status_text(s: str) -> str:
     # This mapping covers the specific stylized characters from your API response
     mapping = {
         '𝑨': 'A', '𝒑': 'p', '𝒓': 'r', '𝒐': 'o', '𝒗': 'v', '𝒆': 'e', '𝒅': 'd',
-        '𝑫': 'D', '𝒄': 'c', '𝒍': 'l', '𝒊': 'i', '𝒏': 'n',
+        '𝑫': 'D', '𝒄': 'c', '𝒍': 'l', '𝒊': 'i', '𝒏': 'n', '𝐞': 'e',
+        '𝐂': 'C', '𝐚': 'a', '𝐫': 'r', '𝐝': 'd', '𝐥': 'l', '𝐢': 'i',
+        '𝐍': 'N', '𝐋': 'L', '𝐯': 'v', '𝟑': '3', '𝗗': 'D', '𝗖': 'C',
+        '𝗵': 'h', '𝗴': 'g', '𝗾': 'q', '𝘂': 'u', '𝗥': 'R', '𝗲': 'e',
     }
     normalized = ""
     for char in s:
@@ -1499,11 +1502,11 @@ async def background_check(update, context, cards, processing_msg):
                 approved += 1
             elif st_low.startswith("declined"):
                 declined += 1
-            elif st_low.startswith("3ds"):
+            elif st_low.startswith("3d challenge required"):
                 threed += 1
-            elif st_low.startswith("live") or st_low.startswith("ccn live"):
+            elif st_low.startswith("ccn live"):
                 live += 1
-
+            
             # Progress bar update (every 10 cards to reduce edits)
             if i % 10 == 0 or i == total:
                 percent = int((i / total) * 100)
@@ -1563,7 +1566,6 @@ async def background_check(update, context, cards, processing_msg):
             )
     except Exception as e:
         await update.message.reply_text(f"❌ An error occurred while sending the file: {e}")
-
 
 
 
