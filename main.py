@@ -1346,7 +1346,7 @@ from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 from datetime import datetime
 
-from db import get_user, update_user # your DB functions here
+from db import get_user, update_user  # your DB functions here
 
 # Global variable for user cooldowns
 user_cooldowns = {}
@@ -1365,9 +1365,7 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
     return True
 
 async def consume_credit(user_id: int) -> bool:
-    """
-    Consume 1 credit from DB user if available.
-    """
+    """Consume 1 credit from DB user if available."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -1376,10 +1374,7 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
-    """
-    Handles the background processing for the /mchk command.
-    It performs a BIN lookup, calls the external API, and formats the final message.
-    """
+    """Background processing for /mass command."""
     approved_count = declined_count = error_count = checked_count = 0
     results = []
     total_cards = len(cards_to_check)
@@ -1467,7 +1462,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝐞𝐜𝐤\n"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
         f"──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
@@ -1475,7 +1470,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Checks up to 30 cards at once."""
     user = update.effective_user
     user_id = user.id
 
@@ -1490,7 +1486,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not raw_cards:
         await update.effective_message.reply_text(
-            "⚠️ Usage: /mchk number|mm|yy|cvv",
+            "⚠️ Usage: /mass number|mm|yy|cvv",
             parse_mode=None
         )
         return
@@ -1505,15 +1501,14 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Limit cards to first 10
-    cards_to_check = card_lines[:10]
-    if len(card_lines) > 10:
+    # Limit cards to first 30
+    cards_to_check = card_lines[:30]
+    if len(card_lines) > 30:
         await update.effective_message.reply_text(
-            "⚠️ Only 10 cards are allowed. Checking the first 10 now.",
+            "⚠️ Only 30 cards are allowed. Checking the first 30 now.",
             parse_mode=None
         )
 
-    # Fetch fresh user data from DB (credits and plan)
     user_data = await get_user(user_id)
     if not user_data:
         await update.effective_message.reply_text(
@@ -1532,10 +1527,11 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_msg = await update.effective_message.reply_text("🔎Processing...", parse_mode=None)
     start_time = time.time()
 
-    # Run background task (non-blocking)
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
+
+
 
 
 import asyncio
