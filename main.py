@@ -193,10 +193,8 @@ async def get_bin_details(bin_number):
                     bin_data["bank"] = data.get("bank", "N/A").title()
                     bin_data["country_name"] = data.get("country_name", "N/A").title()
                     bin_data["country_emoji"] = data.get("country_flag", "")
-                    return bin_data
     except Exception as e:
-        logger.warning(f"Failed to fetch BIN {bin_number}: {e}")
-
+        print(f"BIN fetch failed: {e}")
     return bin_data
 
 
@@ -933,35 +931,49 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-from telegram import Update
-from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown as escape_markdown_v2
+import aiohttp
 
-# Custom escape for MarkdownV2
 def escape_markdown_v2_custom(text: str) -> str:
-    """Escape special characters for MarkdownV2."""
-    escape_chars = r"\_*[]()~>#+-=|{}.!'"  # removed stray backtick
+    escape_chars = r"\_*[]()~>#+-=|{}.!"
     return ''.join(['\\' + char if char in escape_chars else char for char in text])
 
-async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Performs a BIN lookup without authorization logic."""
+async def get_bin_details(bin_number):
+    bin_data = {
+        "scheme": "N/A",
+        "type": "N/A",
+        "card_type": "N/A",
+        "level": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": "",
+        "vbv_status": "Unknown"
+    }
 
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=7) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    bin_data["scheme"] = data.get("brand", "N/A").upper()
+                    bin_data["type"] = data.get("type", "N/A").title()
+                    bin_data["card_type"] = data.get("type", "N/A").title()
+                    bin_data["level"] = data.get("level", "N/A").title()
+                    bin_data["bank"] = data.get("bank", "N/A").title()
+                    bin_data["country_name"] = data.get("country_name", "N/A").title()
+                    bin_data["country_emoji"] = data.get("country_flag", "")
+    except Exception as e:
+        print(f"BIN fetch failed: {e}")
+    return bin_data
+
+async def bin_lookup(update, context):
     user = update.effective_user
-
-    # Enforce cooldown
-    if not await enforce_cooldown(user.id, update):
-        return
-
-    # Get user data and check credits
-    user_data = await get_user(user.id)
-    if user_data['credits'] <= 0:
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    # Extract BIN input from command
     bin_input = None
+
     if context.args:
         bin_input = context.args[0]
     elif update.effective_message and update.effective_message.text:
@@ -969,31 +981,16 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if len(command_text) > 1:
             bin_input = command_text[1]
 
-    # Validate BIN
     if not bin_input or not bin_input.isdigit() or len(bin_input) < 6:
         return await update.effective_message.reply_text(
-            "❌ Please provide a 6\\-digit BIN\\. Usage: /bin [bin] or \\.bin [bin]\\.",
+            "❌ Please provide a 6-digit BIN.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Consume user credit
-    if not await consume_credit(user.id):
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    # Get BIN details
     bin_input = bin_input[:6]
     bin_details = await get_bin_details(bin_input)
 
-    if not bin_details:
-        return await update.effective_message.reply_text(
-            "❌ BIN not found or invalid\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    # Escape and extract data safely
+    # Escape for MarkdownV2
     escaped_bin = escape_markdown_v2_custom(bin_input)
     escaped_scheme = escape_markdown_v2_custom(bin_details.get("scheme", "N/A"))
     escaped_bank = escape_markdown_v2_custom(bin_details.get("bank", "N/A"))
@@ -1004,34 +1001,23 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     vbv_status = bin_details.get("vbv_status", "Unknown")
     escaped_user = escape_markdown_v2_custom(user.full_name)
 
-    # Custom emojis/status
-    level_emoji = get_level_emoji(escaped_level)
-    status_display = get_vbv_status_display(vbv_status)
-
-    # BIN info box
-    bin_info_box = (
-        f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
-        f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
-        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{escape_markdown_v2_custom(status_display)}`\n"
-        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
-        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
-        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
-        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
-        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
-    )
-
-    user_info_box = (
-        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
-        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+    # Build BIN info box
+    final_message = (
+        f"╭━━━ ✦ 𝐁𝐈𝐍 𝐈𝐍𝐅𝐎 ✦ ━━━⬣\n"
+        f"┣ ❏ 𝐁𝐈𝐍       ➳ {escaped_bin}\n"
+        f"┣ ❏ 𝐒𝐭𝐚𝐭𝐮𝐬    ➳ 🤷 {vbv_status}\n"
+        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝     ➳ {escaped_scheme}\n"
+        f"┣ ❏ 𝐓𝐲𝐩𝐞      ➳ {escaped_card_type}\n"
+        f"┣ ❏ 𝐋𝐞𝐯𝐞𝐥     ➳ 💡 {escaped_level}\n"
+        f"┣ ❏ 𝐁𝐚𝐧𝐤      ➳ {escaped_bank}\n"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲   ➳ {escaped_country_name}{escaped_country_emoji}\n\n"
+        f"┣ ❏ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲 ➳ {escaped_user}\n"
+        f"┣ ❏ 𝐁𝐨𝐭 𝐛𝐲       ➳ kคli liຖนxx\n"
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    final_message = f"{bin_info_box}\n\n{user_info_box}"
+    await update.effective_message.reply_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
 
-    await update.effective_message.reply_text(
-        final_message,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
 
 
 
