@@ -1323,7 +1323,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
         await update.effective_message.reply_text(
-            "❌ Private access is blocked.\nContact @YourOwnerUsername to buy subscription."
+            "❌ Private access is blocked.\nContact @K4linuxx to buy subscription."
         )
         return
 
@@ -1365,6 +1365,199 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
+
+
+import asyncio
+import time
+import aiohttp
+import re
+
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
+
+from db import get_user, update_user  # your DB functions here
+
+OWNER_ID = 8438505794  # Replace with your Telegram user ID
+user_cooldowns = {}
+MAX_CARDS = 30 # New constant for the maximum number of cards
+
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    if update.effective_chat.type == "private":
+        return update.effective_user.id == OWNER_ID
+    return True
+
+async def enforce_cooldown(user_id: int, update: Update) -> bool:
+    cooldown = 5  # seconds
+    now = time.time()
+    last = user_cooldowns.get(user_id, 0)
+    if now - last < cooldown:
+        remaining = round(cooldown - (now - last), 2)
+        await update.effective_message.reply_text(
+            escape_markdown(f"⏳ Cooldown active. Wait {remaining} seconds.", version=2),
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
+    approved_count = declined_count = error_count = checked_count = 0
+    results = []
+    total_cards = len(cards_to_check)
+
+    for raw in cards_to_check:
+        user_data = await get_user(user_id)
+        if user_data.get('credits', 0) <= 0:
+            results.append("❌ Out of credits.")
+            error_count += 1
+            break
+
+        parts = raw.split("|")
+        if len(parts) != 4:
+            results.append(f"❌ Invalid card format: `{raw}`")
+            error_count += 1
+            continue
+
+        # Normalize year to two digits
+        if len(parts[2]) == 4:
+            parts[2] = parts[2][-2:]
+        cc_normalized = "|".join(parts)
+
+        if not await consume_credit(user_id):
+            results.append(f"❌ Failed to deduct credit for card `{cc_normalized}`.")
+            error_count += 1
+            break
+
+        api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, timeout=25) as resp:
+                    if resp.status != 200:
+                        raise Exception(f"HTTP {resp.status}")
+                    data = await resp.json()
+        except Exception as e:
+            results.append(f"❌ API Error for card `{cc_normalized}`: {str(e)}`")
+            error_count += 1
+            checked_count += 1
+            continue
+
+        api_response = data.get("status", "Unknown")
+        # Remove any emoji from API response
+        api_response_clean = re.sub(r'[^\w\s\']', '', api_response).strip()
+
+        api_response_lower = api_response_clean.lower()
+        emoji = "❓"
+        if "approved" in api_response_lower:
+            approved_count += 1
+            emoji = "✅"
+        elif "declined" in api_response_lower or "incorrect" in api_response_lower:
+            declined_count += 1
+            emoji = "❌"
+        else:
+            error_count += 1
+
+        checked_count += 1
+
+        card_result = (
+            f"`{cc_normalized}`\n"  # monospace
+            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response_clean, version=2)}"
+        )
+        results.append(card_result)
+
+        current_time_taken = round(time.time() - start_time, 2)
+        current_summary = (
+            f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+            f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+            f"✘ 𝐀𝐩𝐩𝐫�𝐯𝐞𝐝↣{approved_count}\n"
+            f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+            f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+            f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+            f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+            f"──────── ⸙ ─────────"
+        )
+        try:
+            await processing_msg.edit_text(
+                escape_markdown(current_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results),
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+        except Exception:
+            pass
+
+    final_time_taken = round(time.time() - start_time, 2)
+    final_summary = (
+        f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+        f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+        f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+        f"──────── ⸙ ─────────"
+    )
+    await processing_msg.edit_text(
+        escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
+        await update.effective_message.reply_text(
+            "❌ Private access is blocked.\nContact @YourOwnerUsername to buy subscription."
+        )
+        return
+
+    user = update.effective_user
+    user_id = user.id
+
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    raw_cards = ""
+    if context.args:
+        raw_cards = ' '.join(context.args)
+    elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
+        raw_cards = update.effective_message.reply_to_message.text
+
+    if not raw_cards:
+        await update.effective_message.reply_text("⚠️ Usage: /mass number|mm|yy|cvv")
+        return
+
+    card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
+    card_lines = card_pattern.findall(raw_cards)
+
+    if not card_lines:
+        await update.effective_message.reply_text("⚠️ Please provide at least one card in the format: number|mm|yy|cvv.")
+        return
+
+    cards_to_check = card_lines[:MAX_CARDS]
+    if len(card_lines) > MAX_CARDS:
+        await update.effective_message.reply_text(f"⚠️ Only {MAX_CARDS} cards are allowed. Checking the first {MAX_CARDS} now.")
+
+    user_data = await get_user(user_id)
+    if not user_data or user_data.get('credits', 0) <= 0:
+        await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
+        return
+
+    processing_msg = await update.effective_message.reply_text("🔎Processing...")
+    start_time = time.time()
+
+    asyncio.create_task(
+        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
+    )
+
+
+
 
 
 from faker import Faker
@@ -2124,6 +2317,7 @@ def main():
     application.add_handler(CommandHandler("credits", credits_command))
     application.add_handler(CommandHandler("chk", chk_command))
     application.add_handler(CommandHandler("mchk", mchk_command))
+    application.add_handler(CommandHandler("mass", mass_command))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("open", open_command))
     application.add_handler(CommandHandler("adcr", adcr_command))
