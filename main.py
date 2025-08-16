@@ -668,13 +668,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+
     # BIN lookup
     bin_details = await get_bin_details(card_base[:6])
     brand = bin_details.get("scheme", "Unknown")
     bank = bin_details.get("bank", "Unknown")
     country_name = bin_details.get("country_name", "Unknown")
     country_emoji = bin_details.get("country_emoji", "")
-        )
+
     # --- FIX END ---
 
     # Determine card length
