@@ -540,13 +540,16 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+from telegram import Update
+from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
 import random
+import io
 from datetime import datetime
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Generates 10 valid cards from a given BIN/sequence (at least 6 digits)."""
+    """Generates cards from a given BIN/sequence (at least 6 digits)."""
     if not await check_authorization(update, context):
         return
 
@@ -561,7 +564,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Get input
+    # Get raw input
     if context.args:
         raw_input = context.args[0]
     elif update.effective_message and update.effective_message.text:
@@ -574,7 +577,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.effective_message.reply_text(
             escape_markdown_v2(
                 "❌ Please provide BIN or sequence (at least 6 digits).\n"
-                "Usage:\n`/gen 414740`\n`/gen 445769222`\n`/gen 414740|11|2028|777`"
+                "Usage:\n`/gen 414740`\n`/gen 445769222`\n`/gen 414740|11|2028|777 [quantity]`"
             ),
             parse_mode=ParseMode.MARKDOWN_V2
         )
@@ -585,6 +588,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     extra_mm = parts[1].zfill(2) if len(parts) > 1 and parts[1].isdigit() else None
     extra_yyyy = parts[2] if len(parts) > 2 and parts[2].isdigit() else None
     extra_cvv = parts[3] if len(parts) > 3 and parts[3].isdigit() else None
+    num_cards = int(parts[4]) if len(parts) > 4 and parts[4].isdigit() else 10
+    num_cards = min(max(num_cards, 1), 50)  # limit 1–50 for safety
 
     if not card_base.isdigit() or len(card_base) < 6:
         return await update.effective_message.reply_text(
@@ -605,7 +610,6 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_name = bin_details.get("country_name", "Unknown")
     country_emoji = bin_details.get("country_emoji", "")
 
-    # Determine card length
     # Determine card length
     card_length = 15 if "american express" in brand.lower() or "amex" in brand.lower() else 16
 
@@ -635,7 +639,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deduct a single credit for the command
     await update_user(user.id, credits=user_data['credits'] - 1)
 
-    # Create the BIN info block with escaped values
+    # BIN info block
     escaped_bin_info = (
         f"╭━━━[ 💳 *𝐆𝐞𝐧 𝐈𝐧𝐟𝐨* ]━━━⬣\n"
         f"┣ ❏ 𝐁𝐈𝐍 ➳ `{escape_markdown_v2(card_base)}`\n"
@@ -645,14 +649,11 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    # Conditional output based on whether a quantity was specified
+    # Send output
     if send_as_file:
         file_content = "\n".join(cards)
         file = io.BytesIO(file_content.encode('utf-8'))
         file.name = f"generated_cards_{card_base}.txt"
-        
-        # Delete the processing message and send a new document
-        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=processing_message.message_id)
         
         await update.effective_message.reply_document(
             document=file,
@@ -662,14 +663,11 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         cards_list = "\n".join(cards)
         final_message = f"*Generated {len(cards)} Cards 💳*\n\n{cards_list}\n\n{escaped_bin_info}"
-        
-        # Edit the processing message with the final text
-        await context.bot.edit_message_text(
-            chat_id=update.effective_chat.id,
-            message_id=processing_message.message_id,
-            text=final_message,
+        await update.effective_message.reply_text(
+            final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
 import re
 from telegram import Update
