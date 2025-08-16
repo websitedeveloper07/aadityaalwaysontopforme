@@ -2406,6 +2406,7 @@ def main():
     application.add_handler(CommandHandler("credits", credits_command))
     application.add_handler(CommandHandler("chk", chk_command))
     application.add_handler(CommandHandler("mchk", mchk_command))
+    application.add_handler(CommandHandler("mass", mass_command))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("open", open_command))
     application.add_handler(CommandHandler("adcr", adcr_command))
