@@ -1426,7 +1426,7 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     if now - last < cooldown:
         remaining = round(cooldown - (now - last), 2)
         await update.effective_message.reply_text(
-            escape_markdown(f"⏳ Cooldown active. Wait {remaining}s.", version=2),
+            escape_markdown(f"⏳ Cooldown active. Wait {remaining} seconds.", version=2),
             parse_mode=ParseMode.MARKDOWN_V2,
         )
         return False
@@ -1434,9 +1434,6 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     return True
 
 async def consume_credit(user_id: int) -> bool:
-    """
-    Consume 1 credit per command
-    """
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -1461,7 +1458,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Authorization
     if not await check_authorization(update):
-        await update.message.reply_text("❌ You are not authorized to use this command.")
+        await update.message.reply_text("❌You cannot use this command in private join our group to use or buy a subscription.")
         return
 
     # Cooldown
@@ -1477,12 +1474,12 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.document and not (
         update.message.reply_to_message and update.message.reply_to_message.document
     ):
-        await update.message.reply_text("📂 Please send or reply to a `.txt` file containing up to 200 cards.")
+        await update.message.reply_text("📂 Please send or reply to a txt file containing up to 200 cards.")
         return
 
     document = update.message.document or update.message.reply_to_message.document
     if not document.file_name.endswith(".txt"):
-        await update.message.reply_text("⚠️ Only `.txt` files are supported.")
+        await update.message.reply_text("⚠️ Only txt files are supported.")
         return
 
     # Download file
@@ -1497,12 +1494,13 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
         return
 
-    # Send initial fancy progress bar
+    # Send initial beast-level progress message
     processing_msg = await update.message.reply_text(
-        f"╔══ 🔥 Mass Stripe Auth 🔥 ══╗\n"
-        f"  [░░░░░░░░░░] 0/{len(cards)}\n"
-        f"  🌐 Gateway: Mass Stripe Auth\n"
-        f"╚══════════════════════════╝"
+        f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
+        f"💳: {len(cards)} | ⌚: ~{len(cards)*2}s\n"
+        f"╭─────────────╮\n"
+        f"│ [■■■■■■■■■■] 0/{len(cards)} │\n"
+        f"╰──────────────────╯"
     )
 
     # Start background task
@@ -1542,22 +1540,21 @@ async def background_check_multi(update, context, cards, processing_msg):
             elif st_low.startswith("ccn live"):
                 live += 1
 
-            # Fancy progress bar update every 2 cards
+            # Update fancy progress bar every 2 cards
             if i % 2 == 0 or i == total:
                 percent = int((i / total) * 100)
-                filled_len = percent // 5  # 20 blocks
-                empty_len = 20 - filled_len
-                filled = "█" * filled_len
-                empty = "░" * empty_len
-
-                # Show percent inside the bar
-                bar = f"{filled}{empty} {percent}%"
+                filled_len = percent // 10  # 10 blocks
+                empty_len = 10 - filled_len
+                filled = "■" * filled_len
+                empty = "□" * empty_len
+                bar = f"{filled}{empty}"
 
                 progress_text = (
-                    f"╔══ 🔥 Mass Stripe Auth 🔥 ══╗\n"
-                    f"  [{bar}] {i}/{total}\n"
-                    f"  🌐 Gateway: Mass Stripe Auth\n"
-                    f"╚══════════════════════════╝"
+                    f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
+                    f"Cards: {total} | Checked: {i}/{total}\n"
+                    f"╭─────────────╮\n"
+                    f"│ [{bar}] {i}/{total} │\n"
+                    f"╰──────────────────╯"
                 )
                 try:
                     await processing_msg.edit_text(progress_text)
@@ -1577,16 +1574,15 @@ async def background_check_multi(update, context, cards, processing_msg):
     except Exception:
         pass
 
-    # Final summary
+    # Beast-level summary
     summary = (
-        "✅ Mass Stripe Auth Check Completed!\n\n"
-        f"📊 Total Checked : {total}\n"
-        f"✅ Approved      : {approved}\n"
-        f"❌ Declined      : {declined}\n"
-        f"⚠️ 3DS           : {threed}\n"
-        f"💳 CCN Live     : {live}\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "🌐 Gateway = Mass Stripe Auth"
+        "✦✧✦ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ✦✧✦\n" 
+        f"📊 𝗧𝗼𝘁𝗮𝗹     » {total}\n"
+        f"✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱  » {approved}\n"
+        f"❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱  » {declined}\n"
+        f"⚠️ 𝟯𝗗𝗦        » {threed}\n"
+        f"💳 𝗟𝗶𝘃𝗲      » {live}\n"
+        "✦━━━━━━━━━━━━━━━━━━━✦"
     )
 
     try:
