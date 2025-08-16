@@ -329,6 +329,9 @@ def escape_markdown_v2(text: str) -> str:
     return ''.join('\\' + c if c in escape_chars else c for c in text)
 
 # Async handler for the gates menu
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+
 async def gates_menu_handler(update, context):
     query = update.callback_query
     await query.answer()  # Respond to callback to remove "loading" state
@@ -344,7 +347,10 @@ async def gates_menu_handler(update, context):
         "  `\\/mchk 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456`\n\n"
         "• `/mass` \\- *Check up to 30 cards on Stripe Auth*\n"
         "  Example:\n"
-        "  `\\/mass 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456 ...`\n"
+        "  `\\/mass 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456 ...`\n\n"
+        "• `/mtchk` \\- *Mass check from a `.txt` file (up to 200 cards)*\n"
+        "  Example:\n"
+        "  Attach or reply to a txt file containing cards."
     )
 
     keyboard = [
@@ -357,6 +363,7 @@ async def gates_menu_handler(update, context):
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=reply_markup
     )
+
 
 
 
@@ -448,6 +455,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "┣ ❏ `/chk` \\- Checks card on Stripe Auth\n"
         "┣ ❏ `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
         "┣ ❏ `/mass` \\- Checks up to 30 cards on Stripe Auth\n"
+        "┣ ❏ `/mtchk` \\- Mass check from a txt file (up to 200 cards)\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
@@ -1075,7 +1083,6 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
     Handles the background processing for the /chk command.
     It performs a BIN lookup, calls the external API, and formats the final message.
     """
-    start_time = time.time()
     try:
         bin_number = parts[0][:6]
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
@@ -1093,10 +1100,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                 data = await resp.json()
 
         # The new API response only contains "card" and "status"
-        # Removed emoji stripping to preserve the emojis in the status string
         api_status = (data.get("status") or "Unknown").strip()
-        
-        time_taken = round(time.time() - start_time, 2)
 
         # Updated header logic to use the original style with proper bolding
         status_text = api_status.upper()
@@ -1115,7 +1119,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         final_text = (
             f"{header}\n"
             f"✘ Card         ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
-            "✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
+            "✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
             f"✘ Response     ➜ {formatted_response}\n"
             "――――――――――――――――\n"
             f"✘ Brand        ➜ {escape_markdown(brand, version=2)}\n"
@@ -1124,11 +1128,17 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             "――――――――――――――――\n"
             f"✘ Request By   ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
             f"✘ Developer    ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-            f"✘ Time         ➜ {escape_markdown(str(time_taken), version=2)} seconds\n"
             "――――――――――――――――"
         )
 
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+
+    except Exception as e:
+        await processing_msg.edit_text(
+            f"❌ API Error: {escape_markdown(str(e), version=2)}",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
 
     except Exception as e:
         await processing_msg.edit_text(
