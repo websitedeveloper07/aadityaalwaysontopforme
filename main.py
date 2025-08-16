@@ -331,16 +331,20 @@ async def gates_menu_handler(update, context):
     query = update.callback_query
     await query.answer()
 
-    gates_message = (
-        "🚪 *Gates Menu*\n\n"
-        "Use the following commands:\n\n"
-        "• `/chk` \\- *Check a single card on Stripe Auth*\n"
-        "  Example:\n"
-        "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
-        "• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
-        "  Example:\n"
-        "  `\\/mchk 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456`\n"
-    )
+gates_message = (
+    "🚪 *Gates Menu*\n\n"
+    "Use the following commands:\n\n"
+    "• `/chk` \\- *Check a single card on Stripe Auth*\n"
+    "  Example:\n"
+    "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
+    "• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
+    "  Example:\n"
+    "  `\\/mchk 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456`\n\n"
+    "• `/mass` \\- *Check 30 cards on Stripe Auth*\n"
+    "  Example:\n"
+    "  `\\/mass 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456 ...`\n"
+)
+
 
     # No additional escaping needed if you write carefully above, else use escape_markdown_v2
 
@@ -426,46 +430,50 @@ async def handle_callback(update, context):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's help menu with a list of commands."""
-    help_message = (
-        "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
-        "┣ ❏ `/start` \\- Welcome message\n"
-        "┣ ❏ `/help` \\- Shows this help message\n"
-        "┣ ❏ `/gen [bin] [no\\. of cards]` \\- Generate cards from BIN\n"
-        "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
-        "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
-        "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
-        "┣ ❏ `/open` \\- Extracts cards from a text file\n"
-        "┣ ❏ `/status` \\- Bot system status info\n"
-        "┣ ❏ `/credits` \\- Check your remaining credits\n"
-        "┣ ❏ `/info` \\- Shows your user info\n"
-        "┣ ❏ `/chk` \\- Checks card on stripe auth\n"
-        "┣ ❏ `/mchk` \\- Checks upto 10 cards on stripe auth\n"
-        "╰━━━━━━━━━━━━━━━━━━⬣"
-    )
-    await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
+help_message = (
+    "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
+    "┣ ❏ `/start` \\- Welcome message\n"
+    "┣ ❏ `/help` \\- Shows this help message\n"
+    "┣ ❏ `/gen [bin] [no\\. of cards]` \\- Generate cards from BIN\n"
+    "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
+    "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
+    "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
+    "┣ ❏ `/open` \\- Extracts cards from a text file\n"
+    "┣ ❏ `/status` \\- Bot system status info\n"
+    "┣ ❏ `/credits` \\- Check your remaining credits\n"
+    "┣ ❏ `/info` \\- Shows your user info\n"
+    "┣ ❏ `/chk` \\- Checks card on Stripe Auth\n"
+    "┣ ❏ `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
+    "┣ ❏ `/mass` \\- Checks up to 30 cards on Stripe Auth\n"
+    "╰━━━━━━━━━━━━━━━━━━⬣"
+)
+await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the list of tools and their status."""
     query = update.callback_query
     await query.answer()
-    tools_message = (
-        "*✦ All Commands ✦*\n\n"
-        "All commands are live, `Online`, and have `100%` health\\.\n\n"
-        "• `/gen [bin] [no\\. of cards]` \\- Generates cards from BIN\n"
-        "• `/open` \\- Extracts cards from a text file\n"
-        "• `/fk <country>` \\- Generates fake info\n"
-        "• `/fl <dump>` \\- Extracts cards from dumps\n"
-        "• `/credits` \\- Shows your credits\n"
-        "• `/bin <BIN>` \\- Performs BIN lookup\n"
-        "• `/status` \\- Checks bot health\n"
-        "• `/info` \\- Shows your info\n"
-        "• `/chk` \\- Checks card on stripe auth\n"
-        "• `/mchk` \\- Checks up to 10 cards on stripe auth"
-    )
-    keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(tools_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+tools_message = (
+    "*✦ All Commands ✦*\n\n"
+    "All commands are live, `Online`, and have `100%` health\\.\n\n"
+    "• `/gen [bin] [no\\. of cards]` \\- Generates cards from BIN\n"
+    "• `/open` \\- Extracts cards from a text file\n"
+    "• `/fk <country>` \\- Generates fake info\n"
+    "• `/fl <dump>` \\- Extracts cards from dumps\n"
+    "• `/credits` \\- Shows your credits\n"
+    "• `/bin <BIN>` \\- Performs BIN lookup\n"
+    "• `/status` \\- Checks bot health\n"
+    "• `/info` \\- Shows your info\n"
+    "• `/chk` \\- Checks card on Stripe Auth\n"
+    "• `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
+    "• `/mass` \\- Checks up to 30 cards on Stripe Auth"
+)
+keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
+reply_markup = InlineKeyboardMarkup(keyboard)
+await query.edit_message_text(tools_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 
 
