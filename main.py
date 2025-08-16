@@ -1411,6 +1411,7 @@ API_URL = "http://31.97.66.195:8000/?key=k4linuxx&card={}"
 MAX_CARDS = 200
 DELAY_BETWEEN_REQUESTS = 1.5  # seconds between requests
 MTCHK_COOLDOWN = 7  # cooldown in seconds
+OWNER_ID = 8438505794  # bot owner ID
 
 # Track last usage timestamp
 last_mtchk_time = 0
@@ -1418,19 +1419,22 @@ last_mtchk_time = 0
 
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global last_mtchk_time
+    user_id = update.effective_user.id
 
-    # 1) Restrict private usage
-    if update.effective_chat.type == "private":
-        await update.message.reply_text("❌ This command is not allowed in private. Use it in a group.")
-        return
+    # ✅ Owner bypass (can use anywhere, no cooldown)
+    if user_id != OWNER_ID:
+        # ❌ Block private use for non-owners
+        if update.effective_chat.type == "private":
+            await update.message.reply_text("❌ This command is not allowed in private. Use it in a group.")
+            return
 
-    # 2) Cooldown check
-    now = time.time()
-    if now - last_mtchk_time < MTCHK_COOLDOWN:
-        wait = int(MTCHK_COOLDOWN - (now - last_mtchk_time))
-        await update.message.reply_text(f"⏳ Please wait {wait}s before using /mtchk again.")
-        return
-    last_mtchk_time = now  # reset cooldown timer
+        # ⏳ Cooldown check
+        now = time.time()
+        if now - last_mtchk_time < MTCHK_COOLDOWN:
+            wait = int(MTCHK_COOLDOWN - (now - last_mtchk_time))
+            await update.message.reply_text(f"⏳ Please wait {wait}s before using /mtchk again.")
+            return
+        last_mtchk_time = now  # reset cooldown timer
 
     # Handle file upload / reply
     if update.message.reply_to_message and update.message.reply_to_message.document:
@@ -1524,6 +1528,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_document(
         document=InputFile("checked.txt"),
+        filename="checked.txt",
         caption="✅ File Processed & Checked Successfully"
     )
 
