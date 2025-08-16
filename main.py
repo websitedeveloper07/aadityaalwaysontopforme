@@ -540,16 +540,13 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-from telegram import Update
-from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown as escape_markdown_v2
-import random
-import io
+import random, io
 from datetime import datetime
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Generates cards from a given BIN/sequence (at least 6 digits)."""
+    """Generates cards from a given BIN/sequence."""
     if not await check_authorization(update, context):
         return
 
@@ -564,12 +561,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Get raw input
+    # Get input
     if context.args:
         raw_input = context.args[0]
-    elif update.effective_message and update.effective_message.text:
-        parts = update.effective_message.text.split(maxsplit=1)
-        raw_input = parts[1] if len(parts) > 1 else None
     else:
         raw_input = None
 
@@ -577,19 +571,17 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.effective_message.reply_text(
             escape_markdown_v2(
                 "❌ Please provide BIN or sequence (at least 6 digits).\n"
-                "Usage:\n`/gen 414740`\n`/gen 445769222`\n`/gen 414740|11|2028|777 [quantity]`"
+                "Usage:\n`/gen 414740`\n`/gen 445769 20`\n`/gen 414740|11|2028|777`"
             ),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Parse input
+    # Split possible parts
     parts = raw_input.split("|")
     card_base = parts[0].strip()
     extra_mm = parts[1].zfill(2) if len(parts) > 1 and parts[1].isdigit() else None
     extra_yyyy = parts[2] if len(parts) > 2 and parts[2].isdigit() else None
     extra_cvv = parts[3] if len(parts) > 3 and parts[3].isdigit() else None
-    num_cards = int(parts[4]) if len(parts) > 4 and parts[4].isdigit() else 10
-    num_cards = min(max(num_cards, 1), 50)  # limit 1–50 for safety
 
     if not card_base.isdigit() or len(card_base) < 6:
         return await update.effective_message.reply_text(
@@ -597,6 +589,15 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # Determine number of cards
+    num_cards = 10  # default
+    send_as_file = False
+
+    if len(context.args) > 1 and context.args[1].isdigit():
+        num_cards = int(context.args[1])
+        send_as_file = True  # send as file only if user specifies number
+
+    # Consume 1 credit
     if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
             escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
@@ -613,7 +614,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Determine card length
     card_length = 15 if "american express" in brand.lower() or "amex" in brand.lower() else 16
 
-    # Generate the cards
+    # Generate cards
     cards = []
     attempts = 0
     max_attempts = num_cards * 100
@@ -631,13 +632,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         yyyy = extra_yyyy or str(datetime.now().year + random.randint(1, 5))
         cvv = extra_cvv or (str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3))
 
-        if send_as_file:
-            cards.append(f"{card_number}|{mm}|{yyyy[-2:]}|{cvv}")
-        else:
-            cards.append(f"`{card_number}|{mm}|{yyyy[-2:]}|{cvv}`")
-
-    # Deduct a single credit for the command
-    await update_user(user.id, credits=user_data['credits'] - 1)
+        cards.append(f"{card_number}|{mm}|{yyyy[-2:]}|{cvv}")
 
     # BIN info block
     escaped_bin_info = (
@@ -649,24 +644,23 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    # Send output
     if send_as_file:
         file_content = "\n".join(cards)
         file = io.BytesIO(file_content.encode('utf-8'))
         file.name = f"generated_cards_{card_base}.txt"
-        
         await update.effective_message.reply_document(
             document=file,
             caption=f"*Generated {len(cards)} Cards 💳*\n\n{escaped_bin_info}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     else:
-        cards_list = "\n".join(cards)
+        cards_list = "\n".join(f"`{c}`" for c in cards)
         final_message = f"*Generated {len(cards)} Cards 💳*\n\n{cards_list}\n\n{escaped_bin_info}"
         await update.effective_message.reply_text(
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
 
 import re
