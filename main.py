@@ -1453,9 +1453,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Initial progress message
-    processing_msg = await update.message.reply_text(
-        "🔄 Preparing Mass Stripe Auth check..."
-    )
+    processing_msg = await update.message.reply_text("🔄 Preparing Mass Stripe Auth check...")
 
     # Run background task
     asyncio.create_task(background_check(update, context, cards, processing_msg))
@@ -1493,7 +1491,7 @@ async def background_check(update, context, cards, processing_msg):
             elif "live" in st_low:
                 live += 1
 
-            # Progress bar (beast level compact box)
+            # Progress bar (compact box)
             percent = int((i / total) * 100)
             filled = "█" * (percent // 10)
             empty = "░" * (10 - (percent // 10))
@@ -1515,28 +1513,34 @@ async def background_check(update, context, cards, processing_msg):
 
             await asyncio.sleep(2)  # delay to avoid API flooding
 
-    # Write checked.txt with results + summary
+    # Write checked.txt with results only
     with open("checked.txt", "w", encoding="utf-8") as f:
         f.write("\n".join(results))
-        f.write("\n\n━━━━━━━━━━━━━━━━━━\n")
-        f.write("🌐 Gateway   = Mass Stripe Auth\n")
-        f.write(f"📊 Checked   = {total}\n")
-        f.write(f"✅ Approved  = {approved}\n")
-        f.write(f"❌ Declined  = {declined}\n")
-        f.write(f"⚠️ 3DS       = {threed}\n")
-        f.write(f"💳 CCN Live  = {live}\n")
-        f.write("━━━━━━━━━━━━━━━━━━")
 
-    # Delete progress box & send results
+    # Delete progress box
     try:
         await processing_msg.delete()
     except:
         pass
 
+    # Build summary for caption
+    summary = (
+        "✅ Mass Stripe Auth Check Completed!\n\n"
+        f"📊 Total Checked: {total}\n"
+        f"✅ Approved : {approved}\n"
+        f"❌ Declined : {declined}\n"
+        f"⚠️ 3DS     : {threed}\n"
+        f"💳 CCN Live: {live}\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🌐 Gateway = Mass Stripe Auth"
+    )
+
+    # Send file with summary in caption
     await update.message.reply_document(
         document=InputFile("checked.txt"),
-        caption="✅ Mass Stripe Auth Check Completed!"
+        caption=summary
     )
+
 
 
 
