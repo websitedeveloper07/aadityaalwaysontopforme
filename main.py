@@ -427,51 +427,74 @@ async def handle_callback(update, context):
         await query.answer("Unknown option selected.", show_alert=True)
 
 
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's help menu with a list of commands."""
-help_message = (
-    "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
-    "┣ ❏ `/start` \\- Welcome message\n"
-    "┣ ❏ `/help` \\- Shows this help message\n"
-    "┣ ❏ `/gen [bin] [no\\. of cards]` \\- Generate cards from BIN\n"
-    "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
-    "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
-    "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
-    "┣ ❏ `/open` \\- Extracts cards from a text file\n"
-    "┣ ❏ `/status` \\- Bot system status info\n"
-    "┣ ❏ `/credits` \\- Check your remaining credits\n"
-    "┣ ❏ `/info` \\- Shows your user info\n"
-    "┣ ❏ `/chk` \\- Checks card on Stripe Auth\n"
-    "┣ ❏ `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
-    "┣ ❏ `/mass` \\- Checks up to 30 cards on Stripe Auth\n"
-    "╰━━━━━━━━━━━━━━━━━━⬣"
-)
-await update.effective_message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN_V2)
+    help_message = (
+        "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
+        "┣ ❏ `/start` \\- Welcome message\n"
+        "┣ ❏ `/help` \\- Shows this help message\n"
+        "┣ ❏ `/gen [bin] [no\\. of cards]` \\- Generate cards from BIN\n"
+        "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
+        "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
+        "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
+        "┣ ❏ `/open` \\- Extracts cards from a text file\n"
+        "┣ ❏ `/status` \\- Bot system status info\n"
+        "┣ ❏ `/credits` \\- Check your remaining credits\n"
+        "┣ ❏ `/info` \\- Shows your user info\n"
+        "┣ ❏ `/chk` \\- Checks card on Stripe Auth\n"
+        "┣ ❏ `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
+        "┣ ❏ `/mass` \\- Checks up to 30 cards on Stripe Auth\n"
+        "╰━━━━━━━━━━━━━━━━━━⬣"
+    )
+
+    await update.effective_message.reply_text(
+        help_message,
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
 
 
+
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the list of tools and their status."""
     query = update.callback_query
     await query.answer()
-tools_message = (
-    "*✦ All Commands ✦*\n\n"
-    "All commands are live, `Online`, and have `100%` health\\.\n\n"
-    "• `/gen [bin] [no\\. of cards]` \\- Generates cards from BIN\n"
-    "• `/open` \\- Extracts cards from a text file\n"
-    "• `/fk <country>` \\- Generates fake info\n"
-    "• `/fl <dump>` \\- Extracts cards from dumps\n"
-    "• `/credits` \\- Shows your credits\n"
-    "• `/bin <BIN>` \\- Performs BIN lookup\n"
-    "• `/status` \\- Checks bot health\n"
-    "• `/info` \\- Shows your info\n"
-    "• `/chk` \\- Checks card on Stripe Auth\n"
-    "• `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
-    "• `/mass` \\- Checks up to 30 cards on Stripe Auth"
-)
-keyboard = [[InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]]
-reply_markup = InlineKeyboardMarkup(keyboard)
-await query.edit_message_text(tools_message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+
+    tools_message = (
+        "*✦ All Commands ✦*\n\n"
+        "All commands are live, `Online`, and have `100%` health\\.\n\n"
+        "• `/gen [bin] [no\\. of cards]` \\- Generates cards from BIN\n"
+        "• `/open` \\- Extracts cards from a text file\n"
+        "• `/fk <country>` \\- Generates fake info\n"
+        "• `/fl <dump>` \\- Extracts cards from dumps\n"
+        "• `/credits` \\- Shows your credits\n"
+        "• `/bin <BIN>` \\- Performs BIN lookup\n"
+        "• `/status` \\- Checks bot health\n"
+        "• `/info` \\- Shows your info\n"
+        "• `/chk` \\- Checks card on Stripe Auth\n"
+        "• `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
+        "• `/mass` \\- Checks up to 30 cards on Stripe Auth"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text=tools_message,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=reply_markup
+    )
+
 
 
 
