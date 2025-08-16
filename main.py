@@ -1214,7 +1214,8 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     return True
 
 # ----------------- Credit Handling -----------------
-async def consume_credit(user_id: int) -> bool:
+async def consume_credit_command(user_id: int) -> bool:
+    """Deduct 1 credit per command"""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -1223,18 +1224,12 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # ----------------- Card Checking -----------------
-async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
+async def check_cards_background(cards_to_check, user_id, processing_msg, start_time):
     approved_count = declined_count = error_count = checked_count = 0
     results = []
     total_cards = len(cards_to_check)
 
     for raw in cards_to_check:
-        user_data = await get_user(user_id)
-        if user_data.get('credits', 0) <= 0:
-            results.append("❌ Out of credits.")
-            error_count += 1
-            break
-
         parts = raw.split("|")
         if len(parts) != 4:
             results.append(f"❌ Invalid card format: `{raw}`")
@@ -1245,11 +1240,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         if len(parts[2]) == 4:
             parts[2] = parts[2][-2:]
         cc_normalized = "|".join(parts)
-
-        if not await consume_credit(user_id):
-            results.append(f"❌ Failed to deduct credit for card `{cc_normalized}`.")
-            error_count += 1
-            break
 
         api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
@@ -1266,7 +1256,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             continue
 
         api_response = data.get("status", "Unknown")
-        # Remove any emoji from API response for clean markdown
+        # Remove special characters for clean markdown
         api_response_clean = re.sub(r'[^\w\s\']', '', api_response).strip()
 
         api_response_lower = api_response_clean.lower()
@@ -1284,7 +1274,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
         card_result = (
             f"`{cc_normalized}`\n"  # monospace
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response_clean, version=2)}"
+            f"𝗦𝗧𝗔𝗧𝗨𝗦 ➤ {emoji} **{escape_markdown(api_response_clean, version=2)}**"
         )
         results.append(card_result)
 
@@ -1339,6 +1329,16 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
 
+    user_data = await get_user(user_id)
+    if not user_data or user_data.get('credits', 0) <= 0:
+        await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
+        return
+
+    # Deduct 1 credit per command
+    if not await consume_credit_command(user_id):
+        await update.effective_message.reply_text("❌ Failed to deduct credit. Try again later.")
+        return
+
     raw_cards = ""
     if context.args:
         raw_cards = ' '.join(context.args)
@@ -1360,17 +1360,13 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(card_lines) > 10:
         await update.effective_message.reply_text("⚠️ Only 10 cards are allowed. Checking the first 10 now.")
 
-    user_data = await get_user(user_id)
-    if not user_data or user_data.get('credits', 0) <= 0:
-        await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
-        return
-
     processing_msg = await update.effective_message.reply_text("🔎Processing...")
     start_time = time.time()
 
     asyncio.create_task(
-        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
+        check_cards_background(cards_to_check, user_id, processing_msg, start_time)
     )
+
 
 
 import asyncio
