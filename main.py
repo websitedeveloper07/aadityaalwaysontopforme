@@ -320,30 +320,32 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.warning(f"Error sending start message: {e}")
 
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-from telegram.helpers import escape_markdown
 
-async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Gates menu handler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+
+def escape_markdown_v2(text: str) -> str:
+    escape_chars = r'\_*[]()~`>#+-=|{}.!'
+    return ''.join('\\' + c if c in escape_chars else c for c in text)
+
+# Async handler for the gates menu
+async def gates_menu_handler(update, context):
     query = update.callback_query
-    await query.answer()  # Remove "loading" state
+    await query.answer()  # Respond to callback to remove "loading" state
 
     gates_message = (
         "🚪 *Gates Menu*\n\n"
         "Use the following commands:\n\n"
-        f"• {escape_markdown('/chk', version=2)} - *Check a single card on Stripe Auth*\n"
-        f"  Example:\n"
-        f"  `{escape_markdown('/chk 1234567890123456|12|24|123', version=2)}`\n\n"
-        f"• {escape_markdown('/mchk', version=2)} - *Check up to 10 cards on Stripe Auth*\n"
-        f"  Example:\n"
-        f"  `{escape_markdown('/mchk 1234567890123456|12|24|123 2345678901234567|11|23|456', version=2)}`\n\n"
-        f"• {escape_markdown('/mass', version=2)} - *Check up to 30 cards on Stripe Auth*\n"
-        f"  Example:\n"
-        f"  `{escape_markdown('/mass 1234567890123456|12|24|123 2345678901234567|11|23|456 ...', version=2)}`\n\n"
-        f"• {escape_markdown('/mtchk', version=2)} - *Mass check from a `.txt` file \\(up to 200 cards\\)*\n"
-        f"  Example:\n"
-        f"  Attach or reply to a txt file containing cards."
+        "• `/chk` \\- *Check a single card on Stripe Auth*\n"
+        "  Example:\n"
+        "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
+        "• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
+        "  Example:\n"
+        "  `\\/mchk 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456`\n\n"
+        "• `/mass` \\- *Check up to 30 cards on Stripe Auth*\n"
+        "  Example:\n"
+        "  `\\/mass 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456 ...`\n"
     )
 
     keyboard = [
@@ -356,7 +358,6 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=reply_markup
     )
-
 
 
 
@@ -430,28 +431,26 @@ async def handle_callback(update, context):
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from telegram.helpers import escape_markdown
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's help menu with a list of commands."""
-
     help_message = (
-        f"╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
-        f"┣ ❏ {escape_markdown('/start', version=2)} \\- Welcome message\n"
-        f"┣ ❏ {escape_markdown('/help', version=2)} \\- Shows this help message\n"
-        f"┣ ❏ {escape_markdown('/gen [bin] [no. of cards]', version=2)} \\- Generate cards from BIN\n"
-        f"┣ ❏ {escape_markdown('/bin <bin>', version=2)} \\- BIN lookup \\(bank, country, type\\)\n"
-        f"┣ ❏ {escape_markdown('/fk <country>', version=2)} \\- Generate fake identity info\n"
-        f"┣ ❏ {escape_markdown('/fl <dump>', version=2)} \\- Extracts cards from dumps\n"
-        f"┣ ❏ {escape_markdown('/open', version=2)} \\- Extracts cards from a text file\n"
-        f"┣ ❏ {escape_markdown('/status', version=2)} \\- Bot system status info\n"
-        f"┣ ❏ {escape_markdown('/credits', version=2)} \\- Check your remaining credits\n"
-        f"┣ ❏ {escape_markdown('/info', version=2)} \\- Shows your user info\n"
-        f"┣ ❏ {escape_markdown('/chk', version=2)} \\- Checks card on Stripe Auth\n"
-        f"┣ ❏ {escape_markdown('/mchk', version=2)} \\- Checks up to 10 cards on Stripe Auth\n"
-        f"┣ ❏ {escape_markdown('/mass', version=2)} \\- Checks up to 30 cards on Stripe Auth\n"
-        f"┣ ❏ {escape_markdown('/mtchk', version=2)} \\- Mass check from a txt file \\(up to 200 cards\\)\n"
-        f"╰━━━━━━━━━━━━━━━━━━⬣"
+        "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
+        "┣ ❏ `/start` \\- Welcome message\n"
+        "┣ ❏ `/help` \\- Shows this help message\n"
+        "┣ ❏ `/gen [bin] [no\\. of cards]` \\- Generate cards from BIN\n"
+        "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
+        "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
+        "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
+        "┣ ❏ `/open` \\- Extracts cards from a text file\n"
+        "┣ ❏ `/status` \\- Bot system status info\n"
+        "┣ ❏ `/credits` \\- Check your remaining credits\n"
+        "┣ ❏ `/info` \\- Shows your user info\n"
+        "┣ ❏ `/chk` \\- Checks card on Stripe Auth\n"
+        "┣ ❏ `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
+        "┣ ❏ `/mtchk` \\- Checks a txt file upto 200 cards on Stripe Auth\n"
+        "┣ ❏ `/mass` \\- Checks up to 30 cards on Stripe Auth\n"
+        "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
     await update.effective_message.reply_text(
@@ -465,28 +464,27 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from telegram.helpers import escape_markdown
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the list of tools and their status."""
     query = update.callback_query
-    await query.answer()  # Remove "loading" state
+    await query.answer()
 
     tools_message = (
         "*✦ All Commands ✦*\n\n"
         "All commands are live, `Online`, and have `100%` health\\.\n\n"
-        f"• {escape_markdown('/gen [bin] [no. of cards]', version=2)} \\- Generates cards from BIN\n"
-        f"• {escape_markdown('/open', version=2)} \\- Extracts cards from a text file\n"
-        f"• {escape_markdown('/fk <country>', version=2)} \\- Generates fake info\n"
-        f"• {escape_markdown('/fl <dump>', version=2)} \\- Extracts cards from dumps\n"
-        f"• {escape_markdown('/credits', version=2)} \\- Shows your credits\n"
-        f"• {escape_markdown('/bin <BIN>', version=2)} \\- Performs BIN lookup\n"
-        f"• {escape_markdown('/status', version=2)} \\- Checks bot health\n"
-        f"• {escape_markdown('/info', version=2)} \\- Shows your info\n"
-        f"• {escape_markdown('/chk', version=2)} \\- Checks card on Stripe Auth\n"
-        f"• {escape_markdown('/mchk', version=2)} \\- Checks up to 10 cards on Stripe Auth\n"
-        f"• {escape_markdown('/mass', version=2)} \\- Checks up to 30 cards on Stripe Auth\n"
-        f"• {escape_markdown('/mtchk', version=2)} \\- Mass check from a `.txt` file \\(up to 200 cards\\)"
+        "• `/gen [bin] [no\\. of cards]` \\- Generates cards from BIN\n"
+        "• `/open` \\- Extracts cards from a text file\n"
+        "• `/fk <country>` \\- Generates fake info\n"
+        "• `/fl <dump>` \\- Extracts cards from dumps\n"
+        "• `/credits` \\- Shows your credits\n"
+        "• `/bin <BIN>` \\- Performs BIN lookup\n"
+        "• `/status` \\- Checks bot health\n"
+        "• `/info` \\- Shows your info\n"
+        "• `/chk` \\- Checks card on Stripe Auth\n"
+        "• `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
+        "• `/mtchk` \\- Checks a txt file upto 200 cards on Stripe Auth\n"
+        "• `/mass` \\- Checks up to 30 cards on Stripe Auth"
     )
 
     keyboard = [
