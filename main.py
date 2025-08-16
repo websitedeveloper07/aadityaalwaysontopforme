@@ -2133,6 +2133,8 @@ def main():
     application.add_handler(CommandHandler("chk", chk_command))
     application.add_handler(CommandHandler("mchk", mchk_command))
     application.add_handler(CommandHandler("gen", gen))
+    application.add_handler(CommandHandler("open", open_command))
+    application.add_handler(CommandHandler("adcr", adcr_command))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("fk", fk_command))
     application.add_handler(CommandHandler("fl", fl_command))
