@@ -1478,7 +1478,9 @@ async def background_check(update, context, cards, processing_msg):
             except Exception as e:
                 status = f"Error: {str(e)}"
 
-            results.append(f"{card} → {status}")
+            # Store card + status properly
+            line = f"{card} → {status}"
+            results.append(line)
 
             # Count summary
             st_low = status.lower()
@@ -1513,9 +1515,10 @@ async def background_check(update, context, cards, processing_msg):
 
             await asyncio.sleep(2)  # delay to avoid API flooding
 
-    # Write checked.txt with results only
+    # ✅ Write checked.txt with all cards + status
     with open("checked.txt", "w", encoding="utf-8") as f:
-        f.write("\n".join(results))
+        for line in results:
+            f.write(line + "\n")
 
     # Delete progress box
     try:
@@ -1540,8 +1543,6 @@ async def background_check(update, context, cards, processing_msg):
         document=InputFile("checked.txt"),
         caption=summary
     )
-
-
 
 
 import asyncio
