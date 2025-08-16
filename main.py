@@ -536,9 +536,6 @@ def escape_markdown_v2(text: str) -> str:
 
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the user's detailed information."""
-    if not await check_authorization(update, context):
-        return
-
     user = update.effective_user
     user_data = await get_user(user.id)
 
@@ -1855,22 +1852,22 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     output = (
         "╭━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━━━━⬣\n"
-        f"┣ ❏ 𝙉𝙖𝙢𝙚 ➳ {name}\n"
-        f"┣ ❏ 𝘿𝙤𝘽 ➳ {dob}\n"
-        f"┣ ❏ 𝙎𝙎𝙉 ➳ {ssn}\n"
-        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡 ➳ {email}\n"
-        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ {username}\n"
-        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚 ➳ {phone}\n"
-        f"┣ ❏ 𝙅𝙤𝙗 ➳ {job}\n"
-        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮 ➳ {company}\n"
-        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩 ➳ {street}\n"
-        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ {address2}\n"
-        f"┣ ❏ 𝘾𝙞𝙩𝙮 ➳ {city}\n"
-        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚 ➳ {state}\n"
-        f"┣ ❏ 𝙕𝙞𝙥 ➳ {zip_code}\n"
-        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮 ➳ {country}\n"
-        f"┣ ❏ 𝙄𝙋 ➳ {ip}\n"
-        f"┣ ❏ 𝙐𝘼 ➳ {ua}\n"
+        f"┣ ❏ 𝙉𝙖𝙢𝙚      ➳ `{name}`\n"
+        f"┣ ❏ 𝘿𝙤𝘽       ➳ `{dob}`\n"
+        f"┣ ❏ 𝙎𝙎𝙉       ➳ `{ssn}`\n"
+        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡     ➳ `{email}`\n"
+        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ `{username}`\n"
+        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚     ➳ `{phone}`\n"
+        f"┣ ❏ 𝙅𝙤𝙗       ➳ `{job}`\n"
+        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮   ➳ `{company}`\n"
+        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩    ➳ `{street}`\n"
+        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ `{address2}`\n"
+        f"┣ ❏ 𝘾𝙞𝙩𝙮      ➳ `{city}`\n"
+        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚     ➳ `{state}`\n"
+        f"┣ ❏ 𝙕𝙞𝙥       ➳ `{zip_code}`\n"
+        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮   ➳ `{country}`\n"
+        f"┣ ❏ 𝙄𝙋        ➳ `{ip}`\n"
+        f"┣ ❏ 𝙐𝘼        ➳ `{ua}`\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
