@@ -1576,11 +1576,9 @@ async def has_active_paid_plan(user_id: int) -> bool:
     return True
 
 
-async def check_paid_access(user_id: int, update: Update, require_credits: bool = True) -> bool:
+async def check_paid_access(user_id: int, update: Update) -> bool:
     """
-    Verify that user has an active paid plan.
-    If require_credits=True, also check credits.
-    Blocks command if not.
+    Verify that user has an active paid plan (credits are not checked).
     Works for both private and group chats.
     """
     # Only owner bypass
@@ -1595,15 +1593,8 @@ async def check_paid_access(user_id: int, update: Update, require_credits: bool 
         )
         return False
 
-    # Check credits (only if required)
-    if require_credits:
-        if not await consume_credit(user_id):
-            await update.effective_message.reply_text(
-                "❌ You don’t have enough credits left.\nPlease buy or renew your plan."
-            )
-            return False
-
     return True
+
 
 
 
@@ -1755,8 +1746,8 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
 
-    # ✅ Require active paid plan (but skip credits)
-    if not await check_paid_access(user_id, update, require_credits=False):
+    # ✅ Require active paid plan (credits not checked)
+    if not await check_paid_access(user_id, update):
         return
 
     # Extract cards from command args or replied message
