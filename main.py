@@ -1599,8 +1599,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 declined_count += 1
             checked_count += 1
 
-            # Update progress every 5 cards or at the end
-            if checked_count % 5 == 0 or checked_count == total_cards:
+            # Update progress every 3-4 cards or at the end
+            if checked_count % 3 == 0 or checked_count == total_cards:
                 current_time_taken = round(time.time() - start_time, 2)
                 progress_bar = get_progress_bar(checked_count, total_cards)
 
@@ -1614,7 +1614,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
                 )
 
-                # Show last 5 approved cards in monospace
+                # Show last 5 approved cards
                 approved_display = ""
                 if approved_cards:
                     approved_display = "\n\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n"
@@ -1666,7 +1666,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         )
     except Exception:
         pass
-
 
 
 
