@@ -2029,7 +2029,6 @@ import asyncio, aiohttp, os, time
 from telegram import InputFile
 from telegram.constants import ParseMode
 
-# Mapping for normalization (for counting only)
 def normalize_status_text(s: str) -> str:
     mapping = {
         '𝐀':'A','𝐁':'B','𝐂':'C','𝐃':'D','𝐄':'E','𝐅':'F','𝐆':'G','𝐇':'H','𝐈':'I','𝐉':'J',
@@ -2053,7 +2052,7 @@ async def background_check_multi(update, context, cards, processing_msg):
     approved = declined = threed = live = 0
     total = len(cards)
     start_time = time.time()
-    semaphore = asyncio.Semaphore(10)
+    semaphore = asyncio.Semaphore(10)  # Parallel requests limit
 
     async def check_card(card):
         async with semaphore:
@@ -2068,9 +2067,10 @@ async def background_check_multi(update, context, cards, processing_msg):
             except Exception as e:
                 status = f"Error: {str(e)}"
 
-            # Count categories by matching normalized text
+            # Count statuses based on normalized text
             normalized = normalize_status_text(status).lower()
             nonlocal approved, declined, threed, live
+
             if "approved" in normalized:
                 approved += 1
             elif "declined" in normalized or "incorrect card number" in normalized:
@@ -2080,40 +2080,47 @@ async def background_check_multi(update, context, cards, processing_msg):
             elif "ccn live" in normalized:
                 live += 1
 
+            # Save exactly what API returned
             results.append(f"{card} → {status}")
             return
 
     tasks = [check_card(card) for card in cards]
 
-    # Real-time progress updates
     for i, coro in enumerate(asyncio.as_completed(tasks), start=1):
         await coro
+        # Progress bar
         elapsed = time.time() - start_time
         eta = int((elapsed / i) * (total - i)) if i > 0 else 0
         filled_len = round((i / total) * 10)
         bar = "■" * filled_len + "□" * (10 - filled_len)
-        # Use simple text formatting to avoid Telegram Markdown issues
+
         progress_text = (
-            f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳 Total Cards: {total} | ⌛ ETA: {eta}s\n"
-            f"╭─────────────╮\n"
-            f"│ [{bar}] {i}/{total} │\n"
-            f"╰──────────────────╯"
+            f"✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n"
+            f"📊 Total     » {total}\n"
+            f"✅ Approved  » {approved}\n"
+            f"❌ Declined  » {declined}\n"
+            f"⚠️ 3DS      » {threed}\n"
+            f"💳 Live      » {live}\n"
+            f"╭[{bar}] {i}/{total} │ ETA: {eta}s\n"
+            f"✦━━━━━━━━━━━━━━━━━━━✦"
         )
         try:
-            await processing_msg.edit_text(progress_text)
+            await processing_msg.edit_text(progress_text, parse_mode=ParseMode.MARKDOWN_V2)
         except Exception:
             pass
 
+    # Save results exactly as API returned
     output_filename = f"CCSchecked_{update.effective_user.id}.txt"
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(results))
 
+    # Delete progress message
     try:
         await processing_msg.delete()
     except Exception:
         pass
 
+    # Summary
     summary = (
         "✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n"
         f"📊 Total     » {total}\n"
@@ -2124,6 +2131,7 @@ async def background_check_multi(update, context, cards, processing_msg):
         "✦━━━━━━━━━━━━━━━━━━━✦"
     )
 
+    # Send file with summary
     try:
         with open(output_filename, "rb") as f:
             await update.message.reply_document(
@@ -2137,8 +2145,6 @@ async def background_check_multi(update, context, cards, processing_msg):
         os.remove(output_filename)
     except Exception:
         pass
-
-    return results, approved, declined, threed, live
 
 
 
