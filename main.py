@@ -1552,9 +1552,17 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from db import get_user
 
+def get_progress_bar(checked, total, length=20):
+    """Return a visual progress bar for Telegram."""
+    filled = int((checked / total) * length)
+    empty = length - filled
+    percent = int((checked / total) * 100)
+    bar = f"{'🟩' * filled}{'⬜' * empty} {percent}%"
+    return bar
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = 0
-    results = []
+    approved_cards = []
     total_cards = len(cards_to_check)
 
     # Check user credits
@@ -1583,34 +1591,37 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         for coro in asyncio.as_completed(tasks):
             raw, status = await coro
 
-            # Count statuses
             status_lower = status.lower()
             if "approved" in status_lower:
                 approved_count += 1
+                approved_cards.append(raw)
             elif "declined" in status_lower:
                 declined_count += 1
             checked_count += 1
 
-            # Escape dynamic content for MarkdownV2
-            raw_safe = escape_markdown(raw, version=2)
-            status_safe = escape_markdown(status, version=2)
-            results.append(f"`{raw_safe}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_safe}")
-
             # Update progress every 5 cards or at the end
             if checked_count % 5 == 0 or checked_count == total_cards:
                 current_time_taken = round(time.time() - start_time, 2)
+                progress_bar = get_progress_bar(checked_count, total_cards)
+
                 summary = (
-                    f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                    f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-                    f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-                    f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-                    f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
+                    f"✘ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {progress_bar}\n"
+                    f"✘ 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
+                    f"✘ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}\n"
+                    f"✘ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}\n"
+                    f"✘ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}\n"
+                    f"✘ 𝗧𝗶𝗺𝗲 ↣ {current_time_taken}s\n"
                     f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
                 )
 
-                # Only last 5 results to avoid too long messages
-                separator = "\n--------------------\n"
-                message_text = summary + "\n\n" + separator.join(results[-5:])
+                # Show last 5 approved cards in monospace
+                approved_display = ""
+                if approved_cards:
+                    approved_display = "\n\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n"
+                    approved_display += "\n".join(f"`{escape_markdown(c, version=2)}`" for c in approved_cards[-5:])
+                    approved_display += "\n\nDev  - [kคli liຖนxx](tg://resolve?domain=K4linuxx)"
+
+                message_text = summary + approved_display
 
                 # Truncate if too long
                 if len(message_text) > 4000:
@@ -1622,24 +1633,29 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception:
-                    # Ignore Telegram errors for partial updates
                     pass
 
-    # Final summary
+    # Final summary with all approved cards
     final_time_taken = round(time.time() - start_time, 2)
+    final_progress_bar = get_progress_bar(checked_count, total_cards)
     final_summary = (
-        f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-        f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
+        f"✘ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {final_progress_bar}\n"
+        f"✘ 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
+        f"✘ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}\n"
+        f"✘ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}\n"
+        f"✘ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}\n"
+        f"✘ 𝗧𝗶𝗺𝗲 ↣ {final_time_taken}s\n"
         f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
     )
-    separator = "\n--------------------\n"
 
-    final_message = final_summary + "\n\n" + separator.join(results)
+    final_approved_display = ""
+    if approved_cards:
+        final_approved_display = "\n\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n"
+        final_approved_display += "\n".join(f"`{escape_markdown(c, version=2)}`" for c in approved_cards)
+        final_approved_display += "\n\nDev  - [kคli liຖนxx](tg://resolve?domain=K4linuxx)"
 
-    # Truncate final message if too long
+    final_message = final_summary + final_approved_display
+
     if len(final_message) > 4000:
         final_message = final_message[:3990] + "\n…"
 
@@ -1650,6 +1666,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         )
     except Exception:
         pass
+
+
 
 
 # --- /mass command ---
