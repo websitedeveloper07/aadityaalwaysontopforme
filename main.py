@@ -1272,16 +1272,6 @@ import time
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
-from telegram.helpers import escape_markdown
-from telegram.constants import ParseMode
-
-import re
-import time
-import asyncio
-import aiohttp
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = error_count = checked_count = 0
     results = []
@@ -1314,28 +1304,24 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 checked_count += 1
                 return f"❌ API Error for `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
 
-            status_raw = data.get("status", "Unknown")
+            status_raw = data.get("status", "Unknown")  # API already includes emoji
             status_clean = re.sub(r"[^\w\s']", "", status_raw).strip().lower()
 
-            emoji = "❓"
             if "approved" in status_clean:
                 approved_count += 1
-                emoji = "✅"
             elif "declined" in status_clean or "incorrect" in status_clean:
                 declined_count += 1
-                emoji = "❌"
             else:
                 error_count += 1
 
             checked_count += 1
-            return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(status_raw, version=2)}"
+            return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {status_raw}"
 
         # Process cards one by one
-        for i, task in enumerate([check_card(card) for card in cards_to_check], 1):
-            result = await task
+        for card in cards_to_check:
+            result = await check_card(card)
             results.append(result)
 
-            # Update message after each card
             current_time_taken = round(time.time() - start_time, 2)
             current_summary = (
                 f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1350,11 +1336,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             try:
                 await processing_msg.edit_text(
-                    escape_markdown(current_summary, version=2),
+                    current_summary,  # keep API emoji
                     parse_mode=ParseMode.MARKDOWN_V2
                 )
             except Exception as e:
                 print(f"⚠️ Failed to update message: {e}")
+
+            await asyncio.sleep(2)  # 2s delay between updates
 
     # Final summary
     final_time_taken = round(time.time() - start_time, 2)
@@ -1370,11 +1358,18 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         + "\n──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
-        escape_markdown(final_summary, version=2),
+        final_summary,
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
 
+
+import re
+import time
+from telegram import Update
+from telegram.ext import ContextTypes
+
+# Make sure check_cards_background is already imported or defined above
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1419,7 +1414,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ✅ Limit cards (optional, remove if you want more)
+    # ✅ Limit cards (optional)
     cards_to_check = card_lines[:10]
     if len(card_lines) > 10:
         await update.effective_message.reply_text(
@@ -1432,9 +1427,12 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ✅ Start background check
     start_time = time.time()
     try:
-        await check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
+        await check_cards_background(
+            cards_to_check, user_id, user.first_name, processing_msg, start_time
+        )
     except Exception as e:
         await processing_msg.edit_text(f"❌ Error during processing: {str(e)}")
+
 
 
 import time
