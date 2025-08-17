@@ -2028,6 +2028,7 @@ import asyncio
 import aiohttp
 import os
 import re
+import json
 from telegram import Update, InputFile
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
@@ -2140,9 +2141,21 @@ async def background_check_multi(update, context, cards, processing_msg):
                 f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
                 timeout=20
             ) as resp:
-                # Read response as plain text
                 text_data = await resp.text()
-                status = normalize_status_text(text_data.strip())
+                
+                # Check if the response is a JSON string
+                if text_data.startswith("{") and text_data.endswith("}"):
+                    try:
+                        json_data = json.loads(text_data)
+                        # Your provided example has a typo "Challeoge"
+                        status_text = json_data.get("status", "Unknown").replace("Challeoge", "Challenge")
+                        status = normalize_status_text(status_text)
+                    except json.JSONDecodeError:
+                        status = f"Error: Malformed JSON"
+                else:
+                    # If it's not a JSON string, treat it as an error
+                    status = f"Error: {text_data.strip()}"
+                
                 return card, status
         except Exception as e:
             return card, f"Error: {str(e)}"
@@ -2220,6 +2233,7 @@ async def background_check_multi(update, context, cards, processing_msg):
         os.remove(output_filename)
     except Exception:
         pass
+
 
 from faker import Faker
 from telegram import Update
