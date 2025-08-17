@@ -1604,8 +1604,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             current_time_taken = round(time.time() - start_time, 2)
             
             summary = (
-                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✘ 𝐂𝐡𝗲𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                f"✘ 𝐓�𝐭𝐚𝐥↣{total_cards}\n"
+                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                 f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
