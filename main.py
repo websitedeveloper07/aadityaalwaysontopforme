@@ -1370,7 +1370,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
 
     # ✅ Check authorization
-    if not await check_authorization(update, context):
+    if not await check_authorization(update):
         await update.effective_message.reply_text(
             "❌ Private access is blocked.\nContact @K4linuxx to buy subscription."
         )
