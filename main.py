@@ -1602,7 +1602,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             # Escape dynamic content for MarkdownV2
             raw_safe = escape_markdown(raw, version=2)
             status_safe = escape_markdown(status, version=2)
-            results.append(f"`{raw_safe}`\n𝐒𝐭𝐚�𝐮𝐬 ➳ {status_safe}")
+            results.append(f"`{raw_safe}`\n𝐒�𝐚𝐭𝐮𝐬 ➳ {status_safe}")
 
             # Update progress every 5 cards or at the end
             if checked_count % 5 == 0 or checked_count == total_cards:
@@ -1621,7 +1621,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 
                 try:
                     await processing_msg.edit_text(
-                        escape_markdown(summary, version=2) + "\n\n" + escape_markdown("──────── ⸙ ─────────", version=2).join(results[-5:]),
+                        escape_markdown(summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results[-5:]),
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception:
@@ -1642,7 +1642,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     )
     # The final message update will try to show all results. Be aware of Telegram's message length limit.
     await processing_msg.edit_text(
-        escape_markdown(final_summary, version=2) + "\n\n" + escape_markdown("──────── ⸙ ─────────", version=2).join(results) + escape_markdown("\n──────── ⸙ ─────────", version=2),
+        escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
