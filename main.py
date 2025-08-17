@@ -1550,7 +1550,7 @@ import asyncio
 import time
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from db import get_user  # your function to get user credits
+from db import get_user
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = 0
@@ -1579,7 +1579,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 return card, status
 
         tasks = [fetch_card(card) for card in cards_to_check]
-        
+
         for coro in asyncio.as_completed(tasks):
             raw, status = await coro
 
@@ -1592,7 +1592,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             checked_count += 1
 
-            # Add result for this card
+            # Add result for this card (escaped)
             results.append(f"`{escape_markdown(raw, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(status, version=2)}")
 
             # Update progress every 5 cards or at the end
@@ -1604,12 +1604,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                     f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                     f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-                    f"──────── ⸙ ─────────"
+                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
                 )
                 try:
+                    # Use plain separator, no reserved Markdown characters
+                    separator = "\n--------------------\n"
                     await processing_msg.edit_text(
-                        summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results[-5:]),
+                        summary + "\n\n" + separator.join(results[-5:]),
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception:
@@ -1623,11 +1624,11 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-        f"──────── ⸙ ─────────"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
     )
+    separator = "\n--------------------\n"
     await processing_msg.edit_text(
-        final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results),
+        final_summary + "\n\n" + separator.join(results),
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
