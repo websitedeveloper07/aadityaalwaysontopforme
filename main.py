@@ -2142,21 +2142,20 @@ async def background_check_multi(update, context, cards, processing_msg):
                 timeout=20
             ) as resp:
                 text_data = await resp.text()
-                
-                # Check if the response is a JSON string
-                if text_data.startswith("{") and text_data.endswith("}"):
-                    try:
-                        json_data = json.loads(text_data)
-                        # Your provided example has a typo "Challeoge"
-                        status_text = json_data.get("status", "Unknown").replace("Challeoge", "Challenge")
-                        status = normalize_status_text(status_text)
-                    except json.JSONDecodeError:
-                        status = f"Error: Malformed JSON"
-                else:
-                    # If it's not a JSON string, treat it as an error
-                    status = f"Error: {text_data.strip()}"
-                
+
+                # Attempt to parse as JSON first
+                try:
+                    json_data = json.loads(text_data)
+                    status_text = json_data.get("status", "Unknown").strip()
+                    # Correct the typo in "Challenge"
+                    status_text = status_text.replace("Challeoge", "Challenge")
+                except (json.JSONDecodeError, KeyError):
+                    # If JSON parsing fails, or key is missing, treat the whole response as the status
+                    status_text = text_data.strip()
+
+                status = normalize_status_text(status_text)
                 return card, status
+
         except Exception as e:
             return card, f"Error: {str(e)}"
 
@@ -2187,7 +2186,7 @@ async def background_check_multi(update, context, cards, processing_msg):
             # Use specific string matching for accurate counting
             if "APPROVED" in status:
                 approved += 1
-            elif "DECLINED" in status or "INCORRECT CARD NUMBER" in status:
+            elif "DECLINED" in status:
                 declined += 1
             elif "3D CHALLENGE REQUIRED" in status:
                 threed += 1
