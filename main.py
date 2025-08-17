@@ -1602,10 +1602,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             # Escape dynamic content for MarkdownV2
             raw_safe = escape_markdown(raw, version=2)
             status_safe = escape_markdown(status, version=2)
-            results.append(f"`{raw_safe}`\n𝐒�𝐚𝐭𝐮𝐬 ➳ {status_safe}")
+            results.append(f"`{raw_safe}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_safe}")
 
-            # Update progress every 5 cards or at the end
-            if checked_count % 5 == 0 or checked_count == total_cards:
+            # Update progress every 2 cards or at the end
+            if checked_count % 2 == 0 or checked_count == total_cards:
                 current_time_taken = round(time.time() - start_time, 2)
                 
                 summary = (
@@ -1620,13 +1620,17 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 )
                 
                 try:
+                    # Join only the last 2 results for the intermediate update
                     await processing_msg.edit_text(
-                        escape_markdown(summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results[-5:]),
+                        escape_markdown(summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results[-2:]),
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception:
                     # Ignore Telegram errors for partial updates (e.g., if message is unchanged)
                     pass
+
+                # Wait for 2 seconds before checking the next card
+                await asyncio.sleep(2)
 
     # Final message
     final_time_taken = round(time.time() - start_time, 2)
@@ -1722,7 +1726,6 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
-
 
 
 
