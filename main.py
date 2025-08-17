@@ -1579,7 +1579,8 @@ async def has_active_paid_plan(user_id: int) -> bool:
 async def check_paid_access(user_id: int, update: Update, require_credits: bool = True) -> bool:
     """
     Verify that user has an active paid plan.
-    Optionally also checks credits.
+    If require_credits=True, also check credits.
+    Blocks command if not.
     Works for both private and group chats.
     """
     # Only owner bypass
@@ -1594,7 +1595,7 @@ async def check_paid_access(user_id: int, update: Update, require_credits: bool 
         )
         return False
 
-    # Check credits only if required
+    # Check credits (only if required)
     if require_credits:
         if not await consume_credit(user_id):
             await update.effective_message.reply_text(
@@ -1603,6 +1604,7 @@ async def check_paid_access(user_id: int, update: Update, require_credits: bool 
             return False
 
     return True
+
 
 
 # --- Background card checking ---
