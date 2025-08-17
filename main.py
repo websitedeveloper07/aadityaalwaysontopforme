@@ -1552,14 +1552,14 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from db import get_user
 
-def get_progress_bar(checked, total, length=20):
-    """Return a visual progress bar for Telegram."""
+def get_progress_bar(checked, total, length=10):
+    """Return a smaller, visually clean progress bar for Telegram."""
     if total == 0:
         total = 1
     filled = int((checked / total) * length)
     empty = length - filled
     percent = int((checked / total) * 100)
-    bar = f"{'🟩' * filled}{'⬜' * empty} {percent}%"
+    bar = f"[{'■' * filled}{'□' * empty}] {percent}%"
     return bar
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time=None):
@@ -1616,41 +1616,39 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 declined_count += 1
             checked_count += 1
 
-            # Update progress every card or at the end
-            if checked_count % 1 == 0 or checked_count == total_cards:
-                current_time_taken = round(time.time() - start_time, 2)
-                progress_bar = get_progress_bar(checked_count, total_cards)
+            # Update progress
+            current_time_taken = round(time.time() - start_time, 2)
+            progress_bar = get_progress_bar(checked_count, total_cards)
 
-                summary = (
-                    f"✘ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {progress_bar}\n"
-                    f"✘ 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
-                    f"✘ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}\n"
-                    f"✘ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}\n"
-                    f"✘ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}\n"
-                    f"✘ 𝗧𝗶𝗺𝗲 ↣ {current_time_taken}s\n"
-                    f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
+            summary = (
+                f"✘ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {progress_bar}\n"
+                f"✘ 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
+                f"✘ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}\n"
+                f"✘ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}\n"
+                f"✘ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}\n"
+                f"✘ 𝗧𝗶𝗺𝗲 ↣ {current_time_taken}s\n"
+                f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
+            )
+
+            approved_display = ""
+            if approved_cards:
+                approved_display = "\n\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n"
+                approved_display += "\n".join(f"`{escape_markdown(c, version=2)}`" for c in approved_cards[-5:])
+                approved_display += "\n\nDev  - [kคli liຖนxx](tg://resolve?domain=K4linuxx)"
+
+            message_text = summary + approved_display
+
+            # Truncate if too long
+            if len(message_text) > 4000:
+                message_text = message_text[:3990] + "\n…"
+
+            try:
+                await processing_msg.edit_text(
+                    message_text,
+                    parse_mode=ParseMode.MARKDOWN_V2
                 )
-
-                # Show last 5 approved cards
-                approved_display = ""
-                if approved_cards:
-                    approved_display = "\n\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n"
-                    approved_display += "\n".join(f"`{escape_markdown(c, version=2)}`" for c in approved_cards[-5:])
-                    approved_display += "\n\nDev  - [kคli liຖนxx](tg://resolve?domain=K4linuxx)"
-
-                message_text = summary + approved_display
-
-                # Truncate if too long
-                if len(message_text) > 4000:
-                    message_text = message_text[:3990] + "\n…"
-
-                try:
-                    await processing_msg.edit_text(
-                        message_text,
-                        parse_mode=ParseMode.MARKDOWN_V2
-                    )
-                except Exception:
-                    pass
+            except Exception:
+                pass
 
     # Final summary with all approved cards
     final_time_taken = round(time.time() - start_time, 2)
@@ -1683,7 +1681,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         )
     except Exception:
         pass
-
 
 
 
@@ -1751,11 +1748,11 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Only the first 30 cards will be processed."
         )
 
-    # --- Send initial progress message directly with 0% ---
+    # --- Send initial progress message with small progress bar ---
     processing_msg = await update.effective_message.reply_text(
         "✘ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ 🟩⬜⬜⬜⬜⬜⬜⬜⬜⬜ 0%\n"
-        f"✘ 𝗧𝗼𝘁𝗮𝗹 ↣ {len(cards_to_check)}\n"
         "✘ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ 0\n"
+        f"✘ 𝗧𝗼𝘁𝗮𝗹 ↣ {len(cards_to_check)}\n"
         "✘ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ 0\n"
         "✘ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ 0\n"
         "✘ 𝗧𝗶𝗺𝗲 ↣ 0s\n"
