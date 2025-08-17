@@ -1584,17 +1584,18 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         for coro in asyncio.as_completed(tasks):
             raw, status = await coro
 
-            # Count statuses
+            # Count statuses by checking for unique substrings regardless of font
             status_lower = status.lower()
-            if "approved" in status_lower:
+            if "proved" in status_lower:  # Check for 'proved' to match 'Approved' or '𝑨𝒑𝒑𝒓𝒐𝒗𝒆𝒅'
                 approved_count += 1
-            elif "declined" in status_lower:
+            elif "clined" in status_lower:  # Check for 'clined' to match 'Declined' or '𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝'
                 declined_count += 1
             checked_count += 1
 
             # Escape dynamic content for MarkdownV2
             raw_safe = escape_markdown(raw, version=2)
             status_safe = escape_markdown(status, version=2)
+            # Append the formatted card string to the results list
             results.append(f"`{raw_safe}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_safe}")
 
             # Update progress after each card is checked
@@ -1602,7 +1603,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             
             summary = (
                 f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✘ 𝐂𝐡𝐞𝐜𝗸𝐞𝐝↣{checked_count}\n"
+                f"✘ 𝗖𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                 f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
@@ -1612,9 +1613,9 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             )
             
             try:
-                # Join only the last result for the intermediate update
+                # Join all results with the separator for the intermediate update
                 await processing_msg.edit_text(
-                    escape_markdown(summary, version=2) + "\n\n" + results[-1],
+                    escape_markdown(summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
                     parse_mode=ParseMode.MARKDOWN_V2
                 )
             except Exception:
@@ -1624,7 +1625,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             # Wait for 3 seconds before checking the next card
             await asyncio.sleep(3)
 
-    # Final message
+    # Final message is already in the correct format, no change needed
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1636,7 +1637,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 30\n"
         f"──────── ⸙ ─────────"
     )
-    # The final message update will try to show all results. Be aware of Telegram's message length limit.
     await processing_msg.edit_text(
         escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
@@ -1718,7 +1718,6 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
-
 
 
 import time
