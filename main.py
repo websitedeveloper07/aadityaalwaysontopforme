@@ -1545,6 +1545,33 @@ async def check_paid_access(user_id: int, update: Update) -> bool:
 
 
 # --- Background card checking ---
+def normalize_status_string(status):
+    """
+    Converts stylized status strings to a standard ASCII format for consistent counting.
+    """
+    character_map = {
+        '𝐀':'A','𝐁':'B','𝐂':'C','𝐃':'D','𝐄':'E','𝐅':'F','𝐆':'G','𝐇':'H','𝐈':'I','𝐉':'J',
+        '𝐊':'K','𝐋':'L','𝐌':'M','𝐍':'N','𝐎':'O','𝐏':'P','𝐐':'Q','𝐑':'R','𝐒':'S','𝐓':'T',
+        '𝐔':'U','𝐕':'V','𝐖':'W','𝐗':'X','𝐘':'Y','𝐙':'Z',
+        '𝐚':'a','𝐛':'b','𝐜':'c','𝐝':'d','𝐞':'e','𝐟':'f','𝐠':'g','𝐡':'h','𝐢':'i','𝐣':'j',
+        '𝐤':'k','𝐥':'l','𝐦':'m','𝐧':'n','𝐨':'o','𝐩':'p','𝐪':'q','𝐫':'r','𝐬':'s','𝐭':'t',
+        '𝐮':'u','𝐯':'v','𝐰':'w','𝐱':'x','𝐲':'y','𝐳':'z',
+        '𝗔':'A','𝗕':'B','𝗖':'C','𝗗':'D','𝗘':'E','𝗙':'F','𝗚':'G','𝗛':'H','𝗜':'I','𝗝':'J',
+        '𝗞':'K','𝗟':'L','𝗠':'M','𝗡':'N','𝗢':'O','𝗣':'P','𝗤':'Q','𝗥':'R','𝗦':'S','𝗧':'T',
+        '𝗨':'U','𝗩':'V','𝗪':'W','𝗫':'X','𝗬':'Y','𝗭':'Z',
+        '𝗮':'a','𝗯':'b','𝗰':'c','𝗱':'d','𝗲':'e','𝗳':'f','𝗴':'g','𝗵':'h','𝗶':'i','𝗷':'j',
+        '𝗸':'k','𝗹':'l','𝗺':'m','𝗻':'n','𝗼':'o','𝗽':'p','𝗾':'q','𝗿':'r','𝘀':'s','𝘁':'t',
+        '𝘂':'u','𝘃':'v','𝘄':'w','𝘅':'x','𝘆':'y','𝘇':'z',
+        '𝟑':'3',
+        '𝑨':'A', '𝒑':'p', '𝒓':'r', '𝒐':'o', '𝒗':'v', '𝒆':'e', '𝒅':'d', '✅':'', '❌':''
+    }
+    
+    normalized_string = ""
+    for char in status:
+        normalized_string += character_map.get(char, char)
+    return normalized_string
+
+# --- CARD CHECKER LOGIC ---
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     """
     Asynchronously checks a list of credit cards and updates a Telegram message with the progress.
@@ -1584,8 +1611,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         for coro in asyncio.as_completed(tasks):
             raw, status = await coro
             
-            # Normalize the status string to ASCII for reliable counting
-            normalized_status = unicodedata.normalize('NFKD', status).encode('ascii', 'ignore').decode('utf-8')
+            # Normalize the status string using the new helper function
+            normalized_status = normalize_status_string(status)
 
             # Count statuses by checking for the specific, stylized substrings
             if "approved" in normalized_status.lower():
@@ -1604,7 +1631,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             current_time_taken = round(time.time() - start_time, 2)
             
             summary = (
-                f"✘ 𝐓�𝐭𝐚𝐥↣{total_cards}\n"
+                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                 f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
