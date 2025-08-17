@@ -1203,7 +1203,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• 𝘾𝙖𝙧𝙙 ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
         "• 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
         "• 𝙎𝙩𝙖𝙩𝙪𝙨 ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
-        "═════════════════════"
+        "════════════════════"
     )
     processing_msg = await update.effective_message.reply_text(
         processing_text,
@@ -1352,7 +1352,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     results = []
     total_cards = len(cards_to_check)
 
-    semaphore = asyncio.Semaphore(5)  # limit to 5 concurrent requests
+    semaphore = asyncio.Semaphore(3)  # limit to 5 concurrent requests
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
@@ -1372,7 +1372,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
             try:
-                async with session.get(api_url, timeout=40) as resp:
+                async with session.get(api_url, timeout=50) as resp:
                     if resp.status != 200:
                         raise Exception(f"HTTP {resp.status}")
                     try:
@@ -1692,7 +1692,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         await processing_msg.edit_text("❌ You don’t have enough credits.")
         return
 
-    semaphore = asyncio.Semaphore(5)  # Limit concurrent requests to 10
+    semaphore = asyncio.Semaphore(3)  # Limit concurrent requests to 10
 
     async with aiohttp.ClientSession() as session:
         async def fetch_card(card):
@@ -1702,7 +1702,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 # The API URL is a placeholder.
                 api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={card}"
                 try:
-                    async with session.get(api_url, timeout=40) as resp:
+                    async with session.get(api_url, timeout=50) as resp:
                         data = await resp.json()
                         status = data.get("status", "Unknown ❓")
                 except Exception as e:
@@ -1742,7 +1742,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                 f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
                 f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
-                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 30\n"
+                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
                 f"──────── ⸙ ─────────"
             )
             
@@ -1768,7 +1768,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸 30\n"
+        f"\n𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸\n"
         f"──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
@@ -2142,7 +2142,7 @@ async def background_check_multi(update, context, cards, processing_msg):
         try:
             async with session.get(
                 f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
-                timeout=40
+                timeout=50
             ) as resp:
                 text_data = await resp.text()
 
@@ -2176,7 +2176,7 @@ async def background_check_multi(update, context, cards, processing_msg):
             pass
 
     async with aiohttp.ClientSession() as session:
-        semaphore = asyncio.Semaphore(5)
+        semaphore = asyncio.Semaphore(3)
         tasks = [check_card_with_semaphore(session, card, semaphore) for card in cards]
 
         for i, task in enumerate(asyncio.as_completed(tasks)):
