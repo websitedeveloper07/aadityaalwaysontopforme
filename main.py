@@ -1231,7 +1231,7 @@ user_cooldowns = {}
 # -----------------------------
 # Authorization & Cooldowns
 # -----------------------------
-async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+async def check_authorization(update: Update) -> bool:
     user_id = update.effective_user.id
     if user_id == OWNER_ID:
         return True
@@ -1265,13 +1265,9 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
-import aiohttp
-import asyncio
-import re
-import time
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-
+# -----------------------------
+# Mass Checker Background Worker
+# -----------------------------
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = error_count = checked_count = 0
     results = []
@@ -1368,16 +1364,9 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     )
 
 
-
-import re
-import time
-from telegram import Update
-from telegram.ext import ContextTypes
-from telegram.helpers import escape_markdown
-from telegram.constants import ParseMode
-
-# Make sure check_cards_background is already imported or defined
-
+# -----------------------------
+# Command Handler
+# -----------------------------
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
