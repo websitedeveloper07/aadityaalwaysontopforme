@@ -1495,13 +1495,14 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     # ✅ Authorization check
-    if not await check_authorization(update, context):
+    if not await check_authorization(update):
         await update.message.reply_text(
             "❌ You cannot use this command in private.\n"
             "Join our official group to use this command or buy a subscription from @K4linuxx.",
             parse_mode=ParseMode.MARKDOWN
         )
         return
+
 
     # You can continue with cooldown, credit checks, and processing here
 
