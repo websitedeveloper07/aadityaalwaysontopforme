@@ -1302,9 +1302,9 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             except Exception as e:
                 error_count += 1
                 checked_count += 1
-                return f"❌ API Error for `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
+                return f"❌ API Error for `{escape_markdown(cc_normalized, version=2)}`: `{escape_markdown(str(e), version=2)}`"
 
-            status_raw = data.get("status", "Unknown")  # API already includes emoji
+            status_raw = str(data.get("status", "Unknown"))  # API already includes emoji
             status_clean = re.sub(r"[^\w\s']", "", status_raw).strip().lower()
 
             if "approved" in status_clean:
@@ -1315,7 +1315,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 error_count += 1
 
             checked_count += 1
-            return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {status_raw}"
+            # Escape | and other MarkdownV2 chars
+            escaped_card = escape_markdown(cc_normalized, version=2)
+            escaped_status = escape_markdown(status_raw, version=2)
+            return f"`{escaped_card}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {escaped_status}"
 
         # Process cards one by one
         for card in cards_to_check:
@@ -1336,13 +1339,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             try:
                 await processing_msg.edit_text(
-                    current_summary,  # keep API emoji
+                    current_summary,
                     parse_mode=ParseMode.MARKDOWN_V2
                 )
             except Exception as e:
                 print(f"⚠️ Failed to update message: {e}")
 
-            await asyncio.sleep(2)  # 2s delay between updates
+            await asyncio.sleep(2)  # delay between updates
 
     # Final summary
     final_time_taken = round(time.time() - start_time, 2)
@@ -1363,13 +1366,12 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     )
 
 
-
 import re
 import time
 from telegram import Update
 from telegram.ext import ContextTypes
 
-# Make sure check_cards_background is already imported or defined above
+# Make sure check_cards_background is already imported or defined
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1397,7 +1399,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raw_cards = ""
     if context.args:
         raw_cards = ' '.join(context.args)
-    elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
+    elif update.effective_message.reply_to_message and getattr(update.effective_message.reply_to_message, "text", None):
         raw_cards = update.effective_message.reply_to_message.text
 
     if not raw_cards:
@@ -1432,6 +1434,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         await processing_msg.edit_text(f"❌ Error during processing: {str(e)}")
+
 
 
 
