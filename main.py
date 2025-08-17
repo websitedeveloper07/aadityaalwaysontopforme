@@ -2141,7 +2141,7 @@ async def background_check_multi(update, context, cards, processing_msg):
         try:
             async with session.get(
                 f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
-                timeout=20
+                timeout=40
             ) as resp:
                 text_data = await resp.text()
 
@@ -2175,7 +2175,7 @@ async def background_check_multi(update, context, cards, processing_msg):
             pass
 
     async with aiohttp.ClientSession() as session:
-        semaphore = asyncio.Semaphore(10)
+        semaphore = asyncio.Semaphore(5)
         tasks = [check_card_with_semaphore(session, card, semaphore) for card in cards]
 
         for i, task in enumerate(asyncio.as_completed(tasks)):
