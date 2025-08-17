@@ -1579,7 +1579,6 @@ async def background_check_multi(update, context, cards, processing_msg):
 
         for i, future in enumerate(asyncio.as_completed(tasks), start=1):
             card, status = await future
-            results.append(f"{card} → {status}")
 
             st_low = normalize_status_text(status).lower().strip()
 
@@ -1599,7 +1598,7 @@ async def background_check_multi(update, context, cards, processing_msg):
             else:
                 emoji = "❓"
 
-            results[-1] = f"`{card}` → {emoji} {status}"
+            results.append(f"`{card}` → {emoji} {status}")
 
             # Update progress every 2 cards or at the end
             if i % 2 == 0 or i == total:
@@ -1618,6 +1617,8 @@ async def background_check_multi(update, context, cards, processing_msg):
                     await processing_msg.edit_text(progress_text, parse_mode=ParseMode.MARKDOWN_V2)
                 except Exception:
                     pass
+
+
 
     # Save results to file
     output_filename = "CCSchecked.txt"
