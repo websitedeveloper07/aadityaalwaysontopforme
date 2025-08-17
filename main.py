@@ -1224,9 +1224,10 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-from db import get_user, update_user  # Your DB functions here
+# Your DB functions here (assuming they are correctly implemented)
+from db import get_user, update_user
 
-OWNER_ID = 8438505794  # Replace with your Telegram user ID
+OWNER_ID = 8438505794 # Replace with your Telegram user ID
 user_cooldowns = {}
 
 # -----------------------------
@@ -1317,7 +1318,7 @@ async def check_cards_background(
     Handles the asynchronous checking of multiple cards.
     This function uses asyncio.gather for true concurrency.
     """
-    sem = asyncio.Semaphore(10)  # limit concurrent requests
+    sem = asyncio.Semaphore(10)  # limit concurrent requests to prevent API overload
     total_cards = len(cards_to_check)
     approved_count = 0
     declined_count = 0
@@ -1359,7 +1360,7 @@ async def check_cards_background(
             current_time_taken = round(time.time() - start_time, 2)
             summary_parts = [
                 f"✘ 𝐓𝐨𝐭𝐚𝐥↣ {escape_markdown(str(total_cards), version=2)}",
-                f"✘ 𝐂𝐡𝐞�𝐤𝐞𝐝↣ {escape_markdown(str(checked_count), version=2)}",
+                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣ {escape_markdown(str(checked_count), version=2)}",
                 f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣ {escape_markdown(str(approved_count), version=2)}",
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣ {escape_markdown(str(declined_count), version=2)}",
                 f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣ {escape_markdown(str(error_count), version=2)}",
@@ -1368,7 +1369,6 @@ async def check_cards_background(
                 f"──────── ⸙ ─────────",
             ]
             
-            # Join the results for the message body
             summary_body = "\n──────── ⸙ ─────────\n".join(results)
             current_summary = "\n".join(summary_parts) + "\n" + summary_body
             
@@ -1462,6 +1462,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ✅ Start background check
     start_time = time.time()
     try:
+        # This is the correctly formatted and functional line
         await check_cards_background(
             cards_to_check, processing_msg, start_time
         )
@@ -1471,8 +1472,6 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error during processing: `{safe_error}`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
-
 
 
 import time
