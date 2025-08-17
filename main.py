@@ -1311,16 +1311,17 @@ async def consume_credit(user_id: int) -> bool:
 
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
-    approved_count = declined_count = checked_count = 0
+    approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
 
     async def check_card(session, raw):
-        nonlocal approved_count, declined_count, checked_count
+        nonlocal approved_count, declined_count, checked_count, error_count
 
         parts = raw.split("|")
         if len(parts) != 4:
             checked_count += 1
+            error_count += 1
             return f"❌ Invalid card format: `{raw}`"
 
         # Normalize year (YYYY → YY)
@@ -1342,7 +1343,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     raise Exception(f"JSON decode failed: {e}")
         except Exception as e:
             checked_count += 1
-            return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e), version=2)}"
+            error_count += 1
+            return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
 
         api_response = data.get("status", "Unknown")
         api_response_clean = normalize_text(
@@ -1360,7 +1362,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
         return (
             f"`{cc_normalized}`\n"
-            f"𝐒𝐭𝐚𝐭𝐮𝐬➳ {escape_markdown(api_response_clean, version=2)}"
+            f"𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
         )
 
     async with aiohttp.ClientSession() as session:
@@ -1380,7 +1382,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                     f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                     f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-                    f"✘ 𝐓𝐢𝐦𝐞↣{round(time.time() - start_time, 2)} 𝐒\n"
+                    f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
+                    f"✘ 𝐓𝐢𝐦𝐞↣{round(time.time() - start_time, 2)}s\n"
                     f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
                     f"──────── ⸙ ─────────"
                 )
@@ -1400,7 +1403,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
         f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-        f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
+        f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
+        f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
         f"──────── ⸙ ─────────"
     )
