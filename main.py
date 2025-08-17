@@ -1424,6 +1424,7 @@ import asyncio
 import time
 import aiohttp
 import re
+from datetime import datetime
 
 from telegram import Update
 from telegram.constants import ParseMode
@@ -1450,12 +1451,58 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     user_cooldowns[user_id] = now
     return True
 
+
 async def consume_credit(user_id: int) -> bool:
+    """Deduct 1 credit if available."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         await update_user(user_id, credits=user_data["credits"] - 1)
         return True
     return False
+
+
+async def has_active_paid_plan(user_id: int) -> bool:
+    """Check if user has an active paid plan (not Free and not expired)."""
+    user_data = await get_user(user_id)
+    if not user_data:
+        return False
+
+    plan = user_data.get("plan", "Free")
+    expiry = user_data.get("plan_expiry", "N/A")
+
+    # Free plan not allowed
+    if plan.lower() == "free":
+        return False
+
+    # Check expiry
+    if expiry != "N/A":
+        try:
+            expiry_date = datetime.strptime(expiry, "%d-%m-%Y")
+            if expiry_date < datetime.now():
+                return False
+        except Exception:
+            return False
+
+    return True
+
+
+async def check_paid_access(user_id: int, update: Update) -> bool:
+    """Verify paid plan + credit deduction for commands like /mass and /mtchk."""
+    if not await has_active_paid_plan(user_id):
+        await update.effective_message.reply_text(
+            "🚫 This command is available for *paid plans only*.\n"
+            "💳 Buy a plan to access /mass and /mtchk."
+        )
+        return False
+
+    if not await consume_credit(user_id):
+        await update.effective_message.reply_text(
+            "❌ You don’t have enough credits left.\nPlease buy or renew your plan."
+        )
+        return False
+
+    return True
+
 
 # --- Background card checking ---
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
@@ -1496,8 +1543,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             error_count += 1
             emoji = "❓"
 
-        # Deduct credit
-        await consume_credit(user_id)
         checked_count += 1
 
         # Add result for this card
@@ -1623,11 +1668,8 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 import time
-import asyncio
-import aiohttp
-from telegram import Update, InputFile
-from telegram.ext import ContextTypes
-from telegram.error import BadRequest
+from datetime import datetime
+from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
@@ -1636,27 +1678,64 @@ from db import get_user, update_user  # Your DB functions
 OWNER_ID = 8438505794
 user_cooldowns = {}
 
-# ─── Authorization & Credits ──────────────────────
-async def check_authorization(update: Update) -> bool:
-    user_id = update.effective_user.id
-
-    # Owner always allowed
+# ─── Authorization & Paid Access ──────────────────────
+async def check_paid_access(user_id: int, update: Update) -> bool:
+    """
+    Check if the user has a paid plan, is not expired, and has at least 1 credit.
+    Owner bypasses all checks.
+    """
+    # Owner bypass
     if user_id == OWNER_ID:
         return True
 
-    # Private chat → only users with a plan and credits
-    if update.effective_chat.type == "private":
-        user_data = await get_user(user_id)
-        if user_data and user_data.get("plan") and user_data.get("credits", 0) > 0:
-            return True
+    user_data = await get_user(user_id)
+    if not user_data:
+        await update.effective_message.reply_text(
+            "❌ You are not registered or have no active plan.",
+            parse_mode=ParseMode.MARKDOWN
+        )
         return False
 
-    # Groups → allow everyone
+    plan = user_data.get("plan", "Free")
+    credits = user_data.get("credits", 0)
+
+    # Free plan not allowed
+    if plan.lower() == "free":
+        await update.effective_message.reply_text(
+            "🚫 This command is available for *paid plans only*.\n"
+            "💳 Buy a plan to access this feature.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return False
+
+    # Check expiry if available
+    expiry = user_data.get("plan_expiry", "N/A")
+    if expiry != "N/A":
+        try:
+            expiry_date = datetime.strptime(expiry, "%d-%m-%Y")
+            if expiry_date < datetime.now():
+                await update.effective_message.reply_text(
+                    "⏳ Your plan has expired. Renew to use this command.",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return False
+        except Exception:
+            pass
+
+    # Check credits
+    if credits <= 0:
+        await update.effective_message.reply_text(
+            "❌ You don't have enough credits to run this command.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return False
+
     return True
 
 
+# ─── Cooldown ──────────────────────────────
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
-    cooldown = 5
+    cooldown = 5  # seconds
     now = time.time()
     last = user_cooldowns.get(user_id, 0)
     if now - last < cooldown:
@@ -1669,13 +1748,21 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     user_cooldowns[user_id] = now
     return True
 
+
+# ─── Credit Consumption ──────────────────────────────
 async def consume_credit(user_id: int) -> bool:
+    """
+    Deduct one credit from the user.
+    Returns True if successful, False if no credits left.
+    """
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
         await update_user(user_id, credits=new_credits)
         return True
     return False
+
+
 
 # ─── Helper ───────────────────────────────────────
 def normalize_status_text(s: str) -> str:
@@ -1701,22 +1788,12 @@ def normalize_status_text(s: str) -> str:
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    # ✅ Authorization check
-    if not await check_authorization(update):
-        await update.message.reply_text(
-            "❌ You cannot use this command in private.\n"
-            "Join our official group to use this command or buy a subscription from @K4linuxx.",
-            parse_mode=ParseMode.MARKDOWN
-        )
+    # ✅ Authorization & Paid Plan + Credits check (matches /mass logic)
+    if not await check_paid_access(user_id, update):
         return
 
     # Cooldown
     if not await enforce_cooldown(user_id, update):
-        return
-
-    # Consume credit
-    if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You don't have enough credits to run this command.")
         return
 
     # Ensure a .txt file is attached or replied to
@@ -1764,6 +1841,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Start background task without blocking
     asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
+
 
 
 # ─── Background Task ──────────────────────────────
