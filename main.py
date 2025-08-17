@@ -1693,7 +1693,6 @@ import time
 import asyncio
 from telegram import Update
 from telegram.ext import ContextTypes
-from your_module import check_cards_background  # ensure you import your background checker
 
 async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
