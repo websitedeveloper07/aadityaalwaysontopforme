@@ -1545,13 +1545,6 @@ async def check_paid_access(user_id: int, update: Update) -> bool:
 
 
 # --- Background card checking ---
-import aiohttp
-import asyncio
-import time
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-from db import get_user
-
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     """
     Asynchronously checks a list of credit cards and updates a Telegram message with the progress.
@@ -1604,33 +1597,32 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             status_safe = escape_markdown(status, version=2)
             results.append(f"`{raw_safe}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_safe}")
 
-            # Update progress every 2 cards or at the end
-            if checked_count % 2 == 0 or checked_count == total_cards:
-                current_time_taken = round(time.time() - start_time, 2)
-                
-                summary = (
-                    f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                    f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-                    f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-                    f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-                    f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
-                    f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 30\n"
-                    f"──────── ⸙ ─────────"
+            # Update progress after each card is checked
+            current_time_taken = round(time.time() - start_time, 2)
+            
+            summary = (
+                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+                f"✘ 𝐂𝐡𝐞𝐜𝗸𝐞𝐝↣{checked_count}\n"
+                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+                f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
+                f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
+                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 30\n"
+                f"──────── ⸙ ─────────"
+            )
+            
+            try:
+                # Join only the last result for the intermediate update
+                await processing_msg.edit_text(
+                    escape_markdown(summary, version=2) + "\n\n" + results[-1],
+                    parse_mode=ParseMode.MARKDOWN_V2
                 )
-                
-                try:
-                    # Join only the last 2 results for the intermediate update
-                    await processing_msg.edit_text(
-                        escape_markdown(summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results[-2:]),
-                        parse_mode=ParseMode.MARKDOWN_V2
-                    )
-                except Exception:
-                    # Ignore Telegram errors for partial updates (e.g., if message is unchanged)
-                    pass
+            except Exception:
+                # Ignore Telegram errors for partial updates (e.g., if message is unchanged)
+                pass
 
-                # Wait for 2 seconds before checking the next card
-                await asyncio.sleep(2)
+            # Wait for 3 seconds before checking the next card
+            await asyncio.sleep(3)
 
     # Final message
     final_time_taken = round(time.time() - start_time, 2)
