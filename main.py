@@ -2038,10 +2038,10 @@ from telegram.constants import ParseMode
 
 # ─── Utility Function ──────────────────────────────
 def normalize_status_text(s: str) -> str:
-    """Normalizes various unicode and stylistic characters to standard ASCII."""
+    """Normalizes various unicode and stylistic characters to standard ASCII and converts to uppercase."""
     mapping = {
         '𝐀':'A','𝐁':'B','𝐂':'C','𝐃':'D','𝐄':'E','𝐅':'F','𝐆':'G','𝐇':'H','𝐈':'I','𝐉':'J',
-        '𝐊':'K','𝐋':'L','𝐌':'M','𝐍':'N','𝐎':'O','𝐏':'P','𝐐':'Q','𝐑':'R','𝐒':'S','𝐓':'T',
+        '𝐊':'K','𝐋':'L','𝗠':'M','𝐍':'N','𝐎':'O','𝐏':'P','𝐐':'Q','𝐑':'R','𝐒':'S','𝐓':'T',
         '𝐔':'U','𝐕':'V','𝐖':'W','𝐗':'X','𝐘':'Y','𝐙':'Z',
         '𝐚':'a','𝐛':'b','𝐜':'c','𝐝':'d','𝐞':'e','𝐟':'f','𝐠':'g','𝐡':'h','𝐢':'i','𝐣':'j',
         '𝐤':'k','𝐥':'l','𝐦':'m','𝐧':'n','𝐨':'o','𝐩':'p','𝐪':'q','𝐫':'r','𝐬':'s','𝐭':'t',
@@ -2052,24 +2052,22 @@ def normalize_status_text(s: str) -> str:
         '𝗮':'a','𝗯':'b','𝗰':'c','𝗱':'d','𝗲':'e','𝗳':'f','𝗴':'g','𝗵':'h','𝗶':'i','𝗷':'j',
         '𝗸':'k','𝗹':'l','𝗺':'m','𝗻':'o','𝗼':'o','𝗽':'p','𝗾':'q','𝗿':'r','𝘀':'s','𝘁':'t',
         '𝘂':'u','𝘃':'v','𝘄':'w','𝘅':'x','𝘆':'y','𝘇':'z',
-        '𝟑':'3'
+        '𝟑':'3',
+        '𝑨':'A', '✅':'', '❎':'', '❌':'', '❗':''
     }
-    # Normalize and convert to uppercase for reliable matching
+    s = s.strip()
     return "".join(mapping.get(char, char) for char in s).upper()
 
 # ─── /mtchk Handler ──────────────────────────────
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    # ✅ Authorization & Paid Plan + Credits check (matches /mass logic)
     if not await check_paid_access(user_id, update):
         return
 
-    # Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Ensure a .txt file is attached or replied to
     document = update.message.document or (update.message.reply_to_message and update.message.reply_to_message.document)
     if not document:
         await update.message.reply_text("📂 Please send or reply to a txt file containing up to 200 cards.")
@@ -2079,7 +2077,6 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Only txt files are supported.")
         return
 
-    # Download file
     try:
         file = await context.bot.get_file(document.file_id)
         file_path = f"input_cards_{user_id}.txt"
@@ -2088,7 +2085,6 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Failed to download file: {e}")
         return
 
-    # Read cards
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             cards = [line.strip() for line in f if line.strip()]
@@ -2153,15 +2149,13 @@ async def background_check_multi(update, context, cards, processing_msg):
                 try:
                     json_data = json.loads(text_data)
                     status_text = json_data.get("status", "Unknown")
-                    status = normalize_status_text(status_text)
                 except (json.JSONDecodeError, KeyError):
-                    # If JSON parsing fails, treat the entire text response as the status
-                    status = normalize_status_text(text_data.strip())
-                
-                return card, status
+                    status_text = text_data.strip()
+
+                return card, status_text
 
         except Exception as e:
-            return card, normalize_status_text(f"Error: {str(e)}")
+            return card, f"Error: {str(e)}"
 
     async def update_progress(current_count):
         filled_len = round((current_count / total) * 10)
@@ -2185,21 +2179,23 @@ async def background_check_multi(update, context, cards, processing_msg):
         tasks = [check_card_with_semaphore(session, card, semaphore) for card in cards]
 
         for i, task in enumerate(asyncio.as_completed(tasks)):
-            card, status = await task
+            card, status_text = await task
             
-            # Use specific string matching for accurate counting
-            if "APPROVED" in status:
+            # Use specific string matching for accurate counting after normalization
+            normalized_status = normalize_status_text(status_text)
+            
+            if "✅" in status_text or "APPROVED" in normalized_status:
                 approved += 1
-            elif "DECLINED" in status or "INCORRECT CARD NUMBER" in status or "INVALID CVC" in status or "INSUFFICIENT FUNDS" in status:
+            elif "❌" in status_text or "DECLINED" in normalized_status:
                 declined += 1
-            elif "3D CHALLENGE REQUIRED" in status:
+            elif "3D CHALLENGE REQUIRED" in normalized_status:
                 threed += 1
-            elif "CCN LIVE" in status:
+            elif "CCN LIVE" in normalized_status:
                 ccn_live += 1
             else:
                 unknown += 1
             
-            results.append(f"{card} -> {status}")
+            results.append(f"{card} -> {status_text}")
             
             await update_progress(len(results))
 
