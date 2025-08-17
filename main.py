@@ -1576,10 +1576,10 @@ async def has_active_paid_plan(user_id: int) -> bool:
     return True
 
 
-async def check_paid_access(user_id: int, update: Update) -> bool:
+async def check_paid_access(user_id: int, update: Update, require_credits: bool = True) -> bool:
     """
-    Verify that user has an active paid plan and enough credits.
-    Blocks command if not.
+    Verify that user has an active paid plan.
+    Optionally also checks credits.
     Works for both private and group chats.
     """
     # Only owner bypass
@@ -1594,12 +1594,13 @@ async def check_paid_access(user_id: int, update: Update) -> bool:
         )
         return False
 
-    # Check credits
-    if not await consume_credit(user_id):
-        await update.effective_message.reply_text(
-            "❌ You don’t have enough credits left.\nPlease buy or renew your plan."
-        )
-        return False
+    # Check credits only if required
+    if require_credits:
+        if not await consume_credit(user_id):
+            await update.effective_message.reply_text(
+                "❌ You don’t have enough credits left.\nPlease buy or renew your plan."
+            )
+            return False
 
     return True
 
@@ -1733,16 +1734,17 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
 
 # --- /mass command handler ---
+import asyncio
+import time
+import re
+from telegram import Update
+from telegram.ext import ContextTypes
+
 async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles the /mass command to initiate a card check.
+    Requires an active paid plan but does NOT consume credits.
     """
-    # Restrict private access if not owner
-    if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
-        await update.effective_message.reply_text(
-            "❌ Private access is blocked.\nContact @k4linuxx to buy subscription."
-        )
-        return
 
     user = update.effective_user
     user_id = user.id
@@ -1751,10 +1753,14 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
 
+    # ✅ Require active paid plan (but skip credits)
+    if not await check_paid_access(user_id, update, require_credits=False):
+        return
+
     # Extract cards from command args or replied message
     raw_cards = ""
     if context.args:
-        raw_cards = ' '.join(context.args)
+        raw_cards = " ".join(context.args)
     elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
         raw_cards = update.effective_message.reply_to_message.text
 
@@ -1789,14 +1795,6 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Only the first 30 cards will be processed."
         )
 
-    # Fetch user data and check credits
-    user_data = await get_user(user_id)
-    if not user_data or user_data.get('credits', 0) <= 0:
-        await update.effective_message.reply_text(
-            "❌ You have no credits left. Please buy a plan to get more credits."
-        )
-        return
-
     # Send initial processing message
     processing_msg = await update.effective_message.reply_text(
         f"🔎 Processing {len(cards_to_check)} cards..."
@@ -1805,8 +1803,15 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Launch background task for checking
     asyncio.create_task(
-        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
+        check_cards_background(
+            cards_to_check,
+            user_id,
+            user.first_name,
+            processing_msg,
+            start_time,
+        )
     )
+
     
 
 import time
