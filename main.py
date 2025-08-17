@@ -1548,9 +1548,9 @@ async def check_paid_access(user_id: int, update: Update) -> bool:
 import aiohttp
 import asyncio
 import time
-from telegram import ParseMode
+from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from db import get_user  # assuming you have a function to get user credits
+from db import get_user  # your function to get user credits
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = 0
@@ -1593,7 +1593,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             checked_count += 1
 
             # Add result for this card
-            results.append(f"`{raw}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status}")
+            results.append(f"`{escape_markdown(raw, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(status, version=2)}")
 
             # Update progress every 5 cards or at the end
             if checked_count % 5 == 0 or checked_count == total_cards:
@@ -1604,13 +1604,12 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                     f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                     f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 \n"
+                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
                     f"──────── ⸙ ─────────"
                 )
                 try:
                     await processing_msg.edit_text(
-                        escape_markdown(summary, version=2) + "\n\n" +
-                        "\n──────── ⸙ ─────────\n".join(results[-5:]),
+                        summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results[-5:]),
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception:
@@ -1624,11 +1623,11 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 \n"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
         f"──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
-        escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results),
+        final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results),
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
