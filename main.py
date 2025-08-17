@@ -1554,22 +1554,39 @@ from db import get_user
 
 def get_progress_bar(checked, total, length=20):
     """Return a visual progress bar for Telegram."""
+    if total == 0:
+        total = 1
     filled = int((checked / total) * length)
     empty = length - filled
     percent = int((checked / total) * 100)
     bar = f"{'🟩' * filled}{'⬜' * empty} {percent}%"
     return bar
 
-async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
+async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time=None):
     approved_count = declined_count = checked_count = 0
     approved_cards = []
     total_cards = len(cards_to_check)
+
+    if start_time is None:
+        start_time = time.time()
 
     # Check user credits
     user_data = await get_user(user_id)
     if not user_data or user_data.get('credits', 0) <= 0:
         await processing_msg.edit_text("❌ You don’t have enough credits.")
         return
+
+    # Send initial progress message immediately
+    initial_progress = (
+        f"✘ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(0, total_cards)}\n"
+        f"✘ 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
+        f"✘ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ 0\n"
+        f"✘ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ 0\n"
+        f"✘ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ 0\n"
+        f"✘ 𝗧𝗶𝗺𝗲 ↣ 0s\n"
+        f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
+    )
+    await processing_msg.edit_text(initial_progress, parse_mode=ParseMode.MARKDOWN_V2)
 
     semaphore = asyncio.Semaphore(10)  # Limit concurrent requests
 
@@ -1599,8 +1616,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 declined_count += 1
             checked_count += 1
 
-            # Update progress every 3-4 cards or at the end
-            if checked_count % 3 == 0 or checked_count == total_cards:
+            # Update progress every card or at the end
+            if checked_count % 1 == 0 or checked_count == total_cards:
                 current_time_taken = round(time.time() - start_time, 2)
                 progress_bar = get_progress_bar(checked_count, total_cards)
 
@@ -1669,12 +1686,14 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
 
 
+
 # --- /mass command ---
 import re
 import time
 import asyncio
 from telegram import Update
 from telegram.ext import ContextTypes
+from your_module import check_cards_background  # ensure you import your background checker
 
 async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1733,9 +1752,15 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Only the first 30 cards will be processed."
         )
 
-    # --- Send processing message ---
+    # --- Send initial progress message directly with 0% ---
     processing_msg = await update.effective_message.reply_text(
-        f"🔎 Processing {len(cards_to_check)} cards..."
+        "✘ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ 🟩⬜⬜⬜⬜⬜⬜⬜⬜⬜ 0%\n"
+        f"✘ 𝗧𝗼𝘁𝗮𝗹 ↣ {len(cards_to_check)}\n"
+        "✘ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ 0\n"
+        "✘ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ 0\n"
+        "✘ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ 0\n"
+        "✘ 𝗧𝗶𝗺𝗲 ↣ 0s\n"
+        "\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
     )
     start_time = time.time()
 
