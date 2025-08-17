@@ -1289,14 +1289,17 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         async def check_card(raw):
             nonlocal approved_count, declined_count, error_count, checked_count
 
-            parts = raw.split("|")
+            # Validate and normalize card
+            parts = raw.strip().split("|")
             if len(parts) != 4:
                 error_count += 1
                 checked_count += 1
                 return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
 
-            if len(parts[2]) == 4:  # convert yyyy to yy
+            # Convert yyyy to yy if needed
+            if len(parts[2]) == 4:
                 parts[2] = parts[2][-2:]
+
             cc_normalized = "|".join(parts)
 
             api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
@@ -1310,7 +1313,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 checked_count += 1
                 return f"❌ API Error for `{escape_markdown(cc_normalized, version=2)}`: `{escape_markdown(str(e), version=2)}`"
 
-            status_raw = str(data.get("status", "Unknown"))  # API already includes emoji
+            status_raw = str(data.get("status", "Unknown"))
             status_clean = re.sub(r"[^\w\s']", "", status_raw).strip().lower()
 
             if "approved" in status_clean:
@@ -1321,12 +1324,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 error_count += 1
 
             checked_count += 1
-            # Escape | and other MarkdownV2 chars
+
+            # Escape every part for MarkdownV2
             escaped_card = escape_markdown(cc_normalized, version=2)
             escaped_status = escape_markdown(status_raw, version=2)
             return f"`{escaped_card}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {escaped_status}"
 
-        # Process cards one by one
+        # Check cards sequentially, update after each card
         for card in cards_to_check:
             result = await check_card(card)
             results.append(result)
@@ -1343,6 +1347,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 + "\n──────── ⸙ ─────────\n".join(results)
             )
 
+            # Safely update message every card
             try:
                 await processing_msg.edit_text(
                     current_summary,
@@ -1351,7 +1356,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             except Exception as e:
                 print(f"⚠️ Failed to update message: {e}")
 
-            await asyncio.sleep(2)  # delay between updates
+            await asyncio.sleep(1)  # 1s delay between updates
 
     # Final summary
     final_time_taken = round(time.time() - start_time, 2)
