@@ -1584,11 +1584,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         for coro in asyncio.as_completed(tasks):
             raw, status = await coro
 
-            # Count statuses by checking for unique substrings regardless of font
-            status_lower = status.lower()
-            if "proved" in status_lower:  # Check for 'proved' to match 'Approved' or '𝑨𝒑𝒑𝒓𝒐𝒗𝒆𝒅'
+            # Count statuses by checking for the specific, stylized substrings
+            if "proved ✅" in status:
                 approved_count += 1
-            elif "clined" in status_lower:  # Check for 'clined' to match 'Declined' or '𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝'
+            elif "clined ❌" in status:
                 declined_count += 1
             checked_count += 1
 
@@ -1603,7 +1602,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             
             summary = (
                 f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✘ 𝗖𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                 f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
@@ -1634,7 +1633,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 30\n"
+        f"\n𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸 30\n"
         f"──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
@@ -1718,7 +1717,7 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
-
+    
 
 import time
 from datetime import datetime
