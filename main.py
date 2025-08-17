@@ -1366,17 +1366,20 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.type == "private" and update.effective_user.id != OWNER_ID:
+    user = update.effective_user
+    user_id = user.id
+
+    # ✅ Check authorization
+    if not await check_authorization(update, context):
         await update.effective_message.reply_text(
             "❌ Private access is blocked.\nContact @K4linuxx to buy subscription."
         )
         return
 
-    user = update.effective_user
-    user_id = user.id
-
+    # ✅ Enforce cooldown
     if not await enforce_cooldown(user_id, update):
         return
+
 
     # Consume 1 credit per command
     if not await consume_credit(user_id):
@@ -1491,14 +1494,16 @@ def normalize_status_text(s: str) -> str:
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    # Authorization
-    if not await check_authorization(update):
+    # ✅ Authorization check
+    if not await check_authorization(update, context):
         await update.message.reply_text(
             "❌ You cannot use this command in private.\n"
             "Join our official group to use this command or buy a subscription from @K4linuxx.",
             parse_mode=ParseMode.MARKDOWN
         )
         return
+
+    # You can continue with cooldown, credit checks, and processing here
 
 
     # Cooldown
@@ -1576,14 +1581,24 @@ async def background_check_multi(update, context, cards, processing_msg):
             results.append(f"{card} → {status}")
 
             st_low = normalize_status_text(status).lower().strip()
+
+            # Count statuses properly
             if "approved" in st_low:
                 approved += 1
-            elif "declined" in st_low:
+                emoji = "✅"
+            elif "declined" in st_low or "incorrect card number" in st_low:
                 declined += 1
+                emoji = "❌"
             elif "3d" in st_low:
                 threed += 1
+                emoji = "⚠️"
             elif "ccn live" in st_low:
                 live += 1
+                emoji = "💳"
+            else:
+                emoji = "❓"
+
+            results[-1] = f"`{card}` → {emoji} {status}"
 
             # Update progress every 2 cards or at the end
             if i % 2 == 0 or i == total:
@@ -1593,12 +1608,13 @@ async def background_check_multi(update, context, cards, processing_msg):
                 progress_text = (
                     f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
                     f"💳 Total: {total} | ✅ Checked: {i}/{total}\n"
+                    f"✔️ Approved: {approved} | ❌ Declined: {declined} | ⚠️ 3DS: {threed} | 💳 CCN Live: {live}\n"
                     f"╭─────────────╮\n"
                     f"│ [{bar}] │\n"
                     f"╰──────────────────╯"
                 )
                 try:
-                    await processing_msg.edit_text(progress_text)
+                    await processing_msg.edit_text(progress_text, parse_mode=ParseMode.MARKDOWN_V2)
                 except Exception:
                     pass
 
