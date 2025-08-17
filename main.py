@@ -1282,6 +1282,9 @@ import time
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
+from telegram.helpers import escape_markdown
+from telegram.constants import ParseMode
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = error_count = checked_count = 0
     results = []
@@ -1296,7 +1299,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             if len(parts) != 4:
                 error_count += 1
                 checked_count += 1
-                return f"❌ Invalid card format: `{raw}`"
+                return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
 
             if len(parts[2]) == 4:
                 parts[2] = parts[2][-2:]
@@ -1306,58 +1309,59 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             try:
                 async with sem:
                     async with session.get(api_url, timeout=25) as resp:
-                        if resp.status != 200:
-                            raise Exception(f"HTTP {resp.status}")
                         data = await resp.json()
             except Exception as e:
                 error_count += 1
                 checked_count += 1
-                return f"❌ API Error for `{cc_normalized}`: {str(e)}`"
+                return f"❌ API Error for `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
 
-            api_response = data.get("status", "Unknown")
-            api_response_clean = re.sub(r"[^\w\s']", "", api_response).strip()
-            api_response_lower = api_response_clean.lower()
+            status_raw = data.get("status", "Unknown")
+            status_clean = re.sub(r"[^\w\s']", "", status_raw).strip().lower()
 
             emoji = "❓"
-            if "approved" in api_response_lower:
+            if "approved" in status_clean:
                 approved_count += 1
                 emoji = "✅"
-            elif "declined" in api_response_lower or "incorrect" in api_response_lower:
+            elif "declined" in status_clean or "incorrect" in status_clean:
                 declined_count += 1
                 emoji = "❌"
             else:
                 error_count += 1
 
             checked_count += 1
-            return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(api_response_clean, version=2)}"
+            return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {emoji} {escape_markdown(status_raw, version=2)}"
 
         tasks = [check_card(card) for card in cards_to_check]
 
-        for task in asyncio.as_completed(tasks):
+        # Update message in batches (every 2 cards)
+        batch_size = 2
+        for i, task in enumerate(asyncio.as_completed(tasks), 1):
             result = await task
             results.append(result)
 
-            current_time_taken = round(time.time() - start_time, 2)
-            current_summary = (
-                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-                f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-                f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
-                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
-            )
-            try:
-                await processing_msg.edit_text(
-                    escape_markdown(current_summary, version=2)
-                    + "\n\n"
-                    + "\n──────── ⸙ ─────────\n".join(results),
-                    parse_mode=ParseMode.MARKDOWN_V2
+            if i % batch_size == 0 or i == total_cards:
+                current_time_taken = round(time.time() - start_time, 2)
+                current_summary = (
+                    f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+                    f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                    f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+                    f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+                    f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
+                    f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
-            except Exception:
-                pass
 
-    # Final summary
+                try:
+                    await processing_msg.edit_text(
+                        escape_markdown(current_summary, version=2)
+                        + "\n\n"
+                        + "\n──────── ⸙ ─────────\n".join(results),
+                        parse_mode=ParseMode.MARKDOWN_V2
+                    )
+                except Exception:
+                    pass
+
+    # Final summary (already escaped)
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1381,36 +1385,36 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
-    # ✅ Check authorization
+    # ✅ Authorization
     if not await check_authorization(update):
         await update.effective_message.reply_text(
             "❌ Private access is blocked.\nContact @K4linuxx to buy subscription."
         )
         return
 
-    # ✅ Enforce cooldown
+    # ✅ Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-    # ✅ Consume 1 credit per command
+    # ✅ Credit check
     if not await consume_credit(user_id):
         await update.effective_message.reply_text(
             "❌ You have no credits left. Please buy a plan to get more credits."
         )
         return
 
-    # ✅ Get cards from command args or reply message
+    # ✅ Get raw cards from args or reply
     raw_cards = ""
     if context.args:
         raw_cards = ' '.join(context.args)
     elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
-        raw_cards = update.effective_message.reply_to_message.text
+        raw_cards = update.effective_message.reply_to_message.reply_to_message.text
 
     if not raw_cards:
         await update.effective_message.reply_text("⚠️ Usage: /mchk number|mm|yy|cvv")
         return
 
-    # ✅ Extract cards using regex
+    # ✅ Extract card lines
     card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
     card_lines = card_pattern.findall(raw_cards)
 
@@ -1420,22 +1424,24 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Limit to first 10 cards for now
+    # Limit cards
     cards_to_check = card_lines[:10]
     if len(card_lines) > 10:
         await update.effective_message.reply_text(
             "⚠️ Only 10 cards are allowed per request. Checking the first 10 now."
         )
 
-    # ✅ Send initial processing message
+    # ✅ Send initial message
     processing_msg = await update.effective_message.reply_text("🔎 Processing...")
 
+    # ✅ Start background check
     start_time = time.time()
+    try:
+        # await ensures exceptions are visible for debugging
+        await check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
+    except Exception as e:
+        await processing_msg.edit_text(f"❌ Error during processing: {str(e)}")
 
-    # ✅ Run card checking in background so bot stays responsive
-    asyncio.create_task(
-        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
-    )
 
 
 
@@ -1579,7 +1585,9 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─── Background Task ──────────────────────────────
 
 async def background_check_multi(update, context, cards, processing_msg):
-    import re
+    import re, os
+    from telegram import InputFile
+
     results = []
     approved = declined = threed = live = 0
     total = len(cards)
@@ -1609,10 +1617,9 @@ async def background_check_multi(update, context, cards, processing_msg):
 
         for i, future in enumerate(asyncio.as_completed(tasks), start=1):
             card, status = await future
-
             st_low = normalize_status_text(status).lower().strip()
 
-            # Count statuses properly
+            # Count statuses
             if "approved" in st_low:
                 approved += 1
                 emoji = "✅"
@@ -1628,47 +1635,39 @@ async def background_check_multi(update, context, cards, processing_msg):
             else:
                 emoji = "❓"
 
-            # Add to results (for file or later use)
             results.append(f"{card} → {emoji} {status}")
 
-            # Update progress every 2 cards or at the end
-            if i % 2 == 0 or i == total:
-                filled_len = round((i / total) * 10)
-                empty_len = 10 - filled_len
-                bar = "■" * filled_len + "□" * empty_len
+            # Update progress **after every card**
+            filled_len = round((i / total) * 10)
+            empty_len = 10 - filled_len
+            bar = "■" * filled_len + "□" * empty_len
 
-                progress_text = (
-                    f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-                    f"💳 Total: {total} | ✅ Checked: {i}/{total}\n"
-                    f"✔️ Approved: {approved} | ❌ Declined: {declined} | ⚠️ 3DS: {threed} | 💳 CCN Live: {live}\n"
-                    f"╭─────────────╮\n"
-                    f"│ [{bar}] │\n"
-                    f"╰──────────────────╯"
-                )
+            progress_text = (
+                f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
+                f"💳 Total: {total} | ✅ Checked: {i}/{total}\n"
+                f"✔️ Approved: {approved} | ❌ Declined: {declined} | ⚠️ 3DS: {threed} | 💳 CCN Live: {live}\n"
+                f"╭─────────────╮\n"
+                f"│ [{bar}] │\n"
+                f"╰──────────────────╯"
+            )
 
-                try:
-                    # Escape for MarkdownV2
-                    await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
-                except Exception:
-                    pass
-
-    return results, approved, declined, threed, live
-
-
+            try:
+                await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
+            except Exception:
+                pass
 
     # Save results to file
-    output_filename = "CCSchecked.txt"
+    output_filename = f"CCSchecked_{update.effective_user.id}.txt"
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(results))
 
-    # Delete progress bar message
+    # Delete progress message
     try:
         await processing_msg.delete()
     except Exception:
         pass
 
-
-    # Beast-level summary
+    # Prepare summary
     summary = (
         "✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n" 
         f"📊 𝗧𝗼𝘁𝗮𝗹     » {total}\n"
@@ -1679,6 +1678,7 @@ async def background_check_multi(update, context, cards, processing_msg):
         "✦━━━━━━━━━━━━━━━━━━━✦"
     )
 
+    # Send file with summary
     try:
         with open(output_filename, "rb") as f:
             await update.message.reply_document(
@@ -1687,6 +1687,15 @@ async def background_check_multi(update, context, cards, processing_msg):
             )
     except Exception as e:
         await update.message.reply_text(f"❌ Failed to send results: {e}")
+
+    # Clean up file
+    try:
+        os.remove(output_filename)
+    except Exception:
+        pass
+
+    return results, approved, declined, threed, live
+
 
 
 import asyncio
