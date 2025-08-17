@@ -1302,9 +1302,12 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             except Exception as e:
                 error_count += 1
                 checked_count += 1
-                return f"❌ API Error for `{escape_markdown(cc_normalized, version=2)}`: `{escape_markdown(str(e), version=2)}`"
+                return (
+                    f"❌ API Error for `{escape_markdown(cc_normalized, version=2)}`: "
+                    f"`{escape_markdown(str(e), version=2)}`"
+                )
 
-            status_raw = str(data.get("status", "Unknown"))  # API already includes emoji
+            status_raw = str(data.get("status", "Unknown"))
             status_clean = re.sub(r"[^\w\s']", "", status_raw).strip().lower()
 
             if "approved" in status_clean:
@@ -1315,7 +1318,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 error_count += 1
 
             checked_count += 1
-            # Escape | and other MarkdownV2 chars
             escaped_card = escape_markdown(cc_normalized, version=2)
             escaped_status = escape_markdown(status_raw, version=2)
             return f"`{escaped_card}`\n𝐒𝐭𝐚𝐭𝐮𝐬➳ {escaped_status}"
@@ -1327,12 +1329,12 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             current_time_taken = round(time.time() - start_time, 2)
             current_summary = (
-                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-                f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-                f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken} 𝐒\n"
+                f"✘ 𝐓𝐨𝐭𝐚𝐥↣ {escape_markdown(str(total_cards), version=2)}\n"
+                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣ {escape_markdown(str(checked_count), version=2)}\n"
+                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣ {escape_markdown(str(approved_count), version=2)}\n"
+                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣ {escape_markdown(str(declined_count), version=2)}\n"
+                f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣ {escape_markdown(str(error_count), version=2)}\n"
+                f"✘ 𝐓𝐢𝐦𝐞↣ {escape_markdown(str(current_time_taken), version=2)} 𝐒\n"
                 f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────\n"
                 + "\n──────── ⸙ ─────────\n".join(results)
             )
@@ -1345,17 +1347,17 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             except Exception as e:
                 print(f"⚠️ Failed to update message: {e}")
 
-            await asyncio.sleep(2)  # delay between updates
+            await asyncio.sleep(2)
 
     # Final summary
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
-        f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-        f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣{error_count}\n"
-        f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken} 𝐒\n"
+        f"✘ 𝐓𝐨𝐭𝐚𝐥↣ {escape_markdown(str(total_cards), version=2)}\n"
+        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣ {escape_markdown(str(checked_count), version=2)}\n"
+        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣ {escape_markdown(str(approved_count), version=2)}\n"
+        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣ {escape_markdown(str(declined_count), version=2)}\n"
+        f"✘ 𝐄𝐫𝐫𝐨𝐫𝐬↣ {escape_markdown(str(error_count), version=2)}\n"
+        f"✘ 𝐓𝐢𝐦𝐞↣ {escape_markdown(str(final_time_taken), version=2)} 𝐒\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────\n"
         + "\n──────── ⸙ ─────────\n".join(results)
         + "\n──────── ⸙ ─────────"
@@ -1366,10 +1368,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     )
 
 
+
 import re
 import time
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
+from telegram.constants import ParseMode
 
 # Make sure check_cards_background is already imported or defined
 
@@ -1416,11 +1421,11 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ✅ Limit cards (optional)
+    # ✅ Limit cards (max 10)
     cards_to_check = card_lines[:10]
     if len(card_lines) > 10:
         await update.effective_message.reply_text(
-            f"⚠️ Only 10 cards are allowed per request. Checking the first 10 now."
+            "⚠️ Only 10 cards are allowed per request. Checking the first 10 now."
         )
 
     # ✅ Send initial message
@@ -1433,7 +1438,12 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cards_to_check, user_id, user.first_name, processing_msg, start_time
         )
     except Exception as e:
-        await processing_msg.edit_text(f"❌ Error during processing: {str(e)}")
+        safe_error = escape_markdown(str(e), version=2)
+        await processing_msg.edit_text(
+            f"❌ Error during processing: `{safe_error}`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
 
 
 
