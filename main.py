@@ -1376,12 +1376,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     )
 
 
-import re
-import time
-import asyncio
-from telegram import Update
-from telegram.ext import ContextTypes
-from your_checker_module import check_cards_background  # Import the async checker you already have
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
