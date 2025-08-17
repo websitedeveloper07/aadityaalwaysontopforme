@@ -1769,13 +1769,13 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─── Background Task ──────────────────────────────
 
 async def background_check_multi(update, context, cards, processing_msg):
-    import re, os
-    from telegram import InputFile
+    import re
+    from telegram.constants import ParseMode
+    import aiohttp, asyncio
 
     results = []
     approved = declined = threed = live = 0
     total = len(cards)
-    sem = asyncio.Semaphore(10)  # max 10 concurrent requests
 
     async def escape_md(text):
         # Escape MarkdownV2 special chars for Telegram
@@ -1785,23 +1785,20 @@ async def background_check_multi(update, context, cards, processing_msg):
     async with aiohttp.ClientSession() as session:
 
         async def check_card(card):
-            async with sem:
-                try:
-                    async with session.get(
-                        f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
-                        timeout=20
-                    ) as resp:
-                        data = await resp.json()
-                        status = data.get("status", "Unknown")
-                except Exception as e:
-                    status = f"Error: {str(e)}"
-                return card, status
+            try:
+                async with session.get(
+                    f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
+                    timeout=20
+                ) as resp:
+                    data = await resp.json()
+                    return data.get("status", "Unknown")
+            except Exception as e:
+                return f"Error: {str(e)}"
 
-        tasks = [check_card(card) for card in cards]
-
-        for i, future in enumerate(asyncio.as_completed(tasks), start=1):
-            card, status = await future
-            st_low = normalize_status_text(status).lower().strip()
+        # ✅ Process one-by-one with small delay to avoid API overload
+        for i, card in enumerate(cards, start=1):
+            status = await check_card(card)
+            st_low = status.lower().strip()
 
             # Count statuses
             if "approved" in st_low:
@@ -1821,7 +1818,7 @@ async def background_check_multi(update, context, cards, processing_msg):
 
             results.append(f"{card} → {emoji} {status}")
 
-            # Update progress **after every card**
+            # Progress bar
             filled_len = round((i / total) * 10)
             empty_len = 10 - filled_len
             bar = "■" * filled_len + "□" * empty_len
@@ -1839,6 +1836,9 @@ async def background_check_multi(update, context, cards, processing_msg):
                 await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
             except Exception:
                 pass
+
+            # ✅ Sleep 1s between requests (adjust if needed)
+            await asyncio.sleep(1)
 
     # Save results to file
     output_filename = f"CCSchecked_{update.effective_user.id}.txt"
