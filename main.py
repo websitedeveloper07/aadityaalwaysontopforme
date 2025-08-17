@@ -1583,11 +1583,14 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
         for coro in asyncio.as_completed(tasks):
             raw, status = await coro
+            
+            # Normalize the status string to ASCII for reliable counting
+            normalized_status = unicodedata.normalize('NFKD', status).encode('ascii', 'ignore').decode('utf-8')
 
             # Count statuses by checking for the specific, stylized substrings
-            if "proved ✅" in status:
+            if "approved" in normalized_status.lower():
                 approved_count += 1
-            elif "clined ❌" in status:
+            elif "card declined" in normalized_status.lower():
                 declined_count += 1
             checked_count += 1
 
@@ -1602,7 +1605,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             
             summary = (
                 f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                f"✘ 𝐂𝐡𝗲𝐜𝐤𝐞𝐝↣{checked_count}\n"
                 f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                 f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
