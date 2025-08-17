@@ -2054,18 +2054,22 @@ def normalize_status_text(s: str) -> str:
         '𝘂':'u','𝘃':'v','𝘄':'w','𝘅':'x','𝘆':'y','𝘇':'z',
         '𝟑':'3'
     }
-    return "".join(mapping.get(char, char) for char in s)
+    # Normalize and convert to uppercase for reliable matching
+    return "".join(mapping.get(char, char) for char in s).upper()
 
 # ─── /mtchk Handler ──────────────────────────────
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
+    # ✅ Authorization & Paid Plan + Credits check (matches /mass logic)
     if not await check_paid_access(user_id, update):
         return
 
+    # Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
+    # Ensure a .txt file is attached or replied to
     document = update.message.document or (update.message.reply_to_message and update.message.reply_to_message.document)
     if not document:
         await update.message.reply_text("📂 Please send or reply to a txt file containing up to 200 cards.")
@@ -2075,6 +2079,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Only txt files are supported.")
         return
 
+    # Download file
     try:
         file = await context.bot.get_file(document.file_id)
         file_path = f"input_cards_{user_id}.txt"
@@ -2083,6 +2088,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Failed to download file: {e}")
         return
 
+    # Read cards
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             cards = [line.strip() for line in f if line.strip()]
@@ -2098,7 +2104,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
         return
 
-    estimated_time = max(len(cards) / 10, 1) # A more accurate estimate based on parallelism
+    estimated_time = max(len(cards) / 10, 1)
     try:
         processing_msg = await update.message.reply_text(
             f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
@@ -2143,21 +2149,19 @@ async def background_check_multi(update, context, cards, processing_msg):
             ) as resp:
                 text_data = await resp.text()
 
-                # Attempt to parse as JSON first
+                # Attempt to parse JSON
                 try:
                     json_data = json.loads(text_data)
-                    status_text = json_data.get("status", "Unknown").strip()
-                    # Correct the typo in "Challenge"
-                    status_text = status_text.replace("Challeoge", "Challenge")
+                    status_text = json_data.get("status", "Unknown")
+                    status = normalize_status_text(status_text)
                 except (json.JSONDecodeError, KeyError):
-                    # If JSON parsing fails, or key is missing, treat the whole response as the status
-                    status_text = text_data.strip()
-
-                status = normalize_status_text(status_text)
+                    # If JSON parsing fails, treat the entire text response as the status
+                    status = normalize_status_text(text_data.strip())
+                
                 return card, status
 
         except Exception as e:
-            return card, f"Error: {str(e)}"
+            return card, normalize_status_text(f"Error: {str(e)}")
 
     async def update_progress(current_count):
         filled_len = round((current_count / total) * 10)
@@ -2186,7 +2190,7 @@ async def background_check_multi(update, context, cards, processing_msg):
             # Use specific string matching for accurate counting
             if "APPROVED" in status:
                 approved += 1
-            elif "DECLINED" in status:
+            elif "DECLINED" in status or "INCORRECT CARD NUMBER" in status or "INVALID CVC" in status or "INSUFFICIENT FUNDS" in status:
                 declined += 1
             elif "3D CHALLENGE REQUIRED" in status:
                 threed += 1
