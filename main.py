@@ -1664,10 +1664,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     elapsed = round(current_time - start_time, 2)
                     
                     progress_text = (
-                        f"✅ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(checked_count, total_cards)}\n"
+                        f"✅ 𝗣𝗿𝗼𝗴𝗿𝗲s𝘀 ↣ {get_progress_bar(checked_count, total_cards)}\n"
                         f"📦 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
                         f"☑️ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}\n"
-                        f"🟢 𝗔𝗽𝗽𝗿𝗼𝘃�𝗱 ↣ {approved_count}\n"
+                        f"🟢 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}\n"
                         f"🔴 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}\n"
                         f"⚠️ 3𝗗 ↣ {threed_count}\n"
                         f"⏱️ 𝗧𝗶𝗺𝗲 ↣ {elapsed}s\n\n"
@@ -1683,22 +1683,20 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
     # Final summary message with results.
     final_elapsed = round(time.time() - start_time, 2)
-    final_message_parts = [
-        f"📦 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}",
-        f"☑️ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}",
-        f"🟢 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}",
-        f"🔴 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}",
-        f"⚠️ 3𝗗 ↣ {threed_count}",
-        f"⏱️ 𝗧𝗶𝗺𝗲 ↣ {final_elapsed}s\n"
-    ]
-    
-    final_message_text = "\n".join(final_message_parts)
+    final_message_text = (
+        f"📦 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
+        f"☑️ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}\n"
+        f"🟢 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}\n"
+        f"🔴 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}\n"
+        f"⚠️ 3𝗗 ↣ {threed_count}\n"
+        f"⏱️ 𝗧𝗶𝗺𝗲 ↣ {final_elapsed}s"
+    )
 
     if approved_cards:
-        final_message_text += "\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in approved_cards)
+        final_message_text += "\n\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in approved_cards)
     
-    if declined_cards and not approved_cards:
-        final_message_text += "\n❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in declined_cards)
+    if declined_cards:
+        final_message_text += "\n\n❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in declined_cards)
 
     if threed_cards:
         final_message_text += "\n\n⚠️ 3D Challenge Cards:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in threed_cards)
@@ -1772,13 +1770,13 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     processing_msg = await update.effective_message.reply_text(
-        "✅𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ [□□□□□□□□□□] 0%\n"
-        f"📦𝗧𝗼𝘁𝗮𝗹 ↣ {len(cards_to_check)}\n"
-        "☑️𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ 0\n"
-        "🟢𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ 0\n"
-        "🔴𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ 0\n"
-        "⚠️3𝗗 ↣ 0\n"
-        "⏱️𝗧𝗶𝗺𝗲 ↣ 0s\n\n"
+        "𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ [□□□□□□□□□□] 0%\n"
+        f"𝗧𝗼𝘁𝗮𝗹 ↣ {len(cards_to_check)}\n"
+        "𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ 0\n"
+        "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ 0\n"
+        "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ 0\n"
+        "3𝗗 ↣ 0\n"
+        "𝗧𝗶𝗺𝗲 ↣ 0s\n\n"
         "𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
     )
     start_time = time.time()
@@ -1786,8 +1784,6 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
-
-
 
 
 
