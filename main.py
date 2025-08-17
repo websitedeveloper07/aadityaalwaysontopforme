@@ -1220,6 +1220,7 @@ import asyncio
 import time
 import aiohttp
 import re
+from datetime import datetime
 
 from telegram import Update
 from telegram.constants import ParseMode
@@ -1233,44 +1234,79 @@ user_cooldowns = {}
 
 # Mapping to normalize stylish text (used for API responses like "𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝")
 STYLISH_MAP = {
-        '𝐀':'A','𝐁':'B','𝐂':'C','𝐃':'D','𝐄':'E','𝐅':'F','𝐆':'G','𝐇':'H','𝐈':'I','𝐉':'J',
-        '𝐊':'K','𝐋':'L','𝐌':'M','𝐍':'N','𝐎':'O','𝐏':'P','𝐐':'Q','𝐑':'R','𝐒':'S','𝐓':'T',
-        '𝐔':'U','𝐕':'V','𝐖':'W','𝐗':'X','𝐘':'Y','𝐙':'Z',
-        '𝐚':'a','𝐛':'b','𝐜':'c','𝐝':'d','𝐞':'e','𝐟':'f','𝐠':'g','𝐡':'h','𝐢':'i','𝐣':'j',
-        '𝐤':'k','𝐥':'l','𝐦':'m','𝐧':'n','𝐨':'o','𝐩':'p','𝐪':'q','𝐫':'r','𝐬':'s','𝐭':'t',
-        '𝐮':'u','𝐯':'v','𝐰':'w','𝐱':'x','𝐲':'y','𝐳':'z',
-        '𝗔':'A','𝗕':'B','𝗖':'C','𝗗':'D','𝗘':'E','𝗙':'F','𝗚':'G','𝗛':'H','𝗜':'I','𝗝':'J',
-        '𝗞':'K','𝗟':'L','𝗠':'M','𝗡':'N','𝗢':'O','𝗣':'P','𝗤':'Q','𝗥':'R','𝗦':'S','𝗧':'T',
-        '𝗨':'U','𝗩':'V','𝗪':'W','𝗫':'X','𝗬':'Y','𝗭':'Z',
-        '𝗮':'a','𝗯':'b','𝗰':'c','𝗱':'d','𝗲':'e','𝗳':'f','𝗴':'g','𝗵':'h','𝗶':'i','𝗷':'j',
-        '𝗸':'k','𝗹':'l','𝗺':'m','𝗻':'n','𝗼':'o','𝗽':'p','𝗾':'q','𝗿':'r','𝘀':'s','𝘁':'t',
-        '𝘂':'u','𝘃':'v','𝘄':'w','𝘅':'x','𝘆':'y','𝘇':'z',
-        '𝟑':'3'
-    }
+    '𝐀': 'A','𝐁': 'B','𝐂': 'C','𝐃': 'D','𝐄': 'E','𝐅': 'F','𝐆': 'G','𝐇': 'H','𝐈': 'I','𝐉': 'J',
+    '𝐊': 'K','𝐋': 'L','𝐌': 'M','𝐍': 'N','𝐎': 'O','𝐏': 'P','𝐐': 'Q','𝐑': 'R','𝐒': 'S','𝐓': 'T',
+    '𝐔': 'U','𝐕': 'V','𝐖': 'W','𝐗': 'X','𝐘': 'Y','𝐙': 'Z',
+    '𝐚': 'a','𝐛': 'b','𝐜': 'c','𝐝': 'd','𝐞': 'e','𝐟': 'f','𝐠': 'g','𝐡': 'h','𝐢': 'i','𝐣': 'j',
+    '𝐤': 'k','𝐥': 'l','𝐦': 'm','𝐧': 'n','𝐨': 'o','𝐩': 'p','𝐪': 'q','𝐫': 'r','𝐬': 's','𝐭': 't',
+    '𝐮': 'u','𝐯': 'v','𝐰': 'w','𝐱': 'x','𝐲': 'y','𝐳': 'z',
+    '𝗔': 'A','𝗕': 'B','𝗖': 'C','𝗗': 'D','𝗘': 'E','𝗙': 'F','𝗚': 'G','𝗛': 'H','𝗜': 'I','𝗝': 'J',
+    '𝗞': 'K','𝗟': 'L','𝗠': 'M','𝗡': 'N','𝗢': 'O','𝗣': 'P','𝗤': 'Q','𝗥': 'R','𝗦': 'S','𝗧': 'T',
+    '𝗨': 'U','𝗩': 'V','𝗪': 'W','𝗫': 'X','𝗬': 'Y','𝗭': 'Z',
+    '𝗮': 'a','𝗯': 'b','𝗰': 'c','𝗱': 'd','𝗲': 'e','𝗳': 'f','𝗴': 'g','𝗵': 'h','𝗶': 'i','𝗷': 'j',
+    '𝗸': 'k','𝗹': 'l','𝗺': 'm','𝗻': 'n','𝗼': 'o','𝗽': 'p','𝗾': 'q','𝗿': 'r','𝘀': 's','𝘁': 't',
+    '𝘂': 'u','𝘃': 'v','𝘄': 'w','𝘅': 'x','𝘆': 'y','𝘇': 'z',
+    '𝟑': '3'
+}
 
 def normalize_text(text: str) -> str:
     """Replace stylish letters/numbers with normal ones."""
     return "".join(STYLISH_MAP.get(ch, ch) for ch in text)
 
 
-async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+# --- PLAN VALIDATION ---
+async def has_active_paid_plan(user_id: int) -> bool:
     """
-    Private chats: only OWNER_ID or users with an active plan can use.
-    Group chats: everyone allowed.
+    Check if user has an active paid plan (not Free and not expired).
+    Returns True if plan is active.
     """
-    if update.effective_chat.type == "private":
-        if update.effective_user.id == OWNER_ID:
-            return True
+    user_data = await get_user(user_id)
+    if not user_data:
+        return False
+
+    plan = str(user_data.get("plan", "Free"))
+    expiry = user_data.get("plan_expiry", "N/A")
+
+    # Free plan is not valid
+    if plan.lower() == "free":
+        return False
+
+    # Expiry check
+    if expiry != "N/A":
         try:
-            user_data = await get_user(update.effective_user.id)
-            # ✅ Only users with plan allowed in private
-            return bool(user_data and user_data.get("plan", False))
-        except Exception as e:
-            print(f"[auth] DB error: {e}")
+            expiry_date = datetime.strptime(expiry, "%d-%m-%Y")
+            if expiry_date < datetime.now():
+                return False
+        except Exception:
             return False
+
     return True
 
 
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Private chats: only OWNER_ID or users with an active paid plan can use.
+    Group chats: only OWNER_ID or users with an active paid plan can use.
+    """
+    user_id = update.effective_user.id
+    chat_type = update.effective_chat.type
+
+    # ✅ Owner bypass
+    if user_id == OWNER_ID:
+        return True
+
+    # ✅ Both private & group require active paid plan
+    if not await has_active_paid_plan(user_id):
+        await update.effective_message.reply_text(
+            "🚫 You need an *active paid plan* to use this command.\n"
+            "💳 Please upgrade to access premium features."
+        )
+        return False
+
+    return True
+
+
+# --- COOLDOWN HANDLER ---
 async def enforce_cooldown(user_id: int, update: Update, cooldown: int = 5) -> bool:
     """
     Enforces a per-user cooldown for commands.
@@ -1291,11 +1327,11 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown: int = 5) -> b
     return True
 
 
+# --- CREDITS HANDLER (optional, mostly for groups if you want per-use charging) ---
 async def consume_credit(user_id: int) -> bool:
     """
     Consume 1 credit from the user's account.
     Returns True if successful, False if user has no credits.
-    (Not used for private authorization anymore, only if you want in groups)
     """
     try:
         user_data = await get_user(user_id)
@@ -1307,6 +1343,7 @@ async def consume_credit(user_id: int) -> bool:
         print(f"[consume_credit] Error updating user {user_id}: {e}")
 
     return False
+
 
 
 
@@ -1427,8 +1464,8 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if chat_type == "private":
         try:
             user_data = await get_user(user_id)
-            has_plan = user_data.get("plan", False)
-            credits = user_data.get("credits", 0)
+            plan = user_data.get("plan", "Free") if user_data else "Free"
+            credits = user_data.get("credits", 0) if user_data else 0
         except Exception as e:
             print(f"[mchk_command] DB error for user {user_id}: {e}")
             await update.effective_message.reply_text(
@@ -1436,18 +1473,20 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        if not has_plan or credits <= 0:
+        # Block if no active plan or no credits
+        if plan.lower() == "free" or credits <= 0:
             await update.effective_message.reply_text(
-                "❌ You cannot use this command in private chat.\n"
-                "👉 You need an **active plan and credits**.\n"
-                "Please buy a subscription to use /mchk."
+                "🚫 You cannot use this command in *private chat*.\n"
+                "👉 You need an **active paid plan with credits**.\n"
+                "💳 Please buy a subscription to use `/mchk`."
             )
             return
+
     else:
         # ✅ In groups — anyone can run, but still needs credits
         try:
             user_data = await get_user(user_id)
-            credits = user_data.get("credits", 0)
+            credits = user_data.get("credits", 0) if user_data else 0
         except Exception as e:
             print(f"[mchk_command] DB error for user {user_id}: {e}")
             await update.effective_message.reply_text(
@@ -1479,7 +1518,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
         raw_cards = update.effective_message.reply_to_message.text
 
-    if not raw_cards:
+    if not raw_cards.strip():
         await update.effective_message.reply_text("⚠️ Usage: /mchk number|mm|yy|cvv")
         return
 
@@ -1513,6 +1552,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     task.add_done_callback(
         lambda t: t.exception() and print(f"[mchk] Background error: {t.exception()}")
     )
+
 
 
 
