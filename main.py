@@ -1334,7 +1334,12 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             async with session.get(api_url, timeout=25) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
-                data = await resp.json()
+                try:
+                    data = await resp.json()
+                except Exception as e:
+                    raw_text = await resp.text()
+                    print(f"[DEBUG] JSON decode failed for {cc_normalized}: {e}, raw={raw_text[:200]}...")
+                    raise Exception(f"JSON decode failed: {e}")
         except Exception as e:
             checked_count += 1
             return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e), version=2)}"
@@ -1405,6 +1410,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 
