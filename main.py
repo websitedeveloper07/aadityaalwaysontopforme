@@ -2363,7 +2363,7 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = (
         f"╭━━━ [ 💳 𝗘𝘅𝘁𝗿𝗮𝗰𝘁𝗲𝗱 𝗖𝗮𝗿𝗱𝘀 ] ━━━⬣\n"
-        f"┣ ❏ Total ➳ `{count}`\n"
+        f"┣ ❏ Total ➳ {count}\n"
         f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
         f"{extracted_cards_text}"
     )
