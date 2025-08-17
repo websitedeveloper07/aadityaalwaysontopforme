@@ -1607,10 +1607,18 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
                     f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
                 )
+
+                # Only last 5 results to avoid too long messages
+                separator = "\n--------------------\n"
+                message_text = summary + "\n\n" + separator.join(results[-5:])
+
+                # Truncate if too long
+                if len(message_text) > 4000:
+                    message_text = message_text[:3990] + "\n…"
+
                 try:
-                    separator = "\n--------------------\n"
                     await processing_msg.edit_text(
-                        summary + "\n\n" + separator.join(results[-5:]),
+                        message_text,
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception:
@@ -1628,9 +1636,16 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
     )
     separator = "\n--------------------\n"
+
+    final_message = final_summary + "\n\n" + separator.join(results)
+
+    # Truncate final message if too long
+    if len(final_message) > 4000:
+        final_message = final_message[:3990] + "\n…"
+
     try:
         await processing_msg.edit_text(
-            final_summary + "\n\n" + separator.join(results),
+            final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
     except Exception:
