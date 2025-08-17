@@ -1593,6 +1593,8 @@ def get_progress_bar(checked, total, length=10):
     bar = f"[{'■' * filled}{'□' * empty}] {percent}%"
     return bar
 
+# The format_border_box function has been removed as requested.
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time=None):
     """
     Performs the main logic of checking cards against an external API.
@@ -1609,6 +1611,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     """
     approved_count = declined_count = threed_count = checked_count = 0
     approved_cards = []
+    declined_cards = []  # New list to store declined cards
     threed_cards = []
     total_cards = len(cards_to_check)
 
@@ -1659,11 +1662,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     approved_cards.append(card)
                 elif "decline" in status_lower:
                     declined_count += 1
+                    declined_cards.append(card) # Add declined card to the list
                 elif "3d" in status_lower:
                     threed_count += 1
                     threed_cards.append(card)
                 else:
                     declined_count += 1 # Any other status is treated as a decline.
+                    declined_cards.append(card) # Add declined card to the list
                 
                 checked_count += 1
 
@@ -1675,13 +1680,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     
                     # This is the new progress message format without the border.
                     progress_text = (
-                        f"𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(checked_count, total_cards)}\n"
-                        f"𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
-                        f"𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}\n"
-                        f"𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}\n"
-                        f"𝗗𝗲𝗰𝗹�𝗻𝗲𝗱 ↣ {declined_count}\n"
-                        f"3𝗗 ↣ {threed_count}\n"
-                        f"𝗧𝗶𝗺𝗲 ↣ {elapsed}s\n\n"
+                        f"✅ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(checked_count, total_cards)}\n"
+                        f"📦 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}\n"
+                        f"☑️ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}\n"
+                        f"🟢 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}\n"
+                        f"🔴 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}\n"
+                        f"⚠️ 3𝗗 ↣ {threed_count}\n"
+                        f"⏱️ 𝗧𝗶𝗺𝗲 ↣ {elapsed}s\n\n"
                         "𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
                     )
                     
@@ -1696,13 +1701,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     # Final summary message with results.
     final_elapsed = round(time.time() - start_time, 2)
     final_message_lines = [
-        f"𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(checked_count, total_cards)}",
-        f"𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}",
-        f"𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}",
-        f"𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}",
-        f"𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}",
-        f"3𝗗 ↣ {threed_count}",
-        f"𝗧𝗶𝗺𝗲 ↣ {final_elapsed}s"
+        f"✅ 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 ↣ {get_progress_bar(checked_count, total_cards)}",
+        f"📦 𝗧𝗼𝘁𝗮𝗹 ↣ {total_cards}",
+        f"☑️ 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 ↣ {checked_count}",
+        f"🟢 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ↣ {approved_count}",
+        f"🔴 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ↣ {declined_count}",
+        f"⚠️ 3𝗗 ↣ {threed_count}",
+        f"⏱️ 𝗧𝗶𝗺𝗲 ↣ {final_elapsed}s"
     ]
 
     final_message_text = "\n".join(final_message_lines)
@@ -1710,6 +1715,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     if approved_cards:
         # Use Markdown to format the card numbers as code blocks for better readability.
         final_message_text += "\n\n✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in approved_cards)
+    
+    if declined_cards and not approved_cards:
+        final_message_text += "\n\n❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 𝗖𝗮𝗿𝗱𝘀:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in declined_cards)
+
     if threed_cards:
         final_message_text += "\n\n⚠️ 3D Challenge Cards:\n" + "\n".join(f"`{escape_markdown(c, version=2)}`" for c in threed_cards)
 
@@ -1814,6 +1823,7 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time)
     )
+
 
 
 
