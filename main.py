@@ -2048,7 +2048,7 @@ def normalize_status_text(s: str) -> str:
         '𝐮':'u','𝐯':'v','𝐰':'w','𝐱':'x','𝐲':'y','𝐳':'z',
         '𝗔':'A','𝗕':'B','𝗖':'C','𝗗':'D','𝗘':'E','𝗙':'F','𝗚':'G','𝗛':'H','𝗜':'I','𝗝':'J',
         '𝗞':'K','𝗟':'L','𝗠':'M','𝗡':'N','𝗢':'O','𝗣':'P','𝗤':'Q','𝗥':'R','𝗦':'S','𝗧':'T',
-        '𝗨':'U','𝗩':'V','𝗪':'W','𝗫':'X','𝗬':'Y','𝗭':'Z',
+        '𝗨':'U','𝗩':'𝗩','𝗪':'W','𝗫':'X','𝗬':'Y','𝗭':'Z',
         '𝗮':'a','𝗯':'b','𝗰':'c','𝗱':'d','𝗲':'e','𝗳':'f','𝗴':'g','𝗵':'h','𝗶':'i','𝗷':'j',
         '𝗸':'k','𝗹':'l','𝗺':'m','𝗻':'o','𝗼':'o','𝗽':'p','𝗾':'q','𝗿':'r','𝘀':'s','𝘁':'t',
         '𝘂':'u','𝘃':'v','𝘄':'w','𝘅':'x','𝘆':'y','𝘇':'z',
@@ -2151,7 +2151,7 @@ async def background_check_multi(update, context, cards, processing_msg):
                     status_text = json_data.get("status", "Unknown")
                 except (json.JSONDecodeError, KeyError):
                     status_text = text_data.strip()
-
+                
                 return card, status_text
 
         except Exception as e:
@@ -2181,17 +2181,17 @@ async def background_check_multi(update, context, cards, processing_msg):
         for i, task in enumerate(asyncio.as_completed(tasks)):
             card, status_text = await task
             
-            # Use specific string matching for accurate counting after normalization
             normalized_status = normalize_status_text(status_text)
-            
-            if "✅" in status_text or "APPROVED" in normalized_status:
+
+            # Check for the specific statuses in order of priority
+            if "✅" in status_text:
                 approved += 1
-            elif "❌" in status_text or "DECLINED" in normalized_status:
+            elif "❌" in status_text:
                 declined += 1
-            elif "3D CHALLENGE REQUIRED" in normalized_status:
-                threed += 1
-            elif "CCN LIVE" in normalized_status:
+            elif "CCN LIVE" in normalized_status:  # Prioritize CCN Live check
                 ccn_live += 1
+            elif "❎" in status_text:  # Check for 3DS only if not CCN Live
+                threed += 1
             else:
                 unknown += 1
             
@@ -2232,7 +2232,6 @@ async def background_check_multi(update, context, cards, processing_msg):
         os.remove(output_filename)
     except Exception:
         pass
-
 
 from faker import Faker
 from telegram import Update
