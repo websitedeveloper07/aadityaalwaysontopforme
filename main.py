@@ -230,7 +230,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown
 
-from db import get_user  # your DB function
+from db import get_user  # keep your existing function
 
 # Replace with your *legit* group/channel link
 OFFICIAL_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
@@ -244,24 +244,25 @@ def md2(s: str) -> str:
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
-    bullet = f"[₰]({OFFICIAL_GROUP_LINK})"  # clickable bullet
+    # ₰ clickable hyperlink (not inside backticks!)
+    bullet = f"[₰]({OFFICIAL_GROUP_LINK})"
 
     # Each line: clickable ₰ + escaped monospace text
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "     𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet} `{md2(f'ID        : {user_id}')}`\n"
-        f"{bullet} `{md2(f'Username  : {uname}')}`\n"
-        f"{bullet} `{md2(f'Credits   : {credits}')}`\n"
-        f"{bullet} `{md2(f'Plan      : {plan}')}`\n"
-        f"{bullet} `{md2(f'Date      : {date_str}')}`\n"
-        f"{bullet} `{md2(f'Time      : {time_str}')}`\n\n"
+        f"{bullet} `{md2(f'ID       : {user_id}')}`\n"
+        f"{bullet} `{md2(f'Username : {uname}')}`\n"
+        f"{bullet} `{md2(f'Credits  : {credits}')}`\n"
+        f"{bullet} `{md2(f'Plan     : {plan}')}`\n"
+        f"{bullet} `{md2(f'Date     : {date_str}')}`\n"
+        f"{bullet} `{md2(f'Time     : {time_str}')}`\n\n"
         "➥ Use the buttons below to continue"
     )
 
 def build_loading_frame(title_line: str, filled: int, total_blocks: int = 10) -> str:
-    """Return one frame of the loading animation."""
+    """Return one frame of the loading view with a quote block line."""
     filled = max(0, min(total_blocks, filled))
     bar = "█" * filled + "░" * (total_blocks - filled)
     percent = filled * (100 // total_blocks)
@@ -280,17 +281,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Local time (Asia/Kolkata)
     tz = pytz.timezone("Asia/Kolkata")
     now_dt = datetime.now(tz)
-    date_str = now_dt.strftime("%d\\-%m\\-%Y")  # escaped dashes for MarkdownV2
-    time_str = now_dt.strftime("%I\\:%M %p")    # escaped colon
+    date_str = now_dt.strftime("%d-%m-%Y")
+    time_str = now_dt.strftime("%I:%M %p")
 
     banner = "𝑾Ξ𝑳𝑪𝑶𝑴Ξ   𝓉𝑜   𝑪𝒂𝒓𝒅𝑽𝒂𝒖𝒍𝒕✘💳"
 
     # Initial message
-    msg = await (update.message or update.effective_message).reply_text(
-        build_loading_frame(banner, 0),
-        parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True,
-    )
+    if update.message:
+        msg = await update.message.reply_text(
+            build_loading_frame(banner, 0),
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True,
+        )
+    else:
+        msg = await update.effective_message.reply_text(
+            build_loading_frame(banner, 0),
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True,
+        )
 
     # Animate 0 → 100%
     for step in range(1, 11):
@@ -366,8 +374,8 @@ async def start_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = update.effective_user
     tz = pytz.timezone("Asia/Kolkata")
     now_dt = datetime.now(tz)
-    date_str = now_dt.strftime("%d\\-%m\\-%Y")
-    time_str = now_dt.strftime("%I\\:%M %p")
+    date_str = now_dt.strftime("%d-%m-%Y")
+    time_str = now_dt.strftime("%I:%M %p")
     user_data = await get_user(user.id)
     credits = int(user_data.get("credits", 0))
     plan = str(user_data.get("plan", "Free"))
@@ -396,7 +404,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
-
 
 
 from telegram import Update
