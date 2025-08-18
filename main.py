@@ -1644,7 +1644,7 @@ async def check_mass_access(user_id: int, chat, update: Update) -> bool:
     # Else (private chats, or non-authorized groups)
     if not await has_active_paid_plan(user_id):
         await update.effective_message.reply_text(
-            "🚫 You need a *paid plan* to use this command in private chat.\n"
+            "🚫 You need a  plan to use this command.\n"
             "✅ Or join our authorized group to use it with credits only."
         )
         return False
@@ -1919,8 +1919,8 @@ async def check_mtchk_access(user_id: int, chat, update: Update) -> bool:
 
     if plan.lower() == "free":
         await update.effective_message.reply_text(
-            "🚫 This command is available for *paid plans only* in private chat.\n"
-            "💳 Buy a plan to access this feature.",
+            "🚫 This command is available members having plan.\n"
+            "💳 Buy a plan or join our authorized group to use.",
             parse_mode=ParseMode.MARKDOWN
         )
         return False
