@@ -243,20 +243,21 @@ def md2(s: str) -> str:
     return escape_markdown(str(s), version=2)
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
-    # Make ₰ itself clickable (hyperlinked)
     uname = f"@{username}" if username else "N/A"
-    bullet = f"[₰]({OFFICIAL_GROUP_LINK})"  # clickable ₰
+    # ₰ clickable hyperlink (not inside backticks!)
+    bullet = f"[₰]({OFFICIAL_GROUP_LINK})"
 
+    # each line: clickable ₰ + escaped monospace text
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "      𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"`{bullet} ID        : {user_id}`\n"
-        f"`{bullet} Username  : {uname}`\n"
-        f"`{bullet} Credits   : {credits}`\n"
-        f"`{bullet} Plan      : {plan}`\n"
-        f"`{bullet} Date      : {date_str}`\n"
-        f"`{bullet} Time      : {time_str}`\n\n"
+        f"{bullet} `{md2('ID        :')} {user_id}`\n"
+        f"{bullet} `{md2('Username  :')} {uname}`\n"
+        f"{bullet} `{md2('Credits   :')} {credits}`\n"
+        f"{bullet} `{md2('Plan      :')} {plan}`\n"
+        f"{bullet} `{md2('Date      :')} {date_str}`\n"
+        f"{bullet} `{md2('Time      :')} {time_str}`\n\n"
         "➥ Use the buttons below to continue"
     )
 
@@ -265,7 +266,7 @@ def build_loading_frame(title_line: str, filled: int, total_blocks: int = 10) ->
     filled = max(0, min(total_blocks, filled))
     bar = "█" * filled + "░" * (total_blocks - filled)
     percent = filled * (100 // total_blocks)
-    return f"{title_line}\n\n{bar} {percent}%\n\n> *Łoading...*"
+    return f"{md2(title_line)}\n\n`{bar} {percent}%`\n\n> *Łoading...*"
 
 # ---------- /start handler with animation ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -403,6 +404,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
+
 
 
 from telegram import Update
