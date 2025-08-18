@@ -230,7 +230,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown
 
-from db import get_user # keep your existing function
+from db import get_user  # keep your existing function
 
 # Replace with your *legit* group/channel link
 OFFICIAL_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
@@ -253,11 +253,11 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         "     𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet} `{md2(f'ID         : {user_id}')}`\n"
-        f"{bullet} `{md2(f'Username  : {uname}')}`\n"
-        f"{bullet} `{md2(f'Credits   : {credits}')}`\n"
-        f"{bullet} `{md2(f'Plan      : {plan}')}`\n"
-        f"{bullet} `{md2(f'Date      : {date_str}')}`\n"
-        f"{bullet} `{md2(f'Time      : {time_str}')}`\n\n"
+        f"{bullet} `{md2(f'Username   : {uname}')}`\n"
+        f"{bullet} `{md2(f'Credits    : {credits}')}`\n"
+        f"{bullet} `{md2(f'Plan       : {plan}')}`\n"
+        f"{bullet} `{md2(f'Date       : {date_str}')}`\n"
+        f"{bullet} `{md2(f'Time       : {time_str}')}`\n\n"
         "➥ Use the buttons below to continue"
     )
 
@@ -404,7 +404,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
-
 
 
 from telegram import Update
