@@ -531,9 +531,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(
         help_message,
-        parse_mode=ParseMode.MARKDOWN_V2
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True  # This prevents the link preview
     )
-
 
 
 from telegram import Update
@@ -575,13 +575,18 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link}  𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{username}\n\n"
         f"{bullet_link}  𝙎𝙩𝙖𝙩𝙪𝙨: `{status}`\n"
         f"{bullet_link}  𝘾𝙧𝙚𝙙𝙞𝙩: `{credits}`\n"
-        f"{bullet_link}  𝙋𝙡𝙖𝙣: `{plan}`\n"
+        f"{bullet_link}  𝙋𝙡�𝙣: `{plan}`\n"
         f"{bullet_link}  𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: `{plan_expiry}`\n"
         f"{bullet_link}  𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: `{keys_redeemed}`\n"
         f"{bullet_link}  𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: `{registered_at}`\n"
     )
 
-    await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.message.reply_text(
+        info_message,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
+    )
+
 
 
 
@@ -949,6 +954,9 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # Consume 1 credit
+    # Note: This is a duplicate call, I've kept it as per your code structure. 
+    # You may want to remove one of these `consume_credit` calls.
     if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
@@ -981,7 +989,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # BIN info box
     bin_info_box = (
-        f"✦━━━[  *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎*  ]━━━✦\n"
+        f"✦━━━[  *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ]━━━✦\n"
         f"{bullet_link} *𝐁𝐈𝐍* ➳ `{escaped_bin}`\n"
         f"{bullet_link} *𝐒𝐭𝐚𝐭𝐮𝐬* ➳ `{escape_markdown_v2(status_display)}`\n"
         f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ `{escaped_scheme}`\n"
@@ -997,9 +1005,9 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(
         final_message,
-        parse_mode=ParseMode.MARKDOWN_V2
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
     )
-
 
 
 
@@ -1035,15 +1043,16 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credit_message = (
         f"💳 *Your Credit Info* 💳\n"
         f"✦━━━━━━━━━━━━━━✦\n"
-        f"{bullet_link}  Username: @{escaped_username}\n"
-        f"{bullet_link}  User ID: `{escaped_user_id}`\n"
-        f"{bullet_link}  Plan: `{escaped_plan}`\n"
-        f"{bullet_link}  Credits: `{escaped_credits}`\n"
+        f"{bullet_link} Username: @{escaped_username}\n"
+        f"{bullet_link} User ID: `{escaped_user_id}`\n"
+        f"{bullet_link} Plan: `{escaped_plan}`\n"
+        f"{bullet_link} Credits: `{escaped_credits}`\n"
     )
 
     await update.effective_message.reply_text(
         credit_message,
-        parse_mode=ParseMode.MARKDOWN_V2
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
     )
 
 
@@ -1110,6 +1119,23 @@ def escape_markdown_v2(text: str) -> str:
     import re
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+import asyncio
+import aiohttp
+import re
+
+# Replace with your *legit* group/channel link
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    import re
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
+# NOTE: The following functions (get_bin_details_sync, get_user) are assumed to be defined elsewhere in your bot's code.
+
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     """
     Handles the background processing for the /chk command.
@@ -1120,6 +1146,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
     
     try:
         bin_number = parts[0][:6]
+        # Assuming get_bin_details_sync is a synchronous function you've defined
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
         brand = (bin_details.get("scheme") or "N/A").upper()
         issuer = (bin_details.get("type") or "N/A").upper()
@@ -1166,13 +1193,19 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"――――――――――――――――"
         )
 
-        await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
+        await processing_msg.edit_text(
+            final_text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True # Added this to prevent link previews
+        )
 
     except Exception as e:
         await processing_msg.edit_text(
             f"❌ API Error: {escape_markdown_v2(str(e))}",
-            parse_mode=ParseMode.MARKDOWN_V2
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True # Added this to prevent link previews
         )
+
 
 
 
@@ -2334,7 +2367,7 @@ BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     import re
-    return re.sub(r'([_*\[\]()~>#+\-=|{}.!\\])', r'\\\1', str(text))
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
@@ -2353,12 +2386,14 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True
         )
     if not await consume_credit(user_id):
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True
         )
 
     country_code = context.args[0] if context.args else 'en_US'
@@ -2389,7 +2424,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} 𝙉𝙖𝙢𝙚 ➳ `{name}`\n"
         f"{bullet_link} 𝘿𝙤𝘽 ➳ `{dob}`\n"
         f"{bullet_link} 𝙎𝙎𝙉 ➳ `{ssn}`\n"
-        f"{bullet_link} 𝙀𝙢𝙖𝙞𝙡 ➳ `{email}`\n"
+        f"{bullet_link} 𝙀�𝙖𝙞𝙡 ➳ `{email}`\n"
         f"{bullet_link} 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ `{username}`\n"
         f"{bullet_link} 𝙋𝙝𝙤𝙣𝙚 ➳ `{phone}`\n"
         f"{bullet_link} 𝙅𝙤𝙗 ➳ `{job}`\n"
@@ -2405,7 +2440,12 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
-    await update.effective_message.reply_text(output, parse_mode=ParseMode.MARKDOWN_V2)
+    await update.effective_message.reply_text(
+        output,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
+    )
+
 
 
 import re
