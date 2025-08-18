@@ -343,11 +343,11 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` Gen\n"
         f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
         f"{bullet_link} `/chk` `cc|mm|yy|cvv` –  Stripe Auth\n"
-        f"{bullet_link} `/mchk` `cards` – x10 Multi Stripe\n"
-        f"{bullet_link} `/mass` `cards` – x30 Mass St Auth 2\n"
-        f"{bullet_link} `/mtchk` `txt file` – x200 St Auth 3\n"
+        f"{bullet_link} `/mchk` – x10 Multi Stripe\n"
+        f"{bullet_link} `/mass` – x30 Mass Stripe Auth 2\n"
+        f"{bullet_link} `/mtchk` `txt file` – x200 Stripe Auth 3\n"
         f"{bullet_link} `/fk`  – Generate fake identity info\n"
-        f"{bullet_link} `/fl` `<dump>` – Extracts CCs from dump\n"
+        f"{bullet_link} `/fl` `<dump>` – Fetch CCs from dump\n"
         f"{bullet_link} `/open` – Extracts cards from a file\n"
         f"{bullet_link} `/status` – Bot system status info\n"
         f"{bullet_link} `/credits` – Chk remaining credits\n"
@@ -503,25 +503,30 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+# Replace with your *legit* group/channel link
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's help menu with a list of commands."""
+    
+    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    
     help_message = (
         "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
-        "┣ ❏ `/start` \\- Welcome message\n"
-        "┣ ❏ `/help` \\- Shows this help message\n"
-        "┣ ❏ `/gen [bin] [no\\. of cards]` \\- Generate cards from BIN\n"
-        "┣ ❏ `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
-        "┣ ❏ `/fk <country>` \\- Generate fake identity info\n"
-        "┣ ❏ `/fl <dump>` \\- Extracts cards from dumps\n"
-        "┣ ❏ `/open` \\- Extracts cards from a text file\n"
-        "┣ ❏ `/status` \\- Bot system status info\n"
-        "┣ ❏ `/credits` \\- Check your remaining credits\n"
-        "┣ ❏ `/info` \\- Shows your user info\n"
-        "┣ ❏ `/chk` \\- Checks card on Stripe Auth\n"
-        "┣ ❏ `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
-        "┣ ❏ `/mtchk` \\- Checks a txt file upto 200 cards on Stripe Auth\n"
-        "┣ ❏ `/mass` \\- Checks up to 30 cards on Stripe Auth\n"
-        "╰━━━━━━━━━━━━━━━━━━⬣"
+        f"{bullet_link} `/start` \\- Welcome message\n"
+        f"{bullet_link} `/help` \\- Shows this help message\n"
+        f"{bullet_link} `/gen [bin] [no\\. of cards]` \\- Generate cards from BIN\n"
+        f"{bullet_link} `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
+        f"{bullet_link} `/fk <country>` \\- Generate fake identity info\n"
+        f"{bullet_link} `/fl <dump>` \\- Extracts cards from dumps\n"
+        f"{bullet_link} `/open` \\- Extracts cards from a text file\n"
+        f"{bullet_link} `/status` \\- Bot system status info\n"
+        f"{bullet_link} `/credits` \\- Check your remaining credits\n"
+        f"{bullet_link} `/info` \\- Shows your user info\n"
+        f"{bullet_link} `/chk` \\- Checks card on Stripe Auth\n"
+        f"{bullet_link} `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
+        f"{bullet_link} `/mtchk` \\- Checks a txt file upto 200 cards on Stripe Auth\n"
+        f"{bullet_link} `/mass` \\- Checks up to 30 cards on Stripe Auth\n"
     )
 
     await update.effective_message.reply_text(
@@ -530,6 +535,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# Replace with your *legit* group/channel link
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
@@ -540,6 +552,9 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the user's detailed information."""
     user = update.effective_user
     user_data = await get_user(user.id)
+    
+    # Define the bullet point with the hyperlink
+    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
     # Escape all dynamic values
     first_name = escape_markdown_v2(user.first_name or 'N/A')
@@ -555,15 +570,15 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     info_message = (
         "🔍 *Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
         "━━━━━━━━━━━━━━\n"
-        f"👤 𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: `{first_name}`\n"
-        f"🆔 𝙄𝘿: `{user_id}`\n"
-        f"📛 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{username}\n\n"
-        f"📋 𝙎𝙩𝙖𝙩𝙪𝙨: `{status}`\n"
-        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩: `{credits}`\n"
-        f"💼 𝙋𝙡𝙖𝙣: `{plan}`\n"
-        f"📅 𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: `{plan_expiry}`\n"
-        f"🔑 𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: `{keys_redeemed}`\n"
-        f"🗓 𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: `{registered_at}`\n"
+        f"{bullet_link}  𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: `{first_name}`\n"
+        f"{bullet_link}  𝙄𝘿: `{user_id}`\n"
+        f"{bullet_link}  𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{username}\n\n"
+        f"{bullet_link}  𝙎𝙩𝙖𝙩𝙪𝙨: `{status}`\n"
+        f"{bullet_link}  𝘾𝙧𝙚𝙙𝙞𝙩: `{credits}`\n"
+        f"{bullet_link}  𝙋𝙡𝙖𝙣: `{plan}`\n"
+        f"{bullet_link}  𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: `{plan_expiry}`\n"
+        f"{bullet_link}  𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: `{keys_redeemed}`\n"
+        f"{bullet_link}  𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: `{registered_at}`\n"
     )
 
     await update.message.reply_text(info_message, parse_mode=ParseMode.MARKDOWN_V2)
@@ -890,9 +905,20 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+# Replace with your *legit* group/channel link
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    import re
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup and deducts 1 credit."""
     user = update.effective_user
+    
+    # Define the bullet point with the hyperlink
+    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
     # Get user data
     user_data = await get_user(user.id)
@@ -953,25 +979,21 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     level_emoji = get_level_emoji(escaped_level)
     status_display = get_vbv_status_display(vbv_status)
 
-    # BIN info box (no space after country)
+    # BIN info box
     bin_info_box = (
-        f"╭━━━[ ✦ *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ✦ ]━━━⬣\n"
-        f"┣ ❏ *𝐁𝐈𝐍*       ➳ `{escaped_bin}`\n"
-        f"┣ ❏ *𝐒𝐭𝐚𝐭𝐮𝐬*    ➳ `{escape_markdown_v2(status_display)}`\n"
-        f"┣ ❏ *𝐁𝐫𝐚𝐧𝐝*     ➳ `{escaped_scheme}`\n"
-        f"┣ ❏ *𝐓𝐲𝐩𝐞*      ➳ `{escaped_card_type}`\n"
-        f"┣ ❏ *𝐋𝐞𝐯𝐞𝐥*     ➳ `{level_emoji} {escaped_level}`\n"
-        f"┣ ❏ *𝐁𝐚𝐧𝐤*      ➳ `{escaped_bank}`\n"
-        f"┣ ❏ *𝐂𝐨𝐮𝐧𝐭𝐫𝐲*   ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
+        f"✦━━━[  *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎*  ]━━━✦\n"
+        f"{bullet_link} *𝐁𝐈𝐍* ➳ `{escaped_bin}`\n"
+        f"{bullet_link} *𝐒𝐭𝐚𝐭𝐮𝐬* ➳ `{escape_markdown_v2(status_display)}`\n"
+        f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ `{escaped_scheme}`\n"
+        f"{bullet_link} *𝐓𝐲𝐩𝐞* ➳ `{escaped_card_type}`\n"
+        f"{bullet_link} *𝐋𝐞𝐯𝐞𝐥* ➳ `{level_emoji} {escaped_level}`\n"
+        f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{escaped_bank}`\n"
+        f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
+        f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
+        f"{bullet_link} *𝐁𝐨𝐭 𝐛𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
     )
 
-    user_info_box = (
-        f"┣ ❏ *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
-        f"┣ ❏ *𝐁𝐨𝐭 𝐛𝐲*       ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-        f"╰━━━━━━━━━━━━━━━━━━⬣"
-    )
-
-    final_message = f"{bin_info_box}\n\n{user_info_box}"
+    final_message = f"{bin_info_box}"
 
     await update.effective_message.reply_text(
         final_message,
@@ -985,15 +1007,21 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+# Replace with your *legit* group/channel link
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     import re
-    return re.sub(r'([_*\[\]()~>#+\-=|{}.!\\])', r'\\\1', str(text))
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /credits command, showing user info and credits."""
     user = update.effective_user
     user_data = await get_user(user.id)
+    
+    # Define the bullet point with the hyperlink
+    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
     credits = str(user_data.get('credits', 0))
     plan = user_data.get('plan', 'N/A')
@@ -1006,11 +1034,11 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     credit_message = (
         f"💳 *Your Credit Info* 💳\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"👤 Username: @{escaped_username}\n"
-        f"🆔 User ID: `{escaped_user_id}`\n"
-        f"📋 Plan: `{escaped_plan}`\n"
-        f"💳 Credits: `{escaped_credits}`\n"
+        f"✦━━━━━━━━━━━━━━✦\n"
+        f"{bullet_link}  Username: @{escaped_username}\n"
+        f"{bullet_link}  User ID: `{escaped_user_id}`\n"
+        f"{bullet_link}  Plan: `{escaped_plan}`\n"
+        f"{bullet_link}  Credits: `{escaped_credits}`\n"
     )
 
     await update.effective_message.reply_text(
@@ -1070,11 +1098,26 @@ def get_bin_details_sync(bin_number: str) -> dict:
     }
 
 
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# Replace with your *legit* group/channel link
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    import re
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     """
     Handles the background processing for the /chk command.
     It performs a BIN lookup, calls the external API, and formats the final message.
     """
+    # Define the bullet point with the hyperlink
+    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    
     try:
         bin_number = parts[0][:6]
         bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
@@ -1102,41 +1145,37 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
         elif api_status.lower() == "ccn live ❎":
             status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
-            
-        header = f"═══\\[ **{escape_markdown(status_text, version=2)}** \\]═══"
+        
+        header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
 
         # Formatted response from API status
-        formatted_response = f"_{escape_markdown(api_status, version=2)}_"
+        formatted_response = f"_{escape_markdown_v2(api_status)}_"
 
         final_text = (
             f"{header}\n"
-            f"✘ Card         ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
-            "✘ Gateway      ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
-            f"✘ Response     ➜ {formatted_response}\n"
-            "――――――――――――――――\n"
-            f"✘ Brand        ➜ {escape_markdown(brand, version=2)}\n"
-            f"✘ Issuer       ➜ {escape_markdown(issuer, version=2)}\n"
-            f"✘ Country      ➜ {escape_markdown(country_name, version=2)}\n"
-            "――――――――――――――――\n"
-            f"✘ Request By   ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
-            f"✘ Developer    ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-            "――――――――――――――――"
+            f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+            f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
+            f"{bullet_link} Response ➜ {formatted_response}\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} Brand ➜ {escape_markdown_v2(brand)}\n"
+            f"{bullet_link} Issuer ➜ {escape_markdown_v2(issuer)}\n"
+            f"{bullet_link} Country ➜ {escape_markdown_v2(country_name)}\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} Request By ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
+            f"{bullet_link} Developer ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+            f"――――――――――――――――"
         )
 
         await processing_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2)
 
     except Exception as e:
         await processing_msg.edit_text(
-            f"❌ API Error: {escape_markdown(str(e), version=2)}",
+            f"❌ API Error: {escape_markdown_v2(str(e))}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
 
-    except Exception as e:
-        await processing_msg.edit_text(
-            f"❌ API Error: {escape_markdown(str(e), version=2)}",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -2289,9 +2328,20 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+# Replace with your *legit* group/channel link
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    import re
+    return re.sub(r'([_*\[\]()~>#+\-=|{}.!\\])', r'\\\1', str(text))
+
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
 
+    # Define the bullet point with the hyperlink
+    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    
     # Cooldown check
     if not await enforce_cooldown(update.effective_user.id, update):
         return
@@ -2336,22 +2386,22 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     output = (
         "╭━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━━━━⬣\n"
-        f"┣ ❏ 𝙉𝙖𝙢𝙚      ➳ `{name}`\n"
-        f"┣ ❏ 𝘿𝙤𝘽       ➳ `{dob}`\n"
-        f"┣ ❏ 𝙎𝙎𝙉       ➳ `{ssn}`\n"
-        f"┣ ❏ 𝙀𝙢𝙖𝙞𝙡     ➳ `{email}`\n"
-        f"┣ ❏ 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ `{username}`\n"
-        f"┣ ❏ 𝙋𝙝𝙤𝙣𝙚     ➳ `{phone}`\n"
-        f"┣ ❏ 𝙅𝙤𝙗       ➳ `{job}`\n"
-        f"┣ ❏ 𝘾𝙤𝙢𝙥𝙖𝙣𝙮   ➳ `{company}`\n"
-        f"┣ ❏ 𝙎𝙩𝙧𝙚𝙚𝙩    ➳ `{street}`\n"
-        f"┣ ❏ 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ `{address2}`\n"
-        f"┣ ❏ 𝘾𝙞𝙩𝙮      ➳ `{city}`\n"
-        f"┣ ❏ 𝙎𝙩𝙖𝙩𝙚     ➳ `{state}`\n"
-        f"┣ ❏ 𝙕𝙞𝙥       ➳ `{zip_code}`\n"
-        f"┣ ❏ 𝘾𝙤𝙪𝙣𝙩𝙧𝙮   ➳ `{country}`\n"
-        f"┣ ❏ 𝙄𝙋        ➳ `{ip}`\n"
-        f"┣ ❏ 𝙐𝘼        ➳ `{ua}`\n"
+        f"{bullet_link} 𝙉𝙖𝙢𝙚 ➳ `{name}`\n"
+        f"{bullet_link} 𝘿𝙤𝘽 ➳ `{dob}`\n"
+        f"{bullet_link} 𝙎𝙎𝙉 ➳ `{ssn}`\n"
+        f"{bullet_link} 𝙀𝙢𝙖𝙞𝙡 ➳ `{email}`\n"
+        f"{bullet_link} 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ `{username}`\n"
+        f"{bullet_link} 𝙋𝙝𝙤𝙣𝙚 ➳ `{phone}`\n"
+        f"{bullet_link} 𝙅𝙤𝙗 ➳ `{job}`\n"
+        f"{bullet_link} 𝘾𝙤𝙢𝙥𝙖𝙣𝙮 ➳ `{company}`\n"
+        f"{bullet_link} 𝙎𝙩𝙧𝙚𝙚𝙩 ➳ `{street}`\n"
+        f"{bullet_link} 𝘼𝙙𝙙𝙧𝙚𝙨𝙨 2 ➳ `{address2}`\n"
+        f"{bullet_link} 𝘾𝙞𝙩𝙮 ➳ `{city}`\n"
+        f"{bullet_link} 𝙎𝙩𝙖𝙩𝙚 ➳ `{state}`\n"
+        f"{bullet_link} 𝙕𝙞𝙥 ➳ `{zip_code}`\n"
+        f"{bullet_link} 𝘾𝙤𝙪𝙣𝙩𝙧𝙮 ➳ `{country}`\n"
+        f"{bullet_link} 𝙄𝙋 ➳ `{ip}`\n"
+        f"{bullet_link} 𝙐𝘼 ➳ `{ua}`\n"
         "╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
