@@ -219,213 +219,190 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
 
 from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or config
 
+# safe_start.py  —  Legitimate /start animation + final profile card
 from datetime import datetime
+import asyncio
+import logging
+import pytz
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from config import OWNER_ID, OFFICIAL_GROUP_LINK, AUTHORIZED_PRIVATE_USERS, AUTHORIZED_CHATS
-from db import get_user
-
-
-# === COMMAND HANDLERS ===
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-from telegram.error import BadRequest
 from telegram.helpers import escape_markdown
-from datetime import datetime
-import pytz
-import logging
 
-from db import get_user
-from config import OFFICIAL_GROUP_LINK  # Ensure this is defined in your config
+from db import get_user  # keep your existing function
+
+# Replace with your *legit* group/channel link
+OFFICIAL_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 
 logger = logging.getLogger(__name__)
 
-# Custom MarkdownV2 escaper
-def escape_markdown_v2(text: str) -> str:
-    import re
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-    
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.error import BadRequest
-from telegram.helpers import escape_markdown
-from datetime import datetime
-import pytz
-import logging
+# ---------- Utilities ----------
+def md2(s: str) -> str:
+    """Safe MarkdownV2 escape using telegram's helper."""
+    return escape_markdown(str(s), version=2)
 
-logger = logging.getLogger(__name__)
+def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
+    # Make ₰ itself clickable (hyperlinked)
+    uname = f"@{username}" if username else "N/A"
+    bullet = f"[₰]({OFFICIAL_GROUP_LINK})"  # clickable ₰
 
-OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"  # replace with your group link
+    return (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        f"`{bullet} ID        : {user_id}`\n"
+        f"`{bullet} Username  : {uname}`\n"
+        f"`{bullet} Credits   : {credits}`\n"
+        f"`{bullet} Plan      : {plan}`\n"
+        f"`{bullet} Date      : {date_str}`\n"
+        f"`{bullet} Time      : {time_str}`\n\n"
+        "➥ Use the buttons below to continue"
+    )
 
+def build_loading_frame(title_line: str, filled: int, total_blocks: int = 10) -> str:
+    """Return one frame of the loading view with a quote block line."""
+    filled = max(0, min(total_blocks, filled))
+    bar = "█" * filled + "░" * (total_blocks - filled)
+    percent = filled * (100 // total_blocks)
+    return f"{title_line}\n\n{bar} {percent}%\n\n> *Łoading...*"
+
+# ---------- /start handler with animation ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    logger.info(f"/start called by user: {user.id} (@{user.username})")
+    logger.info(f"/start by {user.id} (@{user.username})")
 
-    indian_timezone = pytz.timezone('Asia/Kolkata')
-    now = datetime.now(indian_timezone).strftime('%I:%M %p')
-    today = datetime.now(indian_timezone).strftime('%d-%m-%Y')
-
+    # Pull user info
     user_data = await get_user(user.id)
-    credits = user_data.get('credits', 0)
-    plan = user_data.get('plan', 'Free')
+    credits = int(user_data.get("credits", 0))
+    plan = str(user_data.get("plan", "Free"))
 
-    escaped_user_id = escape_markdown(str(user.id), version=2)
-    escaped_username = escape_markdown(user.username or 'N/A', version=2)
-    escaped_today = escape_markdown(today, version=2)
-    escaped_now = escape_markdown(now, version=2)
-    escaped_credits = escape_markdown(str(credits), version=2)
-    escaped_plan = escape_markdown(plan, version=2)
+    # Local time (Asia/Kolkata)
+    tz = pytz.timezone("Asia/Kolkata")
+    now_dt = datetime.now(tz)
+    date_str = now_dt.strftime("%d-%m-%Y")
+    time_str = now_dt.strftime("%I:%M %p")
 
-    welcome_message = (
-        f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝓵𝒕𝑿* ⚡\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
-        f"🆔 𝙄𝘿: `{escaped_user_id}`\n"
-        f"👤 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{escaped_username}\n"
-        f"📅 𝘿𝙖𝙩𝙚: `{escaped_today}`\n"
-        f"🕒 𝙏𝙞𝙢𝙚: `{escaped_now}`\n"
-        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩𝙨: `{escaped_credits}`\n"
-        f"📋 𝙋𝙡𝙖𝙣: `{escaped_plan}`\n\n"
-        f"𝓤𝓼𝓮 𝓽𝓱𝓮 𝓫𝓾𝓽𝓽𝓸𝓷𝓼 𝓫𝓮𝓵𝓸𝔀 𝓽𝓸 𝓰𝓮𝓽 𝓼𝓽𝓪𝓻𝓽𝓮𝓓 👇"
+    banner = "𝑾Ξ𝑳𝑪𝑶𝑴Ξ   𝓉𝑜   𝑪𝒂𝒓𝒅𝑽𝒂𝒖𝒍𝒕✘💳"
+
+    # Initial message
+    if update.message:
+        msg = await update.message.reply_text(
+            build_loading_frame(banner, 0),
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True,
+        )
+    else:
+        msg = await update.effective_message.reply_text(
+            build_loading_frame(banner, 0),
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True,
+        )
+
+    # Animate 0 → 100%
+    for step in range(1, 11):
+        try:
+            await asyncio.sleep(0.25)
+            await msg.edit_text(
+                build_loading_frame(banner, step),
+                parse_mode=ParseMode.MARKDOWN_V2,
+                disable_web_page_preview=True,
+            )
+        except Exception as e:
+            logger.warning(f"Animation edit failed at step {step}: {e}")
+            break
+
+    # Final profile card
+    final_text = build_final_card(
+        user_id=user.id,
+        username=user.username,
+        credits=credits,
+        plan=plan,
+        date_str=date_str,
+        time_str=time_str,
     )
 
-    keyboard = [
-        [
-            InlineKeyboardButton("🛠 Tools", callback_data="tools_menu"),
-            InlineKeyboardButton("🚪 Gates", callback_data="gates_menu"),
-        ],
-        [
-            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("➥ Continue", url=OFFICIAL_GROUP_LINK)]]
+    )
 
     try:
-        if update.message:
-            await update.message.reply_text(
-                welcome_message,
-                reply_markup=reply_markup,
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
-        elif update.callback_query:
-            query = update.callback_query
-            await query.answer()
-            await query.edit_message_text(
-                welcome_message,
-                reply_markup=reply_markup,
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
+        await msg.edit_text(
+            final_text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            reply_markup=reply_markup,
+            disable_web_page_preview=True,
+        )
     except Exception as e:
-        logger.warning(f"Error sending start message: {e}")
+        logger.warning(f"Final card edit failed: {e}")
+        await msg.reply_text(
+            final_text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            reply_markup=reply_markup,
+            disable_web_page_preview=True,
+        )
 
-
-
-# Gates menu handler
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-
-def escape_markdown_v2(text: str) -> str:
-    escape_chars = r'\_*[]()~`>#+-=|{}.!'
-    return ''.join('\\' + c if c in escape_chars else c for c in text)
-
-# Async handler for the gates menu
-async def gates_menu_handler(update, context):
-    query = update.callback_query
-    await query.answer()  # Respond to callback to remove "loading" state
-
-    gates_message = (
-        "🚪 *Gates Menu*\n\n"
-        "Use the following commands:\n\n"
-        "• `/chk` \\- *Check a single card on Stripe Auth*\n"
-        "  Example:\n"
-        "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
-        "• `/mchk` \\- *Check up to 10 cards on Stripe Auth*\n"
-        "  Example:\n"
-        "  `\\/mchk 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456`\n\n"
-        "• `/mass` \\- *Check up to 30 cards on Stripe Auth*\n"
-        "  Example:\n"
-        "  `\\/mass 1234567890123456\\|12\\|24\\|123 2345678901234567\\|11\\|23\\|456 ...`\n"
+# ---------- Optional Menus ----------
+async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    text = (
+        "*🛠 Tools*\n"
+        "All features below are examples of legitimate utilities:\n\n"
+        "• `/status` – Bot status\n"
+        "• `/credits` – Check credits\n"
+        "• `/info` – Your profile\n"
+        "• `/help` – Help menu"
     )
+    keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="back_to_start")]]
+    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=InlineKeyboardMarkup(keyboard))
 
-    keyboard = [
-        [InlineKeyboardButton("🔙 Back", callback_data="back_to_start")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await query.edit_message_text(
-        text=gates_message,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        reply_markup=reply_markup
+async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    text = (
+        "🚪 *Features*\n"
+        "Use only lawful and authorized operations in this bot.\n\n"
+        "• Example: `/bin <bin>` – Lookup BIN info you own rights to use\n"
+        "• Example: `/open` – Parse your own text files\n"
     )
+    keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="back_to_start")]]
+    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=InlineKeyboardMarkup(keyboard))
 
-
-
-# Handler to go back to main start menu (from buttons)
-async def start_menu_handler(update, context):
-    query = update.callback_query
-    await query.answer()
-    # Simply call start() with the update & context to reuse the start message & keyboard
-    # But start() expects update.message for sending, so we must do similar logic here
+async def start_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    indian_timezone = pytz.timezone('Asia/Kolkata')
-    now = datetime.now(indian_timezone).strftime('%I:%M %p')
-    today = datetime.now(indian_timezone).strftime('%d-%m-%Y')
-
+    tz = pytz.timezone("Asia/Kolkata")
+    now_dt = datetime.now(tz)
+    date_str = now_dt.strftime("%d-%m-%Y")
+    time_str = now_dt.strftime("%I:%M %p")
     user_data = await get_user(user.id)
-    credits = user_data.get('credits', 0)
-    plan = user_data.get('plan', 'Free')
-
-    escaped_user_id = escape_markdown(str(user.id), version=2)
-    escaped_username = escape_markdown(user.username or 'N/A', version=2)
-    escaped_today = escape_markdown(today, version=2)
-    escaped_now = escape_markdown(now, version=2)
-    escaped_credits = escape_markdown(str(credits), version=2)
-    escaped_plan = escape_markdown(plan, version=2)
-
-    welcome_message = (
-        f"👋 *Welcome to 𝓒𝓪𝓻d𝓥𝓪𝒖𝓵𝒕𝑿* ⚡\n"
-        f"━━━━━━━━━━━━━━━━━━━\n"
-        f"🆔 𝙄𝘿: `{escaped_user_id}`\n"
-        f"👤 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{escaped_username}\n"
-        f"📅 𝘿𝙖𝙩𝙚: `{escaped_today}`\n"
-        f"🕒 𝙏𝙞𝙢𝙚: `{escaped_now}`\n"
-        f"💳 𝘾𝙧𝙚𝙙𝙞𝙩𝙨: `{escaped_credits}`\n"
-        f"📋 𝙋𝙡𝙖𝙣: `{escaped_plan}`\n\n"
-        f"𝓤𝓼𝓮 𝓽𝓱𝓮 𝓫𝓾𝓽𝓽𝓸𝓷𝓼 𝓫𝓮𝓵𝓸𝔀 𝓽𝓸 𝓰𝓮𝓽 𝓼𝓽𝓪𝓻𝓽𝓮𝓓 👇"
+    credits = int(user_data.get("credits", 0))
+    plan = str(user_data.get("plan", "Free"))
+    text = build_final_card(
+        user_id=user.id,
+        username=user.username,
+        credits=credits,
+        plan=plan,
+        date_str=date_str,
+        time_str=time_str,
     )
-    keyboard = [
-        [
-            InlineKeyboardButton("🛠 Tools", callback_data="tools_menu"),
-            InlineKeyboardButton("🚪 Gates", callback_data="gates_menu"),
-        ],
-        [
-            InlineKeyboardButton("📢 Join Group", url=OFFICIAL_GROUP_LINK)
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        welcome_message,
-        reply_markup=reply_markup,
-        parse_mode=ParseMode.MARKDOWN_V2,
+    keyboard = [[InlineKeyboardButton("➥ Continue", url=OFFICIAL_GROUP_LINK)]]
+    await update.callback_query.edit_message_text(
+        text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=InlineKeyboardMarkup(keyboard), disable_web_page_preview=True
     )
 
-
-# Main callback query handler, example usage:
-async def handle_callback(update, context):
-    query = update.callback_query
-    await query.answer()
-
-    data = query.data
-
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    data = q.data
     if data == "tools_menu":
         await show_tools_menu(update, context)
-    elif data == "gates_menu":
+    elif data in ("features_menu", "gates_menu"):
         await gates_menu_handler(update, context)
-    elif data in ["start_menu", "back_to_start"]:
+    elif data in ("start_menu", "back_to_start"):
         await start_menu_handler(update, context)
     else:
-        await query.answer("Unknown option selected.", show_alert=True)
+        await q.answer("Unknown option.", show_alert=True)
 
 
 from telegram import Update
@@ -457,75 +434,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         help_message,
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
-
-
-
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows the list of tools and their status."""
-    query = update.callback_query
-    await query.answer()
-
-    tools_message = (
-        "*✦ All Commands ✦*\n\n"
-        "All commands are live, `Online`, and have `100%` health\\.\n\n"
-        "• `/gen [bin] [no\\. of cards]` \\- Generates cards from BIN\n"
-        "• `/open` \\- Extracts cards from a text file\n"
-        "• `/fk <country>` \\- Generates fake info\n"
-        "• `/fl <dump>` \\- Extracts cards from dumps\n"
-        "• `/credits` \\- Shows your credits\n"
-        "• `/bin <BIN>` \\- Performs BIN lookup\n"
-        "• `/status` \\- Checks bot health\n"
-        "• `/info` \\- Shows your info\n"
-        "• `/chk` \\- Checks card on Stripe Auth\n"
-        "• `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
-        "• `/mtchk` \\- Checks a txt file upto 200 cards on Stripe Auth\n"
-        "• `/mass` \\- Checks up to 30 cards on Stripe Auth"
-    )
-
-    keyboard = [
-        [InlineKeyboardButton("🔙 Back to Start", callback_data="back_to_start")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await query.edit_message_text(
-        text=tools_message,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        reply_markup=reply_markup
-    )
-
-
-
-async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Main callback handler for all inline keyboard buttons."""
-    query = update.callback_query
-    await query.answer()
-
-    data = query.data
-
-    if data == "tools_menu":
-        await show_tools_menu(update, context)
-
-    elif data == "gates_menu":
-        # Show gates submenu
-        await gates_menu_handler(update, context)
-
-    elif data == "start_menu" or data == "back_to_start":
-        # Go back to main start menu
-        await start_menu_handler(update, context)
-
-    elif data.startswith("cmd_"):
-        # Handle commands like /chk and /mchk info
-        await cmd_handler(update, context)
-
-    else:
-        # Unknown callback data (optional fallback)
-        await query.answer("Unknown option selected.", show_alert=True)
-
 
 
 
