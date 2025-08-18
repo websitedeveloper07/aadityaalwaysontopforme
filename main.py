@@ -236,7 +236,7 @@ from db import get_user # keep your existing function
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 # The "Official Group" button links to this channel
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
-DEV_LINK = "https://t.me/your_dev_profile" # Replace with your dev profile link
+DEV_LINK = "https://t.me/k4linuxx" # Replace with your dev profile link
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +261,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
 
     return (
         "✦━━━━━━━━━━━━━━✦\n"
-        "     𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
+        "   ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet} `{user_id_text}`\n"
         f"{bullet} `{username_text}`\n"
@@ -269,7 +269,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         f"{bullet} `{plan_text}`\n"
         f"{bullet} `{date_text}`\n"
         f"{bullet} `{time_text}`\n\n"
-        "➥ Use the buttons below to continue"
+        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭𝐨 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
     )
 
 # ---------- /start handler with inline menu ----------
@@ -300,12 +300,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Main menu with inline buttons
     reply_markup = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("Gates", callback_data="gates_menu"),
-            InlineKeyboardButton("Tools", callback_data="tools_menu")
+            InlineKeyboardButton("𝐆𝐚𝐭𝐞𝐬 🚪", callback_data="gates_menu"),
+            InlineKeyboardButton("𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⌨️", callback_data="tools_menu")
         ],
         [
-            InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK),
-            InlineKeyboardButton("Dev", url=DEV_LINK)
+            InlineKeyboardButton("𝐎𝐟𝐟𝐢𝐜𝐢𝐚𝐥 𝐆𝐫𝐨𝐮𝐩 👥", url=OFFICIAL_GROUP_LINK),
+            InlineKeyboardButton("𝗢𝘄𝗻𝗲𝗿 💎", url=DEV_LINK)
         ]
     ])
 
@@ -334,84 +334,116 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Escape all dots and other special characters in the text
     text = (
-        "*🛠 Tools*\n"
-        "All features below are examples of legitimate utilities:\n\n"
+        "✦━━━━━━━━━━━━━━✦\n"
+        "   ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet_link} `/start` – Welcome message\n"
-        f"{bullet_link} `/help` – Shows this help message\n"
+        f"{bullet_link} `/help` – Shows all commands\n"
         f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` – Generate cards from BIN\n"
         f"{bullet_link} `/bin` `<bin>` – BIN lookup \\(bank, country, type\\)\n"
-        f"{bullet_link} `/fk` `<country>` – Generate fake identity info\n"
+        f"{bullet_link} `/chk` `cc|mm|yy|cvv` – Single Stripe Auth\n"
+        f"{bullet_link} `/mchk` `cards` – x10 Multi Stripe Auth\n"
+        f"{bullet_link} `/mass` `cards` – x30 Mass Stripe Auth 2\n"
+        f"{bullet_link} `/mtchk` `txt file` – x200 Mass Stripe Auth 3\n"
+        f"{bullet_link} `/fk`  – Generate fake identity info\n"
         f"{bullet_link} `/fl` `<dump>` – Extracts cards from dumps\n"
         f"{bullet_link} `/open` – Extracts cards from a text file\n"
         f"{bullet_link} `/status` – Bot system status info\n"
         f"{bullet_link} `/credits` – Check your remaining credits\n"
         f"{bullet_link} `/info` – Shows your user info\n\n"
-        "All features must be used with explicit authorization on your own data\\."
     )
+
     
-    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_start")]]
+    keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂 ", callback_data="back_to_start")]]
     await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=InlineKeyboardMarkup(keyboard), disable_web_page_preview=True)
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     
-    auth_message = "*🚪 Gates Menu*\n\n" + "Please select a feature below:\n\n"
+    # Stylish Gates Menu message
+    auth_message = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "   🚪 𝐆𝐚𝐭𝐞𝐬 𝐌𝐞𝐧𝐮\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "✨ Please select a feature below:\n\n"
+    )
     
+    # Stylish buttons
     auth_keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("Auth", callback_data="auth_sub_menu"),
-            InlineKeyboardButton("Charge", callback_data="charge_sub_menu")
+            InlineKeyboardButton("⚡ 𝐀𝐮𝐭𝐡", callback_data="auth_sub_menu"),
+            InlineKeyboardButton("💳 𝐂𝐡𝐚𝐫𝐠𝐞", callback_data="charge_sub_menu")
         ],
         [
-            InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_start")
+            InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")
         ]
     ])
     
-    await q.edit_message_text(auth_message, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=auth_keyboard, disable_web_page_preview=True)
+    await q.edit_message_text(
+        auth_message,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=auth_keyboard,
+        disable_web_page_preview=True
+    )
+
 
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     
-    # The message below has been corrected with proper escaping.
+    # Stylish Auth Gate message with updated commands
     gates_message = (
-        "🚪 *Auth Gate*\n\n"
-        "The commands below are for educational purposes on how to safely handle and process "
-        "your own data\\. Do not use them for unauthorized activities\\.\n\n"
-        "• `/check` \\- *Check a single card*\n"
+        "✦━━━━━━━━━━━━━━✦\n"
+        "     🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        f"• `/chk` \\- *Check a single card*\n"
         "  Example:\n"
-        "  `\\/check 1234567890123456\\|12\\|24\\|123`\n\n"
-        "• `/batch` \\- *Check a batch of cards*\n"
+        "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
+        f"• `/mchk` \\- *Check up to 10 cards at once*\n"
         "  Example:\n"
-        "  `\\/batch <file or text>`\n"
+        "  `\\/mchk 1234567890123456\\|...`  # up to 10 cards\n\n"
+        f"• `/mass` \\- *Check up to 30 cards at once*\n"
+        "  Example:\n"
+        "  `\\/mass <cards>`\n"
     )
 
     auth_keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ])
     
-    await q.edit_message_text(gates_message, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=auth_keyboard, disable_web_page_preview=True)
+    await q.edit_message_text(
+        gates_message,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=auth_keyboard,
+        disable_web_page_preview=True
+    )
 
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     
     text = (
-        "╔════════════════════╗\n"
-        "║     ⚡ 𝐂𝐡𝐚𝐫𝐠𝐞 𝐆𝐚𝐭𝐞 ⚡     ║\n"
-        "╚════════════════════╝\n\n"
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      ⚡ 𝐂𝐡𝐚𝐫𝐠𝐞 𝐆𝐚𝐭𝐞 ⚡\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
         "🚧 𝐓𝐡𝐢𝐬 𝐠𝐚𝐭𝐞 𝐢𝐬 𝐮𝐧𝐝𝐞𝐫 𝐦𝐚𝐢𝐧𝐭𝐞𝐧𝐚𝐧𝐜𝐞\n"
         "🔄 𝐒𝐨𝐨𝐧 𝐨𝐩𝐞𝐧𝐞𝐝\n\n"
-        "✅ 𝐔𝐧𝐭𝐢𝐥 𝐭𝐡𝐞𝐧, 𝐲𝐨𝐮 𝐜𝐚𝐧 𝐮𝐬𝐞\n"
-        "   ➤ 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞"
+        "✅ 𝐔𝐧𝐭𝐢𝐥 𝐭𝐡𝐞𝐧, 𝐲𝐨𝐮 𝐜𝐚𝐧 𝐮𝐬𝐞:\n"
+        "   ➤ 🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞"
     )
     
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ])
     
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=keyboard, disable_web_page_preview=True)
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
+        disable_web_page_preview=True
+    )
+
 
 
 async def start_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -435,12 +467,12 @@ async def start_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("Gates", callback_data="gates_menu"),
-            InlineKeyboardButton("Tools", callback_data="tools_menu")
+            InlineKeyboardButton("𝐆𝐚𝐭𝐞𝐬 🚪", callback_data="gates_menu"),
+            InlineKeyboardButton("𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⌨️", callback_data="tools_menu")
         ],
         [
-            InlineKeyboardButton("Official Group", url=OFFICIAL_GROUP_LINK),
-            InlineKeyboardButton("Dev", url=DEV_LINK)
+            InlineKeyboardButton("𝐎𝐟𝐟𝐢𝐜𝐢𝐚𝐥 𝐆𝐫𝐨𝐮𝐩 👥", url=OFFICIAL_GROUP_LINK),
+            InlineKeyboardButton("𝗢𝘄𝗻𝗲𝗿 💎", url=DEV_LINK)
         ]
     ])
     
