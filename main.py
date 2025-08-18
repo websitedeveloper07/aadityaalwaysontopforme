@@ -244,10 +244,10 @@ def md2(s: str) -> str:
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
-    # ₰ clickable hyperlink (not inside backticks!)
+    # Create the clickable hyperlink bullet point
     bullet = f"[₰]({OFFICIAL_GROUP_LINK})"
 
-    # Each line: clickable ₰ + escaped monospace text
+    # Each line: clickable bullet + escaped monospace text
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "     𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
