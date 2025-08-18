@@ -241,18 +241,13 @@ logger = logging.getLogger(__name__)
 # ---------- Utilities ----------
 def escape_all_markdown(text: str) -> str:
     """Manually escape all MarkdownV2 special characters."""
-    # List of special characters in MarkdownV2 that must be escaped
-    special_chars = r"[_*\[\]()~`>#+-=|{}.!]"
+    special_chars = r"[_*\[\]()~`>#+-=|{}.!%]"
     return re.sub(special_chars, r"\\\g<0>", text)
-
-# The old md2 function is no longer needed since escape_all_markdown is more robust.
-# The telegram.helpers.escape_markdown is still imported for other uses.
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
     bullet = f"[₰]({OFFICIAL_GROUP_LINK})"
 
-    # Now, we use the custom, comprehensive escape function
     user_id_text = escape_all_markdown(f"ID       : {user_id}")
     username_text = escape_all_markdown(f"Username : {uname}")
     credits_text = escape_all_markdown(f"Credits  : {credits}")
@@ -279,22 +274,22 @@ def build_loading_frame(title_line: str, filled: int, total_blocks: int = 10) ->
     bar = "█" * filled + "░" * (total_blocks - filled)
     percent = filled * (100 // total_blocks)
     
-    # Use the more robust escape_all_markdown function here as well
     escaped_title = escape_all_markdown(title_line)
+    
+    # Explicitly escape the '%' character in the loading bar text
+    escaped_bar = escape_all_markdown(f"{bar} {percent}%")
 
-    return f"{escaped_title}\n\n`{bar} {percent}\\%`\n\n> *Łoading...*"
+    return f"{escaped_title}\n\n`{escaped_bar}`\n\n> *Łoading...*"
 
 # ---------- /start handler with animation ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     logger.info(f"/start by {user.id} (@{user.username})")
 
-    # Pull user info
     user_data = await get_user(user.id)
     credits = int(user_data.get("credits", 0))
     plan = str(user_data.get("plan", "Free"))
 
-    # Local time (Asia/Kolkata)
     tz = pytz.timezone("Asia/Kolkata")
     now_dt = datetime.now(tz)
     date_str = now_dt.strftime("%d-%m-%Y")
@@ -302,7 +297,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     banner = "𝑾Ξ𝑳𝑪𝑶𝑴Ξ   𝓉𝑜   𝑪𝒂𝒓𝒅𝑽𝒂𝒖𝒍𝒕✘💳"
 
-    # Initial message
     if update.message:
         msg = await update.message.reply_text(
             build_loading_frame(banner, 0),
@@ -316,7 +310,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True,
         )
 
-    # Animate 0 → 100%
     for step in range(1, 11):
         try:
             await asyncio.sleep(0.25)
@@ -329,7 +322,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.warning(f"Animation edit failed at step {step}: {e}")
             break
 
-    # Final profile card
     final_text = build_final_card(
         user_id=user.id,
         username=user.username,
@@ -420,7 +412,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
-
 
 from telegram import Update
 from telegram.constants import ParseMode
