@@ -238,26 +238,37 @@ OFFICIAL_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 logger = logging.getLogger(__name__)
 
 # ---------- Utilities ----------
-def md2(s: str) -> str:
-    """Safe MarkdownV2 escape using telegram's helper."""
-    return escape_markdown(str(s), version=2)
+import re
+
+def escape_all_markdown(text: str) -> str:
+    """Manually escape all MarkdownV2 special characters."""
+    # List of special characters in MarkdownV2 that must be escaped
+    # This is more comprehensive than a simple helper.
+    special_chars = r"[_*\[\]()~`>#+-=|{}.!]"
+    return re.sub(special_chars, r"\\\g<0>", text)
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
-    # Create the clickable hyperlink bullet point
     bullet = f"[₰]({OFFICIAL_GROUP_LINK})"
 
-    # Each line: clickable bullet + escaped monospace text
+    # Now, we use the custom, comprehensive escape function
+    user_id_text = escape_all_markdown(f"ID       : {user_id}")
+    username_text = escape_all_markdown(f"Username : {uname}")
+    credits_text = escape_all_markdown(f"Credits  : {credits}")
+    plan_text = escape_all_markdown(f"Plan     : {plan}")
+    date_text = escape_all_markdown(f"Date     : {date_str}")
+    time_text = escape_all_markdown(f"Time     : {time_str}")
+
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "     𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet} `{md2(f'ID       : {user_id}')}`\n"
-        f"{bullet} `{md2(f'Username : {uname}')}`\n"
-        f"{bullet} `{md2(f'Credits  : {credits}')}`\n"
-        f"{bullet} `{md2(f'Plan     : {plan}')}`\n"
-        f"{bullet} `{md2(f'Date     : {date_str}')}`\n"
-        f"{bullet} `{md2(f'Time     : {time_str}')}`\n\n"
+        f"{bullet} `{user_id_text}`\n"
+        f"{bullet} `{username_text}`\n"
+        f"{bullet} `{credits_text}`\n"
+        f"{bullet} `{plan_text}`\n"
+        f"{bullet} `{date_text}`\n"
+        f"{bullet} `{time_text}`\n\n"
         "➥ Use the buttons below to continue"
     )
 
