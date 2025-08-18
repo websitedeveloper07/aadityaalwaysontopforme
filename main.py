@@ -220,6 +220,7 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
 from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or config
 
 # safe_start.py — Legitimate /start animation + final profile card
+# safe_start.py — Legitimate /start animation + final profile card
 from datetime import datetime
 import asyncio
 import logging
@@ -252,12 +253,12 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         "✦━━━━━━━━━━━━━━✦\n"
         "     𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet} `{md2(f'ID         : {user_id}')}`\n"
-        f"{bullet} `{md2(f'Username   : {uname}')}`\n"
-        f"{bullet} `{md2(f'Credits    : {credits}')}`\n"
-        f"{bullet} `{md2(f'Plan       : {plan}')}`\n"
-        f"{bullet} `{md2(f'Date       : {date_str}')}`\n"
-        f"{bullet} `{md2(f'Time       : {time_str}')}`\n\n"
+        f"{bullet} `{md2(f'ID       : {user_id}')}`\n"
+        f"{bullet} `{md2(f'Username : {uname}')}`\n"
+        f"{bullet} `{md2(f'Credits  : {credits}')}`\n"
+        f"{bullet} `{md2(f'Plan     : {plan}')}`\n"
+        f"{bullet} `{md2(f'Date     : {date_str}')}`\n"
+        f"{bullet} `{md2(f'Time     : {time_str}')}`\n\n"
         "➥ Use the buttons below to continue"
     )
 
