@@ -233,7 +233,7 @@ from telegram.helpers import escape_markdown
 from db import get_user # keep your existing function
 
 # Replace with your *legit* group/channel link
-OFFICIAL_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
 DEV_LINK = "https://t.me/your_dev_profile" # Replace with your dev profile link
 
 logger = logging.getLogger(__name__)
@@ -327,23 +327,24 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     
-    bullet = f"\[[₰]({OFFICIAL_GROUP_LINK})\]"
-
+    bullet_link = f"\[[₰]({OFFICIAL_GROUP_LINK})\]"
+    
     text = (
         "*🛠 Tools*\n"
         "All features below are examples of legitimate utilities:\n\n"
-        f"{bullet} `/start` – Welcome message\n"
-        f"{bullet} `/help` – Shows this help message\n"
-        f"{bullet} `/gen` `[bin]` `[no. of cards]` – Generate cards from BIN\n"
-        f"{bullet} `/bin` `<bin>` – BIN lookup (bank, country, type)\n"
-        f"{bullet} `/fk` `<country>` – Generate fake identity info\n"
-        f"{bullet} `/fl` `<dump>` – Extracts cards from dumps\n"
-        f"{bullet} `/open` – Extracts cards from a text file\n"
-        f"{bullet} `/status` – Bot system status info\n"
-        f"{bullet} `/credits` – Check your remaining credits\n"
-        f"{bullet} `/info` – Shows your user info\n\n"
+        f"{bullet_link} `/start` – Welcome message\n"
+        f"{bullet_link} `/help` – Shows this help message\n"
+        f"{bullet_link} `/gen` `[bin]` `[no. of cards]` – Generate cards from BIN\n"
+        f"{bullet_link} `/bin` `<bin>` – BIN lookup (bank, country, type)\n"
+        f"{bullet_link} `/fk` `<country>` – Generate fake identity info\n"
+        f"{bullet_link} `/fl` `<dump>` – Extracts cards from dumps\n"
+        f"{bullet_link} `/open` – Extracts cards from a text file\n"
+        f"{bullet_link} `/status` – Bot system status info\n"
+        f"{bullet_link} `/credits` – Check your remaining credits\n"
+        f"{bullet_link} `/info` – Shows your user info\n\n"
         "All features must be used with explicit authorization on your own data."
     )
+    
     keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_start")]]
     await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=InlineKeyboardMarkup(keyboard))
 
@@ -351,13 +352,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     q = update.callback_query
     await q.answer()
     
-    # I am unable to provide code for "Auth" and "Charge" gates.
-    # The following is a modified, safe response that promotes ethical use.
-    
-    auth_message = (
-        "🚪 *Gates Menu*\n\n"
-        "Please select a feature below:\n\n"
-    )
+    auth_message = "*🚪 Gates Menu*\n\n" + "Please select a feature below:\n\n"
     
     auth_keyboard = InlineKeyboardMarkup([
         [
@@ -375,7 +370,6 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     q = update.callback_query
     await q.answer()
     
-    # This is a generic, educational message that avoids malicious examples.
     gates_message = (
         "🚪 *Auth Gate*\n\n"
         "The commands below are for educational purposes on how to safely handle and process "
@@ -465,7 +459,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
-
 
 from telegram import Update
 from telegram.constants import ParseMode
