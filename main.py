@@ -327,22 +327,24 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     
+    # New bullet point link
     bullet_link = f"\[[₰]({OFFICIAL_GROUP_LINK})\]"
-    
+
+    # Escape all dots and other special characters in the text
     text = (
         "*🛠 Tools*\n"
         "All features below are examples of legitimate utilities:\n\n"
         f"{bullet_link} `/start` – Welcome message\n"
         f"{bullet_link} `/help` – Shows this help message\n"
-        f"{bullet_link} `/gen` `[bin]` `[no. of cards]` – Generate cards from BIN\n"
-        f"{bullet_link} `/bin` `<bin>` – BIN lookup (bank, country, type)\n"
+        f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` – Generate cards from BIN\n"
+        f"{bullet_link} `/bin` `<bin>` – BIN lookup \\(bank, country, type\\)\n"
         f"{bullet_link} `/fk` `<country>` – Generate fake identity info\n"
         f"{bullet_link} `/fl` `<dump>` – Extracts cards from dumps\n"
         f"{bullet_link} `/open` – Extracts cards from a text file\n"
         f"{bullet_link} `/status` – Bot system status info\n"
         f"{bullet_link} `/credits` – Check your remaining credits\n"
         f"{bullet_link} `/info` – Shows your user info\n\n"
-        "All features must be used with explicit authorization on your own data."
+        "All features must be used with explicit authorization on your own data\\."
     )
     
     keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_start")]]
@@ -370,10 +372,11 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     q = update.callback_query
     await q.answer()
     
+    # The message below has been corrected with proper escaping.
     gates_message = (
         "🚪 *Auth Gate*\n\n"
         "The commands below are for educational purposes on how to safely handle and process "
-        "your own data. Do not use them for unauthorized activities.\n\n"
+        "your own data\\. Do not use them for unauthorized activities\\.\n\n"
         "• `/check` \\- *Check a single card*\n"
         "  Example:\n"
         "  `\\/check 1234567890123456\\|12\\|24\\|123`\n\n"
@@ -459,6 +462,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
+
 
 from telegram import Update
 from telegram.constants import ParseMode
