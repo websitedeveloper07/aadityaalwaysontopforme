@@ -219,7 +219,7 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
 
 from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or config
 
-# safe_start.py  —  Legitimate /start animation + final profile card
+# safe_start.py — Legitimate /start animation + final profile card
 from datetime import datetime
 import asyncio
 import logging
@@ -230,7 +230,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown
 
-from db import get_user  # keep your existing function
+from db import get_user # keep your existing function
 
 # Replace with your *legit* group/channel link
 OFFICIAL_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
@@ -247,17 +247,17 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
     # ₰ clickable hyperlink (not inside backticks!)
     bullet = f"[₰]({OFFICIAL_GROUP_LINK})"
 
-    # each line: clickable ₰ + escaped monospace text
+    # Each line: clickable ₰ + escaped monospace text
     return (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
+        "     𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet} `{md2('ID        :')} {user_id}`\n"
-        f"{bullet} `{md2('Username  :')} {uname}`\n"
-        f"{bullet} `{md2('Credits   :')} {credits}`\n"
-        f"{bullet} `{md2('Plan      :')} {plan}`\n"
-        f"{bullet} `{md2('Date      :')} {date_str}`\n"
-        f"{bullet} `{md2('Time      :')} {time_str}`\n\n"
+        f"{bullet} `{md2(f'ID         : {user_id}')}`\n"
+        f"{bullet} `{md2(f'Username  : {uname}')}`\n"
+        f"{bullet} `{md2(f'Credits   : {credits}')}`\n"
+        f"{bullet} `{md2(f'Plan      : {plan}')}`\n"
+        f"{bullet} `{md2(f'Date      : {date_str}')}`\n"
+        f"{bullet} `{md2(f'Time      : {time_str}')}`\n\n"
         "➥ Use the buttons below to continue"
     )
 
