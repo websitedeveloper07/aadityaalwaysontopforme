@@ -568,14 +568,14 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     registered_at = escape_markdown_v2(user_data.get('registered_at', 'N/A'))
 
     info_message = (
-        "🔍 *Your Info on 𝓒𝓪𝓻d𝓥𝓪𝒖𝒍𝒕𝑿* ⚡\n"
+        "🔍 *Your Info on 𝑪𝒂𝒓𝒅𝑽𝒂𝒖𝒍𝒕✘* ⚡\n"
         "━━━━━━━━━━━━━━\n"
         f"{bullet_link}  𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: `{first_name}`\n"
         f"{bullet_link}  𝙄𝘿: `{user_id}`\n"
         f"{bullet_link}  𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{username}\n\n"
         f"{bullet_link}  𝙎𝙩𝙖𝙩𝙪𝙨: `{status}`\n"
         f"{bullet_link}  𝘾𝙧𝙚𝙙𝙞𝙩: `{credits}`\n"
-        f"{bullet_link}  𝙋𝙡�𝙣: `{plan}`\n"
+        f"{bullet_link}  𝙋𝙡𝙖𝙣: `{plan}`\n"
         f"{bullet_link}  𝙋𝙡𝙖𝙣 𝙀𝙭𝙥𝙞𝙧𝙮: `{plan_expiry}`\n"
         f"{bullet_link}  𝙆𝙚𝙮𝙨 𝙍𝙚𝙙𝙚𝙚𝙢𝙚𝙙: `{keys_redeemed}`\n"
         f"{bullet_link}  𝙍𝙚𝙜𝙞𝙨𝙩𝙚𝙧𝙚𝙙 𝘼𝙩: `{registered_at}`\n"
