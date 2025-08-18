@@ -220,6 +220,7 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
 from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or config
 
 # safe_start.py — Legitimate /start handler with final profile card
+# safe_start.py — Legitimate /start handler with final profile card
 from datetime import datetime
 import logging
 import pytz
@@ -246,8 +247,8 @@ def escape_all_markdown(text: str) -> str:
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
     
-    # This creates a single clickable link with the text '[₰]'
-    bullet = f"[[₰]({OFFICIAL_GROUP_LINK})]"
+    # Corrected bullet to display `[₰]` with only `₰` as clickable link
+    bullet = f"\[[₰]({OFFICIAL_GROUP_LINK})\]"
 
     user_id_text    = escape_all_markdown(f"ID      : {user_id}")
     username_text   = escape_all_markdown(f"Username: {uname}")
@@ -376,7 +377,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
-
 
 from telegram import Update
 from telegram.constants import ParseMode
