@@ -219,9 +219,8 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
 
 from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or config
 
-# safe_start.py — Legitimate /start animation + final profile card
+# safe_start.py — Legitimate /start handler with final profile card
 from datetime import datetime
-import asyncio
 import logging
 import pytz
 import re
@@ -231,7 +230,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown
 
-from db import get_user  # keep your existing function
+from db import get_user # keep your existing function
 
 # Replace with your *legit* group/channel link
 OFFICIAL_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
@@ -242,7 +241,7 @@ logger = logging.getLogger(__name__)
 def escape_all_markdown(text: str) -> str:
     """Manually escape all MarkdownV2 special characters."""
     special_chars = r"[_*\[\]()~`>#+-=|{}.!%]"
-    return re.sub(special_chars, r"\\\g<0>", text)
+    return re.sub(special_chars, r"\\\g<0>", str(text))
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
@@ -268,60 +267,23 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         "➥ Use the buttons below to continue"
     )
 
-def build_loading_frame(title_line: str, filled: int, total_blocks: int = 10) -> str:
-    """Return one frame of the loading view with a quote block line."""
-    filled = max(0, min(total_blocks, filled))
-    bar = "█" * filled + "░" * (total_blocks - filled)
-    percent = filled * (100 // total_blocks)
-    
-    escaped_title = escape_all_markdown(title_line)
-    
-    # Explicitly escape the '%' character in the loading bar text
-    escaped_bar = escape_all_markdown(f"{bar} {percent}%")
-
-    return f"{escaped_title}\n\n`{escaped_bar}`\n\n> *Łoading...*"
-
-# ---------- /start handler with animation ----------
+# ---------- /start handler without animation ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     logger.info(f"/start by {user.id} (@{user.username})")
 
+    # Pull user info
     user_data = await get_user(user.id)
     credits = int(user_data.get("credits", 0))
     plan = str(user_data.get("plan", "Free"))
 
+    # Local time (Asia/Kolkata)
     tz = pytz.timezone("Asia/Kolkata")
     now_dt = datetime.now(tz)
     date_str = now_dt.strftime("%d-%m-%Y")
     time_str = now_dt.strftime("%I:%M %p")
 
-    banner = "𝑾Ξ𝑳𝑪𝑶𝑴Ξ   𝓉𝑜   𝑪𝒂𝒓𝒅𝑽𝒂𝒖𝒍𝒕✘💳"
-
-    if update.message:
-        msg = await update.message.reply_text(
-            build_loading_frame(banner, 0),
-            parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True,
-        )
-    else:
-        msg = await update.effective_message.reply_text(
-            build_loading_frame(banner, 0),
-            parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True,
-        )
-
-    for step in range(1, 11):
-        try:
-            await asyncio.sleep(0.25)
-            await msg.edit_text(
-                build_loading_frame(banner, step),
-                parse_mode=ParseMode.MARKDOWN_V2,
-                disable_web_page_preview=True,
-            )
-        except Exception as e:
-            logger.warning(f"Animation edit failed at step {step}: {e}")
-            break
-
+    # Final profile card
     final_text = build_final_card(
         user_id=user.id,
         username=user.username,
@@ -335,16 +297,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [[InlineKeyboardButton("➥ Continue", url=OFFICIAL_GROUP_LINK)]]
     )
 
-    try:
-        await msg.edit_text(
+    # Send the final message directly
+    if update.message:
+        await update.message.reply_text(
             final_text,
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=reply_markup,
             disable_web_page_preview=True,
         )
-    except Exception as e:
-        logger.warning(f"Final card edit failed: {e}")
-        await msg.reply_text(
+    else:
+        await update.effective_message.reply_text(
             final_text,
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=reply_markup,
