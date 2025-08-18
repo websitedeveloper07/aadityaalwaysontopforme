@@ -252,23 +252,24 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
     # Bullet with escaped brackets and clickable symbol
     bullet = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
-    user_id_text    = escape_all_markdown(f"ID      : {user_id}")
-    username_text   = escape_all_markdown(f"Username: {uname}")
-    credits_text    = escape_all_markdown(f"Credits : {credits}")
-    plan_text       = escape_all_markdown(f"Plan    : {plan}")
-    date_text       = escape_all_markdown(f"Date    : {date_str}")
-    time_text       = escape_all_markdown(f"Time    : {time_str}")
+    # Escape values for MarkdownV2
+    user_id_val    = escape_all_markdown(str(user_id))
+    username_val   = escape_all_markdown(uname)
+    credits_val    = escape_all_markdown(str(credits))
+    plan_val       = escape_all_markdown(plan)
+    date_val       = escape_all_markdown(date_str)
+    time_val       = escape_all_markdown(time_str)
 
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet} `{user_id_text}`\n"
-        f"{bullet} `{username_text}`\n"
-        f"{bullet} `{credits_text}`\n"
-        f"{bullet} `{plan_text}`\n"
-        f"{bullet} `{date_text}`\n"
-        f"{bullet} `{time_text}`\n\n"
+        f"{bullet} ID      : `{user_id_val}`\n"
+        f"{bullet} Username: `{username_val}`\n"
+        f"{bullet} Credits : `{credits_val}`\n"
+        f"{bullet} Plan    : `{plan_val}`\n"
+        f"{bullet} Date    : `{date_val}`\n"
+        f"{bullet} Time    : `{time_val}`\n\n"
         "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭𝐨 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
     )
 
@@ -339,8 +340,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet_link} `/start` – Welcome message\n"
         f"{bullet_link} `/help` – Shows all commands\n"
-        f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` – Generate cards from BIN\n"
-        f"{bullet_link} `/bin` `<bin>` – BIN lookup \\(bank, country, type\\)\n"
+        f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` Gen CCs\n"
+        f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
         f"{bullet_link} `/chk` `cc|mm|yy|cvv` – Single Stripe Auth\n"
         f"{bullet_link} `/mchk` `cards` – x10 Multi Stripe Auth\n"
         f"{bullet_link} `/mass` `cards` – x30 Mass Stripe Auth 2\n"
@@ -402,7 +403,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
         f"• `/mchk` \\- *Check up to 10 cards at once*\n"
         "  Example:\n"
-        "  `\\/mchk 1234567890123456\\|...`  # up to 10 cards\n\n"
+        "  `\\/mchk 1234567890123456\\|\\.\\.\\.`  \\# up to 10 cards\n\n"
         f"• `/mass` \\- *Check up to 30 cards at once*\n"
         "  Example:\n"
         "  `\\/mass <cards>`\n"
@@ -418,6 +419,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=auth_keyboard,
         disable_web_page_preview=True
     )
+
 
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
