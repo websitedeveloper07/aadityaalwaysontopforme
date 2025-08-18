@@ -224,6 +224,7 @@ from datetime import datetime
 import asyncio
 import logging
 import pytz
+import re
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -238,14 +239,14 @@ OFFICIAL_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 logger = logging.getLogger(__name__)
 
 # ---------- Utilities ----------
-import re
-
 def escape_all_markdown(text: str) -> str:
     """Manually escape all MarkdownV2 special characters."""
     # List of special characters in MarkdownV2 that must be escaped
-    # This is more comprehensive than a simple helper.
     special_chars = r"[_*\[\]()~`>#+-=|{}.!]"
     return re.sub(special_chars, r"\\\g<0>", text)
+
+# The old md2 function is no longer needed since escape_all_markdown is more robust.
+# The telegram.helpers.escape_markdown is still imported for other uses.
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
@@ -277,7 +278,11 @@ def build_loading_frame(title_line: str, filled: int, total_blocks: int = 10) ->
     filled = max(0, min(total_blocks, filled))
     bar = "█" * filled + "░" * (total_blocks - filled)
     percent = filled * (100 // total_blocks)
-    return f"{md2(title_line)}\n\n`{bar} {percent}%`\n\n> *Łoading...*"
+    
+    # Use the more robust escape_all_markdown function here as well
+    escaped_title = escape_all_markdown(title_line)
+
+    return f"{escaped_title}\n\n`{bar} {percent}\\%`\n\n> *Łoading...*"
 
 # ---------- /start handler with animation ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
