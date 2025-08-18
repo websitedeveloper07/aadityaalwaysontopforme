@@ -245,14 +245,16 @@ def escape_all_markdown(text: str) -> str:
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
-    bullet = f"[₰]({OFFICIAL_GROUP_LINK})"
+    
+    # This creates a single clickable link with the text '[₰]'
+    bullet = f"[[₰]({OFFICIAL_GROUP_LINK})]"
 
-    user_id_text = escape_all_markdown(f"ID       : {user_id}")
-    username_text = escape_all_markdown(f"Username : {uname}")
-    credits_text = escape_all_markdown(f"Credits  : {credits}")
-    plan_text = escape_all_markdown(f"Plan     : {plan}")
-    date_text = escape_all_markdown(f"Date     : {date_str}")
-    time_text = escape_all_markdown(f"Time     : {time_str}")
+    user_id_text    = escape_all_markdown(f"ID      : {user_id}")
+    username_text   = escape_all_markdown(f"Username: {uname}")
+    credits_text    = escape_all_markdown(f"Credits : {credits}")
+    plan_text       = escape_all_markdown(f"Plan    : {plan}")
+    date_text       = escape_all_markdown(f"Date    : {date_str}")
+    time_text       = escape_all_markdown(f"Time    : {time_str}")
 
     return (
         "✦━━━━━━━━━━━━━━✦\n"
@@ -374,6 +376,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
+
 
 from telegram import Update
 from telegram.constants import ParseMode
