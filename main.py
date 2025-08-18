@@ -1299,7 +1299,7 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not await has_active_paid_plan(user_id):
         await update.effective_message.reply_text(
             "🚫 You need an *active paid plan* to use this command.\n"
-            "💳 Please upgrade to access premium features."
+            "or use for free in our group✅."
         )
         return False
 
@@ -1479,7 +1479,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.effective_message.reply_text(
                 "🚫 You cannot use this command in private chat.\n"
                 "👉 You need an active paid plan with credits.\n"
-                "💳 Please buy a subscription to use it."
+                "or use for free in our group✅."
             )
             return
 
@@ -1564,6 +1564,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from db import get_user, update_user  # your DB functions
+from config import AUTHORIZED_CHATS   # ✅ make sure your group IDs are listed here
 
 OWNER_ID = 8438505794  # Replace with your Telegram ID
 user_cooldowns = {}
@@ -1627,20 +1628,24 @@ async def has_active_paid_plan(user_id: int) -> bool:
     return True
 
 
-async def check_paid_access(user_id: int, update: Update) -> bool:
+async def check_mass_access(user_id: int, chat, update: Update) -> bool:
     """
-    Verify that user has an active paid plan (credits are not checked).
-    Works for both private and group chats.
+    ✅ In authorized groups: allow all users (must have credits).
+    🚫 In private chat: requires a paid plan (and credits).
     """
-    # Only owner bypass
+    # Owner bypass everywhere
     if user_id == OWNER_ID:
         return True
 
-    # Check plan
+    # If in authorized group
+    if chat.type in ["group", "supergroup"] and chat.id in AUTHORIZED_CHATS:
+        return True  # no plan restriction, only credits will be checked later
+
+    # Else (private chats, or non-authorized groups)
     if not await has_active_paid_plan(user_id):
         await update.effective_message.reply_text(
-            "🚫 You need a *paid plan* to use this command.\n"
-            "💳 Buy a plan to access this feature."
+            "🚫 You need a *paid plan* to use this command in private chat.\n"
+            "✅ Or join our authorized group to use it with credits only."
         )
         return False
 
@@ -1787,65 +1792,71 @@ from telegram.ext import ContextTypes
 async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles the /mass command to initiate a card check.
-    Requires an active paid plan but does NOT consume credits.
+    ✅ In authorized groups → works for all users (credits only).
+    ✅ In private chats → requires an active paid plan + credits.
     """
-
     user = update.effective_user
     user_id = user.id
+    chat = update.effective_chat
 
-    # Cooldown check
+    # ⏳ Cooldown check
     if not await enforce_cooldown(user_id, update):
         return
 
-    # ✅ Require active paid plan (credits not checked)
-    if not await check_paid_access(user_id, update):
+    # 🔐 Access control
+    if not await check_mass_access(user_id, chat, update):
         return
 
-    # Extract cards from command args or replied message
+    # 💳 Credit check
+    user_data = await get_user(user_id)
+    if not user_data or user_data.get("credits", 0) <= 0:
+        return await update.effective_message.reply_text("❌ You have no credits left.")
+
+    # Deduct 1 credit for the command
+    if not await consume_credit(user_id):
+        return await update.effective_message.reply_text("❌ No credits left.")
+
+    # 📥 Extract cards (from args or replied message)
     raw_cards = ""
     if context.args:
         raw_cards = " ".join(context.args)
     elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
         raw_cards = update.effective_message.reply_to_message.text
 
-    if not raw_cards:
-        await update.effective_message.reply_text(
+    if not raw_cards.strip():
+        return await update.effective_message.reply_text(
             "⚠️ Usage: reply to a message containing cards or use /mass number|mm|yy|cvv"
         )
-        return
 
-    # Regex to extract valid card lines
+    # 🎴 Regex to extract valid card lines
     card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
     card_lines = card_pattern.findall(raw_cards)
 
     if not card_lines:
-        await update.effective_message.reply_text(
+        return await update.effective_message.reply_text(
             "⚠️ No valid cards found. Format: number|mm|yy|cvv"
         )
-        return
 
-    # Limit to first 30 cards and normalize years
+    # 🔢 Limit to first 30 cards, normalize year
     cards_to_check = []
     for raw in card_lines[:30]:
         parts = raw.split("|")
         if len(parts) != 4:
             continue
-        if len(parts[2]) == 4:  # convert yyyy to yy
+        if len(parts[2]) == 4:  # convert yyyy → yy
             parts[2] = parts[2][-2:]
         cards_to_check.append("|".join(parts))
 
     if len(card_lines) > 30:
-        await update.effective_message.reply_text(
-            "⚠️ Only the first 30 cards will be processed."
-        )
+        await update.effective_message.reply_text("⚠️ Only the first 30 cards will be processed.")
 
-    # Send initial processing message
+    # ⏳ Initial message
     processing_msg = await update.effective_message.reply_text(
         f"🔎𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜 {len(cards_to_check)} 𝑪𝒂𝒓𝒅𝒔..."
     )
     start_time = time.time()
 
-    # Launch background task for checking
+    # 🚀 Run in background
     asyncio.create_task(
         check_cards_background(
             cards_to_check,
@@ -1856,6 +1867,7 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     )
 
+
     
 
 import time
@@ -1865,20 +1877,23 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
 from db import get_user, update_user  # Your DB functions
+from config import AUTHORIZED_CHATS   # ✅ Add your group IDs here
 
 OWNER_ID = 8438505794
 user_cooldowns = {}
 
-# ─── Authorization & Paid Access ──────────────────────
-async def check_paid_access(user_id: int, update: Update) -> bool:
+# ─── Authorization & Access for /mtchk ──────────────────────
+async def check_mtchk_access(user_id: int, chat, update: Update) -> bool:
     """
-    Check if the user has a paid plan, is not expired, and has at least 1 credit.
-    Owner bypasses all checks.
+    ✅ In authorized groups → allow all users (must have credits).
+    ✅ In private chats → require paid plan + credits.
+    👑 Owner bypasses everything.
     """
-    # Owner bypass
+    # 👑 Owner bypass
     if user_id == OWNER_ID:
         return True
 
+    # 📂 Get user data
     user_data = await get_user(user_id)
     if not user_data:
         await update.effective_message.reply_text(
@@ -1887,19 +1902,29 @@ async def check_paid_access(user_id: int, update: Update) -> bool:
         )
         return False
 
-    plan = user_data.get("plan", "Free")
     credits = user_data.get("credits", 0)
 
-    # Free plan not allowed
+    # 👥 Group logic → only credits required
+    if chat.type in ["group", "supergroup"] and chat.id in AUTHORIZED_CHATS:
+        if credits <= 0:
+            await update.effective_message.reply_text(
+                "❌ You don't have enough credits to run this command.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return False
+        return True
+
+    # 💬 Private chat logic → must be paid plan + credits
+    plan = user_data.get("plan", "Free")
+
     if plan.lower() == "free":
-        await update.effective_message.reply_text( 
-            "🚫 This command is available for *paid plans only*.\n"
+        await update.effective_message.reply_text(
+            "🚫 This command is available for *paid plans only* in private chat.\n"
             "💳 Buy a plan to access this feature.",
             parse_mode=ParseMode.MARKDOWN
         )
         return False
 
-    # Check expiry if available
     expiry = user_data.get("plan_expiry", "N/A")
     if expiry != "N/A":
         try:
@@ -1913,7 +1938,6 @@ async def check_paid_access(user_id: int, update: Update) -> bool:
         except Exception:
             pass
 
-    # Check credits
     if credits <= 0:
         await update.effective_message.reply_text(
             "❌ You don't have enough credits to run this command.",
@@ -1956,11 +1980,16 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # ─── /mtchk Handler ────────────────────────────────
+import asyncio
+from telegram import Update
+from telegram.ext import ContextTypes
+
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    chat = update.effective_chat
 
-    # ✅ Authorization & Paid Plan + Credits check
-    if not await check_paid_access(user_id, update):
+    # ✅ Authorization check (group/private logic + credits)
+    if not await check_mtchk_access(user_id, chat, update):
         return
 
     # ✅ Cooldown
@@ -2060,16 +2089,27 @@ def normalize_status_text(s: str) -> str:
     return "".join(mapping.get(char, char) for char in s).upper()
 
 # ─── /mtchk Handler ──────────────────────────────
+import os
+import asyncio
+from telegram import Update
+from telegram.ext import ContextTypes
+
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    chat = update.effective_chat
 
-    if not await check_paid_access(user_id, update):
+    # ✅ Authorization (group/private logic + credits)
+    if not await check_mtchk_access(user_id, chat, update):
         return
 
+    # ✅ Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-    document = update.message.document or (update.message.reply_to_message and update.message.reply_to_message.document)
+    # ✅ Ensure a .txt file is attached or replied to
+    document = update.message.document or (
+        update.message.reply_to_message and update.message.reply_to_message.document
+    )
     if not document:
         await update.message.reply_text("📂 Please send or reply to a txt file containing up to 200 cards.")
         return
@@ -2078,30 +2118,33 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Only txt files are supported.")
         return
 
+    # ✅ Download file
+    file_path = f"input_cards_{user_id}.txt"
     try:
         file = await context.bot.get_file(document.file_id)
-        file_path = f"input_cards_{user_id}.txt"
         await file.download_to_drive(custom_path=file_path)
     except Exception as e:
         await update.message.reply_text(f"❌ Failed to download file: {e}")
         return
 
+    # ✅ Read and clean up file
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             cards = [line.strip() for line in f if line.strip()]
     except Exception as e:
         await update.message.reply_text(f"❌ Failed to read file: {e}")
-        os.remove(file_path)
         return
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
 
+    # ✅ Validate card count
     if len(cards) > 200:
         await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
         return
 
-    estimated_time = max(len(cards) / 10, 1)
+    # ✅ Initial progress message
+    estimated_time = max(len(cards) / 10, 1)  # assume 10 cards in parallel
     try:
         processing_msg = await update.message.reply_text(
             f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
@@ -2114,7 +2157,12 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Failed to send progress message: {e}")
         return
 
-    asyncio.create_task(background_check_multi(update, context, cards, processing_msg))
+    # ✅ Launch background check
+    asyncio.create_task(
+        background_check_multi(update, context, cards, processing_msg),
+        name=f"mtchk_user_{user_id}"
+    )
+
 
 # ─── Background Task ──────────────────────────────
 async def background_check_multi(update, context, cards, processing_msg):
