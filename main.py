@@ -232,7 +232,9 @@ from telegram.helpers import escape_markdown
 
 from db import get_user # keep your existing function
 
-# Replace with your *legit* group/channel link
+# The bullet points link to this group
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+# The "Official Group" button links to this channel
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
 DEV_LINK = "https://t.me/your_dev_profile" # Replace with your dev profile link
 
@@ -248,7 +250,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
     uname = f"@{username}" if username else "N/A"
     
     # Bullet with escaped brackets and clickable symbol
-    bullet = f"\[[₰]({OFFICIAL_GROUP_LINK})\]"
+    bullet = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
     user_id_text    = escape_all_markdown(f"ID      : {user_id}")
     username_text   = escape_all_markdown(f"Username: {uname}")
@@ -327,8 +329,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     
-    # New bullet point link
-    bullet_link = f"\[[₰]({OFFICIAL_GROUP_LINK})\]"
+    # Bullet points link to the BULLET_GROUP_LINK
+    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
     # Escape all dots and other special characters in the text
     text = (
@@ -348,7 +350,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_start")]]
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=InlineKeyboardMarkup(keyboard))
+    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=InlineKeyboardMarkup(keyboard), disable_web_page_preview=True)
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -366,7 +368,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ]
     ])
     
-    await q.edit_message_text(auth_message, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=auth_keyboard)
+    await q.edit_message_text(auth_message, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=auth_keyboard, disable_web_page_preview=True)
 
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -389,7 +391,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_start")]
     ])
     
-    await q.edit_message_text(gates_message, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=auth_keyboard)
+    await q.edit_message_text(gates_message, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=auth_keyboard, disable_web_page_preview=True)
 
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -409,7 +411,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_start")]
     ])
     
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=keyboard)
+    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=keyboard, disable_web_page_preview=True)
 
 
 async def start_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -462,7 +464,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
-
 
 from telegram import Update
 from telegram.constants import ParseMode
