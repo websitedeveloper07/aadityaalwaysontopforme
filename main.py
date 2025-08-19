@@ -1882,7 +1882,6 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 # Make sure these imports exist in your project
-from utils import enforce_cooldown, check_authorization, check_cards_background
 
 
 async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
