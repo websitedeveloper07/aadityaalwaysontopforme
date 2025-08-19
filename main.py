@@ -1428,30 +1428,28 @@ import re
 import time
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
+import random
 
 def parse_api_response(raw_text):
-    """Extract the first valid JSON object from a messy API response."""
+    """Safely parse API response, even if extra text or multiple JSON objects are present."""
     raw_text = raw_text.strip()
     if not raw_text:
         raise ValueError("Empty response")
-
-    # Try normal JSON first
     try:
         return json.loads(raw_text)
     except json.JSONDecodeError:
-        # Extract first JSON object using regex (handles extra text)
+        # Extract first valid JSON object using regex
         match = re.search(r'\{(?:[^{}]|(?R))*\}', raw_text)
         if match:
-            try:
-                return json.loads(match.group(0))
-            except json.JSONDecodeError:
-                pass
-        raise ValueError(f"Cannot parse JSON: {raw_text[:100]}")
+            return json.loads(match.group(0))
+        else:
+            raise ValueError(f"Invalid JSON: {raw_text[:100]}")
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
+
     semaphore = asyncio.Semaphore(3)  # limit concurrent requests
 
     async def check_card(session, raw):
@@ -1464,27 +1462,41 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 error_count += 1
                 return f"❌ Invalid card format: `{raw}`"
 
+            # Normalize year
             if len(parts[2]) == 4:
-                parts[2] = parts[2][-2:]  # normalize year
+                parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
+
             api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
-            max_retries = 3
+            max_retries = 5
+            retry_delay = 1
+
             for attempt in range(max_retries):
                 try:
+                    # small random delay to prevent API overload
+                    await asyncio.sleep(random.uniform(0.2, 0.6))
+
                     async with session.get(api_url, timeout=50) as resp:
+                        if resp.status != 200:
+                            raise Exception(f"HTTP {resp.status}")
+
                         raw_text = (await resp.text()).strip()
                         if not raw_text:
+                            raise ValueError("Empty response")
+
+                        try:
+                            data = parse_api_response(raw_text)
+                            break  # successfully parsed
+                        except Exception as e:
                             if attempt < max_retries - 1:
-                                await asyncio.sleep(2)
+                                await asyncio.sleep(retry_delay)
                                 continue
                             else:
-                                raise ValueError("Empty API response")
-                        data = parse_api_response(raw_text)
-                        break  # success, exit retry loop
+                                raise e
                 except Exception as e:
                     if attempt < max_retries - 1:
-                        await asyncio.sleep(2)
+                        await asyncio.sleep(retry_delay)
                         continue
                     else:
                         checked_count += 1
@@ -1493,7 +1505,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             # Extract status and clean text
             api_response = data.get("status", "Unknown")
-            api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
+            api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', str(api_response)).strip()
 
             api_response_lower = api_response_clean.lower()
             if "approved" in api_response_lower:
@@ -1502,6 +1514,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 declined_count += 1
 
             checked_count += 1
+
             return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
 
     async with aiohttp.ClientSession() as session:
@@ -1513,6 +1526,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
+            # Periodic summary update
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
