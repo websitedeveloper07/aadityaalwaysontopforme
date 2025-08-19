@@ -3135,23 +3135,26 @@ from telegram.ext import (
 )
 from db import init_db
 
-# ⛳ Load environment variables from Railway
-BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"  # ⚠️ regenerate at BotFather
+# ⛳ Load environment variables from Railway or VPS
+BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"  # ⚠️ regenerate this at BotFather
 OWNER_ID = 8438505794
 
 # Your domain (must point to VPS and have SSL via nginx + certbot)
 WEBHOOK_URL = f"https://31.97.66.195/webhook/{BOT_TOKEN}"
 
 # ✅ Logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
-# 🧠 Import your command handlers here
+# 🧠 Post init for DB
 async def post_init(application):
     await init_db()
-    logger.info("Database initialized")
+    logger.info("✅ Database initialized")
 
-
+# 🚀 Build Application
 def build_app():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
@@ -3192,21 +3195,19 @@ def build_app():
 
     return application
 
-
-async def main():
+# 🎯 Main entry
+def main():
     application = build_app()
 
-    # Set webhook
-    await application.bot.set_webhook(WEBHOOK_URL)
-    logger.info("🚀 Bot started in WEBHOOK mode...")
+    logger.info("🚀 Bot starting in WEBHOOK mode...")
 
-    await application.run_webhook(
-        listen="127.0.0.1",  # Local only
-        port=9000,           # Nginx will forward HTTPS traffic
+    # Directly run webhook (no asyncio.run)
+    application.run_webhook(
+        listen="127.0.0.1",   # Local only, nginx will forward HTTPS
+        port=9000,
         url_path=BOT_TOKEN,
         webhook_url=WEBHOOK_URL,
     )
 
-
-if __name__ == '__main__':
-    asyncio.run(main())
+if __name__ == "__main__":
+    main()
