@@ -1429,24 +1429,45 @@ import time
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
+import aiohttp
+import asyncio
+import json
+import re
+import time
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+
+def parse_api_response(raw_text):
+    """Safely parse API response, even if extra text or multiple JSON objects are present."""
+    raw_text = raw_text.strip()
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError:
+        # Extract first valid JSON object using regex
+        match = re.search(r'\{(?:[^{}]|(?R))*\}', raw_text)
+        if match:
+            return json.loads(match.group(0))
+        else:
+            raise
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
 
-    semaphore = asyncio.Semaphore(3)  # limit to 3 concurrent requests
+    semaphore = asyncio.Semaphore(3)  # limit concurrent requests
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
 
-        async with semaphore:  # acquire semaphore
+        async with semaphore:
             parts = raw.split("|")
             if len(parts) != 4:
                 checked_count += 1
                 error_count += 1
                 return f"❌ Invalid card format: `{raw}`"
 
-            # Normalize year (YYYY → YY)
+            # Normalize year
             if len(parts[2]) == 4:
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
@@ -1459,25 +1480,21 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         raise Exception(f"HTTP {resp.status}")
 
                     raw_text = await resp.text()
-                    raw_text = raw_text.strip()
 
-                    # Parse JSON manually
+                    # Parse JSON safely
                     try:
-                        data = json.loads(raw_text)
-                    except json.JSONDecodeError as e:
-                        match = re.search(r'(\{.*?\})', raw_text)
-                        if match:
-                            data = json.loads(match.group(1))
-                        else:
-                            print(f"[DEBUG] JSON decode failed for {cc_normalized}: {e}, raw={raw_text[:200]}...")
-                            raise Exception(f"JSON decode failed: {e}")
+                        data = parse_api_response(raw_text)
+                    except Exception as e:
+                        checked_count += 1
+                        error_count += 1
+                        return f"❌ Error parsing response ❌: {escape_markdown(str(e), version=2)}"
 
             except Exception as e:
                 checked_count += 1
                 error_count += 1
                 return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
 
-            # Extract and clean API response
+            # Extract status and clean text
             api_response = data.get("status", "Unknown")
             api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
 
