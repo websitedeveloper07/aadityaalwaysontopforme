@@ -1288,9 +1288,9 @@ processing_msg = await update.effective_message.reply_text(
     disable_web_page_preview=True
 )
 
+# Start background task (aligned properly)
+asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
-    # Start background task
-    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
 
