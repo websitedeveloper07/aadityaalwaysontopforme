@@ -1429,14 +1429,6 @@ import time
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
-import aiohttp
-import asyncio
-import json
-import re
-import time
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-
 def parse_api_response(raw_text):
     """Safely parse API response, even if extra text or multiple JSON objects are present."""
     raw_text = raw_text.strip()
@@ -1474,25 +1466,38 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
-            try:
-                async with session.get(api_url, timeout=50) as resp:
-                    if resp.status != 200:
-                        raise Exception(f"HTTP {resp.status}")
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    async with session.get(api_url, timeout=50) as resp:
+                        if resp.status != 200:
+                            raise Exception(f"HTTP {resp.status}")
 
-                    raw_text = await resp.text()
+                        raw_text = await resp.text()
+                        raw_text = raw_text.strip().encode('utf-8').decode('utf-8', 'ignore')
 
-                    # Parse JSON safely
-                    try:
+                        # Retry if API returns empty or non-JSON response
+                        if not raw_text or not raw_text.startswith("{"):
+                            if attempt < max_retries - 1:
+                                await asyncio.sleep(2)  # wait 2 seconds before retry
+                                continue
+                            else:
+                                checked_count += 1
+                                error_count += 1
+                                return f"❌ No valid response for card `{cc_normalized}`: {escape_markdown(raw_text[:100], version=2)}"
+
+                        # Parse JSON safely
                         data = parse_api_response(raw_text)
-                    except Exception as e:
+                        break  # parsed successfully, exit retry loop
+
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2)  # wait before retry
+                        continue
+                    else:
                         checked_count += 1
                         error_count += 1
-                        return f"❌ Error parsing response ❌: {escape_markdown(str(e), version=2)}"
-
-            except Exception as e:
-                checked_count += 1
-                error_count += 1
-                return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
+                        return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
 
             # Extract status and clean text
             api_response = data.get("status", "Unknown")
@@ -1505,7 +1510,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 declined_count += 1
 
             checked_count += 1
-
             return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
 
     async with aiohttp.ClientSession() as session:
