@@ -3127,16 +3127,20 @@ import os
 import logging
 import asyncio
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, filters
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters
 )
 from db import init_db
 
 # ⛳ Load environment variables from Railway
-BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"   # ⚠️ regenerate at BotFather
+BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"  # ⚠️ regenerate at BotFather
 OWNER_ID = 8438505794
 
 # Your domain (must point to VPS and have SSL via nginx + certbot)
-WEBHOOK_URL = f"https://31.97.66.195/webhook/{BOT_TOKEN}" 
+WEBHOOK_URL = f"https://31.97.66.195/webhook/{BOT_TOKEN}"
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
@@ -3194,12 +3198,11 @@ async def main():
 
     # Set webhook
     await application.bot.set_webhook(WEBHOOK_URL)
-
     logger.info("🚀 Bot started in WEBHOOK mode...")
 
     await application.run_webhook(
-        listen="127.0.0.1",   # Local only
-        port=8000,           # Nginx will forward HTTPS traffic
+        listen="127.0.0.1",  # Local only
+        port=9000,           # Nginx will forward HTTPS traffic
         url_path=BOT_TOKEN,
         webhook_url=WEBHOOK_URL,
     )
@@ -3207,5 +3210,3 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
-
-
