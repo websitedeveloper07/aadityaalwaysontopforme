@@ -3061,7 +3061,7 @@ BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"   # ⚠️ regenera
 OWNER_ID = 8438505794
 
 # Your domain (must point to VPS and have SSL via nginx + certbot)
-WEBHOOK_URL = f"https://261451.mycards/webhook/{BOT_TOKEN}"
+WEBHOOK_URL = f"https://31.97.66.195/webhook/{BOT_TOKEN}"
   
 
 # ✅ Logging
