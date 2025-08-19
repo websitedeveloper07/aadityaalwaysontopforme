@@ -1430,23 +1430,28 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
 def parse_api_response(raw_text):
-    """Safely parse API response, even if extra text or multiple JSON objects are present."""
+    """Extract the first valid JSON object from a messy API response."""
     raw_text = raw_text.strip()
+    if not raw_text:
+        raise ValueError("Empty response")
+
+    # Try normal JSON first
     try:
         return json.loads(raw_text)
     except json.JSONDecodeError:
-        # Extract first valid JSON object using regex
+        # Extract first JSON object using regex (handles extra text)
         match = re.search(r'\{(?:[^{}]|(?R))*\}', raw_text)
         if match:
-            return json.loads(match.group(0))
-        else:
-            raise
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+        raise ValueError(f"Cannot parse JSON: {raw_text[:100]}")
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
-
     semaphore = asyncio.Semaphore(3)  # limit concurrent requests
 
     async def check_card(session, raw):
@@ -1459,45 +1464,32 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 error_count += 1
                 return f"❌ Invalid card format: `{raw}`"
 
-            # Normalize year
             if len(parts[2]) == 4:
-                parts[2] = parts[2][-2:]
+                parts[2] = parts[2][-2:]  # normalize year
             cc_normalized = "|".join(parts)
-
             api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
             max_retries = 3
             for attempt in range(max_retries):
                 try:
                     async with session.get(api_url, timeout=50) as resp:
-                        if resp.status != 200:
-                            raise Exception(f"HTTP {resp.status}")
-
-                        raw_text = await resp.text()
-                        raw_text = raw_text.strip().encode('utf-8').decode('utf-8', 'ignore')
-
-                        # Retry if API returns empty or non-JSON response
-                        if not raw_text or not raw_text.startswith("{"):
+                        raw_text = (await resp.text()).strip()
+                        if not raw_text:
                             if attempt < max_retries - 1:
-                                await asyncio.sleep(2)  # wait 2 seconds before retry
+                                await asyncio.sleep(2)
                                 continue
                             else:
-                                checked_count += 1
-                                error_count += 1
-                                return f"❌ No valid response for card `{cc_normalized}`: {escape_markdown(raw_text[:100], version=2)}"
-
-                        # Parse JSON safely
+                                raise ValueError("Empty API response")
                         data = parse_api_response(raw_text)
-                        break  # parsed successfully, exit retry loop
-
+                        break  # success, exit retry loop
                 except Exception as e:
                     if attempt < max_retries - 1:
-                        await asyncio.sleep(2)  # wait before retry
+                        await asyncio.sleep(2)
                         continue
                     else:
                         checked_count += 1
                         error_count += 1
-                        return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
+                        return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e), version=2)}"
 
             # Extract status and clean text
             api_response = data.get("status", "Unknown")
@@ -1521,7 +1513,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
-            # Periodic summary update
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
