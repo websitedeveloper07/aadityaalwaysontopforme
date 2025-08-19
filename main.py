@@ -3104,30 +3104,29 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 # === REGISTERING COMMANDS AND HANDLERS ===
 import os
 import logging
-import asyncio
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, filters
 )
 from db import init_db
 
-# ⛳ Load environment variables from Railway
-BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"   # ⚠️ regenerate at BotFather
+# ⛳ Bot token & owner
+BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"   # ⚠️ regenerate at BotFather if leaked
 OWNER_ID = 8438505794
 
-# Your domain (must point to VPS and have SSL via nginx + certbot)
+# 🌐 Your webhook URL (pointing to VPS/domain with SSL)
 WEBHOOK_URL = f"https://31.97.66.195/webhook/{BOT_TOKEN}"
-  
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🧠 Import your command handlers here
+# 🧠 DB Init
 async def post_init(application):
     await init_db()
-    logger.info("Database initialized")
+    logger.info("✅ Database initialized")
 
 
+# === Build Application ===
 def build_app():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
@@ -3162,29 +3161,27 @@ def build_app():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # Callback & Error
+    # 📌 Callback & Error
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
     return application
 
 
-async def main():
+# === Entry Point ===
+def main():
     application = build_app()
 
-    # Set webhook
-    await application.bot.set_webhook(WEBHOOK_URL)
+    logger.info("🚀 Bot starting in WEBHOOK mode...")
 
-    logger.info("🚀 Bot started in WEBHOOK mode...")
-
-    await application.run_webhook(
-        listen="127.0.0.1",   # Local only
-        port=9000,           # Nginx will forward HTTPS traffic
+    application.run_webhook(
+        listen="0.0.0.0",      # expose to VPS network
+        port=9000,             # Nginx forwards 443 -> 9000
         url_path=BOT_TOKEN,
         webhook_url=WEBHOOK_URL,
     )
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
 
