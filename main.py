@@ -3050,31 +3050,32 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 # === REGISTERING COMMANDS AND HANDLERS ===
 import os
 import logging
+import asyncio
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, filters
 )
 from db import init_db
 
 # ⛳ Load environment variables from Railway
-BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
+BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"   # ⚠️ regenerate at BotFather
 OWNER_ID = 8438505794
+
+# Your domain (must point to VPS and have SSL via nginx + certbot)
+WEBHOOK_URL = f"https://261451.mycards/webhook/{BOT_TOKEN}"
+  
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 # 🧠 Import your command handlers here
-
 async def post_init(application):
     await init_db()
     logger.info("Database initialized")
 
 
-
-def main():
+def build_app():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
-
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
@@ -3111,9 +3112,25 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
-    # 🔁 Start polling (handles its own event loop!)
-    logger.info("Bot started and is polling for updates...")
-    application.run_polling()
+    return application
+
+
+async def main():
+    application = build_app()
+
+    # Set webhook
+    await application.bot.set_webhook(WEBHOOK_URL)
+
+    logger.info("🚀 Bot started in WEBHOOK mode...")
+
+    await application.run_webhook(
+        listen="127.0.0.1",   # Local only
+        port=9000,           # Nginx will forward HTTPS traffic
+        url_path=BOT_TOKEN,
+        webhook_url=WEBHOOK_URL,
+    )
+
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
+
