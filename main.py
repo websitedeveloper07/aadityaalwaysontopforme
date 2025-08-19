@@ -1271,27 +1271,28 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-# Define bullet link
-bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
-# Processing message
-processing_text = (
-    "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-    f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-    f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
-    f"{bullet_link} Status ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
-    "════════════════════"
-)
+    # Define bullet link
+    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
-# Send processing message (await inside async function)
-processing_msg = await update.effective_message.reply_text(
-    processing_text,
-    parse_mode=ParseMode.MARKDOWN_V2,
-    disable_web_page_preview=True
-)
+    # Processing message
+    processing_text = (
+        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
+        f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+        f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
+        f"{bullet_link} Status ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
+        "════════════════════"
+    )
 
-# Start background task
-asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+    # Send processing message (await inside async function)
+    processing_msg = await update.effective_message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
+    )
+
+    # Start background task
+    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
 
