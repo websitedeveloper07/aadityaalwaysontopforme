@@ -1271,26 +1271,24 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Processing message
+    processing_text = (
+        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
+        f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+        f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
+        f"{bullet_link} Status ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
+        "════════════════════"
+    )
+
     # Send processing message
-bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    processing_msg = await update.effective_message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
+    )
 
-processing_text = (
-    "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-    f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-    f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
-    f"{bullet_link} Status ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
-    "════════════════════"
-)
-
-processing_msg = await update.effective_message.reply_text(
-    processing_text,
-    parse_mode=ParseMode.MARKDOWN_V2,
-    disable_web_page_preview=True
-)
-
-# Start background task (aligned properly)
-asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
-
+    # Start background check as a task
+    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
 
