@@ -1421,17 +1421,25 @@ async def consume_credit(user_id: int) -> bool:
 
 
 
+import aiohttp
+import asyncio
+import json
+import re
+import time
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
 
-    semaphore = asyncio.Semaphore(3)  # limit to 5 concurrent requests
+    semaphore = asyncio.Semaphore(3)  # limit to 3 concurrent requests
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
 
-        async with semaphore:  # acquire semaphore before running
+        async with semaphore:  # acquire semaphore
             parts = raw.split("|")
             if len(parts) != 4:
                 checked_count += 1
@@ -1449,21 +1457,29 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 async with session.get(api_url, timeout=50) as resp:
                     if resp.status != 200:
                         raise Exception(f"HTTP {resp.status}")
+
+                    raw_text = await resp.text()
+                    raw_text = raw_text.strip()
+
+                    # Parse JSON manually
                     try:
-                        data = await resp.json()
-                    except Exception as e:
-                        raw_text = await resp.text()
-                        print(f"[DEBUG] JSON decode failed for {cc_normalized}: {e}, raw={raw_text[:200]}...")
-                        raise Exception(f"JSON decode failed: {e}")
+                        data = json.loads(raw_text)
+                    except json.JSONDecodeError as e:
+                        match = re.search(r'(\{.*?\})', raw_text)
+                        if match:
+                            data = json.loads(match.group(1))
+                        else:
+                            print(f"[DEBUG] JSON decode failed for {cc_normalized}: {e}, raw={raw_text[:200]}...")
+                            raise Exception(f"JSON decode failed: {e}")
+
             except Exception as e:
                 checked_count += 1
                 error_count += 1
                 return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
 
+            # Extract and clean API response
             api_response = data.get("status", "Unknown")
-            api_response_clean = normalize_text(
-                re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
-            )
+            api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
 
             api_response_lower = api_response_clean.lower()
             if "approved" in api_response_lower:
@@ -1473,10 +1489,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             checked_count += 1
 
-            return (
-                f"`{cc_normalized}`\n"
-                f"𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
-            )
+            return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
 
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
@@ -1487,6 +1500,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
+            # Periodic summary update
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
@@ -1496,8 +1510,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                     f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
                     f"✘ 𝐓𝐢𝐦𝐞↣{round(time.time() - start_time, 2)}s\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-                    f"──────── ⸙ ─────────"
+                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
                 try:
                     await processing_msg.edit_text(
@@ -1517,8 +1530,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-        f"──────── ⸙ ─────────"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
         escape_markdown(final_summary, version=2) + "\n\n" +
