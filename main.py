@@ -355,6 +355,11 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                               disable_web_page_preview=True)
 
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# ----------------- Gates Menu -----------------
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -374,10 +379,13 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ])
 
-    await q.edit_message_text(auth_message, parse_mode=ParseMode.MARKDOWN_V2,
-                              reply_markup=auth_keyboard, disable_web_page_preview=True)
+    await q.edit_message_text(auth_message,
+                              parse_mode=ParseMode.MARKDOWN_V2,
+                              reply_markup=auth_keyboard,
+                              disable_web_page_preview=True)
 
 
+# ----------------- Auth Submenu -----------------
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -386,23 +394,52 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "✦━━━━━━━━━━━━━━✦\n"
         "     🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
+        "✨ Select a platform below:\n"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("💳 𝗦𝗧𝗥𝗜𝗣𝗘 𝗔𝗨𝗧𝗛", callback_data="stripe_examples")],
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
+    ]
+
+    await q.edit_message_text(gates_message,
+                              parse_mode=ParseMode.MARKDOWN_V2,
+                              reply_markup=InlineKeyboardMarkup(keyboard),
+                              disable_web_page_preview=True)
+
+
+# ----------------- Stripe Examples Submenu -----------------
+async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+
+    examples_message = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "     💳 𝐒𝐭𝐫𝐢𝐩𝐞 𝐀𝐮𝐭𝐡\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/chk` \\- *Check a single card*\n"
         "  Example:\n"
         "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
         "• `/mchk` \\- *Check up to 10 cards at once*\n"
         "  Example:\n"
-        "  `\\/mchk 1234567890123456\\|\\.\\.\\.`  \\# up to 10 cards\n\n"
+        "  `\\/mchk 1234567890123456\\|\\.\\.\\. \\# up to 10 cards`\n\n"
         "• `/mass` \\- *Check up to 30 cards at once*\n"
         "  Example:\n"
         "  `\\/mass <cards>`\n"
     )
 
-    keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
-    await q.edit_message_text(gates_message, parse_mode=ParseMode.MARKDOWN_V2,
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗚𝗔𝗧𝗘 𝗠𝗘𝗡𝗨", callback_data="auth_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+
+    await q.edit_message_text(examples_message,
+                              parse_mode=ParseMode.MARKDOWN_V2,
                               reply_markup=InlineKeyboardMarkup(keyboard),
                               disable_web_page_preview=True)
 
 
+# ----------------- Charge Submenu -----------------
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -418,11 +455,14 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
     )
 
     keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2,
+
+    await q.edit_message_text(text,
+                              parse_mode=ParseMode.MARKDOWN_V2,
                               reply_markup=InlineKeyboardMarkup(keyboard),
                               disable_web_page_preview=True)
 
 
+# ----------------- Back to Main Menu -----------------
 async def start_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Back to main menu (reuses start message)."""
     user = update.effective_user
@@ -433,7 +473,8 @@ async def start_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                                                   reply_markup=keyboard,
                                                   disable_web_page_preview=True)
 
-# ---------- Router ----------
+
+# ----------------- Callback Router -----------------
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -447,10 +488,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await auth_sub_menu_handler(update, context)
     elif data == "charge_sub_menu":
         await charge_sub_menu_handler(update, context)
+    elif data == "stripe_examples":
+        await stripe_examples_handler(update, context)
     elif data == "back_to_start":
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
+
 
 
 
