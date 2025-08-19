@@ -3102,18 +3102,18 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
         except Exception as e:
             logger.error(f"Failed to send error message to user: {e}")
 # === REGISTERING COMMANDS AND HANDLERS ===
-import os
 import logging
+import asyncio
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, filters
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, filters
 )
 from db import init_db
 
 # ⛳ Bot token & owner
-BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"   # ⚠️ regenerate at BotFather if leaked
+BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"   # ⚠️ regenerate if leaked
 OWNER_ID = 8438505794
 
-# 🌐 Your webhook URL (pointing to VPS/domain with SSL)
+# 🌐 Your webhook URL (public HTTPS, must resolve to VPS/domain with SSL)
 WEBHOOK_URL = f"https://31.97.66.195/webhook/{BOT_TOKEN}"
 
 # ✅ Logging
@@ -3125,10 +3125,14 @@ async def post_init(application):
     await init_db()
     logger.info("✅ Database initialized")
 
-
 # === Build Application ===
 def build_app():
-    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+    application = (
+        ApplicationBuilder()
+        .token(BOT_TOKEN)
+        .post_init(post_init)
+        .build()
+    )
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
@@ -3157,7 +3161,7 @@ def build_app():
     application.add_handler(CommandHandler("give_custom", give_custom, filters=owner_filter))
     application.add_handler(CommandHandler("take_plan", take_plan, filters=owner_filter))
     application.add_handler(CommandHandler("au", auth_group, filters=owner_filter))
-    application.add_handler(CommandHandler("reset", reset_command))
+    application.add_handler(CommandHandler("reset", reset_command, filters=owner_filter))
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
@@ -3167,21 +3171,23 @@ def build_app():
 
     return application
 
-
 # === Entry Point ===
-def main():
+async def main():
     application = build_app()
+
+    # Set webhook with Telegram
+    await application.bot.set_webhook(WEBHOOK_URL)
 
     logger.info("🚀 Bot starting in WEBHOOK mode...")
 
-    application.run_webhook(
+    await application.run_webhook(
         listen="0.0.0.0",      # expose to VPS network
         port=9000,             # Nginx forwards 443 -> 9000
         url_path=BOT_TOKEN,
         webhook_url=WEBHOOK_URL,
     )
 
-
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
+
 
