@@ -3103,17 +3103,16 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
             logger.error(f"Failed to send error message to user: {e}")
 # === REGISTERING COMMANDS AND HANDLERS ===
 import logging
-import asyncio
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler, filters
 )
 from db import init_db
 
 # ⛳ Bot token & owner
-BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"   # ⚠️ regenerate if leaked
+BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
 OWNER_ID = 8438505794
 
-# 🌐 Your webhook URL (public HTTPS, must resolve to VPS/domain with SSL)
+# 🌐 Webhook URL
 WEBHOOK_URL = f"https://31.97.66.195/webhook/{BOT_TOKEN}"
 
 # ✅ Logging
@@ -3172,22 +3171,19 @@ def build_app():
     return application
 
 # === Entry Point ===
-async def main():
+def main():
     application = build_app()
-
-    # Set webhook with Telegram
-    await application.bot.set_webhook(WEBHOOK_URL)
 
     logger.info("🚀 Bot starting in WEBHOOK mode...")
 
-    await application.run_webhook(
-        listen="0.0.0.0",      # expose to VPS network
-        port=9000,             # Nginx forwards 443 -> 9000
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=9000,            # Nginx forwards 443 -> 9000
         url_path=BOT_TOKEN,
-        webhook_url=WEBHOOK_URL,
+        webhook_url=WEBHOOK_URL,  # automatically calls setWebhook()
     )
 
-if __name__ == '__main__':
-    asyncio.run(main())
+if __name__ == "__main__":
+    main()
 
 
