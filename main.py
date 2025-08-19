@@ -1066,9 +1066,13 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
+import re
+import logging
 
 # Import your database functions here
 from db import get_user, update_user
+
+logger = logging.getLogger(__name__)
 
 # Global variable for user cooldowns
 user_cooldowns = {}
@@ -1087,9 +1091,7 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
     return True
 
 async def consume_credit(user_id: int) -> bool:
-    """
-    Consume 1 credit from DB user if available.
-    """
+    """Consume 1 credit from DB user if available."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -1097,62 +1099,71 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-def get_bin_details_sync(bin_number: str) -> dict:
-    # Simulate BIN lookup or call your actual BIN service here
-    time.sleep(1.5)
-    return {
-        "scheme": "Visa",
-        "type": "Credit",
-        "country_name": "United States"
+
+# Replace with your *legit* group/channel link
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+
+def escape_markdown_v2(text: str) -> str:
+    """Escapes special characters for Telegram MarkdownV2."""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
+
+# ✅ Async BIN Lookup (antipublic.cc)
+async def get_bin_details(bin_number: str) -> dict:
+    bin_data = {
+        "scheme": "N/A",
+        "type": "N/A",
+        "level": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": "",
+        "vbv_status": None,
+        "card_type": "N/A"
     }
 
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=7) as response:
+                if response.status == 200:
+                    try:
+                        data = await response.json(content_type=None)
 
-# Replace with your *legit* group/channel link
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+                        bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                        bin_data["type"] = str(data.get("type", "N/A")).title()
+                        bin_data["card_type"] = str(data.get("type", "N/A")).title()
+                        bin_data["level"] = str(data.get("level", "N/A")).title()
+                        bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                        bin_data["country_name"] = data.get("country_name", "N/A")
+                        bin_data["country_emoji"] = data.get("country_flag", "")
+                        return bin_data
+                    except Exception as e:
+                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
+                else:
+                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
+    except Exception as e:
+        logger.warning(f"BIN API call failed for {bin_number}: {e}")
 
-def escape_markdown_v2(text: str) -> str:
-    """Escapes special characters for Telegram MarkdownV2."""
-    import re
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+    return bin_data
 
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-import asyncio
-import aiohttp
-import re
 
-# Replace with your *legit* group/channel link
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 
-def escape_markdown_v2(text: str) -> str:
-    """Escapes special characters for Telegram MarkdownV2."""
-    import re
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-
-# NOTE: The following functions (get_bin_details_sync, get_user) are assumed to be defined elsewhere in your bot's code.
-
+# ✅ Background check now uses live BIN data
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    """
-    Handles the background processing for the /chk command.
-    It performs a BIN lookup, calls the external API, and formats the final message.
-    """
-    # Define the bullet point with the hyperlink
     bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
     
     try:
         bin_number = parts[0][:6]
-        # Assuming get_bin_details_sync is a synchronous function you've defined
-        bin_details = await asyncio.to_thread(get_bin_details_sync, bin_number)
-        brand = (bin_details.get("scheme") or "N/A").upper()
-        issuer = (bin_details.get("type") or "N/A").upper()
-        country_name = (bin_details.get("country_name") or "N/A").upper()
+        bin_details = await get_bin_details(bin_number)
 
-        # New API URL from your request
+        brand = (bin_details.get("scheme") or "N/A").upper()
+        issuer = (bin_details.get("bank") or "N/A").title()
+        country_name = (bin_details.get("country_name") or "N/A")
+        country_flag = bin_details.get("country_emoji", "")
+
+        # Your main API call
         api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
         
         async with aiohttp.ClientSession() as session:
@@ -1161,21 +1172,19 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
 
-        # The new API response only contains "card" and "status"
         api_status = (data.get("status") or "Unknown").strip()
 
-        # Updated header logic to use the original style with proper bolding
+        # Status formatting
         status_text = api_status.upper()
-        if api_status.lower() == "approved ✅":
+        if "approved" in api_status.lower():
             status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-        elif api_status.lower() == "declined ❌":
+        elif "declined" in api_status.lower():
             status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-        elif api_status.lower() == "ccn live ❎":
+        elif "ccn live" in api_status.lower():
             status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
         
         header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
 
-        # Formatted response from API status
         formatted_response = f"_{escape_markdown_v2(api_status)}_"
 
         final_text = (
@@ -1185,8 +1194,8 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} Response ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} Brand ➜ {escape_markdown_v2(brand)}\n"
-            f"{bullet_link} Issuer ➜ {escape_markdown_v2(issuer)}\n"
-            f"{bullet_link} Country ➜ {escape_markdown_v2(country_name)}\n"
+            f"{bullet_link} Bank ➜ {escape_markdown_v2(issuer)}\n"
+            f"{bullet_link} Country ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} Request By ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
             f"{bullet_link} Developer ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
@@ -1196,14 +1205,14 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         await processing_msg.edit_text(
             final_text,
             parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True # Added this to prevent link previews
+            disable_web_page_preview=True
         )
 
     except Exception as e:
         await processing_msg.edit_text(
             f"❌ API Error: {escape_markdown_v2(str(e))}",
             parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True # Added this to prevent link previews
+            disable_web_page_preview=True
         )
 
 
