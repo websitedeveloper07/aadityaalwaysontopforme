@@ -378,6 +378,18 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                               reply_markup=auth_keyboard, disable_web_page_preview=True)
 
 
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+
+# ---------- Auth Sub Menu ----------
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+
+# ---------- Auth Sub Menu ----------
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -385,6 +397,31 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     gates_message = (
         "✦━━━━━━━━━━━━━━✦\n"
         "     🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "✨ Choose a gate below to continue:\n"
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⚡ Stripe", callback_data="stripe_examples")],
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
+    ])
+
+    await q.edit_message_text(
+        gates_message,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
+        disable_web_page_preview=True
+    )
+
+
+# ---------- Stripe Examples ----------
+async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "     ⚡ 𝐒𝐭𝐫𝐢𝐩𝐞 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/chk` \\- *Check a single card*\n"
         "  Example:\n"
@@ -394,15 +431,22 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "  `\\/mchk 1234567890123456\\|\\.\\.\\.`  \\# up to 10 cards\n\n"
         "• `/mass` \\- *Check up to 30 cards at once*\n"
         "  Example:\n"
-        "  `\\/mass <cards>`\n"
+        "  `\\/mass <cards>`\n\n"
+        "• `/mtchk` \\- *Check up to 200 cards from file*\n"
+        "  Example:\n"
+        "  `\\/mtchk cards.txt`\n"
     )
 
-    keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
-    await q.edit_message_text(gates_message, parse_mode=ParseMode.MARKDOWN_V2,
-                              reply_markup=InlineKeyboardMarkup(keyboard),
-                              disable_web_page_preview=True)
+    keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝐀𝐮𝐭𝐡 𝐌𝐞𝐧𝐮", callback_data="auth_sub_menu")]]
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 
+# ---------- Charge Sub Menu ----------
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -418,20 +462,27 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
     )
 
     keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2,
-                              reply_markup=InlineKeyboardMarkup(keyboard),
-                              disable_web_page_preview=True)
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 
+# ---------- Back to Start Menu ----------
 async def start_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Back to main menu (reuses start message)."""
     user = update.effective_user
     text, keyboard = await build_start_message(user, context)
 
-    await update.callback_query.edit_message_text(text,
-                                                  parse_mode=ParseMode.MARKDOWN_V2,
-                                                  reply_markup=keyboard,
-                                                  disable_web_page_preview=True)
+    await update.callback_query.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
+        disable_web_page_preview=True
+    )
+
 
 # ---------- Router ----------
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -445,12 +496,15 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await gates_menu_handler(update, context)
     elif data == "auth_sub_menu":
         await auth_sub_menu_handler(update, context)
+    elif data == "stripe_examples":
+        await stripe_examples_handler(update, context)
     elif data == "charge_sub_menu":
         await charge_sub_menu_handler(update, context)
     elif data == "back_to_start":
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
+
 
 
 from telegram import Update
