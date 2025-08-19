@@ -1432,7 +1432,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     results = []
     total_cards = len(cards_to_check)
 
-    semaphore = asyncio.Semaphore(2)  # limit to 5 concurrent requests
+    semaphore = asyncio.Semaphore(5)  # limit to 5 concurrent requests
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
@@ -1643,10 +1643,13 @@ from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
 from db import get_user, update_user  # your DB functions
 
 OWNER_ID = 8438505794  # Replace with your Telegram ID
+AUTHORIZED_CHATS = set()  # Put your authorized chat IDs here
 user_cooldowns = {}
+
 
 # --- Utility functions ---
 async def enforce_cooldown(user_id: int, update: Update, cooldown: int = 5) -> bool:
@@ -1688,17 +1691,19 @@ async def has_active_paid_plan(user_id: int) -> bool:
     if not user_data:
         return False
 
-    plan = user_data.get("plan", "Free")
+    plan = str(user_data.get("plan", "Free"))
     expiry = user_data.get("plan_expiry", "N/A")
 
-    # Free plan not allowed
+    # Free plan is not valid
     if plan.lower() == "free":
         return False
 
-    # Check expiry
+    # Expiry check (treat expiry as valid until end of that day)
     if expiry != "N/A":
         try:
-            expiry_date = datetime.strptime(expiry, "%d-%m-%Y")
+            expiry_date = datetime.strptime(expiry, "%d-%m-%Y").replace(
+                hour=23, minute=59, second=59
+            )
             if expiry_date < datetime.now():
                 return False
         except Exception:
@@ -1707,25 +1712,37 @@ async def has_active_paid_plan(user_id: int) -> bool:
     return True
 
 
-async def check_paid_access(user_id: int, update: Update) -> bool:
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """
-    Verify that user has an active paid plan (credits are not checked).
-    Works for both private and group chats.
+    Private chats: only OWNER_ID or users with an active paid plan can use.
+    Authorized chats (groups/channels): free for everyone.
+    Other groups: only OWNER_ID or users with an active paid plan can use.
     """
-    # Only owner bypass
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+    chat_type = update.effective_chat.type
+
+    # ✅ Owner bypass
     if user_id == OWNER_ID:
         return True
 
-    # Check plan
+    # ✅ Free access in authorized chats
+    if chat_id in AUTHORIZED_CHATS:
+        return True
+
+    # ✅ Everywhere else requires active paid plan
     if not await has_active_paid_plan(user_id):
         await update.effective_message.reply_text(
-            "🚫 You need a *paid plan* to use this command.\n"
-            "💳 or use for free in our group."
+            escape_markdown(
+                "🚫 You need an *active paid plan* to use this command.\n"
+                "💳 Or use for free in our authorized group.",
+                version=2,
+            ),
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
         return False
 
     return True
-
 
 
 
@@ -1864,53 +1881,67 @@ import re
 from telegram import Update
 from telegram.ext import ContextTypes
 
+# Make sure these imports exist in your project
+from utils import enforce_cooldown, check_authorization, check_cards_background
+
+
 async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles the /mass command to initiate a card check.
-    Requires an active paid plan but does NOT consume credits.
+    Requires authorization (paid plan or authorized group).
+    Does NOT consume credits.
     """
 
     user = update.effective_user
     user_id = user.id
 
-    # Cooldown check
+    # ✅ Cooldown check
     if not await enforce_cooldown(user_id, update):
         return
 
-    # ✅ Require active paid plan (credits not checked)
-    if not await check_paid_access(user_id, update):
+    # ✅ Authorization check (owner, paid, or free group)
+    if not await check_authorization(update, context):
         return
 
-    # Extract cards from command args or replied message
+    # ✅ Extract cards from args or replied message
     raw_cards = ""
     if context.args:
         raw_cards = " ".join(context.args)
-    elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
+    elif (
+        update.effective_message.reply_to_message
+        and update.effective_message.reply_to_message.text
+    ):
         raw_cards = update.effective_message.reply_to_message.text
 
     if not raw_cards:
         await update.effective_message.reply_text(
-            "⚠️ Usage: reply to a message containing cards or use /mass number|mm|yy|cvv"
+            "⚠️ Usage:\n"
+            "Reply to a message containing cards OR use:\n"
+            "`/mass number|mm|yy|cvv`",
+            parse_mode="Markdown",
         )
         return
 
-    # Regex to extract valid card lines
-    card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
+    # ✅ Regex to extract card patterns
+    card_pattern = re.compile(
+        r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})"
+    )
     card_lines = card_pattern.findall(raw_cards)
 
     if not card_lines:
         await update.effective_message.reply_text(
-            "⚠️ No valid cards found. Format: number|mm|yy|cvv"
+            "⚠️ No valid cards found.\nFormat: `number|mm|yy|cvv`",
+            parse_mode="Markdown",
         )
         return
 
-    # Limit to first 30 cards and normalize years
+    # ✅ Normalize cards (limit to 30, fix yyyy → yy)
     cards_to_check = []
     for raw in card_lines[:30]:
         parts = raw.split("|")
         if len(parts) != 4:
             continue
-        if len(parts[2]) == 4:  # convert yyyy to yy
+        if len(parts[2]) == 4:  # convert yyyy → yy
             parts[2] = parts[2][-2:]
         cards_to_check.append("|".join(parts))
 
@@ -1919,13 +1950,13 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Only the first 30 cards will be processed."
         )
 
-    # Send initial processing message
+    # ✅ Send initial processing message
     processing_msg = await update.effective_message.reply_text(
-        f"🔎𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜 {len(cards_to_check)} 𝑪𝒂𝒓𝒅𝒔..."
+        f"🔎 𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜 {len(cards_to_check)} 𝑪𝒂𝒓𝒅𝒔..."
     )
     start_time = time.time()
 
-    # Launch background task for checking
+    # ✅ Launch background task for checking
     asyncio.create_task(
         check_cards_background(
             cards_to_check,
@@ -1935,7 +1966,6 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             start_time,
         )
     )
-
 
     
 
@@ -2293,7 +2323,7 @@ async def background_check_multi(update, context, cards, processing_msg):
             pass
 
     async with aiohttp.ClientSession() as session:
-        semaphore = asyncio.Semaphore(2)
+        semaphore = asyncio.Semaphore(7)
         tasks = [check_card_with_semaphore(session, card, semaphore) for card in cards]
 
         for i, task in enumerate(asyncio.as_completed(tasks)):
