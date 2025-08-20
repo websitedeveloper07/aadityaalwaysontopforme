@@ -2058,21 +2058,20 @@ async def check_mtchk_access(user_id: int, chat, update: Update) -> bool:
 # ─── Cooldown ──────────────────────────────
 user_cooldowns = {}  # { user_id: { "mtchk": timestamp } }
 
-async def enforce_cooldown(user_id: int, command: str, update: Update) -> bool:
+async def enforce_cooldown(user_id: int, update: Update) -> bool:
     cooldown = 5  # seconds
     now = time.time()
-    last = user_cooldowns.get(user_id, {}).get(command, 0)
-
+    last = user_cooldowns.get(user_id, 0)
     if now - last < cooldown:
         remaining = round(cooldown - (now - last), 2)
         await update.effective_message.reply_text(
-            f"⏳ Cooldown active. Wait {remaining}s.",
-            parse_mode="MarkdownV2"
+            escape_markdown(f"⏳ Cooldown active. Wait {remaining} seconds.", version=2),
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
         return False
-
-    user_cooldowns.setdefault(user_id, {})[command] = now
+    user_cooldowns[user_id] = now
     return True
+
 
 
 
@@ -2143,8 +2142,9 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # ✅ Cooldown
-    if not await enforce_cooldown(user_id, "mtchk", update):
+    if not await enforce_cooldown(user_id, update):
         return
+
 
 
     # ✅ Deduct 1 credit for this file
