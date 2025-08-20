@@ -1167,7 +1167,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
         
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=25) as resp:
+            async with session.get(api_url, timeout=45) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
@@ -2056,19 +2056,24 @@ async def check_mtchk_access(user_id: int, chat, update: Update) -> bool:
 
 
 # ─── Cooldown ──────────────────────────────
-async def enforce_cooldown(user_id: int, update: Update) -> bool:
+user_cooldowns = {}  # { user_id: { "mtchk": timestamp } }
+
+async def enforce_cooldown(user_id: int, command: str, update: Update) -> bool:
     cooldown = 5  # seconds
     now = time.time()
-    last = user_cooldowns.get(user_id, 0)
+    last = user_cooldowns.get(user_id, {}).get(command, 0)
+
     if now - last < cooldown:
         remaining = round(cooldown - (now - last), 2)
         await update.effective_message.reply_text(
-            escape_markdown(f"⏳ Cooldown active. Wait {remaining} seconds.", version=2),
-            parse_mode=ParseMode.MARKDOWN_V2,
+            f"⏳ Cooldown active. Wait {remaining}s.",
+            parse_mode="MarkdownV2"
         )
         return False
-    user_cooldowns[user_id] = now
+
+    user_cooldowns.setdefault(user_id, {})[command] = now
     return True
+
 
 
 # ─── Credit Consumption ──────────────────────────────
@@ -2083,78 +2088,6 @@ async def consume_credit(user_id: int) -> bool:
         await update_user(user_id, credits=new_credits)
         return True
     return False
-
-
-
-# ─── /mtchk Handler ────────────────────────────────
-import asyncio
-from telegram import Update
-from telegram.ext import ContextTypes
-
-async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    chat = update.effective_chat
-
-    # ✅ Authorization check (group/private logic + credits)
-    if not await check_mtchk_access(user_id, chat, update):
-        return
-
-    # ✅ Cooldown
-    if not await enforce_cooldown(user_id, update):
-        return
-
-    # ✅ Ensure a .txt file is attached or replied to
-    document = update.message.document or (
-        update.message.reply_to_message and update.message.reply_to_message.document
-    )
-    if not document:
-        await update.message.reply_text(
-            "📂 Please send or reply to a txt file containing up to 200 cards."
-        )
-        return
-
-    if not document.file_name.endswith(".txt"):
-        await update.message.reply_text("⚠️ Only txt files are supported.")
-        return
-
-    # ✅ Download file
-    try:
-        file = await context.bot.get_file(document.file_id)
-        file_path = await file.download_to_drive(custom_path="input_cards.txt")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Failed to download file: {e}")
-        return
-
-    # ✅ Read cards from file
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            cards = [line.strip() for line in f if line.strip()]
-    except Exception as e:
-        await update.message.reply_text(f"❌ Failed to read file: {e}")
-        return
-
-    if len(cards) > 200:
-        await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
-        return
-
-    # ✅ Initial progress message
-    try:
-        processing_msg = await update.message.reply_text(
-            f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳 Total Cards: {len(cards)} | ⌚ Estimated Time: ~{len(cards)*2}s\n"
-            f"╭─────────────╮\n"
-            f"│ [□□□□□□□□□□] 0% │\n"
-            f"╰──────────────────╯"
-        )
-    except Exception as e:
-        await update.message.reply_text(f"❌ Failed to send progress message: {e}")
-        return
-
-    # ✅ Start background task (10 cards in parallel, progress & ETA updated)
-    asyncio.create_task(
-        background_check_multi(update, context, cards, processing_msg),
-        name=f"mtchk_user_{user_id}"
-    )
 
 
 
@@ -2210,9 +2143,16 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # ✅ Cooldown
-    if not await enforce_cooldown(user_id, update):
+    if not await enforce_cooldown(user_id, "mtchk", update):
         return
 
+
+    # ✅ Deduct 1 credit for this file
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You don’t have enough credits.")
+        return
+
+    
     # ✅ Ensure a .txt file is attached or replied to
     document = update.message.document or (
         update.message.reply_to_message and update.message.reply_to_message.document
@@ -2246,19 +2186,19 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
             os.remove(file_path)
 
     # ✅ Validate card count
-    if len(cards) > 200:
-        await update.message.reply_text("⚠️ Maximum 200 cards allowed per file.")
+    if len(cards) > 50:
+        await update.message.reply_text("⚠️ Maximum 50 cards allowed per file.")
         return
 
     # ✅ Initial progress message
-    estimated_time = max(len(cards) / 10, 1)  # assume 10 cards in parallel
+    estimated_time = max(len(cards) / 7, 1)  # assume 10 cards in parallel
     try:
         processing_msg = await update.message.reply_text(
             f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳 Total Cards: {len(cards)} | ⌚ Estimated Time: ~{estimated_time:.0f}s\n"
-            f"╭─────────────╮\n"
-            f"│ [□□□□□□□□□□] 0/{len(cards)} │\n"
-            f"╰──────────────────╯"
+            f"💳𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {len(cards)} | ⌚𝐄𝐬𝐭𝐢𝐦𝐚𝐭𝐞𝐝 𝐓𝐢𝐦𝐞 ➼ ~{estimated_time:.0f}s\n"
+            f"✦━━━━━━━━━━✦\n"
+            f"▌ [□□□□□□□□□□] 0/{len(cards)} ▌\n"
+            f"✦━━━━━━━━━━━━━━━━━━━✦"
         )
     except Exception as e:
         await update.message.reply_text(f"❌ Failed to send progress message: {e}")
@@ -2320,10 +2260,10 @@ async def background_check_multi(update, context, cards, processing_msg):
         
         progress_text = (
             f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳 Total Cards: {total} | ✅ Checked: {current_count}/{total}\n"
-            f"╭─────────────╮\n"
-            f"│ [{bar}] │\n"
-            f"╰──────────────────╯"
+            f"💳𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {total} | ✅𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➼ {current_count}/{total}\n"
+            f"✦━━━━━━━━━━✦\n"
+            f"▌ [{bar}] ▌\n"
+            f"✦━━━━━━━━━━━━━━━━━━━✦"
         )
         try:
             await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
@@ -2388,6 +2328,8 @@ async def background_check_multi(update, context, cards, processing_msg):
         os.remove(output_filename)
     except Exception:
         pass
+
+
 
 from faker import Faker
 from telegram import Update
