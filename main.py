@@ -3072,33 +3072,57 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 # === REGISTERING COMMANDS AND HANDLERS ===
-import os
 import logging
+from aiohttp import web
+from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
-    filters
+    filters,
 )
+
 from db import init_db
 
-# ⛳ Load environment variables from Railway
+# ⛳ Bot Config
 BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
 OWNER_ID = 8438505794
+
+# VPS IP
+WEBHOOK_HOST = "31.97.66.195"   # your VPS IP
+WEBHOOK_PORT = 8443             # must match cert
+WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
+WEBHOOK_URL = f"https://{WEBHOOK_HOST}:{WEBHOOK_PORT}{WEBHOOK_PATH}"
+
+# SSL certs
+CERT_FILE = "webhook.crt"
+KEY_FILE = "webhook.key"
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🧠 Import your command handlers here
+# 🧠 DB Init
 async def post_init(application):
     await init_db()
     logger.info("Database initialized")
 
+# Example handlers (make sure yours are defined somewhere else)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚀 Webhook bot started!")
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("ℹ️ Available commands: /start /help ...")
 
 def main():
-    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+    # Build application
+    application = (
+        ApplicationBuilder()
+        .token(BOT_TOKEN)
+        .post_init(post_init)
+        .build()
+    )
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
@@ -3135,10 +3159,26 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
-    # 🔁 Start polling (handles its own event loop!)
-    logger.info("Bot started and is polling for updates...")
-    application.run_polling()
+    # 🌍 aiohttp web app
+    web_app = web.Application()
+
+    async def handle(request):
+        data = await request.json()
+        update = Update.de_json(data, application.bot)
+        await application.process_update(update)
+        return web.Response()
+
+    web_app.router.add_post(WEBHOOK_PATH, handle)
+
+    # 🚀 Run webhook server
+    logger.info(f"Starting webhook at {WEBHOOK_URL}")
+    web.run_app(
+        web_app,
+        host="0.0.0.0",
+        port=WEBHOOK_PORT,
+        ssl_context=(CERT_FILE, KEY_FILE),
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
