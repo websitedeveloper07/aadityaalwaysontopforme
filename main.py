@@ -2286,14 +2286,6 @@ import re
 from telegram import InputFile
 from telegram.constants import ParseMode
 
-import os
-import re
-import json
-import asyncio
-import aiohttp
-from telegram import InputFile
-from telegram.constants import ParseMode
-
 async def background_check_multi(update, context, cards, processing_msg):
     """
     Performs background card checks with proper stylish responses and file output.
@@ -2319,13 +2311,15 @@ async def background_check_multi(update, context, cards, processing_msg):
         status_text = (api_status or "").strip().lower()
         response_text = (api_response or "").strip().lower()
 
-        if "approved" in status_text or "succeeded" in status_text:
+        combined_text = f"{status_text} {response_text}"
+
+        if "approved" in combined_text or "succeeded" in combined_text:
             return "✅ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗"
-        elif "declined" in status_text or "failed" in status_text or "declined" in response_text or "failed" in response_text:
+        elif "declined" in combined_text or "failed" in combined_text:
             return "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗"
-        elif "ccn live" in status_text or "ccn live" in response_text:
+        elif "ccn live" in combined_text:
             return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
-        elif "3d" in status_text or "threed" in status_text or "3d" in response_text or "threed" in response_text:
+        elif "3d" in combined_text or "threed" in combined_text:
             return "⚠️ 𝟯𝗗𝗦"
         else:
             return "❓ 𝗨𝗡𝗞𝗡𝗢𝗪𝗡"
@@ -2343,6 +2337,7 @@ async def background_check_multi(update, context, cards, processing_msg):
                         status_text = json_data.get("status", "").strip()
                         response_text = json_data.get("response", "").strip()
                     except (json.JSONDecodeError, KeyError):
+                        # fallback if API does not return JSON
                         status_text = text_data.strip()
                         response_text = text_data.strip()
 
@@ -2386,7 +2381,7 @@ async def background_check_multi(update, context, cards, processing_msg):
                 unknown += 1
 
             await update_progress(len(results))
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.1)  # small delay for smoother progress
 
     # Save results to file
     output_filename = "checked.txt"
@@ -2424,6 +2419,7 @@ async def background_check_multi(update, context, cards, processing_msg):
         os.remove(output_filename)
     except Exception:
         pass
+
 
 
 
