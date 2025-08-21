@@ -3147,111 +3147,75 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 # === REGISTERING COMMANDS AND HANDLERS ===
-import ssl
+# === REGISTERING COMMANDS AND HANDLERS ===
+import os
 import logging
-import asyncio
-from aiohttp import web
-from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     CallbackQueryHandler,
+    ContextTypes,
     filters
 )
 from db import init_db
 
-# ----------------- CONFIG -----------------
+# ⛳ Load environment variables from Railway
 BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
 OWNER_ID = 8438505794
-WEBHOOK_PATH = "/webhook"
-WEBHOOK_PORT = 443
-WEBHOOK_CERT = "webhook.crt"
-WEBHOOK_KEY = "webhook.key"
-WEBHOOK_URL = "https://31.97.66.195"  # Your VPS IP
-# -----------------------------------------
 
-# Logging
+# ✅ Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ----------------- POST INIT -----------------
+# 🧠 Import your command handlers here
 async def post_init(application):
     await init_db()
     logger.info("Database initialized")
 
-# ----------------- WEBHOOK HANDLER -----------------
-async def handle(request):
-    data = await request.json()
-    update = Update.de_json(data, bot=app.bot)
-    await app.update_queue.put(update)  # feed updates into bot queue
-    return web.Response(text="ok")
 
-# ----------------- MAIN -----------------
-async def init():
-    global app
-    app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+def main():
+    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-    # ---- Public Commands ----
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("info", info))
-    app.add_handler(CommandHandler("credits", credits_command))
-    app.add_handler(CommandHandler("chk", chk_command))
-    app.add_handler(CommandHandler("mchk", mchk_command))
-    app.add_handler(CommandHandler("mass", mass_command))
-    app.add_handler(CommandHandler("mtchk", mtchk))
-    app.add_handler(CommandHandler("gen", gen))
-    app.add_handler(CommandHandler("open", open_command))
-    app.add_handler(CommandHandler("adcr", adcr_command))
-    app.add_handler(CommandHandler("bin", bin_lookup))
-    app.add_handler(CommandHandler("fk", fk_command))
-    app.add_handler(CommandHandler("fl", fl_command))
-    app.add_handler(CommandHandler("status", status_command))
-    app.add_handler(CommandHandler("redeem", redeem_command))
+    # ✨ Public Commands
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("info", info))
+    application.add_handler(CommandHandler("credits", credits_command))
+    application.add_handler(CommandHandler("chk", chk_command))
+    application.add_handler(CommandHandler("mchk", mchk_command))
+    application.add_handler(CommandHandler("mass", mass_command))
+    application.add_handler(CommandHandler("mtchk", mtchk))
+    application.add_handler(CommandHandler("gen", gen))
+    application.add_handler(CommandHandler("open", open_command))
+    application.add_handler(CommandHandler("adcr", adcr_command))
+    application.add_handler(CommandHandler("bin", bin_lookup))
+    application.add_handler(CommandHandler("fk", fk_command))
+    application.add_handler(CommandHandler("fl", fl_command))
+    application.add_handler(CommandHandler("status", status_command))
+    application.add_handler(CommandHandler("redeem", redeem_command))
 
-    # ---- Admin Commands ----
+    # 🔐 Admin Commands
     owner_filter = filters.User(OWNER_ID)
-    app.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
-    app.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
-    app.add_handler(CommandHandler("give_premium", give_premium, filters=owner_filter))
-    app.add_handler(CommandHandler("give_plus", give_plus, filters=owner_filter))
-    app.add_handler(CommandHandler("give_custom", give_custom, filters=owner_filter))
-    app.add_handler(CommandHandler("take_plan", take_plan, filters=owner_filter))
-    app.add_handler(CommandHandler("au", auth_group, filters=owner_filter))
-    app.add_handler(CommandHandler("reset", reset_command))
-    app.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
-    app.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
+    application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
+    application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
+    application.add_handler(CommandHandler("give_premium", give_premium, filters=owner_filter))
+    application.add_handler(CommandHandler("give_plus", give_plus, filters=owner_filter))
+    application.add_handler(CommandHandler("give_custom", give_custom, filters=owner_filter))
+    application.add_handler(CommandHandler("take_plan", take_plan, filters=owner_filter))
+    application.add_handler(CommandHandler("au", auth_group, filters=owner_filter))
+    application.add_handler(CommandHandler("reset", reset_command))
+    application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
+    application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # ---- Callback & Error ----
-    app.add_handler(CallbackQueryHandler(handle_callback))
-    app.add_error_handler(error_handler)
+    # Callback & Error
+    application.add_handler(CallbackQueryHandler(handle_callback))
+    application.add_error_handler(error_handler)
 
-    # ---- SSL & Webhook Server ----
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    ssl_context.load_cert_chain(WEBHOOK_CERT, WEBHOOK_KEY)
+    # 🔁 Start polling (handles its own event loop!)
+    logger.info("Bot started and is polling for updates...")
+    application.run_polling()
 
-    webhook_app = web.Application()
-    webhook_app.router.add_post(WEBHOOK_PATH, handle)
-    runner = web.AppRunner(webhook_app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", WEBHOOK_PORT, ssl_context=ssl_context)
-    await site.start()
-    logger.info(f"Webhook server running on port {WEBHOOK_PORT}")
 
-    # ---- Set Telegram Webhook ----
-    await app.bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", certificate=open(WEBHOOK_CERT, "rb"))
-    logger.info(f"Telegram webhook set: {WEBHOOK_URL}{WEBHOOK_PATH}")
-
-    # ---- Start the application ----
-    await app.initialize()
-    await app.start()
-    # No polling needed; updates are handled by webhook queue
-
-    # Keep the bot running
-    while True:
-        await asyncio.sleep(3600)
-
-if __name__ == "__main__":
-    asyncio.run(init())
-
+if __name__ == '__main__':
+    main()
 
