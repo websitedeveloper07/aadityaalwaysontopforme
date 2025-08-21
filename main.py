@@ -3151,8 +3151,8 @@ async def post_init(application):
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-     application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=-1)
-
+    # Group filter must align with other handlers (no extra space!)
+    application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=-1)
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
@@ -3185,8 +3185,6 @@ def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-
-
     # Callback & Error
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
@@ -3198,4 +3196,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
