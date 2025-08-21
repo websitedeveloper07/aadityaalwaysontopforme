@@ -3147,6 +3147,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 # === REGISTERING COMMANDS AND HANDLERS ===
+import ssl
 import logging
 from aiohttp import web
 from telegram import Update
@@ -3155,86 +3156,137 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
-    filters,
+    filters
 )
-
 from db import init_db
 
-# ⛳ Bot Config
+# ----------------- CONFIG -----------------
 BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
 OWNER_ID = 8438505794
-
-# VPS IP & Webhook
-WEBHOOK_HOST = "31.97.66.195"   # your VPS IP
-WEBHOOK_PORT = 8443             # must match cert
-WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
-WEBHOOK_URL = f"https://{WEBHOOK_HOST}:{WEBHOOK_PORT}{WEBHOOK_PATH}"
-
-# SSL certs (use your newly generated)
-CERT_FILE = "/root/CERT_FOLDER/fullchain.pem"
-KEY_FILE = "/root/CERT_FOLDER/privkey.pem"
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_PORT = 443          # Standard HTTPS port
+WEBHOOK_CERT = "webhook.crt"
+WEBHOOK_KEY = "webhook.key"
+# -----------------------------------------
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🧠 DB Init
+# ----------------- COMMAND HANDLERS -----------------
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hello! Bot is live via webhook ✅")
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Help command here...")
+
+# Add all your command handlers here
+# For example: info, credits, chk, mchk, mass, mtchk, gen, open, adcr, bin_lookup, fk, fl, status, redeem
+async def info(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+
+# Admin commands
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def give_starter(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def give_premium(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def give_plus(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def give_custom(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def take_plan(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def auth_group(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def remove_authorize_user(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def gen_codes_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+
+# Callback & Error
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(msg="Exception while handling an update:", exc_info=context.error)
+
+# ----------------- POST INIT -----------------
 async def post_init(application):
     await init_db()
     logger.info("Database initialized")
 
-# Example handlers (replace with your actual implementations)
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚀 Webhook bot started!")
+# ----------------- WEBHOOK SERVER -----------------
+async def handle(request):
+    """Receive Telegram updates via webhook"""
+    data = await request.json()
+    update = Update.de_json(data, app.bot)
+    await app.update_queue.put(update)
+    return web.Response(text="ok")
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("ℹ️ Available commands: /start /help ...")
+# ----------------- MAIN -----------------
+async def init():
+    global app
+    app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-def main():
-    # Build application
-    application = (
-        ApplicationBuilder()
-        .token(BOT_TOKEN)
-        .post_init(post_init)
-        .build()
-    )
+    # ---- Public Commands ----
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("info", info))
+    app.add_handler(CommandHandler("credits", credits_command))
+    app.add_handler(CommandHandler("chk", chk_command))
+    app.add_handler(CommandHandler("mchk", mchk_command))
+    app.add_handler(CommandHandler("mass", mass_command))
+    app.add_handler(CommandHandler("mtchk", mtchk))
+    app.add_handler(CommandHandler("gen", gen))
+    app.add_handler(CommandHandler("open", open_command))
+    app.add_handler(CommandHandler("adcr", adcr_command))
+    app.add_handler(CommandHandler("bin", bin_lookup))
+    app.add_handler(CommandHandler("fk", fk_command))
+    app.add_handler(CommandHandler("fl", fl_command))
+    app.add_handler(CommandHandler("status", status_command))
+    app.add_handler(CommandHandler("redeem", redeem_command))
 
-    # ✨ Public Commands
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    # Add the rest of your command handlers here
-    # application.add_handler(CommandHandler("info", info))
-    # ...
-
-    # 🔐 Admin Commands
+    # ---- Admin Commands ----
     owner_filter = filters.User(OWNER_ID)
-    # application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
-    # ...
+    app.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
+    app.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
+    app.add_handler(CommandHandler("give_premium", give_premium, filters=owner_filter))
+    app.add_handler(CommandHandler("give_plus", give_plus, filters=owner_filter))
+    app.add_handler(CommandHandler("give_custom", give_custom, filters=owner_filter))
+    app.add_handler(CommandHandler("take_plan", take_plan, filters=owner_filter))
+    app.add_handler(CommandHandler("au", auth_group, filters=owner_filter))
+    app.add_handler(CommandHandler("reset", reset_command))
+    app.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
+    app.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # Callback & Error
-    # application.add_handler(CallbackQueryHandler(handle_callback))
-    # application.add_error_handler(error_handler)
+    # ---- Callback & Error ----
+    app.add_handler(CallbackQueryHandler(handle_callback))
+    app.add_error_handler(error_handler)
 
-    # 🌍 aiohttp web app
-    web_app = web.Application()
+    # ---- Setup SSL and Webhook server ----
+    ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    ssl_context.load_cert_chain(WEBHOOK_CERT, WEBHOOK_KEY)
 
-    async def handle(request):
-        data = await request.json()
-        update = Update.de_json(data, application.bot)
-        await application.process_update(update)
-        return web.Response()
+    runner = web.AppRunner(web.Application())
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", WEBHOOK_PORT, ssl_context=ssl_context)
+    await site.start()
 
-    web_app.router.add_post(WEBHOOK_PATH, handle)
+    # ---- Set webhook with Telegram ----
+    await app.bot.set_webhook(f"https://YOUR_VPS_IP{WEBHOOK_PATH}", certificate=open(WEBHOOK_CERT, "rb"))
+    logger.info(f"Webhook set: https://YOUR_VPS_IP{WEBHOOK_PATH}")
 
-    # 🚀 Run webhook server with new certs
-    logger.info(f"Starting webhook at {WEBHOOK_URL}")
-    web.run_app(
-        web_app,
-        host="0.0.0.0",
-        port=WEBHOOK_PORT,
-        ssl_context=(CERT_FILE, KEY_FILE),
-    )
+    # ---- Start processing updates ----
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()  # Processes updates from webhook queue
+    await app.updater.idle()
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(init())
 
