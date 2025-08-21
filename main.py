@@ -221,7 +221,7 @@ from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or con
 
 
 # --- Group Authorization Block ---
-# List of bot commands that require authorization
+# List of bot commands that require authorization in groups
 PROTECTED_COMMANDS = [
     "start", "help", "info", "credits", "chk", "mchk", "mass",
     "mtchk", "gen", "open", "adcr", "bin", "fk", "fl", "status", "redeem"
@@ -229,19 +229,25 @@ PROTECTED_COMMANDS = [
 
 async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
+    user = update.effective_user
 
-    if chat.type in ["group", "supergroup"]:
-        if chat.id not in AUTHORIZED_CHATS:
-            message = update.message.text
-            if message and message.startswith("/"):
-                command = message.split()[0][1:].split("@")[0]  # strip '/' and bot username
-                if command in PROTECTED_COMMANDS:
-                    await update.message.reply_text(
-                        f"🚫 This group is not authorized to use this bot.\n\n"
-                        f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
-                        f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
-                    )
-                    return  # Stop the real command from executing
+    # ✅ Allow private chats and owner everywhere
+    if chat.type == "private" or user.id == OWNER_ID:
+        return
+
+    # ✅ Only block group/supergroup if not authorized
+    if chat.type in ["group", "supergroup"] and chat.id not in AUTHORIZED_CHATS:
+        message = update.message.text
+        if message and message.startswith("/"):
+            command = message.split()[0][1:].split("@")[0]  # strip '/' and bot username
+            if command in PROTECTED_COMMANDS:
+                await update.message.reply_text(
+                    f"🚫 This group is not authorized to use this bot.\n\n"
+                    f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
+                    f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
+                )
+                return  # Block command execution
+
 
 
 
@@ -3132,7 +3138,8 @@ def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
      # 🔒 Unauthorized Group Filter (only triggers on commands)
-    application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=0)  
+    application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=0)
+  
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
