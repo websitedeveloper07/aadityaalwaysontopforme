@@ -3164,15 +3164,15 @@ from db import init_db
 BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
 OWNER_ID = 8438505794
 
-# VPS IP
+# VPS IP & Webhook
 WEBHOOK_HOST = "31.97.66.195"   # your VPS IP
 WEBHOOK_PORT = 8443             # must match cert
 WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
 WEBHOOK_URL = f"https://{WEBHOOK_HOST}:{WEBHOOK_PORT}{WEBHOOK_PATH}"
 
-# SSL certs
-CERT_FILE = "webhook.crt"
-KEY_FILE = "webhook.key"
+# SSL certs (use your newly generated)
+CERT_FILE = "/root/CERT_FOLDER/fullchain.pem"
+KEY_FILE = "/root/CERT_FOLDER/privkey.pem"
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
@@ -3183,7 +3183,7 @@ async def post_init(application):
     await init_db()
     logger.info("Database initialized")
 
-# Example handlers (make sure yours are defined somewhere else)
+# Example handlers (replace with your actual implementations)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🚀 Webhook bot started!")
 
@@ -3202,37 +3202,18 @@ def main():
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("info", info))
-    application.add_handler(CommandHandler("credits", credits_command))
-    application.add_handler(CommandHandler("chk", chk_command))
-    application.add_handler(CommandHandler("mchk", mchk_command))
-    application.add_handler(CommandHandler("mass", mass_command))
-    application.add_handler(CommandHandler("mtchk", mtchk))
-    application.add_handler(CommandHandler("gen", gen))
-    application.add_handler(CommandHandler("open", open_command))
-    application.add_handler(CommandHandler("adcr", adcr_command))
-    application.add_handler(CommandHandler("bin", bin_lookup))
-    application.add_handler(CommandHandler("fk", fk_command))
-    application.add_handler(CommandHandler("fl", fl_command))
-    application.add_handler(CommandHandler("status", status_command))
-    application.add_handler(CommandHandler("redeem", redeem_command))
+    # Add the rest of your command handlers here
+    # application.add_handler(CommandHandler("info", info))
+    # ...
 
     # 🔐 Admin Commands
     owner_filter = filters.User(OWNER_ID)
-    application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
-    application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
-    application.add_handler(CommandHandler("give_premium", give_premium, filters=owner_filter))
-    application.add_handler(CommandHandler("give_plus", give_plus, filters=owner_filter))
-    application.add_handler(CommandHandler("give_custom", give_custom, filters=owner_filter))
-    application.add_handler(CommandHandler("take_plan", take_plan, filters=owner_filter))
-    application.add_handler(CommandHandler("au", auth_group, filters=owner_filter))
-    application.add_handler(CommandHandler("reset", reset_command))
-    application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
-    application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
+    # application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
+    # ...
 
     # Callback & Error
-    application.add_handler(CallbackQueryHandler(handle_callback))
-    application.add_error_handler(error_handler)
+    # application.add_handler(CallbackQueryHandler(handle_callback))
+    # application.add_error_handler(error_handler)
 
     # 🌍 aiohttp web app
     web_app = web.Application()
@@ -3245,7 +3226,7 @@ def main():
 
     web_app.router.add_post(WEBHOOK_PATH, handle)
 
-    # 🚀 Run webhook server
+    # 🚀 Run webhook server with new certs
     logger.info(f"Starting webhook at {WEBHOOK_URL}")
     web.run_app(
         web_app,
@@ -3253,7 +3234,6 @@ def main():
         port=WEBHOOK_PORT,
         ssl_context=(CERT_FILE, KEY_FILE),
     )
-
 
 if __name__ == "__main__":
     main()
