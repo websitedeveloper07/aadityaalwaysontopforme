@@ -3332,9 +3332,6 @@ async def init():
     app.add_error_handler(error_handler)
     
     # ----------------- Set up the Webhook Server -----------------
-    # NOTE: Your `handle` function in aiohttp needs access to `app`.
-    # It's better to pass it as an argument or use `request.app`.
-    # For simplicity here, we use a global variable.
     webhook_app = web.Application()
     webhook_app.router.add_post(WEBHOOK_PATH, handle)
 
@@ -3354,26 +3351,16 @@ async def init():
     logger.info(f"Webhook server running on port {WEBHOOK_PORT}")
 
     # ----------------- Set Telegram Webhook & Start App -----------------
-    # A single call to set the webhook is sufficient.
     await app.bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", certificate=open(WEBHOOK_CERT, "rb"))
     logger.info(f"Telegram webhook set to: {WEBHOOK_URL}{WEBHOOK_PATH}")
-
-    # Start the application. Since we're using a webhook server, we don't call app.start().
-    # The webhook server is already listening. The application's handlers will
-    # process the updates passed to it by the webhook handler.
-    # The app.run_webhook is a utility method in some versions but here we're
-    # manually setting up the aiohttp server which is fine.
-
-    # This is a common pattern for webhook setups: the main asyncio loop keeps
-    # the server and application running.
-    # We remove the `app.start()` and `app.updates.start_polling()` calls here.
-
-    logger.info("Application is ready to receive updates via webhook.")
-
-    # Keep the bot running indefinitely
-    await site.wait_for_termination()
+    
+    # We need something to keep the main asyncio loop running.
+    # Await a Future that will never resolve.
+    # The webhook server will keep running in the background.
+    await asyncio.Future()
 
 
 if __name__ == "__main__":
     asyncio.run(init())
+
 
