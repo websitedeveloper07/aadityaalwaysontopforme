@@ -231,7 +231,8 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
                 f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
             )
-            return  # Stop processing other handlers
+            return  # Block command execution
+
 
 
 # safe_start.py — Optimized /start handler with final profile card
@@ -3119,8 +3120,10 @@ async def post_init(application):
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-    # 🔒 Unauthorized Group Filter (must be at top so it runs first)
-    application.add_handler(MessageHandler(filters.ALL, group_filter), group=0)
+     # 🔒 Unauthorized Group Filter (only triggers on commands)
+    application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=0)
+
+     
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
