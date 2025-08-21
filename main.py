@@ -237,6 +237,8 @@ async def check_authorized(update: Update) -> bool:
     # Allow private chats and owner always
     if update.effective_chat.type == "private" or user_id == OWNER_ID:
         return True
+    return False
+
 
 from telegram.ext import filters, MessageHandler
 
@@ -248,12 +250,24 @@ async def block_unauthorized(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "🔗 Official group: https://t.me/CARDER33"
     )
 
-application.add_handler(
-    MessageHandler(
-        filters.COMMAND & (~filters.Chat(AUTHORIZED_CHATS)) & (~filters.User(OWNER_ID)),
-        block_unauthorized
+
+def main():
+    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+
+    # 🔹 All your command handlers go here
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    # ... (rest of your commands)
+
+    # 🚫 Block unauthorized commands (GLOBAL FIREWALL)
+    application.add_handler(
+        MessageHandler(
+            filters.COMMAND & (~filters.Chat(AUTHORIZED_CHATS)) & (~filters.User(OWNER_ID)),
+            block_unauthorized
+        )
     )
-)
+
+    application.run_polling()
 
 
 
