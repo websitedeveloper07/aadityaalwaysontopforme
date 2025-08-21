@@ -3241,16 +3241,15 @@ async def init():
     await app.bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", certificate=open(WEBHOOK_CERT, "rb"))
     logger.info(f"Telegram webhook set: {WEBHOOK_URL}{WEBHOOK_PATH}")
 
-    # ---- Start the application (process updates from webhook) ----
+    # ---- Start the application ----
     await app.initialize()
     await app.start()
-    await app.updater.start()  # Only needed to start the update queue
-    await app.updater.wait_closed()  # Keeps the bot running
+    await app.updates.start_polling()  # Starts processing updates from the webhook queue
+
+    # Keep the bot running
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
     import asyncio
     asyncio.run(init())
-
-
-
-
