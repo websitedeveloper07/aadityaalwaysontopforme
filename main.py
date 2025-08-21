@@ -253,14 +253,15 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # In private or the authorized group → do nothing, commands continue
 
 # --- GLOBAL STATE ---
-AUTHORIZED_CHATS = set()  # You can manually add authorized group IDs here
+user_last_command = {}
+AUTHORIZED_CHATS = set()  # Add your authorized group IDs here
 
 BOT_COMMANDS = [
-    "/start", "/help", "/gen", "/bin", "/chk", "/mchk", "/mass",
-    "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
+    "start", "help", "gen", "bin", "chk", "mchk", "mass",
+    "mtchk", "fk", "fl", "open", "status", "credits", "info"
 ]
 
-from telegram.ext import ApplicationHandlerStop
+from telegram.ext import ApplicationHandlerStop, filters
 
 async def group_filter(update, context):
     chat = update.effective_chat
@@ -268,18 +269,21 @@ async def group_filter(update, context):
 
     # Only check commands in groups
     if chat.type in ["group", "supergroup"]:
-        # If the group is NOT authorized
         if chat.id not in AUTHORIZED_CHATS:
-            if message.text:
-                cmd = message.text.split()[0].lower()
-                if cmd in BOT_COMMANDS:
-                    await message.reply_text(
-                        f"🚫 This group is not authorized to use this bot.\n\n"
-                        f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
-                        f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
-                    )
-                    # Stop other handlers (so the command is not executed)
-                    raise ApplicationHandlerStop
+            # Check if the message contains a command
+            if message.entities:
+                for ent in message.entities:
+                    if ent.type == "bot_command":
+                        # Extract command without the "/"
+                        cmd_text = message.text[ent.offset+1 : ent.offset+ent.length].split("@")[0].lower()
+                        if cmd_text in BOT_COMMANDS:
+                            await message.reply_text(
+                                f"🚫 This group is not authorized to use this bot.\n\n"
+                                f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
+                                f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
+                            )
+                            # Stop other handlers (so the command is not executed)
+                            raise ApplicationHandlerStop
     # Private chats or authorized groups → do nothing
 
 
