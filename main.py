@@ -3169,7 +3169,7 @@ WEBHOOK_KEY = "webhook.key"
 WEBHOOK_URL = "https://31.97.66.195"  # Your VPS IP
 # -----------------------------------------
 
-# ✅ Logging
+# Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -3181,7 +3181,7 @@ async def post_init(application):
 # ----------------- WEBHOOK HANDLER -----------------
 async def handle(request):
     data = await request.json()
-    update = Update.de_json(data, app.bot)
+    update = Update.de_json(data, bot=app.bot)
     await app.update_queue.put(update)
     return web.Response(text="ok")
 
@@ -3229,7 +3229,6 @@ async def init():
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain(WEBHOOK_CERT, WEBHOOK_KEY)
 
-    # aiohttp server for webhook
     webhook_app = web.Application()
     webhook_app.router.add_post(WEBHOOK_PATH, handle)
     runner = web.AppRunner(webhook_app)
@@ -3242,15 +3241,16 @@ async def init():
     await app.bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", certificate=open(WEBHOOK_CERT, "rb"))
     logger.info(f"Telegram webhook set: {WEBHOOK_URL}{WEBHOOK_PATH}")
 
-    # ---- Start processing updates ----
+    # ---- Start the application (process updates from webhook) ----
     await app.initialize()
     await app.start()
-    await app.updater.start_polling()  # Processes updates from webhook queue
-    await app.updater.idle()
+    await app.updater.start()  # Only needed to start the update queue
+    await app.updater.wait_closed()  # Keeps the bot running
 
 if __name__ == "__main__":
     import asyncio
     asyncio.run(init())
+
 
 
 
