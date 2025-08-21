@@ -1185,20 +1185,20 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         
         header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
 
-        formatted_response = f"_{escape_markdown_v2(api_status)}_"
+        formatted_response = api_status  # or api_response if you want the actual API message
 
         final_text = (
             f"{header}\n"
-            f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-            f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
-            f"{bullet_link} Response ➜ {formatted_response}\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} Brand ➜ {escape_markdown_v2(brand)}\n"
-            f"{bullet_link} Bank ➜ {escape_markdown_v2(issuer)}\n"
-            f"{bullet_link} Country ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} Request By ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
-            f"{bullet_link} Developer ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
             f"――――――――――――――――"
         )
 
@@ -1288,8 +1288,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
         f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-        f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
-        f"{bullet_link} Status ➜ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈\\.\\.\\.\n"
+        f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+        f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
         "════════════════════"
     )
 
