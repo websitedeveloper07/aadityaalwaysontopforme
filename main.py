@@ -3164,64 +3164,23 @@ from db import init_db
 BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
 OWNER_ID = 8438505794
 WEBHOOK_PATH = "/webhook"
-WEBHOOK_PORT = 443          # Standard HTTPS port
+WEBHOOK_PORT = 443
 WEBHOOK_CERT = "webhook.crt"
 WEBHOOK_KEY = "webhook.key"
+WEBHOOK_URL = "https://31.97.66.195"  # Your VPS IP
 # -----------------------------------------
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ----------------- COMMAND HANDLERS -----------------
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! Bot is live via webhook ✅")
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Help command here...")
-
-# Add all your command handlers here
-# For example: info, credits, chk, mchk, mass, mtchk, gen, open, adcr, bin_lookup, fk, fl, status, redeem
-async def info(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def redeem_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-
-# Admin commands
-async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def give_starter(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def give_premium(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def give_plus(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def give_custom(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def take_plan(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def auth_group(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def remove_authorize_user(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def gen_codes_command(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-
-# Callback & Error
-async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE): pass
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(msg="Exception while handling an update:", exc_info=context.error)
-
 # ----------------- POST INIT -----------------
 async def post_init(application):
     await init_db()
     logger.info("Database initialized")
 
-# ----------------- WEBHOOK SERVER -----------------
+# ----------------- WEBHOOK HANDLER -----------------
 async def handle(request):
-    """Receive Telegram updates via webhook"""
     data = await request.json()
     update = Update.de_json(data, app.bot)
     await app.update_queue.put(update)
@@ -3267,18 +3226,19 @@ async def init():
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_error_handler(error_handler)
 
-    # ---- Setup SSL and Webhook server ----
+    # ---- SSL & Webhook Server ----
     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     ssl_context.load_cert_chain(WEBHOOK_CERT, WEBHOOK_KEY)
 
+    # Run aiohttp server for webhook
     runner = web.AppRunner(web.Application())
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", WEBHOOK_PORT, ssl_context=ssl_context)
     await site.start()
 
-    # ---- Set webhook with Telegram ----
-    await app.bot.set_webhook(f"https://YOUR_VPS_IP{WEBHOOK_PATH}", certificate=open(WEBHOOK_CERT, "rb"))
-    logger.info(f"Webhook set: https://YOUR_VPS_IP{WEBHOOK_PATH}")
+    # ---- Set Telegram Webhook ----
+    await app.bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", certificate=open(WEBHOOK_CERT, "rb"))
+    logger.info(f"Webhook set: {WEBHOOK_URL}{WEBHOOK_PATH}")
 
     # ---- Start processing updates ----
     await app.initialize()
@@ -3289,4 +3249,5 @@ async def init():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(init())
+
 
