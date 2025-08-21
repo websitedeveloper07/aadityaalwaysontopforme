@@ -3147,6 +3147,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 # === REGISTERING COMMANDS AND HANDLERS ===
+import ssl
 import logging
 from aiohttp import web
 from telegram import Update
@@ -3164,9 +3165,9 @@ from db import init_db
 BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
 OWNER_ID = 8438505794
 
-# VPS IP
-WEBHOOK_HOST = "31.97.66.195"   # your VPS IP
-WEBHOOK_PORT = 8443             # must match cert
+# VPS IP & webhook
+WEBHOOK_HOST = "31.97.66.195"
+WEBHOOK_PORT = 8443
 WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
 WEBHOOK_URL = f"https://{WEBHOOK_HOST}:{WEBHOOK_PORT}{WEBHOOK_PATH}"
 
@@ -3183,7 +3184,7 @@ async def post_init(application):
     await init_db()
     logger.info("Database initialized")
 
-# Example handlers (make sure yours are defined somewhere else)
+# Example Handlers (replace with your actual implementations)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🚀 Webhook bot started!")
 
@@ -3191,7 +3192,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("ℹ️ Available commands: /start /help ...")
 
 def main():
-    # Build application
+    # Build bot application
     application = (
         ApplicationBuilder()
         .token(BOT_TOKEN)
@@ -3230,7 +3231,7 @@ def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # Callback & Error
+    # Callback & Error Handlers
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
@@ -3240,10 +3241,14 @@ def main():
     async def handle(request):
         data = await request.json()
         update = Update.de_json(data, application.bot)
-        await application.process_update(update)
-        return web.Response()
+        await application.update_queue.put(update)
+        return web.Response(text="ok")
 
     web_app.router.add_post(WEBHOOK_PATH, handle)
+
+    # 🔒 SSL Context
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
 
     # 🚀 Run webhook server
     logger.info(f"Starting webhook at {WEBHOOK_URL}")
@@ -3251,9 +3256,10 @@ def main():
         web_app,
         host="0.0.0.0",
         port=WEBHOOK_PORT,
-        ssl_context=(CERT_FILE, KEY_FILE),
+        ssl_context=ssl_context,
     )
 
 
 if __name__ == "__main__":
     main()
+
