@@ -3155,7 +3155,6 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     CallbackQueryHandler,
-    ContextTypes,
     filters
 )
 from db import init_db
@@ -3227,18 +3226,21 @@ async def init():
     app.add_error_handler(error_handler)
 
     # ---- SSL & Webhook Server ----
-    ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain(WEBHOOK_CERT, WEBHOOK_KEY)
 
-    # Run aiohttp server for webhook
-    runner = web.AppRunner(web.Application())
+    # aiohttp server for webhook
+    webhook_app = web.Application()
+    webhook_app.router.add_post(WEBHOOK_PATH, handle)
+    runner = web.AppRunner(webhook_app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", WEBHOOK_PORT, ssl_context=ssl_context)
     await site.start()
+    logger.info(f"Webhook server running on port {WEBHOOK_PORT}")
 
     # ---- Set Telegram Webhook ----
     await app.bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", certificate=open(WEBHOOK_CERT, "rb"))
-    logger.info(f"Webhook set: {WEBHOOK_URL}{WEBHOOK_PATH}")
+    logger.info(f"Telegram webhook set: {WEBHOOK_URL}{WEBHOOK_PATH}")
 
     # ---- Start processing updates ----
     await app.initialize()
@@ -3249,5 +3251,6 @@ async def init():
 if __name__ == "__main__":
     import asyncio
     asyncio.run(init())
+
 
 
