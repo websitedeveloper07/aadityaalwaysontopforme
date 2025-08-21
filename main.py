@@ -219,56 +219,36 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
 
 from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or config
 
+
 # === CONFIG ===
 AUTHORIZED_CHATS = set()
 OWNER_ID = 123456789  # replace with your Telegram user ID
 
-
-def add_authorized_group(chat_id: int):
-    """Owner can add groups here manually."""
-    AUTHORIZED_CHATS.add(chat_id)
-
-
-async def check_authorized(update: Update) -> bool:
-    """Check if chat is authorized. If not, warn and return False."""
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-
-    # Allow private chats and owner always
-    if update.effective_chat.type == "private" or user_id == OWNER_ID:
-        return True
-    return False
+# Allowed bot commands
+BOT_COMMANDS = [
+    "/start", "/help", "/gen", "/bin", "/chk", "/mchk", "/mass",
+    "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
+]
 
 
-from telegram.ext import filters, MessageHandler
+async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    message = update.effective_message
 
-# 🚫 Block unauthorized commands
-async def block_unauthorized(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🚫 This group is not authorized to use this bot.\n\n"
-        "📩 Contact @K4linuxx to get access.\n"
-        "🔗 Official group: https://t.me/CARDER33"
-    )
-
-
-def main():
-    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
-
-    # 🔹 All your command handlers go here
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    # ... (rest of your commands)
-
-    # 🚫 Block unauthorized commands (GLOBAL FIREWALL)
-    application.add_handler(
-        MessageHandler(
-            filters.COMMAND & (~filters.Chat(AUTHORIZED_CHATS)) & (~filters.User(OWNER_ID)),
-            block_unauthorized
-        )
-    )
-
-    application.run_polling()
-
+    # Only check in groups
+    if chat.type in ["group", "supergroup"]:
+        if chat.id not in AUTHORIZED_CHATS:
+            if message.text:
+                cmd = message.text.split()[0].lower()  # first word (the command)
+                if cmd in BOT_COMMANDS:  # only block if it's one of your commands
+                    await message.reply_text(
+                        f"🚫 This group is not authorized to use this bot.\n\n"
+                        f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
+                        f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
+                    )
+                    return  # block further handlers
+    # otherwise, let it pass
+    return
 
 
 # safe_start.py — Optimized /start handler with final profile card
@@ -3170,6 +3150,9 @@ async def post_init(application):
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
+    app.add_handler(MessageHandler(filters.ALL, group_filter), group=0)
+
+
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
@@ -3201,13 +3184,7 @@ def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # 🚫 Block unauthorized commands (GLOBAL FIREWALL)
-    application.add_handler(
-        MessageHandler(
-            filters.COMMAND & (~filters.Chat(AUTHORIZED_CHATS)) & (~filters.User(OWNER_ID)),
-            block_unauthorized
-        )
-    )
+
 
     # Callback & Error
     application.add_handler(CallbackQueryHandler(handle_callback))
