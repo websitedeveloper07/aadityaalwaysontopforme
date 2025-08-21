@@ -1166,14 +1166,13 @@ BULLET_GROUP_LINK = "https://t.me/your_group"
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
+    # Stylish mapping function
     def style_response(api_response: str):
         text = api_response.lower()
-        if text in ["succeeded", "approved"]:
+        if "approved" in text or "succeeded" in text:
             return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-        elif text == "declined":
+        elif "declined" in text or "failed" in text:
             return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-        elif text == "failed":
-            return "𝗙𝗔𝗜𝗟𝗘𝗗 ❌"
         elif "ccn live" in text:
             return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
         elif "3d" in text or "threed" in text:
@@ -1240,6 +1239,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             parse_mode=ParseMode.MARKDOWN_V2,
             disable_web_page_preview=True
         )
+
 
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1454,7 +1454,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     results = []
     total_cards = len(cards_to_check)
 
-    semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent requests
+    semaphore = asyncio.Semaphore(5)  # Limit concurrency
 
     # Stylish mapping function
     def style_response(api_response: str):
@@ -1470,13 +1470,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         elif "3d" in text or "threed" in text:
             return "⚠️ 𝟯𝗗𝗦"
         else:
-            return f"**{api_response.upper()}**"  # Unknown responses in bold
+            return f"**{api_response.upper()}**"
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
 
         async with semaphore:
-            parts = raw.split("|")
+            parts = raw.strip().split("|")
             if len(parts) != 4:
                 checked_count += 1
                 error_count += 1
@@ -1498,15 +1498,16 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         raise Exception(f"HTTP {resp.status}")
                     try:
                         data = await resp.json()
-                    except Exception as e:
+                    except Exception:
                         raw_text = await resp.text()
-                        print(f"[DEBUG] JSON decode failed for {cc_normalized}: {e}, raw={raw_text[:200]}...")
-                        raise Exception(f"JSON decode failed: {e}")
+                        raise Exception(f"Invalid JSON: {raw_text[:200]}")
+
             except Exception as e:
                 checked_count += 1
                 error_count += 1
-                return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
+                return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e), version=2)}"
 
+            # Extract status and response
             api_status = (data.get("status") or "").strip()
             api_response_text = (data.get("response") or "").strip()
 
@@ -1523,6 +1524,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             checked_count += 1
 
+            # Final card result
             return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {styled_response}"
 
     async with aiohttp.ClientSession() as session:
@@ -1836,19 +1838,19 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
     semaphore = asyncio.Semaphore(5)  # Limit concurrent requests
 
-    # Stylish response mapping
-    def style_response(api_response: str):
-        text = api_response.lower()
-        if text in ["succeeded", "approved"]:
+    # Function to convert API response into styled Telegram message
+    def style_response(api_status: str, api_response: str):
+        status_lower = api_status.lower()
+        if status_lower in ["succeeded", "approved"]:
             return "✅ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗"
-        elif text in ["declined", "failed"]:
+        elif status_lower in ["declined", "failed"]:
             return "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗"
-        elif "ccn live" in text:
+        elif "ccn live" in api_response.lower():
             return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
-        elif "3d" in text or "threed" in text:
+        elif "3d" in api_response.lower() or "threed" in api_response.lower():
             return "⚠️ 𝟯𝗗𝗦"
         else:
-            return f"❓ {api_response.upper()}"
+            return f"❓ {api_response}"
 
     async with aiohttp.ClientSession() as session:
         async def fetch_card(card):
@@ -1876,15 +1878,16 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         api_status = data.get("status", "").strip()
                         api_response_text = data.get("response", "").strip()
 
-                        styled_status = style_response(api_status)
-                        styled_response = style_response(api_response_text)
-
-                        # Count statuses
-                        if "✅" in styled_status:
+                        # Count statuses for stats
+                        status_lower = api_status.lower()
+                        if status_lower in ["succeeded", "approved"]:
                             approved_count += 1
-                        elif "❌" in styled_status:
+                        elif status_lower in ["declined", "failed"]:
                             declined_count += 1
+                        else:
+                            error_count += 1
 
+                        styled_response = style_response(api_status, api_response_text)
                         return cc_normalized, styled_response
                 except Exception as e:
                     error_count += 1
@@ -2300,18 +2303,20 @@ async def background_check_multi(update, context, cards, processing_msg):
         special_chars = r'\_*[]()~`>#+-=|{}.!'
         return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
 
-    def normalize_status_text(text: str) -> str:
+    def normalize_status_text(api_status: str, api_response: str = None) -> str:
         """
         Normalize API responses to standardized stylish statuses.
         """
-        text_lower = text.lower()
-        if "approved" in text_lower or "succeeded" in text_lower:
+        status_text = api_status.lower()
+        response_text = (api_response or "").lower()
+
+        if "approved" in status_text or "succeeded" in status_text:
             return "✅ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗"
-        elif "declined" in text_lower:
+        elif "declined" in status_text or "failed" in status_text or "declined" in response_text:
             return "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗"
-        elif "ccn live" in text_lower:
+        elif "ccn live" in status_text or "ccn live" in response_text:
             return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
-        elif "3d" in text_lower or "threed" in text_lower:
+        elif "3d" in status_text or "threed" in status_text or "3d" in response_text or "threed" in response_text:
             return "⚠️ 𝟯𝗗𝗦"
         else:
             return "❓ 𝗨𝗡𝗞𝗡𝗢𝗪𝗡"
@@ -2327,9 +2332,12 @@ async def background_check_multi(update, context, cards, processing_msg):
                     try:
                         json_data = json.loads(text_data)
                         status_text = json_data.get("status", text_data)
+                        response_text = json_data.get("response", text_data)
                     except (json.JSONDecodeError, KeyError):
                         status_text = text_data.strip()
-                    stylish_status = normalize_status_text(status_text)
+                        response_text = text_data.strip()
+
+                    stylish_status = normalize_status_text(status_text, response_text)
                     return card, stylish_status
             except Exception as e:
                 return card, f"❌ 𝗘𝗥𝗥𝗢𝗥: {str(e)}"
@@ -2340,7 +2348,7 @@ async def background_check_multi(update, context, cards, processing_msg):
         bar = "■" * filled_len + "□" * empty_len
         progress_text = (
             f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {total} | ✅𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➼ {current_count}/{total}\n"
+            f"💳 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {total} | ✅ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➼ {current_count}/{total}\n"
             f"▌ [{bar}] ▌"
         )
         try:
@@ -2354,7 +2362,7 @@ async def background_check_multi(update, context, cards, processing_msg):
 
         for task in asyncio.as_completed(tasks):
             card, stylish_status = await task
-            results.append(f"`{card}` ➳ {stylish_status}")
+            results.append(f"`{escape_md(card)}` ➳ {escape_md(stylish_status)}")
 
             # Count each status
             if "✅" in stylish_status:
@@ -2369,7 +2377,7 @@ async def background_check_multi(update, context, cards, processing_msg):
                 unknown += 1
 
             await update_progress(len(results))
-            await asyncio.sleep(0.5)  # slight delay for smooth edits
+            await asyncio.sleep(0.2)  # slight delay for smooth edits
 
     # Save results to file
     output_filename = "checked.txt"
