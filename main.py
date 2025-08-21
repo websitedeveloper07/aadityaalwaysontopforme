@@ -221,9 +221,10 @@ from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or con
 
 
 # === CONFIG ===
-AUTHORIZED_CHATS = set()
-OWNER_ID = 123456789  # replace with your Telegram user ID
+# Only this group is authorized
+AUTHORIZED_GROUP_ID = -1002554243871
 
+# List of your bot commands
 BOT_COMMANDS = [
     "/start", "/help", "/gen", "/bin", "/chk", "/mchk", "/mass",
     "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
@@ -235,8 +236,10 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     message = update.effective_message
 
+    # Only check in groups
     if chat.type in ["group", "supergroup"]:
-        if chat.id not in AUTHORIZED_CHATS:
+        # If the group is NOT the authorized group
+        if chat.id != AUTHORIZED_GROUP_ID:
             if message.text:
                 cmd = message.text.split()[0].lower()
                 if cmd in BOT_COMMANDS:
@@ -245,7 +248,9 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
                         f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
                     )
-                    raise ApplicationHandlerStop  # 🚫 stop other handlers
+                    # Stop other handlers from running
+                    raise ApplicationHandlerStop
+    # In private or the authorized group → do nothing, commands continue
 
 
 
