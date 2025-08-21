@@ -221,8 +221,7 @@ from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or con
 
 
 # --- Group Authorization Block ---
-# List of bot commands that require authorization in groups
-# List of commands that require authorization in groups
+# Commands that require authorization in groups
 PROTECTED_COMMANDS = [
     "start", "help", "info", "credits", "chk", "mchk", "mass",
     "mtchk", "gen", "open", "adcr", "bin", "fk", "fl", "status", "redeem"
@@ -232,15 +231,14 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     user = update.effective_user
 
-    # Allow private chats and owner everywhere
+    # ✅ Private chats and owner bypass restriction
     if chat.type == "private" or user.id == OWNER_ID:
-        return  # let other handlers run normally
+        return  # let other handlers run
 
-    # If it's a group/supergroup but not authorized
+    # ✅ Check unauthorized groups
     if chat.type in ["group", "supergroup"] and chat.id not in AUTHORIZED_CHATS:
-        message = update.message.text if update.message else None
-        if message and message.startswith("/"):
-            command = message.split()[0][1:].split("@")[0]  # strip '/' and bot username
+        if update.message and update.message.text and update.message.text.startswith("/"):
+            command = update.message.text.split()[0][1:].split("@")[0]  # /command@BotUser -> command
             if command in PROTECTED_COMMANDS:
                 await update.message.reply_text(
                     f"🚫 This group is not authorized to use this bot.\n\n"
@@ -249,7 +247,8 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return  # stop this command only
 
-
+    # ✅ Otherwise, let it pass through
+    return
 
 
 
@@ -3139,8 +3138,10 @@ async def post_init(application):
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-     # 🔒 Unauthorized Group Filter (only triggers on commands)
+
+    # 🔒 Unauthorized Group Filter (only for commands)
     application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=0)
+
 
   
 
