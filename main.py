@@ -229,11 +229,12 @@ BOT_COMMANDS = [
     "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
 ]
 
+from telegram.ext import ApplicationHandlerStop
+
 async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     message = update.effective_message
 
-    # Run only in groups
     if chat.type in ["group", "supergroup"]:
         if chat.id not in AUTHORIZED_CHATS:
             if message.text:
@@ -244,11 +245,7 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
                         f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
                     )
-                    return  # block only here
-    # ❌ Do NOT return here for private/authorized groups
-    # just exit silently so other handlers still run
-
-
+                    raise ApplicationHandlerStop  # 🚫 stop other handlers
 
 
 
