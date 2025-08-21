@@ -3158,8 +3158,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     filters
 )
-# Assuming 'db' and other handlers like 'start' are in separate files or defined elsewhere.
-# For this example, let's include placeholders for the functions.
+from db import init_db
 
 # ----------------- CONFIG -----------------
 BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
@@ -3172,106 +3171,8 @@ WEBHOOK_URL = "https://31.97.66.195"  # Your VPS IP
 # -----------------------------------------
 
 # Logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# ----------------- PLACEHOLDER HANDLERS -----------------
-# Define placeholder functions for the command and callback handlers
-# so the code can run without the actual implementation.
-async def start(update, context):
-    await update.message.reply_text("Hello! The bot is running.")
-
-async def help_command(update, context):
-    await update.message.reply_text("Help command placeholder.")
-
-async def info(update, context):
-    await update.message.reply_text("Info command placeholder.")
-
-async def credits_command(update, context):
-    await update.message.reply_text("Credits command placeholder.")
-
-async def chk_command(update, context):
-    await update.message.reply_text("Chk command placeholder.")
-
-async def mchk_command(update, context):
-    await update.message.reply_text("Mchk command placeholder.")
-
-async def mass_command(update, context):
-    await update.message.reply_text("Mass command placeholder.")
-
-async def mtchk(update, context):
-    await update.message.reply_text("Mtchk command placeholder.")
-
-async def gen(update, context):
-    await update.message.reply_text("Gen command placeholder.")
-
-async def open_command(update, context):
-    await update.message.reply_text("Open command placeholder.")
-
-async def adcr_command(update, context):
-    await update.message.reply_text("Adcr command placeholder.")
-
-async def bin_lookup(update, context):
-    await update.message.reply_text("Bin lookup command placeholder.")
-
-async def fk_command(update, context):
-    await update.message.reply_text("Fk command placeholder.")
-
-async def fl_command(update, context):
-    await update.message.reply_text("Fl command placeholder.")
-
-async def status_command(update, context):
-    await update.message.reply_text("Status command placeholder.")
-
-async def redeem_command(update, context):
-    await update.message.reply_text("Redeem command placeholder.")
-
-async def admin_command(update, context):
-    await update.message.reply_text("Admin command placeholder.")
-
-async def give_starter(update, context):
-    await update.message.reply_text("Give starter command placeholder.")
-
-async def give_premium(update, context):
-    await update.message.reply_text("Give premium command placeholder.")
-
-async def give_plus(update, context):
-    await update.message.reply_text("Give plus command placeholder.")
-
-async def give_custom(update, context):
-    await update.message.reply_text("Give custom command placeholder.")
-
-async def take_plan(update, context):
-    await update.message.reply_text("Take plan command placeholder.")
-
-async def auth_group(update, context):
-    await update.message.reply_text("Auth group command placeholder.")
-
-async def reset_command(update, context):
-    await update.message.reply_text("Reset command placeholder.")
-
-async def remove_authorize_user(update, context):
-    await update.message.reply_text("Remove authorized user command placeholder.")
-
-async def gen_codes_command(update, context):
-    await update.message.reply_text("Generate codes command placeholder.")
-
-async def handle_callback(update, context):
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text("Callback handled.")
-
-async def error_handler(update, context):
-    logger.error("An error occurred: %s", context.error)
-
-# Assuming init_db exists in 'db.py' or is defined.
-async def init_db():
-    logger.info("Initializing database...")
-    # Add your database initialization logic here, e.g., connect to MongoDB.
-    await asyncio.sleep(1) # Simulate a database connection process
-    logger.info("Database initialized successfully.")
 
 # ----------------- POST INIT -----------------
 async def post_init(application):
@@ -3279,21 +3180,15 @@ async def post_init(application):
     logger.info("Database initialized")
 
 # ----------------- WEBHOOK HANDLER -----------------
-# The handle function needs access to the 'app' object.
-# We will define 'app' as a global variable.
-app = None
 async def handle(request):
-    global app
     data = await request.json()
-    update = Update.de_json(data, app.bot)
-    await app.process_update(update) # Use app.process_update to handle the update
+    update = Update.de_json(data, bot=app.bot)
+    await app.update_queue.put(update)  # feed updates into bot queue
     return web.Response(text="ok")
 
 # ----------------- MAIN -----------------
 async def init():
-    """Initializes the bot and sets up the webhook server."""
     global app
-    # Build the application
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
     # ---- Public Commands ----
@@ -3330,35 +3225,31 @@ async def init():
     # ---- Callback & Error ----
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_error_handler(error_handler)
-    
-    # ----------------- Set up the Webhook Server -----------------
+
+    # ---- SSL & Webhook Server ----
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain(WEBHOOK_CERT, WEBHOOK_KEY)
+
     webhook_app = web.Application()
     webhook_app.router.add_post(WEBHOOK_PATH, handle)
-
-    # Load SSL context
-    try:
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(WEBHOOK_CERT, WEBHOOK_KEY)
-    except FileNotFoundError:
-        logger.error(f"SSL certificate or key not found. Please ensure '{WEBHOOK_CERT}' and '{WEBHOOK_KEY}' are in the same directory.")
-        return
-
-    # Start the aiohttp runner
     runner = web.AppRunner(webhook_app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", WEBHOOK_PORT, ssl_context=ssl_context)
     await site.start()
     logger.info(f"Webhook server running on port {WEBHOOK_PORT}")
 
-    # ----------------- Set Telegram Webhook & Start App -----------------
+    # ---- Set Telegram Webhook ----
     await app.bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", certificate=open(WEBHOOK_CERT, "rb"))
-    logger.info(f"Telegram webhook set to: {WEBHOOK_URL}{WEBHOOK_PATH}")
-    
-    # We need something to keep the main asyncio loop running.
-    # Await a Future that will never resolve.
-    # The webhook server will keep running in the background.
-    await asyncio.Future()
+    logger.info(f"Telegram webhook set: {WEBHOOK_URL}{WEBHOOK_PATH}")
 
+    # ---- Start the application ----
+    await app.initialize()
+    await app.start()
+    # No polling needed; updates are handled by webhook queue
+
+    # Keep the bot running
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
     asyncio.run(init())
