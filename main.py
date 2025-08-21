@@ -3178,6 +3178,15 @@ def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
+    # 🚫 Block unauthorized commands (GLOBAL FIREWALL)
+    application.add_handler(
+        MessageHandler(
+            filters.COMMAND & (~filters.Chat(AUTHORIZED_CHATS)) & (~filters.User(OWNER_ID)),
+            block_unauthorized
+        )
+    )
+
+
     # Callback & Error
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
