@@ -219,6 +219,21 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
 
 from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or config
 
+
+# --- Group Authorization Block ---
+async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+
+    if chat.type in ["group", "supergroup"]:
+        if chat.id not in AUTHORIZED_CHATS:
+            await update.message.reply_text(
+                f"🚫 This group is not authorized to use this bot.\n\n"
+                f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
+                f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
+            )
+            return  # Stop processing other handlers
+
+
 # safe_start.py — Optimized /start handler with final profile card
 from datetime import datetime
 import logging
@@ -3103,6 +3118,9 @@ async def post_init(application):
 
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+
+    # 🔒 Unauthorized Group Filter (must be at top so it runs first)
+    application.add_handler(MessageHandler(filters.ALL, group_filter), group=0)
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
