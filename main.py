@@ -3121,19 +3121,33 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
+    MessageHandler,
     filters
 )
 from db import init_db
 
-# ⛳ Load environment variables from Railway
+# 🛡️ Security
+AUTHORIZED_CHATS = set()  # Groups you manually authorize
+OWNER_ID = 8438505794     # Replace with your Telegram user ID
+
+# 🔑 Bot token
 BOT_TOKEN = "7280595087:AAGUIe5Qx4rPIJmyBCvksZENNFGxiqKZjUA"
-OWNER_ID = 8438505794
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🧠 Import your command handlers here
+
+# 🚫 Unauthorized firewall handler
+async def block_unauthorized(update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🚫 This group is not authorized to use this bot.\n\n"
+        "📩 Contact @K4linuxx to get access.\n"
+        "🔗 Official group: https://t.me/CARDER33"
+    )
+
+
+# 🧠 Database init
 async def post_init(application):
     await init_db()
     logger.info("Database initialized")
@@ -3141,11 +3155,6 @@ async def post_init(application):
 
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
-
-
-
-
-  
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
@@ -3186,12 +3195,11 @@ def main():
         )
     )
 
-
     # Callback & Error
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
-    # 🔁 Start polling (handles its own event loop!)
+    # 🔁 Start polling
     logger.info("Bot started and is polling for updates...")
     application.run_polling()
 
