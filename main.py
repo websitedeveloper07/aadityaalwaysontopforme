@@ -2307,12 +2307,12 @@ async def background_check_multi(update, context, cards, processing_msg):
         """
         Normalize API responses to standardized stylish statuses.
         """
-        status_text = api_status.lower()
-        response_text = (api_response or "").lower()
+        status_text = (api_status or "").strip().lower()
+        response_text = (api_response or "").strip().lower()
 
         if "approved" in status_text or "succeeded" in status_text:
             return "✅ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗"
-        elif "declined" in status_text or "failed" in status_text or "declined" in response_text:
+        elif "declined" in status_text or "failed" in status_text or "declined" in response_text or "failed" in response_text:
             return "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗"
         elif "ccn live" in status_text or "ccn live" in response_text:
             return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
@@ -2331,8 +2331,8 @@ async def background_check_multi(update, context, cards, processing_msg):
                     text_data = await resp.text()
                     try:
                         json_data = json.loads(text_data)
-                        status_text = json_data.get("status", text_data)
-                        response_text = json_data.get("response", text_data)
+                        status_text = json_data.get("status", "").strip()
+                        response_text = json_data.get("response", "").strip()
                     except (json.JSONDecodeError, KeyError):
                         status_text = text_data.strip()
                         response_text = text_data.strip()
@@ -2362,7 +2362,7 @@ async def background_check_multi(update, context, cards, processing_msg):
 
         for task in asyncio.as_completed(tasks):
             card, stylish_status = await task
-            results.append(f"`{escape_md(card)}` ➳ {escape_md(stylish_status)}")
+            results.append(f"`{escape_md(card)}` ➳ {stylish_status}")  # don't escape emoji
 
             # Count each status
             if "✅" in stylish_status:
@@ -2377,7 +2377,7 @@ async def background_check_multi(update, context, cards, processing_msg):
                 unknown += 1
 
             await update_progress(len(results))
-            await asyncio.sleep(0.2)  # slight delay for smooth edits
+            await asyncio.sleep(0.2)
 
     # Save results to file
     output_filename = "checked.txt"
