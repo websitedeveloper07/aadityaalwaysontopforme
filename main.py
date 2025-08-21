@@ -219,6 +219,41 @@ async def enforce_cooldown(user_id: int, update: Update) -> bool:
 
 from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or config
 
+# === CONFIG ===
+AUTHORIZED_CHATS = set()
+OWNER_ID = 123456789  # replace with your Telegram user ID
+
+
+def add_authorized_group(chat_id: int):
+    """Owner can add groups here manually."""
+    AUTHORIZED_CHATS.add(chat_id)
+
+
+async def check_authorized(update: Update) -> bool:
+    """Check if chat is authorized. If not, warn and return False."""
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+
+    # Allow private chats and owner always
+    if update.effective_chat.type == "private" or user_id == OWNER_ID:
+        return True
+
+from telegram.ext import filters, MessageHandler
+
+# 🚫 Block unauthorized commands
+async def block_unauthorized(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🚫 This group is not authorized to use this bot.\n\n"
+        "📩 Contact @K4linuxx to get access.\n"
+        "🔗 Official group: https://t.me/CARDER33"
+    )
+
+application.add_handler(
+    MessageHandler(
+        filters.COMMAND & (~filters.Chat(AUTHORIZED_CHATS)) & (~filters.User(OWNER_ID)),
+        block_unauthorized
+    )
+)
 
 
 
