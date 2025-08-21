@@ -2193,6 +2193,7 @@ def normalize_status_text(s: str) -> str:
     return "".join(mapping.get(char, char) for char in s).upper()
 
 # ─── /mtchk Handler ──────────────────────────────
+# ─── /mtchk Handler ──────────────────────────────
 import os
 import asyncio
 from telegram import Update
@@ -2202,35 +2203,34 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat = update.effective_chat
 
-    # ✅ Authorization (group/private logic + credits)
+    # ✅ Authorization: check if user can use mtchk (group/private + credits)
     if not await check_mtchk_access(user_id, chat, update):
         return
 
-    # ✅ Cooldown
+    # ✅ Enforce cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-
-
-    # ✅ Deduct 1 credit for this file
+    # ✅ Deduct 1 credit for this operation
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You don’t have enough credits.")
         return
 
-    
     # ✅ Ensure a .txt file is attached or replied to
     document = update.message.document or (
         update.message.reply_to_message and update.message.reply_to_message.document
     )
     if not document:
-        await update.message.reply_text("📂 Please send or reply to a txt file containing up to 200 cards.")
+        await update.message.reply_text(
+            "📂 Please send or reply to a txt file containing up to 50 cards."
+        )
         return
 
     if not document.file_name.endswith(".txt"):
         await update.message.reply_text("⚠️ Only txt files are supported.")
         return
 
-    # ✅ Download file
+    # ✅ Download the file
     file_path = f"input_cards_{user_id}.txt"
     try:
         file = await context.bot.get_file(document.file_id)
@@ -2256,11 +2256,11 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # ✅ Initial progress message
-    estimated_time = max(len(cards) / 7, 1)  # assume 10 cards in parallel
+    estimated_time = max(len(cards) / 7, 1)  # approximate time in seconds
     try:
         processing_msg = await update.message.reply_text(
             f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {len(cards)} | ⌚𝐄𝐬𝐭𝐢𝐦𝐚𝐭𝐞𝐝 𝐓𝐢𝐦𝐞 ➼ ~{estimated_time:.0f}s\n"
+            f"💳 Total Cards ➼ {len(cards)} | ⌚ Estimated Time ➼ ~{estimated_time:.0f}s\n"
             f"✦━━━━━━━━━━✦\n"
             f"▌ [□□□□□□□□□□] 0/{len(cards)} ▌\n"
             f"✦━━━━━━━━━━━━━━━━━━━✦"
@@ -2269,11 +2269,12 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Failed to send progress message: {e}")
         return
 
-    # ✅ Launch background check
+    # ✅ Launch background check asynchronously
     asyncio.create_task(
         background_check_multi(update, context, cards, processing_msg),
         name=f"mtchk_user_{user_id}"
     )
+
 
 
 # ─── Background Task ──────────────────────────────
@@ -2285,9 +2286,17 @@ import re
 from telegram import InputFile
 from telegram.constants import ParseMode
 
+import os
+import re
+import json
+import asyncio
+import aiohttp
+from telegram import InputFile
+from telegram.constants import ParseMode
+
 async def background_check_multi(update, context, cards, processing_msg):
     """
-    Performs background card checks with stylish responses and file output.
+    Performs background card checks with proper stylish responses and file output.
     """
 
     results = []
@@ -2362,9 +2371,9 @@ async def background_check_multi(update, context, cards, processing_msg):
 
         for task in asyncio.as_completed(tasks):
             card, stylish_status = await task
-            results.append(f"`{escape_md(card)}` ➳ {stylish_status}")  # don't escape emoji
+            results.append(f"`{escape_md(card)}` ➳ {stylish_status}")  # keep emoji unescaped
 
-            # Count each status
+            # Count each status properly
             if "✅" in stylish_status:
                 approved += 1
             elif "❌" in stylish_status:
