@@ -3150,7 +3150,8 @@ async def post_init(application):
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-    application.add_handler(MessageHandler(filters.ALL, group_filter), group=0)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, group_filter), group=0)
+
 
 
     # ✨ Public Commands
