@@ -224,31 +224,29 @@ from config import OWNER_ID  # Ensure OWNER_ID is loaded from environment or con
 AUTHORIZED_CHATS = set()
 OWNER_ID = 123456789  # replace with your Telegram user ID
 
-# Allowed bot commands
 BOT_COMMANDS = [
     "/start", "/help", "/gen", "/bin", "/chk", "/mchk", "/mass",
     "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
 ]
 
-
 async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     message = update.effective_message
 
-    # Only check in groups
     if chat.type in ["group", "supergroup"]:
         if chat.id not in AUTHORIZED_CHATS:
             if message.text:
-                cmd = message.text.split()[0].lower()  # first word (the command)
-                if cmd in BOT_COMMANDS:  # only block if it's one of your commands
+                cmd = message.text.split()[0].lower()
+                if cmd in BOT_COMMANDS:
                     await message.reply_text(
                         f"🚫 This group is not authorized to use this bot.\n\n"
                         f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
                         f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
                     )
                     return  # block further handlers
-    # otherwise, let it pass
+    # In private or authorized groups → let commands continue
     return
+
 
 
 # safe_start.py — Optimized /start handler with final profile card
@@ -3150,7 +3148,8 @@ async def post_init(application):
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, group_filter), group=0)
+    application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=0)
+
 
 
 
