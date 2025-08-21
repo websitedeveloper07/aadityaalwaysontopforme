@@ -2981,7 +2981,7 @@ import asyncpg
 from telegram import Update
 from telegram.ext import ContextTypes
 
-ADMIN_USER_ID = 8438505794  # Replace with your admin user ID
+ADMIN_USER_ID = 8406230162  # Replace with your admin user ID
 
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
