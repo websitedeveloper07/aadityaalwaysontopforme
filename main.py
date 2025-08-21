@@ -233,6 +233,7 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     message = update.effective_message
 
+    # Check only in groups
     if chat.type in ["group", "supergroup"]:
         if chat.id not in AUTHORIZED_CHATS:
             if message.text:
@@ -243,9 +244,10 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"📩 Contact {AUTHORIZATION_CONTACT} to get access.\n"
                         f"🔗 Official group: {OFFICIAL_GROUP_LINK}"
                     )
-                    return  # block further handlers
-    # In private or authorized groups → let commands continue
-    return
+                    return  # 🚫 stop further handlers here
+    # For private chats or authorized groups → do nothing,
+    # other handlers (/start, /help, etc.) will still process
+
 
 
 
@@ -3149,8 +3151,6 @@ def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
     application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=0)
-
-
 
 
     # ✨ Public Commands
