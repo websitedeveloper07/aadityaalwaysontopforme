@@ -2566,91 +2566,46 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pyrogram import Client
-from pyrogram.errors import FloodWait, UserNotParticipant, AuthKeyUnregistered, UsernameInvalid
 
 # ----------------- Pyrogram Setup -----------------
 # NOTE: It is not recommended to hardcode session strings.
 # Consider a more secure way to handle credentials.
 api_id = 22751574
 api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
-session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
+session_string = (
+    "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
+)
 
 pyro_client = Client(
     name="scraper_session",
     api_id=api_id,
     api_hash=api_hash,
-    session_string=session_string
+    session_string=session_string,
 )
 
 # ----------------- Globals & Constants -----------------
 COOLDOWN_SECONDS = 10
 user_last_scr_time = {}
-TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
 
 # Regex for normal + Amex cards
 CARD_REGEX = re.compile(
     r'\b('
-    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
+    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'  # Non-Amex
     r'|'
-    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
+    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'      # Amex
     r')\b'
 )
 
-# ----------------- Credit System (Placeholder for DB integration) -----------------
-# NOTE: These functions assume you have a file named 'db.py' with
-# `get_user` and `update_user` async functions. This is a placeholder
-# for your actual database implementation.
-
-# In-memory dummy store to simulate DB
-_user_data_store = {}
-
+# ----------------- Dummy Functions (Replace with your own logic) -----------------
 async def get_user(user_id):
-    """Simulates async get_user from DB."""
-    return _user_data_store.get(user_id)
+    """Placeholder function for getting user data."""
+    return {"credits": 5}  # Dummy data for demo
 
-async def update_user(user_id, **kwargs):
-    """Simulates async update_user to DB."""
-    if user_id not in _user_data_store:
-        _user_data_store[user_id] = {}
-    _user_data_store[user_id].update(kwargs)
-    return True
 
-DEFAULT_FREE_CREDITS = 200
-DEFAULT_PLAN = "Free"
-DEFAULT_STATUS = "Free"
-DEFAULT_PLAN_EXPIRY = "N/A"
-DEFAULT_KEYS_REDEEMED = 0
+async def consume_credit(user_id):
+    """Placeholder function for deducting credit."""
+    return True  # Always allow for demo
 
-async def get_user_data(user_id):
-    """
-    Fetch user data from DB; if not exists, create with defaults then fetch.
-    """
-    user_data = await get_user(user_id)
-    if not user_data:
-        now_str = datetime.now().strftime('%d-%m-%Y')
-        # Insert new user with defaults
-        user_data = {
-            "credits": DEFAULT_FREE_CREDITS,
-            "plan": DEFAULT_PLAN,
-            "status": DEFAULT_STATUS,
-            "plan_expiry": DEFAULT_PLAN_EXPIRY,
-            "keys_redeemed": DEFAULT_KEYS_REDEEMED,
-            "registered_at": now_str
-        }
-        await update_user(user_id, **user_data)
-        # We no longer need to re-fetch as we have the data
-    return user_data
-
-async def consume_credit(user_id: int) -> bool:
-    """
-    Deduct 1 credit if available. Return True if succeeded.
-    """
-    user_data = await get_user_data(user_id)
-    if user_data and user_data.get('credits', 0) > 0:
-        new_credits = user_data['credits'] - 1
-        await update_user(user_id, credits=new_credits)
-        return True
-    return False
 
 # ----------------- Helper Functions -----------------
 def progress_bar(current, total, size=20):
@@ -2659,10 +2614,12 @@ def progress_bar(current, total, size=20):
     empty = size - filled
     return f"[{'█' * filled}{'░' * empty}]"
 
+
 def escape_md(text: str) -> str:
     """Escapes special characters for MarkdownV2."""
-    special_chars = r"[_*\[\]()~`>#+\-=|{}.!]"
+    special_chars = r"[_*\[\]()~>#+\-=|{}.!]"
     return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
+
 
 # ----------------- Command Handlers -----------------
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2692,9 +2649,14 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # 💳 Credits check
-    user_data = await get_user_data(user_id)
+    user_data = await get_user(user_id)
     if user_data["credits"] <= 0:
         await update.message.reply_text("❌ You have no credits left.")
+        return
+
+    # Deduct credit
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ Failed to deduct credit.")
         return
 
     # ✅ Update cooldown
@@ -2702,107 +2664,51 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ⏳ Initial progress message
     keyboard = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
+        [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
     )
-    
-    message_text = (
-        f"[₰] Scraping {amount} cards from @{channel}...\n\n"
-        f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}"
+    progress_msg = await update.message.reply_text(
+        f"[₰] Scraping {amount} cards from @{escape_md(channel)}...\n\n"
+        f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}",
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
     )
-    
-    # Try to send the initial message
-    try:
-        progress_msg = await update.message.reply_text(
-            text=escape_md(message_text),
-            parse_mode=ParseMode.MARKDOWN_V2,
-            reply_markup=keyboard,
-        )
 
-        # Start async background task
-        asyncio.create_task(
-            scrap_cards_background(
-                channel=channel,
-                amount=amount,
-                user_id=user_id,
-                chat_id=chat_id,
-                bot=context.bot,
-                progress_msg=progress_msg,
-            )
+    # Start async background task
+    asyncio.create_task(
+        scrap_cards_background(
+            channel=channel,
+            amount=amount,
+            user_id=user_id,
+            chat_id=chat_id,
+            bot=context.bot,
+            progress_msg=progress_msg,
         )
-    except Exception as e:
-        await update.message.reply_text(f"❌ Error starting scrape: {e}")
+    )
 
-async def scrap_cards_background(
-    channel: str,
-    amount: int,
-    user_id: int,
-    chat_id: int,
-    bot,
-    progress_msg,
-):
+
+async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_id: int, bot, progress_msg):
     """
-    Scrapes cards from a Telegram channel using Pyrogram.
+    Simulates a background task to scrape cards and send a file.
+    NOTE: This is a simplified version. You will need to implement
+    the actual scraping logic using pyrogram.
     """
     cards = []
-
     try:
-        # Check if the bot is a member of the channel
-        try:
-            await pyro_client.get_chat_member(channel, "me")
-        except UserNotParticipant:
-            await bot.send_message(
-                chat_id=chat_id, 
-                text=f"❌ I am not a member of the channel @{channel}."
-            )
-            return
-        except UsernameInvalid:
-             await bot.send_message(
-                chat_id=chat_id, 
-                text=f"❌ The channel username @{channel} is invalid."
-            )
-             return
-        
-        # Deduct credit after a successful channel check
-        if not await consume_credit(user_id):
-            await bot.send_message(
-                chat_id=chat_id,
-                text=f"❌ Failed to deduct credit."
-            )
-            return
+        # --- Dummy scraping simulation ---
+        for i in range(amount):
+            await asyncio.sleep(1)  # simulate scraping delay
+            cards.append(f"400000000000000{i%10}|12|25|123")
 
-        # Iterate through messages and find cards
-        count = 0
-        async for message in pyro_client.get_chat_history(channel, limit=10000):
-            if message.text:
-                found_cards = CARD_REGEX.findall(message.text)
-                if found_cards:
-                    for card_parts in found_cards:
-                        card_string = "|".join(filter(None, card_parts))
-                        cards.append(card_string)
-                        count += 1
-                        
-                        # Update progress message
-                        if count % 10 == 0: # Update every 10 cards to reduce API calls
-                            message_text = (
-                                f"[₰] Scraping cards from @{channel}...\n\n"
-                                f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
-                            )
-                            try:
-                                await progress_msg.edit_text(
-                                    text=escape_md(message_text),
-                                    parse_mode=ParseMode.MARKDOWN_V2,
-                                    reply_markup=InlineKeyboardMarkup(
-                                        [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
-                                    ),
-                                )
-                            except Exception:
-                                pass # Ignore edit errors if message is too old or edited by someone else
+            # Update progress
+            await progress_msg.edit_text(
+                f"[₰] Scraping {amount} cards from @{escape_md(channel)}...\n\n"
+                f"[₰] Progress: {len(cards)}/{amount}\n{progress_bar(len(cards), amount)}",
+                parse_mode=ParseMode.MARKDOWN_V2,
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
+                ),
+            )
 
-                        if count >= amount:
-                            break
-            if count >= amount:
-                break
-        
         # Save TXT file
         filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
@@ -2814,12 +2720,13 @@ async def scrap_cards_background(
         # Requested user info
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
+        requester = escape_md(requester)
 
         # Final caption
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"[₰] Scraped Cards\n"
-            f"[₰] Channel: @{channel}\n"
+            f"[₰] Channel: @{escape_md(channel)}\n"
             f"[₰] Total Cards: {len(cards)}\n"
             f"[₰] Requested by: {requester}\n"
             f"[₰] Developer\n"
@@ -2829,43 +2736,15 @@ async def scrap_cards_background(
         await bot.send_document(
             chat_id=chat_id,
             document=open(filename, "rb"),
-            caption=escape_md(caption),
+            caption=caption,
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
+                [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
             ),
         )
 
-    except FloodWait as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ Error: FloodWait of {e.value} seconds.")
-    except AuthKeyUnregistered:
-        await bot.send_message(chat_id=chat_id, text="❌ Error: Your session string is invalid. Please get a new one.")
     except Exception as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
-
-# ----------------- Main -----------------
-async def main():
-    """Main function to start the bot."""
-    print("Starting bot...")
-    try:
-        await pyro_client.start()
-        await pyro_client.get_me()
-        print("Pyrogram client started successfully.")
-    except AuthKeyUnregistered:
-        print("ERROR: Pyrogram session string is invalid or expired. Please generate a new one.")
-        return
-    except Exception as e:
-        print(f"ERROR: Failed to start Pyrogram client: {e}")
-        return
-
-    application = ApplicationBuilder().token("8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU").build()
-    application.add_handler(CommandHandler("scr", scrap_command))
-    await application.run_polling()
-    await pyro_client.stop()
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
+        await bot.send_message(chat_id=chat_id, text=f"❌ Error: {e}")
 
 
 
