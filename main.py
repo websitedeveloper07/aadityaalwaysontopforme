@@ -2569,7 +2569,7 @@ api_id = 22751574
 api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
 session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
 
-# Use a short name for the session file
+# Use a short session name
 pyro_client = Client(
     name="scraper_session",
     api_id=api_id,
@@ -2635,7 +2635,7 @@ async def scrap_cards_background(update: Update, channel: str, amount: int):
             await pyro_client.start()
 
         # Iterate over messages in public channel
-        async for msg in pyro_client.get_chat_history(channel, limit=amount*10):
+        async for msg in pyro_client.get_chat_history(channel, limit=amount*50):
             if msg.text:
                 for line in msg.text.split("\n"):
                     parts = line.strip().split("|")
@@ -2646,12 +2646,13 @@ async def scrap_cards_background(update: Update, channel: str, amount: int):
                         break
             if len(cards) >= amount:
                 break
-            await asyncio.sleep(5)  # 5-second delay per message
+            await asyncio.sleep(0.1)  # Short delay for stability
 
         if not cards:
-            await update.message.reply_text("No valid cards found.")
+            await update.message.reply_text("❌ No valid cards found.")
             return
 
+        # Save file
         filename = f"scraped_cards_{user_id}.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
@@ -2659,7 +2660,7 @@ async def scrap_cards_background(update: Update, channel: str, amount: int):
         await update.message.reply_document(filename)
 
     except Exception as e:
-        await update.message.reply_text(f"Error: {e}")
+        await update.message.reply_text(f"❌ Error: {e}")
 
 
 
