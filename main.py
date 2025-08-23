@@ -2406,13 +2406,46 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+# --- BIN Lookup ---
+async def get_bin_details(bin_number: str) -> dict:
+    bin_data = {
+        "scheme": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": ""
+    }
+
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=7) as response:
+                if response.status == 200:
+                    try:
+                        data = await response.json(content_type=None)
+                        bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                        bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                        bin_data["country_name"] = data.get("country_name", "N/A")
+                        bin_data["country_emoji"] = data.get("country_flag", "")
+                        return bin_data
+                    except Exception as e:
+                        logging.warning(f"JSON parse error for BIN {bin_number}: {e}")
+                else:
+                    logging.warning(f"BIN API returned {response.status} for BIN {bin_number}")
+    except Exception as e:
+        logging.warning(f"BIN API call failed for {bin_number}: {e}")
+
+    return bin_data
+
+
+# --- /sh Command Handler ---
 async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles /sh command in the format: /sh card|mm|yyyy|cvv"""
     try:
         if not context.args:
             await update.message.reply_text(
-                "⚠️ Usage: <code>/sh card|mm|yy or yyyy|cvv</code>",
-                parse_mode=ParseMode.HTML
+                "⚠️ Usage: `/sh card|mm|yy or yyyy|cvv`",
+                parse_mode=ParseMode.MARKDOWN_V2
             )
             return
 
@@ -2420,14 +2453,14 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = payload.split("|")
         if len(parts) != 4:
             await update.message.reply_text(
-                "❌ Invalid format.<br>Use: <code>/sh 1234567812345678|12|2028|123</code>",
-                parse_mode=ParseMode.HTML
+                "❌ Invalid format.\nUse: `/sh 1234567812345678|12|2028|123`",
+                parse_mode=ParseMode.MARKDOWN_V2
             )
             return
 
         cc, mm, yy, cvv = [p.strip() for p in parts]
 
-        # Construct API URL
+        # API URL
         api_url = (
             "https://7feeef80303d.ngrok-free.app/autosh.php"
             f"?cc={cc}|{mm}|{yy}|{cvv}"
@@ -2435,65 +2468,71 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
-        await update.message.reply_text("⏳ <b>Processing your request...</b>", parse_mode=ParseMode.HTML)
+        await update.message.reply_text("⏳ Processing your request...")
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=30) as resp:
                 api_response = await resp.text()
 
-        # Try parsing JSON
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
             await update.message.reply_text(
-                f"❌ Invalid response from API:<br><code>{api_response}</code>",
-                parse_mode=ParseMode.HTML
+                f"❌ Invalid response from API:\n```\n{api_response}\n```",
+                parse_mode=ParseMode.MARKDOWN_V2
             )
             return
 
-        # Extract fields
+        # Extract main API fields
         response = data.get("Response", "Unknown")
-        price = data.get("Price", "?")
         gateway = data.get("Gateway", "Unknown")
         card = data.get("cc", "N/A")
-        proxy_status = data.get("ProxyStatus", "Unknown")
-        proxy_ip = data.get("ProxyIP", "N/A")
 
-        # BIN Info (first 6 digits)
-        bin_number = card.split("|")[0][:6]
+        # BIN lookup
+        bin_number = cc[:6]
+        bin_details = await get_bin_details(bin_number)
 
-        # Requester info
+        brand = (bin_details.get("scheme") or "N/A").upper()
+        issuer = (bin_details.get("bank") or "N/A").title()
+        country_name = (bin_details.get("country_name") or "N/A")
+        country_flag = bin_details.get("country_emoji", "")
+
+        # User
         user = update.effective_user
         requester = f"@{user.username}" if user.username else str(user.id)
 
-        # Developer (set your constant here)
-        DEVELOPER = '<a href="https://t.me/yourusername">YourDeveloperName</a>'
+        # Developer (replace with yours)
+        DEVELOPER = "kคli liຖนxx"
 
-        # Format message
+        # Bullet group link
+        BULLET_GROUP_LINK = "https://t.me/your_group_here"
+        bullet_link = f"[✗]({BULLET_GROUP_LINK})"
+
+        # --- Final Formatted Message ---
         formatted_msg = (
-            "✦━━━━━━━━━━━━━━✦\n"
-            f"🛠 <b>Gateway:</b> {gateway.title()} ({price}$)\n"
-            f"💳 <b>Card:</b> <code>{card}</code>\n"
-            f"📌 <b>Response:</b> {response}\n"
-            f"🌐 <b>Proxy:</b> {proxy_status} (<code>{proxy_ip}</code>)\n"
-            f"🔎 <b>BIN:</b> <code>{bin_number}</code>\n\n"
-            f"🙋 <b>Requested by:</b> {requester}\n"
-            f"👨‍💻 <b>Developer:</b> {DEVELOPER}\n"
-            "✦━━━━━━━━━━━━━━✦"
+            f"═══[ {gateway.upper()} ]═══\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{card}`\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response}\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {issuer}\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country_name} {country_flag}\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {DEVELOPER}\n"
+            f"――――――――――――――――"
         )
 
-        await update.message.reply_text(
-            formatted_msg,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True
-        )
+        await update.message.reply_text(formatted_msg, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
 
     except Exception as e:
-        await update.message.reply_text(
-            f"❌ Error: <code>{str(e)}</code>",
-            parse_mode=ParseMode.HTML
-        )
         logging.exception("Error in /sh command handler")
+        await update.message.reply_text(
+            f"❌ Error: `{str(e)}`",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
 
 
 
