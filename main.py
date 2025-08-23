@@ -2565,14 +2565,17 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pyrogram import Client
 
 # ----------------- Pyrogram Setup (USER ACCOUNT via SESSION STRING) -----------------
-from pyrogram import Client
-
 api_id = 22751574
 api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
 session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
 
-pyro_client = Client(name=session_string, api_id=api_id, api_hash=api_hash)
-
+# Use a short name for the session file
+pyro_client = Client(
+    name="scraper_session",
+    api_id=api_id,
+    api_hash=api_hash,
+    session_string=session_string
+)
 
 # ----------------- Cooldown -----------------
 user_last_scr_time = {}
@@ -2636,8 +2639,8 @@ async def scrap_cards_background(update: Update, channel: str, amount: int):
             if msg.text:
                 for line in msg.text.split("\n"):
                     parts = line.strip().split("|")
-                    # Accept formats: card|mm|yy or card|mm|yyyy
-                    if len(parts) == 4 and all(parts):
+                    # Accept formats: card|mm|yy or card|mm|yyyy or card|mm|yy|cvv
+                    if len(parts) in [3, 4] and all(parts):
                         cards.append(line.strip())
                     if len(cards) >= amount:
                         break
