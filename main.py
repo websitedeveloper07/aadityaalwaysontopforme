@@ -2562,15 +2562,18 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 import re
 import os
+import logging
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.helpers import escape_markdown
 from pyrogram import Client
 from pyrogram.errors import FloodWait, UserNotParticipant, AuthKeyUnregistered, UsernameInvalid
 
 # ----------------- Database Integration -----------------
 # We import the functions directly from your db.py file.
+# NOTE: This assumes 'db.py' exists in the same directory.
 from db import init_db, get_user, update_user
 
 # ----------------- Pyrogram Setup -----------------
@@ -2587,12 +2590,18 @@ pyro_client = Client(
     session_string=session_string
 )
 
+# Suppress Pyrogram & HTTPX logs
+logging.getLogger("pyrogram").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 # ----------------- Globals & Constants -----------------
 COOLDOWN_SECONDS = 10
+MAX_SCRAP_LIMIT = 1000
 user_last_scr_time = {}
 TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
+BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"
+DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
 
-# Regex for normal + Amex cards
 # Regex for normal + Amex cards
 CARD_REGEX = re.compile(
     r'\b('
@@ -2622,26 +2631,10 @@ def progress_bar(current, total, size=20):
     empty = size - filled
     return f"[{'█' * filled}{'░' * empty}]"
 
-def escape_md(text: str) -> str:
-    """Escapes special characters for MarkdownV2."""
-    special_chars = r"[_*\[\]()~`>#+\-=|{}.!]"
-    return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
-
 # ----------------- Command Handlers -----------------
-import asyncio
-from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-from telegram.ext import ContextTypes
-
-# --- Configuration ---
-COOLDOWN_SECONDS = 10              # Cooldown per user
-MAX_SCRAP_LIMIT = 1000             # Max cards per scrape
-TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"  # For keyboard button
-
-# Dictionary to track last scrape time per user
-user_last_scr_time = {}
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Greets the user and gives instructions."""
+    await update.message.reply_text("Hello! I'm a CC scraper bot. Use /scr [channel] [amount] to start scraping.")
 
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /scr command to initiate card scraping."""
@@ -2687,16 +2680,19 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Initial progress message ---
     keyboard = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
+        [[InlineKeyboardButton("🌐 Visit Channel", url=TARGET_CHANNEL_URL)]]
     )
-
-    # Escape MarkdownV2 special characters properly
+    
+    # Escape special characters for MarkdownV2
     escaped_channel = escape_markdown(channel, version=2)
     escaped_amount = escape_markdown(str(amount), version=2)
-
+    escaped_dot = escape_markdown(".", version=2)
+    
+    # Use explicit Markdown V2 escaping on all non-link/bold/italic parts
     message_text = (
-        f"[₰] Scraping {escaped_amount} cards from @{escaped_channel}...\n\n"
-        f"[₰] Progress: 0/{escaped_amount}\n{escape_markdown(progress_bar(0, amount), version=2)}"
+        f"[{escape_markdown('₰', version=2)}] Scraping {escaped_amount} cards from @{escaped_channel}{escaped_dot}{escaped_dot}{escaped_dot}\n\n"
+        f"[{escape_markdown('₰', version=2)}] Progress: 0/{escaped_amount}\n"
+        f"{escape_markdown(progress_bar(0, amount), version=2)}"
     )
 
     try:
@@ -2724,35 +2720,6 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-
-import asyncio
-import re
-import logging
-from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-
-# Suppress Pyrogram & HTTPX logs
-logging.getLogger("pyrogram").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-# Regex for normal + Amex cards
-CARD_REGEX = re.compile(
-    r'\b('
-    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
-    r'|'
-    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
-    r')\b'
-)
-
-# Bullet link
-BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"
-bullet_link_text = "₰"  # Only the bullet inside brackets will be clickable
-bullet_brackets_link = f"[{bullet_link_text}]({BULLET_GROUP_LINK})"
-
-# Developer clickable
-DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
-
 async def scrap_cards_background(
     channel: str,
     amount: int,
@@ -2763,6 +2730,7 @@ async def scrap_cards_background(
 ):
     cards = []
     seen = set()
+    bullet_brackets_link = f"[{escape_markdown('₰', version=2)}]({BULLET_GROUP_LINK})"
 
     try:
         # Start Pyrogram client if not already started
@@ -2798,7 +2766,8 @@ async def scrap_cards_background(
                     if count % 10 == 0:
                         msg_text = (
                             f"{bullet_brackets_link} Scraping cards from {escape_markdown('@'+channel, version=2)}\n\n"
-                            f"{bullet_brackets_link} Progress: {count}/{amount}\n{escape_markdown(progress_bar(count, amount), version=2)}"
+                            f"{bullet_brackets_link} Progress: {escape_markdown(str(count), version=2)}/{escape_markdown(str(amount), version=2)}\n"
+                            f"{escape_markdown(progress_bar(count, amount), version=2)}"
                         )
                         try:
                             await progress_msg.edit_text(text=msg_text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -2830,13 +2799,13 @@ async def scrap_cards_background(
 
         # Final caption with brackets bullets clickable
         caption = (
-            f"✦━━━━━━━━━━━━━━✦\n"
-            f"{bullet_brackets_link} 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
+            f"{escape_markdown('✦━━━━━━━━━━━━━━✦', version=2)}\n"
+            f"{bullet_brackets_link} **𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎**\n"
             f"{bullet_brackets_link} 𝐂𝐡𝐚𝐧𝐧𝐞𝐥: {escape_markdown('@'+channel, version=2)}\n"
-            f"{bullet_brackets_link} 𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬: {len(cards[:amount])}\n"
-            f"{bullet_brackets_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲: {requester}\n"
+            f"{bullet_brackets_link} 𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬: {escape_markdown(str(len(cards[:amount])), version=2)}\n"
+            f"{bullet_brackets_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭�𝐝 𝐛𝐲: {requester}\n"
             f"{bullet_brackets_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫: {DEVELOPER_LINK}\n"
-            f"✦━━━━━━━━━━━━━━✦"
+            f"{escape_markdown('✦━━━━━━━━━━━━━━✦', version=2)}"
         )
 
         await bot.send_document(
@@ -2846,12 +2815,15 @@ async def scrap_cards_background(
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+        # Clean up the file
+        os.remove(filename)
+
     except FloodWait as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ Error: FloodWait of {e.value} seconds.")
     except AuthKeyUnregistered:
         await bot.send_message(chat_id=chat_id, text="❌ Error: Your session string is invalid. Please get a new one.")
     except Exception as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
+        await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {escape_markdown(str(e), version=2)}")
     finally:
         if pyro_client.is_connected:
             try:
@@ -2860,6 +2832,7 @@ async def scrap_cards_background(
                 pass
 
 
+# ----------------- Main function to run the bot -----------------
 
 
 
