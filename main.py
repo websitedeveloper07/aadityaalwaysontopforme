@@ -2667,7 +2667,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_last_scr_time[user_id] = now
 
     # --- Prepare simple progress message ---
-    raw_message_text = f"{bullet_text} Scraping {amount} cards from @{channel}, please wait..."
+    raw_message_text = f"⚡𝙎𝙘𝙧𝙖𝙥𝙥𝙞𝙣𝙜 {amount} 𝘾𝙖𝙧𝙙𝙨 𝙁𝙧𝙤𝙢 @{channel}, 𝙥𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩…"
     message_text = safe_md(raw_message_text)  # Escape MarkdownV2 special chars
 
     try:
@@ -2765,11 +2765,11 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         # Caption with box decoration and clickable bullets
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
-            f"{bullet_link} Scrapped Cards\n"
-            f"{bullet_link} Channel: @{channel_escaped}\n"
-            f"{bullet_link} Total Cards: {len(cards[:amount])}\n"
-            f"{bullet_link} Requested by: {requester_escaped}\n"
-            f"{bullet_link} Developer: {DEVELOPER_LINK}\n"
+            f"{bullet_link} 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
+            f"{bullet_link} 𝐂𝐡𝐚𝐧𝐧𝐞𝐥: @{channel_escaped}\n"
+            f"{bullet_link} 𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝘀: {len(cards[:amount])}\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲: {requester_escaped}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫: {DEVELOPER_LINK}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
