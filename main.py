@@ -2521,6 +2521,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         BULLET_GROUP_LINK = "https://t.me/your_group_here"
         bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
+
         # --- Final Formatted Message ---
         formatted_msg = (
             f"═══[ <b>{gateway.upper()}</b> ]═══\n"
@@ -2550,6 +2551,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{str(e)}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
