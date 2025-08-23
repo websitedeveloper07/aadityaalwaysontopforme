@@ -2402,9 +2402,39 @@ async def background_check_multi(update, context, cards, processing_msg):
 import aiohttp
 import json
 import logging
+from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+
+# Import DB helpers
+from db import get_user, update_user
+
+logger = logging.getLogger(__name__)
+
+# --- User cooldowns ---
+user_cooldowns = {}
+
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Prevent spam by enforcing a cooldown per user."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)}s."
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
 
 # --- BIN Lookup ---
 async def get_bin_details(bin_number: str) -> dict:
@@ -2430,11 +2460,11 @@ async def get_bin_details(bin_number: str) -> dict:
                         bin_data["country_emoji"] = data.get("country_flag", "")
                         return bin_data
                     except Exception as e:
-                        logging.warning(f"JSON parse error for BIN {bin_number}: {e}")
+                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
                 else:
-                    logging.warning(f"BIN API returned {response.status} for BIN {bin_number}")
+                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
     except Exception as e:
-        logging.warning(f"BIN API call failed for {bin_number}: {e}")
+        logger.warning(f"BIN API call failed for {bin_number}: {e}")
 
     return bin_data
 
@@ -2443,13 +2473,18 @@ async def get_bin_details(bin_number: str) -> dict:
 async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user = update.effective_user
-        user_data = await get_user(user.id)
 
-        # Check credits
-        if not user_data or user_data.get("credits", 0) <= 0:
+        # ✅ Enforce cooldown
+        if not await enforce_cooldown(user.id, update):
+            return
+
+        # ✅ Try to consume credit
+        has_credit = await consume_credit(user.id)
+        if not has_credit:
             await update.message.reply_text("❌ You don’t have enough credits left.")
             return
 
+        # --- Argument check ---
         if not context.args:
             await update.message.reply_text(
                 "⚠️ Usage: <code>/sh card|mm|yy or yyyy|cvv</code>",
@@ -2468,7 +2503,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cc, mm, yy, cvv = [p.strip() for p in parts]
 
-        # API URL
+        # --- API URL ---
         api_url = (
             "https://7feeef80303d.ngrok-free.app/autosh.php"
             f"?cc={cc}|{mm}|{yy}|{cvv}"
@@ -2491,8 +2526,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        # Deduct credits (1 per request)
-        await update_user_credits(user.id, -1)
+        # --- Fetch updated credits after deduction ---
         updated_user = await get_user(user.id)
         credits_left = updated_user.get("credits", 0)
 
@@ -2501,7 +2535,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         gateway = data.get("Gateway", "Unknown")
         card = data.get("cc", "N/A")
 
-        # BIN lookup
+        # --- BIN lookup ---
         bin_number = cc[:6]
         bin_details = await get_bin_details(bin_number)
 
@@ -2544,7 +2578,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except Exception as e:
-        logging.exception("Error in /sh command handler")
+        logger.exception("Error in /sh command handler")
         await update.message.reply_text(
             f"❌ Error: <code>{str(e)}</code>",
             parse_mode=ParseMode.HTML
