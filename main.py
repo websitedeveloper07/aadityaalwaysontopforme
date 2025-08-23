@@ -2558,6 +2558,98 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
+import asyncio
+from datetime import datetime
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from pyrogram import Client
+
+# ----------------- Pyrogram Setup -----------------
+api_id = 'YOUR_API_ID'      # Replace with your API ID
+api_hash = 'YOUR_API_HASH'  # Replace with your API Hash
+pyro_client = Client("scraper_session", api_id=api_id, api_hash=api_hash)
+
+# ----------------- Cooldown -----------------
+user_last_scr_time = {}
+COOLDOWN_SECONDS = 5  # Minimum seconds between /scr uses
+
+# ----------------- Dummy DB Functions -----------------
+# Replace with your real DB logic
+async def consume_credit(user_id):
+    # Deduct 1 credit per command
+    return True
+
+# ----------------- /scr Command -----------------
+async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    now = datetime.now()
+
+    # Check cooldown
+    last_time = user_last_scr_time.get(user_id)
+    if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
+        await update.message.reply_text(
+            f"⚠️ Please wait {COOLDOWN_SECONDS} seconds between /scr commands."
+        )
+        return
+
+    # Consume credit
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You don't have enough credits to run this command.")
+        return
+
+    # Parse arguments
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /scr [public_channel_username] [amount]")
+        return
+
+    channel = context.args[0].lstrip("@")
+    try:
+        amount = int(context.args[1])
+    except ValueError:
+        await update.message.reply_text("Amount must be a number.")
+        return
+
+    # Update cooldown
+    user_last_scr_time[user_id] = now
+
+    await update.message.reply_text(f"⏳ Scraping {amount} cards from @{channel} in background...")
+    asyncio.create_task(scrap_cards_background(update, channel, amount))
+
+
+# ----------------- Background Scraping -----------------
+async def scrap_cards_background(update: Update, channel: str, amount: int):
+    user_id = update.effective_user.id
+    cards = []
+
+    try:
+        async with pyro_client:
+            async for msg in pyro_client.get_chat_history(channel, limit=amount*5):
+                if msg.text:
+                    for line in msg.text.split("\n"):
+                        parts = line.strip().split("|")
+                        # Accept formats: card|mm|yy or card|mm|yyyy
+                        if len(parts) == 4 and all(parts):
+                            cards.append(line.strip())
+                        if len(cards) >= amount:
+                            break
+                if len(cards) >= amount:
+                    break
+                await asyncio.sleep(5)  # 5-second delay per message
+
+        if not cards:
+            await update.message.reply_text("No valid cards found.")
+            return
+
+        filename = f"scraped_cards_{user_id}.txt"
+        with open(filename, "w") as f:
+            f.write("\n".join(cards[:amount]))
+
+        await update.message.reply_document(filename)
+
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+
+
 
 import psutil
 from telegram.constants import ParseMode
@@ -3203,6 +3295,7 @@ def main():
     application.add_handler(CommandHandler("adcr", adcr_command))
     application.add_handler(CommandHandler("bin", bin_lookup))
     application.add_handler(CommandHandler("fk", fk_command))
+    application.add_handler(CommandHandler("scr", scrap_command))
     application.add_handler(CommandHandler("fl", fl_command))
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("redeem", redeem_command))
