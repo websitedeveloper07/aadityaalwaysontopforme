@@ -2406,17 +2406,6 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-# --- DB Utils (Example, replace with your actual DB functions) ---
-async def get_user(user_id: int) -> dict:
-    # Fetch user from DB
-    # Example return: {"id": user_id, "credits": 5, "username": "test"}
-    pass  
-
-async def update_credits(user_id: int, new_credits: int):
-    # Update user credits in DB
-    pass  
-
-
 # --- BIN Lookup ---
 async def get_bin_details(bin_number: str) -> dict:
     bin_data = {
@@ -2456,12 +2445,9 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
         user_data = await get_user(user.id)
 
-        if not user_data:
-            await update.message.reply_text("⚠️ You are not registered. Please use /register first.")
-            return
-
-        if user_data.get("credits", 0) <= 0:
-            await update.message.reply_text("❌ You don’t have enough credits to use this command.")
+        # Check credits
+        if not user_data or user_data.get("credits", 0) <= 0:
+            await update.message.reply_text("❌ You don’t have enough credits left.")
             return
 
         if not context.args:
@@ -2490,7 +2476,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
-        await update.message.reply_text("⏳ Processing your request...")
+        processing_msg = await update.message.reply_text("⏳ Processing your request...")
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=30) as resp:
@@ -2499,13 +2485,18 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
-            await update.message.reply_text(
+            await processing_msg.edit_text(
                 f"❌ Invalid response from API:<br><pre>{api_response}</pre>",
                 parse_mode=ParseMode.HTML
             )
             return
 
-        # Extract main API fields
+        # Deduct credits (1 per request)
+        await update_user_credits(user.id, -1)
+        updated_user = await get_user(user.id)
+        credits_left = updated_user.get("credits", 0)
+
+        # Extract API fields
         response = data.get("Response", "Unknown")
         gateway = data.get("Gateway", "Unknown")
         card = data.get("cc", "N/A")
@@ -2519,19 +2510,16 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         country_name = (bin_details.get("country_name") or "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
-        # Requester
+        # User
         requester = f"@{user.username}" if user.username else str(user.id)
 
         # Developer
         DEVELOPER = "kคli liຖนxx"
 
-        # Bullet link
+        # Group link
+    try:
         BULLET_GROUP_LINK = "https://t.me/your_group_here"
-        bullet_link = f"[✗]({BULLET_GROUP_LINK})"
-
-        # --- Deduct 1 Credit ---
-        new_credits = user_data["credits"] - 1
-        await update_credits(user.id, new_credits)
+        bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
         # --- Final Formatted Message ---
         formatted_msg = (
@@ -2544,13 +2532,17 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ {issuer}\n"
             f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ {country_name} {country_flag}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
-            f"{bullet_link} <b>𝐂𝐫𝐞𝐝𝐢𝐭𝐬 𝐋𝐞𝐟𝐭</b> ➜ {new_credits}\n"
+            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ @{requester}\n"
+            f"{bullet_link} <b>𝐂𝐫𝐞𝐝𝐢𝐭𝐬 𝐋𝐞𝐟𝐭</b> ➜ {credits_left}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {DEVELOPER}\n"
             f"――――――――――――――――"
         )
 
-        await update.message.reply_text(formatted_msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        await processing_msg.edit_text(
+            formatted_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
 
     except Exception as e:
         logging.exception("Error in /sh command handler")
