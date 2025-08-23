@@ -2686,7 +2686,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user_id=user_id,
                 chat_id=chat_id,
                 bot=context.bot,
-                progress_msg=progress_msg
+                progress_msg=progress_msg,
                 reply_to_message_id=update.message.message_id
             )
         )
