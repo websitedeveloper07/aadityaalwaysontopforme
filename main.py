@@ -2555,8 +2555,8 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
         # Group link + bullet
-        BULLET_GROUP_LINK = "https://t.me/your_group_here"
-        bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+        BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
+        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
         # --- Final Formatted Message ---
         formatted_msg = (
