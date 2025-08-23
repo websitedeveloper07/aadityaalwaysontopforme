@@ -2709,22 +2709,26 @@ async def scrap_cards_background(
     cards = []
 
     try:
+        # --- Start Pyrogram client if not already started ---
+        if not pyro_client.is_connected:
+            await pyro_client.start()
+
         # Check if the bot is a member of the channel
         try:
             await pyro_client.get_chat_member(channel, "me")
         except UserNotParticipant:
             await bot.send_message(
-                chat_id=chat_id, 
+                chat_id=chat_id,
                 text=f"❌ I am not a member of the channel @{channel}."
             )
             return
         except UsernameInvalid:
-             await bot.send_message(
-                chat_id=chat_id, 
+            await bot.send_message(
+                chat_id=chat_id,
                 text=f"❌ The channel username @{channel} is invalid."
             )
-             return
-        
+            return
+
         # Iterate through messages and find cards
         count = 0
         async for message in pyro_client.get_chat_history(channel, limit=10000):
@@ -2735,9 +2739,9 @@ async def scrap_cards_background(
                         card_string = "|".join(filter(None, card_parts))
                         cards.append(card_string)
                         count += 1
-                        
-                        # Update progress message
-                        if count % 10 == 0: # Update every 10 cards to reduce API calls
+
+                        # Update progress message every 10 cards
+                        if count % 10 == 0:
                             message_text = (
                                 f"[₰] Scraping cards from @{channel}...\n\n"
                                 f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
@@ -2751,13 +2755,13 @@ async def scrap_cards_background(
                                     ),
                                 )
                             except Exception:
-                                pass # Ignore edit errors if message is too old or edited by someone else
+                                pass
 
                         if count >= amount:
                             break
             if count >= amount:
                 break
-        
+
         # Save TXT file
         filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
@@ -2797,6 +2801,11 @@ async def scrap_cards_background(
         await bot.send_message(chat_id=chat_id, text="❌ Error: Your session string is invalid. Please get a new one.")
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
+    finally:
+        # --- Stop Pyrogram client if we started it here ---
+        if pyro_client.is_connected:
+            await pyro_client.stop()
+
 
 
 
