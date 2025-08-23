@@ -2406,6 +2406,17 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+# --- DB Utils (Example, replace with your actual DB functions) ---
+async def get_user(user_id: int) -> dict:
+    # Fetch user from DB
+    # Example return: {"id": user_id, "credits": 5, "username": "test"}
+    pass  
+
+async def update_credits(user_id: int, new_credits: int):
+    # Update user credits in DB
+    pass  
+
+
 # --- BIN Lookup ---
 async def get_bin_details(bin_number: str) -> dict:
     bin_data = {
@@ -2442,6 +2453,17 @@ async def get_bin_details(bin_number: str) -> dict:
 # --- /sh Command Handler ---
 async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        user = update.effective_user
+        user_data = await get_user(user.id)
+
+        if not user_data:
+            await update.message.reply_text("⚠️ You are not registered. Please use /register first.")
+            return
+
+        if user_data.get("credits", 0) <= 0:
+            await update.message.reply_text("❌ You don’t have enough credits to use this command.")
+            return
+
         if not context.args:
             await update.message.reply_text(
                 "⚠️ Usage: <code>/sh card|mm|yy or yyyy|cvv</code>",
@@ -2497,30 +2519,34 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         country_name = (bin_details.get("country_name") or "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
-        # User
-        user = update.effective_user
+        # Requester
         requester = f"@{user.username}" if user.username else str(user.id)
 
-        # Developer (replace with yours)
+        # Developer
         DEVELOPER = "kคli liຖนxx"
 
-        # Bullet group link
+        # Bullet link
         BULLET_GROUP_LINK = "https://t.me/your_group_here"
-        bullet_link = f"<a href='{BULLET_GROUP_LINK}'>✗</a>"
+        bullet_link = f"[✗]({BULLET_GROUP_LINK})"
+
+        # --- Deduct 1 Credit ---
+        new_credits = user_data["credits"] - 1
+        await update_credits(user.id, new_credits)
 
         # --- Final Formatted Message ---
         formatted_msg = (
             f"═══[ <b>{gateway.upper()}</b> ]═══\n"
-            f"{bullet_link} <b>Card</b> ➜ <code>{card}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
-            f"{bullet_link} <b>Response</b> ➜ {response}\n"
+            f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{card}</code>\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 – $𝟏💸\n"
+            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ {response}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
-            f"{bullet_link} <b>Bank</b> ➜ {issuer}\n"
-            f"{bullet_link} <b>Country</b> ➜ {country_name} {country_flag}\n"
+            f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
+            f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ {issuer}\n"
+            f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ {country_name} {country_flag}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
-            f"{bullet_link} <b>Developer</b> ➜ {DEVELOPER}\n"
+            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
+            f"{bullet_link} <b>𝐂𝐫𝐞𝐝𝐢𝐭𝐬 𝐋𝐞𝐟𝐭</b> ➜ {new_credits}\n"
+            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {DEVELOPER}\n"
             f"――――――――――――――――"
         )
 
@@ -2532,6 +2558,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{str(e)}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
