@@ -2660,9 +2660,15 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
     )
+    
+    # Escape the entire message string
+    message_text = (
+        f"[₰] Scraping {amount} cards from @{channel}...\n\n"
+        f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}"
+    )
+
     progress_msg = await update.message.reply_text(
-        f"[₰] Scraping {amount} cards from @{escape_md(channel)}...\n\n"
-        f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}",
+        text=escape_md(message_text),
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=keyboard,
     )
@@ -2701,9 +2707,12 @@ async def scrap_cards_background(
             cards.append(f"400000000000000{i%10}|12|25|123")
 
             # Update progress
+            message_text = (
+                f"[₰] Scraping {amount} cards from @{channel}...\n\n"
+                f"[₰] Progress: {len(cards)}/{amount}\n{progress_bar(len(cards), amount)}"
+            )
             await progress_msg.edit_text(
-                f"[₰] Scraping {amount} cards from @{escape_md(channel)}...\n\n"
-                f"[₰] Progress: {len(cards)}/{amount}\n{progress_bar(len(cards), amount)}",
+                text=escape_md(message_text),
                 parse_mode=ParseMode.MARKDOWN_V2,
                 reply_markup=InlineKeyboardMarkup(
                     [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
@@ -2721,13 +2730,12 @@ async def scrap_cards_background(
         # Requested user info
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
-        requester = escape_md(requester)
 
         # Final caption
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"[₰] Scraped Cards\n"
-            f"[₰] Channel: @{escape_md(channel)}\n"
+            f"[₰] Channel: @{channel}\n"
             f"[₰] Total Cards: {len(cards)}\n"
             f"[₰] Requested by: {requester}\n"
             f"[₰] Developer\n"
@@ -2737,7 +2745,7 @@ async def scrap_cards_background(
         await bot.send_document(
             chat_id=chat_id,
             document=open(filename, "rb"),
-            caption=caption,
+            caption=escape_md(caption),
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
