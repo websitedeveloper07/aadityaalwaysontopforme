@@ -2679,8 +2679,15 @@ CARD_REGEX = re.compile(
     r')\b'
 )
 
-async def scrap_cards_background(progress_msg, channel: str, amount: int, user_id: int):
+async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_id, bot):
     cards = []
+
+    # Send initial progress message
+    progress_msg = await bot.send_message(
+        chat_id=chat_id,
+        text=f"[₰] Starting to scrape {amount} cards from @{channel}...",
+    )
+
     try:
         if not pyro_client.is_connected:
             await pyro_client.start()
@@ -2719,9 +2726,7 @@ async def scrap_cards_background(progress_msg, channel: str, amount: int, user_i
             try:
                 await progress_msg.edit_text("❌ No valid cards found.")
             except:
-                await progress_msg.bot.send_message(
-                    chat_id=progress_msg.chat.id, text="❌ No valid cards found."
-                )
+                await bot.send_message(chat_id=chat_id, text="❌ No valid cards found.")
             return
 
         # Save file
@@ -2739,15 +2744,15 @@ async def scrap_cards_background(progress_msg, channel: str, amount: int, user_i
             f"[₰] Visit channel: [Click Here](https://t.me/+9IxcXQ2wO_c0OWQ1)"
         )
 
-        # Delete progress message
+        # Delete progress message safely
         try:
             await progress_msg.delete()
         except:
             pass
 
         # Send new message with TXT file
-        await progress_msg.bot.send_document(
-            chat_id=progress_msg.chat.id,
+        await bot.send_document(
+            chat_id=chat_id,
             document=open(filename, "rb"),
             caption=caption,
             parse_mode="Markdown"
@@ -2757,10 +2762,7 @@ async def scrap_cards_background(progress_msg, channel: str, amount: int, user_i
         try:
             await progress_msg.edit_text(f"❌ Error: {e}")
         except:
-            await progress_msg.bot.send_message(
-                chat_id=progress_msg.chat.id,
-                text=f"❌ Error: {e}"
-            )
+            await bot.send_message(chat_id=chat_id, text=f"❌ Error: {e}")
 
 
 
