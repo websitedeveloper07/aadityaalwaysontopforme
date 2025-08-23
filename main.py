@@ -2699,10 +2699,14 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 import asyncio
 import re
-from datetime import datetime
+import logging
 from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
+
+# Suppress Pyrogram & HTTPX logs
+logging.getLogger("pyrogram").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Regex for normal + Amex cards
 CARD_REGEX = re.compile(
@@ -2713,12 +2717,12 @@ CARD_REGEX = re.compile(
     r')\b'
 )
 
-# --- Config ---
-BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"  # replace with your channel/group link
-DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
+# Bullet link
+BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"
+bullet_link = f"[₰]({BULLET_GROUP_LINK})"
 
-# Escape brackets but keep bullet clickable
-bullet = f"\\[[₰]({BULLET_GROUP_LINK})\\]"
+# Developer clickable
+DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
 
 async def scrap_cards_background(
     channel: str,
@@ -2728,18 +2732,15 @@ async def scrap_cards_background(
     bot,
     progress_msg,
 ):
-    """
-    Scrapes cards from a Telegram channel using Pyrogram.
-    """
     cards = []
     seen = set()
 
     try:
-        # Start Pyrogram client if not started
+        # Start Pyrogram client if not already started
         if not pyro_client.is_connected:
             await pyro_client.start()
 
-        # Check channel exists
+        # Check channel existence
         try:
             await pyro_client.get_chat(channel)
         except UsernameInvalid:
@@ -2749,14 +2750,13 @@ async def scrap_cards_background(
             await bot.send_message(chat_id=chat_id, text=f"❌ Unable to access @{channel}. Maybe it is private.")
             return
 
-        # Scraping messages
+        # Scrape messages
         count = 0
-        async for message in pyro_client.get_chat_history(channel, limit=amount * 20):
+        async for message in pyro_client.get_chat_history(channel, limit=amount*20):
             text = message.text or message.caption or ""
             matches = CARD_REGEX.findall(text)
 
             for match in matches:
-                # Non-Amex → groups 1–4, Amex → groups 5–8
                 parts = match[1:5] if match[1] else match[5:9]
                 card_string = "|".join(parts)
 
@@ -2768,8 +2768,8 @@ async def scrap_cards_background(
                     # Update progress every 10 cards
                     if count % 10 == 0:
                         msg_text = (
-                            f"{bullet} Scraping cards from {escape_markdown('@'+channel, version=2)}\n\n"
-                            f"{bullet} Progress: {count}/{amount}\n{progress_bar(count, amount)}"
+                            f"[₰]({BULLET_GROUP_LINK}) Scraping cards from {escape_markdown('@'+channel, version=2)}\n\n"
+                            f"[₰]({BULLET_GROUP_LINK}) Progress: {count}/{amount}\n{progress_bar(count, amount)}"
                         )
                         try:
                             await progress_msg.edit_text(text=msg_text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -2783,16 +2783,15 @@ async def scrap_cards_background(
 
             await asyncio.sleep(0.5)
 
-        # Save TXT file
         if not cards:
             await progress_msg.edit_text("❌ No valid cards found.")
             return
 
-        filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
+        # Save file
+        filename = "CVX_Scrapped.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
 
-        # Delete progress
         await progress_msg.delete()
 
         # Requester info
@@ -2803,11 +2802,11 @@ async def scrap_cards_background(
         # Final caption
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
-            f"{bullet} Scraped Cards\n"
-            f"{bullet} Channel: {escape_markdown('@'+channel, version=2)}\n"
-            f"{bullet} Total Cards: {len(cards[:amount])}\n"
-            f"{bullet} Requested by: {requester}\n"
-            f"{bullet} Developer: {DEVELOPER_LINK}\n"
+            f"[₰]({BULLET_GROUP_LINK}) Scraped Cards\n"
+            f"[₰]({BULLET_GROUP_LINK}) Channel: {escape_markdown('@'+channel, version=2)}\n"
+            f"[₰]({BULLET_GROUP_LINK}) Total Cards: {len(cards[:amount])}\n"
+            f"[₰]({BULLET_GROUP_LINK}) Requested by: {requester}\n"
+            f"[₰]({BULLET_GROUP_LINK}) Developer: {DEVELOPER_LINK}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
@@ -2815,7 +2814,7 @@ async def scrap_cards_background(
             chat_id=chat_id,
             document=open(filename, "rb"),
             caption=caption,
-            parse_mode=ParseMode.MARKDOWN_V2,
+            parse_mode=ParseMode.MARKDOWN_V2
         )
 
     except FloodWait as e:
@@ -2826,9 +2825,10 @@ async def scrap_cards_background(
         await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
     finally:
         if pyro_client.is_connected:
-            await pyro_client.stop()
-
-
+            try:
+                await pyro_client.stop()
+            except Exception:
+                pass
 
 
 
