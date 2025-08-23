@@ -2604,6 +2604,7 @@ CARD_REGEX = re.compile(
 # ----------------- Helper Functions -----------------
 async def consume_credit(user_id: int) -> bool:
     """Consume 1 credit from DB user if available."""
+    # This function uses the imported get_user and update_user.
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -2796,37 +2797,6 @@ async def scrap_cards_background(
         await bot.send_message(chat_id=chat_id, text="❌ Error: Your session string is invalid. Please get a new one.")
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
-
-# This async function will run after the bot has been initialized,
-# but before it starts polling for updates. This is the correct place
-# to start our other async client.
-async def post_init(application):
-    print("Initializing clients and database...")
-    await init_db()
-    try:
-        await pyro_client.start()
-        print("Pyrogram client started successfully.")
-    except Exception as e:
-        print(f"Failed to start Pyrogram client: {e}")
-        # Optionally, you could stop the bot from running if a critical client fails to start
-        # await application.stop()
-
-# This async function will run after the bot has been stopped.
-async def post_stop(application):
-    print("Stopping Pyrogram client...")
-    await pyro_client.stop()
-    print("Pyrogram client stopped.")
-
-if __name__ == "__main__":
-    application = ApplicationBuilder().token("8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU") \
-        .post_init(post_init) \
-        .post_stop(post_stop) \
-        .build()
-
-    application.add_handler(CommandHandler("scr", scrap_command))
-
-    # We now call run_polling directly, letting the Application manage the event loop.
-    application.run_polling()
 
 
 
