@@ -2560,24 +2560,51 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 import asyncio
-import random
-import string
-import logging
-from telegram import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    Update,
-    InputFile,
-)
+import re
+import os
+from datetime import datetime
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from pyrogram import Client
+from pyrogram.errors import FloodWait, UserNotParticipant, AuthKeyUnregistered, UsernameInvalid
 
-from db import get_user, update_user  # ✅ real DB functions
+# ----------------- Database Integration -----------------
+# We import the functions directly from your db.py file.
+from db import init_db, get_user, update_user
 
+# ----------------- Pyrogram Setup -----------------
+# NOTE: It is not recommended to hardcode session strings.
+# Consider a more secure way to handle credentials.
+api_id = 22751574
+api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
+session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
 
-# ================== DB CREDITS ================== #
+pyro_client = Client(
+    name="scraper_session",
+    api_id=api_id,
+    api_hash=api_hash,
+    session_string=session_string
+)
+
+# ----------------- Globals & Constants -----------------
+COOLDOWN_SECONDS = 10
+user_last_scr_time = {}
+TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
+
+# Regex for normal + Amex cards
+CARD_REGEX = re.compile(
+    r'\b('
+    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
+    r'|'
+    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
+    r')\b'
+)
+
+# ----------------- Helper Functions -----------------
 async def consume_credit(user_id: int) -> bool:
     """Consume 1 credit from DB user if available."""
+    # This function uses the imported get_user and update_user.
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -2585,133 +2612,188 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
+def progress_bar(current, total, size=20):
+    """Creates a simple progress bar string."""
+    if total == 0:
+        return f"[{'░' * size}]"
+    filled = int(size * current / total)
+    empty = size - filled
+    return f"[{'█' * filled}{'░' * empty}]"
 
-# ================== HELPERS ================== #
 def escape_md(text: str) -> str:
-    """Escape Telegram MarkdownV2 special characters."""
-    escape_chars = r"\_*[]()~`>#+-=|{}.!"
-    return "".join("\\" + c if c in escape_chars else c for c in str(text))
+    """Escapes special characters for MarkdownV2."""
+    special_chars = r"[_*\[\]()~`>#+\-=|{}.!]"
+    return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
 
-
-def progress_bar(current: int, total: int, length: int = 20) -> str:
-    """Build a progress bar with safe escaping for MarkdownV2."""
-    filled = int(length * current / total) if total else 0
-    bar = "█" * filled + "░" * (length - filled)
-    return escape_md(f"[{bar}]")  # ✅ wrap in escape_md
-
-
-# ================== MAIN SCRAPER ================== #
+# ----------------- Command Handlers -----------------
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles the /scr command to initiate card scraping."""
     user_id = update.effective_user.id
-    user_name = update.effective_user.first_name or "Unknown"
+    chat_id = update.effective_chat.id
+    now = datetime.now()
 
-    # Check credits
-    if not await consume_credit(user_id):
+    # ⏳ Cooldown check
+    last_time = user_last_scr_time.get(user_id)
+    if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
         await update.message.reply_text(
-            "❌ You don’t have enough credits to run this command.",
-            parse_mode=ParseMode.MARKDOWN_V2,
+            f"⚠️ Please wait {COOLDOWN_SECONDS} seconds between /scr commands."
         )
         return
 
+    # 📥 Args check
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /scr [channel] [amount]")
+        return
+
+    channel = context.args[0].lstrip("@")
     try:
-        # Example args: /scrap channel amount
-        if len(context.args) < 2:
-            await update.message.reply_text(
-                "❌ Usage: `/scrap <channel> <amount>`",
-                parse_mode=ParseMode.MARKDOWN_V2,
-            )
-            return
-
-        channel = context.args[0]
         amount = int(context.args[1])
+    except ValueError:
+        await update.message.reply_text("Amount must be a number.")
+        return
 
-        # Initial progress message
-        keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("[₰] Cancel", callback_data="cancel_scrap")]]
-        )
+    # 💳 Consume credit using the database logic
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You have no credits left.")
+        return
+
+    # ✅ Update cooldown
+    user_last_scr_time[user_id] = now
+
+    # ⏳ Initial progress message
+    keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
+    )
+    
+    message_text = (
+        f"[₰] Scraping {amount} cards from @{channel}...\n\n"
+        f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}"
+    )
+    
+    # Try to send the initial message
+    try:
         progress_msg = await update.message.reply_text(
-            f"[₰] Scraping {escape_md(amount)} cards from {escape_md('@' + channel)}...\n\n"
-            f"[₰] Progress: 0/{escape_md(amount)}\n{progress_bar(0, amount)}",
+            text=escape_md(message_text),
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=keyboard,
         )
 
-        # Run scraper in background
+        # Start async background task
         asyncio.create_task(
             scrap_cards_background(
-                context.bot,
-                update.effective_chat.id,
-                progress_msg,
-                channel,
-                amount,
-                user_name,
+                channel=channel,
+                amount=amount,
+                user_id=user_id,
+                chat_id=chat_id,
+                bot=context.bot,
+                progress_msg=progress_msg,
             )
         )
-
     except Exception as e:
-        await update.message.reply_text(
-            f"❌ Error: {escape_md(str(e))}",
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
+        await update.message.reply_text(f"❌ Error starting scrape: {e}")
 
-
-async def scrap_cards_background(bot, chat_id, progress_msg, channel, amount, requester):
+async def scrap_cards_background(
+    channel: str,
+    amount: int,
+    user_id: int,
+    chat_id: int,
+    bot,
+    progress_msg,
+):
+    """
+    Scrapes cards from a Telegram channel using Pyrogram.
+    """
     cards = []
 
     try:
-        for i in range(amount):
-            # Fake card generation
-            card = f"400000000000000{i%10}|12|25|{random.randint(100,999)}"
-            cards.append(card)
+        # Check if the bot is a member of the channel
+        try:
+            await pyro_client.get_chat_member(channel, "me")
+        except UserNotParticipant:
+            await bot.send_message(
+                chat_id=chat_id, 
+                text=f"❌ I am not a member of the channel @{channel}."
+            )
+            return
+        except UsernameInvalid:
+             await bot.send_message(
+                chat_id=chat_id, 
+                text=f"❌ The channel username @{channel} is invalid."
+            )
+             return
+        
+        # Iterate through messages and find cards
+        count = 0
+        async for message in pyro_client.get_chat_history(channel, limit=10000):
+            if message.text:
+                found_cards = CARD_REGEX.findall(message.text)
+                if found_cards:
+                    for card_parts in found_cards:
+                        card_string = "|".join(filter(None, card_parts))
+                        cards.append(card_string)
+                        count += 1
+                        
+                        # Update progress message
+                        if count % 10 == 0: # Update every 10 cards to reduce API calls
+                            message_text = (
+                                f"[₰] Scraping cards from @{channel}...\n\n"
+                                f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
+                            )
+                            try:
+                                await progress_msg.edit_text(
+                                    text=escape_md(message_text),
+                                    parse_mode=ParseMode.MARKDOWN_V2,
+                                    reply_markup=InlineKeyboardMarkup(
+                                        [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
+                                    ),
+                                )
+                            except Exception:
+                                pass # Ignore edit errors if message is too old or edited by someone else
 
-            # Update progress every 5 cards
-            if (i + 1) % 5 == 0 or i + 1 == amount:
-                try:
-                    await progress_msg.edit_text(
-                        f"[₰] Scraping {escape_md(amount)} cards from {escape_md('@' + channel)}...\n\n"
-                        f"[₰] Progress: {escape_md(len(cards))}/{escape_md(amount)}\n{progress_bar(len(cards), amount)}",
-                        parse_mode=ParseMode.MARKDOWN_V2,
-                        reply_markup=InlineKeyboardMarkup(
-                            [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
-                        ),
-                    )
-                except Exception as e:
-                    logging.warning(f"Progress update failed: {e}")
-
-            await asyncio.sleep(0.3)
-
-        # Write results to file
-        file_path = f"scraped_{chat_id}_{channel}.txt"
-        with open(file_path, "w") as f:
+                        if count >= amount:
+                            break
+            if count >= amount:
+                break
+        
+        # Save TXT file
+        filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
+        with open(filename, "w") as f:
             f.write("\n".join(cards))
 
-        # Send final result
+        # Delete progress
+        await progress_msg.delete()
+
+        # Requested user info
+        user = await bot.get_chat(user_id)
+        requester = f"@{user.username}" if user.username else str(user_id)
+
+        # Final caption
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"[₰] Scraped Cards\n"
-            f"[₰] Channel: {escape_md('@' + channel)}\n"
-            f"[₰] Total Cards: {escape_md(len(cards))}\n"
-            f"[₰] Requested by: {escape_md(requester)}\n"
+            f"[₰] Channel: @{channel}\n"
+            f"[₰] Total Cards: {len(cards)}\n"
+            f"[₰] Requested by: {requester}\n"
             f"[₰] Developer\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
         await bot.send_document(
             chat_id=chat_id,
-            document=InputFile(file_path),
-            caption=caption,
+            document=open(filename, "rb"),
+            caption=escape_md(caption),
             parse_mode=ParseMode.MARKDOWN_V2,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
+            ),
         )
 
+    except FloodWait as e:
+        await bot.send_message(chat_id=chat_id, text=f"❌ Error: FloodWait of {e.value} seconds.")
+    except AuthKeyUnregistered:
+        await bot.send_message(chat_id=chat_id, text="❌ Error: Your session string is invalid. Please get a new one.")
     except Exception as e:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=f"❌ Error: {escape_md(str(e))}",
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
-
-
-
+        await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
 
 
 import psutil
