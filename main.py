@@ -1,5 +1,5 @@
 import os
-import time
+import time 
 import logging
 import asyncio 
 import aiohttp
@@ -228,6 +228,7 @@ AUTHORIZED_GROUP_ID = -1002554243871
 BOT_COMMANDS = [
     "/start", "/help", "/gen", "/bin", "/chk", "/mchk", "/mass",
     "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
+    "/scr"
 ]
 
 from telegram.ext import ApplicationHandlerStop
@@ -302,7 +303,7 @@ from db import get_user  # keep your existing function
 # Links
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
-DEV_LINK = "https://t.me/k4linuxx"
+DEV_LINK = "https://t.me/k4linuxxxx"
 
 logger = logging.getLogger(__name__)
 
@@ -315,7 +316,7 @@ def escape_all_markdown(text: str) -> str:
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
-    bullet = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    bullet = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
     return (
         "✦━━━━━━━━━━━━━━✦\n"
@@ -396,7 +397,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
 
-    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
@@ -577,7 +578,7 @@ BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's help menu with a list of commands."""
     
-    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
     
     help_message = (
         "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
@@ -622,7 +623,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
     # Escape all dynamic values
     first_name = escape_markdown_v2(user.first_name or 'N/A')
@@ -991,7 +992,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
     # Get user data
     user_data = await get_user(user.id)
@@ -1097,7 +1098,7 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
     credits = str(user_data.get('credits', 0))
     plan = user_data.get('plan', 'N/A')
@@ -1220,7 +1221,7 @@ async def get_bin_details(bin_number: str) -> dict:
 
 # ✅ Background check now uses live BIN data
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
     
     try:
         bin_number = parts[0][:6]
@@ -1350,7 +1351,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
     # Define bullet link
-    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
     # Processing message
     processing_text = (
@@ -2419,7 +2420,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
 
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
     
     # Cooldown check
     if not await enforce_cooldown(update.effective_user.id, update):
@@ -2597,7 +2598,7 @@ CARD_REGEX = re.compile(
 )
 
 # Links
-BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"
+BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
 bullet_text = "₰"
 bullet_bracket_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
@@ -2641,7 +2642,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Args check ---
     if len(context.args) < 2:
-        await update.message.reply_text("Usage: /scr [channel] [amount]")
+        await update.message.reply_text("⚠️Usage: /scr [channel] [amount]")
         return
 
     channel = context.args[0].lstrip("@")
