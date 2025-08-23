@@ -2669,16 +2669,33 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [[InlineKeyboardButton(bullet_text, url=TARGET_CHANNEL_URL)]]
     )
 
-    # Escape only text, NOT URLs
-    escaped_channel = safe_md(channel)  # escape display text
+    # Escape only display text for MarkdownV2
+    escaped_channel = safe_md(channel)
     escaped_amount = safe_md(str(amount))
 
     message_text = f"{bullet_text} Scraping {escaped_amount} cards from @{escaped_channel}..."
 
+    # Function to escape text except for URLs in MarkdownV2
+    def escape_md_except_links(text: str) -> str:
+        pattern = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
+        escaped_text = ""
+        last_end = 0
+        for m in pattern.finditer(text):
+            # Escape everything before the link
+            escaped_text += safe_md(text[last_end:m.start()])
+            # Keep the link intact, but escape display text
+            escaped_text += f"[{safe_md(m.group(1))}]({m.group(2)})"
+            last_end = m.end()
+        escaped_text += safe_md(text[last_end:])
+        return escaped_text
+
+    # Apply escaping
+    safe_message_text = escape_md_except_links(message_text)
+
     try:
         # Send initial message
         progress_msg = await update.message.reply_text(
-            text=message_text,
+            text=safe_message_text,
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=keyboard
         )
@@ -2700,6 +2717,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         safe_error = safe_md(str(e))
         await update.message.reply_text(f"❌ Error starting scrape: {safe_error}")
         logging.exception("Error starting scrape for user_id=%s", user_id)
+
 
 # ----------------- Scrap Cards Background -----------------
 async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg):
