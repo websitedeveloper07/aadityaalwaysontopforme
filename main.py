@@ -26,7 +26,7 @@ OWNER_ID = 8406230162
 
 
 # --- New Configuration ---
-AUTHORIZATION_CONTACT = "@K4linuxx"
+AUTHORIZATION_CONTACT = "@K4linuxxxx"
 OFFICIAL_GROUP_LINK = "https://t.me/+gtvJT4SoimBjYjQ1"
 DEFAULT_FREE_CREDITS = 200  # A non-expiring credit pool for free users
 
@@ -2599,7 +2599,7 @@ CARD_REGEX = re.compile(
 
 # Links
 BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
-bullet_text = "₰"
+bullet_text = "✗"
 bullet_bracket_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
 
@@ -2761,7 +2761,7 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         channel_escaped = safe_md(channel)
 
         # Make the bullet clickable
-        bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
+        bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
         # Caption with box decoration and clickable bullets
         caption = (
