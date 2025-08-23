@@ -2559,6 +2559,7 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 import asyncio
+import re
 from datetime import datetime
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
@@ -2569,7 +2570,6 @@ api_id = 22751574
 api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
 session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
 
-# Use a short session name
 pyro_client = Client(
     name="scraper_session",
     api_id=api_id,
@@ -2585,6 +2585,9 @@ COOLDOWN_SECONDS = 5  # Minimum seconds between /scr uses
 async def consume_credit(user_id):
     # Deduct 1 credit per command
     return True
+
+# ----------------- Regex for card extraction -----------------
+CARD_REGEX = re.compile(r'\b(\d{13,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})\b')
 
 # ----------------- /scr Command -----------------
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2636,26 +2639,117 @@ async def scrap_cards_background(update: Update, channel: str, amount: int):
 
         # Iterate over messages in public channel
         async for msg in pyro_client.get_chat_history(channel, limit=amount*20):
-            if msg.text:
-                for line in msg.text.split("\n"):
-                    line = line.strip()
-                    # Extract only lines in card|mm|yy|cvv format
-                    parts = line.split("|")
-                    if len(parts) == 4 and all(parts):
-                        # Optional: check if card_number is numeric and length ~13-16
-                        if parts[0].isdigit() and 13 <= len(parts[0]) <= 16:
-                            cards.append(line)
-                    if len(cards) >= amount:
-                        break
+            text = msg.text or msg.caption or ""
+            matches = CARD_REGEX.findall(text)
+            for match in matches:
+                cards.append("|".join(match))
             if len(cards) >= amount:
                 break
-            await asyncio.sleep(2)  # Small delay per message
+            await asyncio.sleep(1)  # small delay per message
 
         if not cards:
             await update.message.reply_text("❌ No valid cards found.")
             return
 
         filename = f"scraped_cards_{user_id}.txt"
+        with open(filename, "w") as f:
+            f.write("\n".join(cards[:amount]))
+
+        await update.message.reply_document(filename)
+
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+import asyncio
+import re
+from datetime import datetime
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from pyrogram import Client
+
+# ----------------- Pyrogram Setup -----------------
+api_id = 22751574
+api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
+session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
+
+pyro_client = Client(
+    name="scraper_session",
+    api_id=api_id,
+    api_hash=api_hash,
+    session_string=session_string
+)
+
+# ----------------- Cooldown -----------------
+user_last_scr_time = {}
+COOLDOWN_SECONDS = 5  # seconds between /scr commands
+
+# ----------------- Dummy Credit System -----------------
+async def consume_credit(user_id):
+    return True  # always allow for demo
+
+# ----------------- Regex for card extraction -----------------
+CARD_REGEX = re.compile(r'\b(\d{13,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})\b')
+
+# ----------------- /scr Command -----------------
+async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    now = datetime.now()
+
+    # Check cooldown
+    last_time = user_last_scr_time.get(user_id)
+    if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
+        await update.message.reply_text(
+            f"⚠️ Please wait {COOLDOWN_SECONDS} seconds between /scr commands."
+        )
+        return
+
+    # Consume credit
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You don't have enough credits to run this command.")
+        return
+
+    # Check arguments
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /scr [public_channel_username] [amount]")
+        return
+
+    channel = context.args[0].lstrip("@")
+    try:
+        amount = int(context.args[1])
+    except ValueError:
+        await update.message.reply_text("Amount must be a number.")
+        return
+
+    # Update cooldown
+    user_last_scr_time[user_id] = now
+
+    await update.message.reply_text(f"⏳ Scraping {amount} cards from @{channel} in background...")
+
+    asyncio.create_task(scrap_cards_background(update, channel, amount))
+
+# ----------------- Background Scraping -----------------
+async def scrap_cards_background(update: Update, channel: str, amount: int):
+    user_id = update.effective_user.id
+    cards = []
+
+    try:
+        if not pyro_client.is_connected:
+            await pyro_client.start()
+
+        async for msg in pyro_client.get_chat_history(channel, limit=amount*20):
+            text = msg.text or msg.caption or ""
+            matches = CARD_REGEX.findall(text)
+            for match in matches:
+                cards.append("|".join(match))
+            if len(cards) >= amount:
+                break
+            await asyncio.sleep(1)
+
+        if not cards:
+            await update.message.reply_text("❌ No valid cards found.")
+            return
+
+        # Unique filename per user + timestamp
+        filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
 
