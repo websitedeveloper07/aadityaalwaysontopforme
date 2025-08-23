@@ -2471,7 +2471,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} 𝙉𝙖𝙢𝙚 ➳ `{name}`\n"
         f"{bullet_link} 𝘿𝙤𝘽 ➳ `{dob}`\n"
         f"{bullet_link} 𝙎𝙎𝙉 ➳ `{ssn}`\n"
-        f"{bullet_link} 𝙀�𝙖𝙞𝙡 ➳ `{email}`\n"
+        f"{bullet_link} 𝙀𝙢𝙖𝙞𝙡 ➳ `{email}`\n"
         f"{bullet_link} 𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚 ➳ `{username}`\n"
         f"{bullet_link} 𝙋𝙝𝙤𝙣𝙚 ➳ `{phone}`\n"
         f"{bullet_link} 𝙅𝙤𝙗 ➳ `{job}`\n"
