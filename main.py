@@ -2615,12 +2615,6 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-def progress_bar(current, total, size=20):
-    if total == 0:
-        return f"[{'░'*size}]"
-    filled = int(size * current / total)
-    empty = size - filled
-    return f"[{'█'*filled}{'░'*empty}]"
 
 def safe_md(text: str) -> str:
     """Escape text for MarkdownV2 properly."""
@@ -2635,7 +2629,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     now = datetime.now()
 
-    # Cooldown check
+    # --- Cooldown check ---
     last_time = user_last_scr_time.get(user_id)
     if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
         remaining = int(COOLDOWN_SECONDS - (now - last_time).total_seconds())
@@ -2644,7 +2638,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Args check
+    # --- Args check ---
     if len(context.args) < 2:
         await update.message.reply_text("Usage: /scr [channel] [amount]")
         return
@@ -2656,32 +2650,30 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Amount must be a number.")
         return
 
-    # Max limit check
+    # --- Max limit check ---
     if amount > MAX_SCRAP_LIMIT:
         await update.message.reply_text(
             f"⚠️ Maximum cards per scrape is {MAX_SCRAP_LIMIT}. Please reduce the amount."
         )
         return
 
-    # Credit check
+    # --- Credit check ---
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left.")
         return
 
-    # Update cooldown
+    # --- Update cooldown ---
     user_last_scr_time[user_id] = now
 
-    # Initial progress message
+    # --- Initial message ---
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton(bullet_text, url=TARGET_CHANNEL_URL)]]
     )
     escaped_channel = safe_md(channel)
     escaped_amount = safe_md(str(amount))
-    safe_prog = safe_md(progress_bar(0, amount))
 
     message_text = (
-        f"{bullet_bracket_link} Scraping {escaped_amount} cards from @{escaped_channel}...\n\n"
-        f"{bullet_bracket_link} Progress: 0/{escaped_amount}\n{safe_prog}"
+        f"{bullet_bracket_link} Scraping {escaped_amount} cards from @{escaped_channel}..."
     )
 
     try:
@@ -2691,6 +2683,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard
         )
 
+        # --- Start scraping in background ---
         asyncio.create_task(
             scrap_cards_background(
                 channel=channel,
@@ -2704,15 +2697,18 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ Error starting scrape: {safe_md(str(e))}")
 
+
 # ----------------- Scrap Cards Background -----------------
 async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg):
     cards = []
     seen = set()
 
     try:
+        # Start Pyrogram client if not started
         if not pyro_client.is_connected:
             await pyro_client.start()
 
+        # Check channel access
         try:
             await pyro_client.get_chat(channel)
         except UsernameInvalid:
@@ -2722,10 +2718,12 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
             await bot.send_message(chat_id=chat_id, text=f"❌ Cannot access @{channel}")
             return
 
+        # Scrape messages
         count = 0
         async for message in pyro_client.get_chat_history(channel, limit=amount*20):
             text = message.text or message.caption or ""
             matches = CARD_REGEX.findall(text)
+
             for match in matches:
                 parts = match[1:5] if match[1] else match[5:9]
                 card_string = "|".join(parts)
@@ -2734,15 +2732,6 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
                     cards.append(card_string)
                     count += 1
 
-                    if count % 10 == 0:
-                        msg_text = (
-                            f"{bullet_bracket_link} Scraping cards from {safe_md('@'+channel)}\n\n"
-                            f"{bullet_bracket_link} Progress: {count}/{amount}\n{safe_md(progress_bar(count, amount))}"
-                        )
-                        try:
-                            await progress_msg.edit_text(text=msg_text, parse_mode=ParseMode.MARKDOWN_V2)
-                        except Exception:
-                            pass
                     if count >= amount:
                         break
             if count >= amount:
@@ -2753,16 +2742,20 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
             await progress_msg.edit_text("❌ No valid cards found.")
             return
 
+        # Save scraped cards
         filename = "CVX_Scrapped.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
 
+        # Delete initial progress message
         await progress_msg.delete()
 
+        # Prepare requester info
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
         requester = safe_md(requester)
 
+        # Caption for the final document
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"{bullet_bracket_link} 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
