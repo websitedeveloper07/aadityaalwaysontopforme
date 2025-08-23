@@ -2704,20 +2704,19 @@ from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
-# Regex (supports normal + Amex)
+# Regex for normal + Amex cards
 CARD_REGEX = re.compile(
     r'\b('
-    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
+    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'  # Non-Amex
     r'|'
-    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
+    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'      # Amex
     r')\b'
 )
 
-# --- Clickable bullet link ---
-BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"  # <-- replace with your channel/group link
-bullet_link = f"[₰]({BULLET_GROUP_LINK})"
+# Clickable bullet and developer link
+BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"  # replace with your channel/group link
+bullet_link = f"[\\[₰\\]]({BULLET_GROUP_LINK})"       # MarkdownV2 escaped brackets
 
-# --- Developer clickable link ---
 DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
 
 
@@ -2736,11 +2735,11 @@ async def scrap_cards_background(
     seen = set()
 
     try:
-        # --- Start Pyrogram client if not already started ---
+        # Start Pyrogram client if not already started
         if not pyro_client.is_connected:
             await pyro_client.start()
 
-        # --- Check channel exists ---
+        # Check channel exists
         try:
             await pyro_client.get_chat(channel)
         except UsernameInvalid:
@@ -2756,7 +2755,7 @@ async def scrap_cards_background(
             )
             return
 
-        # --- Scraping messages ---
+        # Scraping messages
         count = 0
         async for message in pyro_client.get_chat_history(channel, limit=amount * 20):
             text = message.text or message.caption or ""
@@ -2794,7 +2793,7 @@ async def scrap_cards_background(
 
             await asyncio.sleep(0.5)  # prevent FloodWaits
 
-        # --- Save TXT file ---
+        # Save TXT file
         if not cards:
             await progress_msg.edit_text("❌ No valid cards found.")
             return
@@ -2803,15 +2802,15 @@ async def scrap_cards_background(
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
 
-        # --- Delete progress ---
+        # Delete progress
         await progress_msg.delete()
 
-        # --- Requester info ---
+        # Requester info
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
         requester = escape_markdown(requester, version=2)
 
-        # --- Final caption ---
+        # Final caption
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"{bullet_link} Scraped Cards\n"
@@ -2836,7 +2835,7 @@ async def scrap_cards_background(
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
     finally:
-        # --- Stop Pyrogram client if we started it ---
+        # Stop Pyrogram client if we started it
         if pyro_client.is_connected:
             await pyro_client.stop()
 
