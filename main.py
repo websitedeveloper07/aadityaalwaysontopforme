@@ -2785,7 +2785,7 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         channel_escaped = safe_md(channel)
 
         # Make the bullet clickable
-        bullet_link = f"[₰]({BULLET_GROUP_LINK})"
+        bullet_link = f"\[[₰]({BULLET_GROUP_LINK})\]"
 
         # Caption with box decoration and clickable bullets
         caption = (
