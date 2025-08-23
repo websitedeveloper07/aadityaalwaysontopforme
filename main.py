@@ -2699,23 +2699,45 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ----------------- Scrap Cards Background -----------------
+import asyncio
+import logging
+from telegram.constants import ParseMode
+from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
+
+# Set up logging to console
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s: %(message)s',
+)
+
+def md_escape(text: str) -> str:
+    """Escape all MarkdownV2 special characters in text."""
+    import re
+    return re.sub(r'([_\*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
+
 async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg):
+    logging.info("Scrape started for channel: %s, amount: %s, user_id: %s", channel, amount, user_id)
     cards = []
     seen = set()
 
     try:
         # Start Pyrogram client if not started
         if not pyro_client.is_connected:
+            logging.info("Starting Pyrogram client...")
             await pyro_client.start()
+            logging.info("Pyrogram client started")
 
         # Check channel access
         try:
             await pyro_client.get_chat(channel)
+            logging.info("Channel check passed: %s", channel)
         except UsernameInvalid:
             await bot.send_message(chat_id=chat_id, text=f"❌ Invalid channel @{channel}")
+            logging.error("Invalid channel username: %s", channel)
             return
-        except Exception:
+        except Exception as e:
             await bot.send_message(chat_id=chat_id, text=f"❌ Cannot access @{channel}")
+            logging.exception("Cannot access channel %s", channel)
             return
 
         # Scrape messages
@@ -2723,7 +2745,6 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         async for message in pyro_client.get_chat_history(channel, limit=amount*20):
             text = message.text or message.caption or ""
             matches = CARD_REGEX.findall(text)
-
             for match in matches:
                 parts = match[1:5] if match[1] else match[5:9]
                 card_string = "|".join(parts)
@@ -2731,37 +2752,42 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
                     seen.add(card_string)
                     cards.append(card_string)
                     count += 1
+                    logging.info("Found card %d: %s", count, card_string)
 
                     if count >= amount:
                         break
             if count >= amount:
                 break
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.1)
 
         if not cards:
             await progress_msg.edit_text("❌ No valid cards found.")
+            logging.warning("No valid cards found in channel: %s", channel)
             return
 
         # Save scraped cards
         filename = "CVX_Scrapped.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
+        logging.info("Saved %d cards to %s", len(cards[:amount]), filename)
 
         # Delete initial progress message
         await progress_msg.delete()
+        logging.info("Deleted progress message")
 
         # Prepare requester info
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
-        requester = safe_md(requester)
+        requester_escaped = md_escape(requester)
+        channel_escaped = md_escape(channel)
 
         # Caption for the final document
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"{bullet_bracket_link} 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
-            f"{bullet_bracket_link} 𝐂𝐡𝐚𝐧𝐧𝐞𝐥: {safe_md('@'+channel)}\n"
+            f"{bullet_bracket_link} 𝐂𝐡𝐚𝐧𝐧𝐞𝐥: @{channel_escaped}\n"
             f"{bullet_bracket_link} 𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝s: {len(cards[:amount])}\n"
-            f"{bullet_bracket_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲: {requester}\n"
+            f"{bullet_bracket_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲: {requester_escaped}\n"
             f"{bullet_bracket_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫: {DEVELOPER_LINK}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
@@ -2772,19 +2798,24 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
             caption=caption,
             parse_mode=ParseMode.MARKDOWN_V2
         )
+        logging.info("Document sent successfully to chat: %s", chat_id)
 
     except FloodWait as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ FloodWait: {e.value} seconds")
+        logging.warning("FloodWait exception: %s", e)
     except AuthKeyUnregistered:
         await bot.send_message(chat_id=chat_id, text="❌ Session string invalid, get a new one.")
+        logging.error("AuthKeyUnregistered: session string invalid")
     except Exception as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ Unexpected error: {safe_md(str(e))}")
+        await bot.send_message(chat_id=chat_id, text=f"❌ Unexpected error: {md_escape(str(e))}")
+        logging.exception("Unexpected error occurred")
     finally:
         if pyro_client.is_connected:
             try:
                 await pyro_client.stop()
+                logging.info("Pyrogram client stopped")
             except Exception:
-                pass
+                logging.exception("Error stopping Pyrogram client")
 
 
 
