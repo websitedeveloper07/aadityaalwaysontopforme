@@ -2593,16 +2593,14 @@ user_last_scr_time = {}
 TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
 
 # Regex for normal + Amex cards
-matches = CARD_REGEX.findall(text)
-
-for match in matches:
-    # For non-amex, match[1:5]; for amex, match[5:9]
-    parts = match[1:5] if match[1] else match[5:9]
-    card_string = "|".join(parts)
-
-    if card_string and card_string not in seen:
-        seen.add(card_string)
-        cards.append(card_string)
+# Regex for normal + Amex cards
+CARD_REGEX = re.compile(
+    r'\b('
+    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
+    r'|'
+    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
+    r')\b'
+)
 
 
 # ----------------- Helper Functions -----------------
