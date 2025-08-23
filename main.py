@@ -2704,88 +2704,72 @@ async def scrap_cards_background(
     progress_msg,
 ):
     """
-    Scrapes cards from a Telegram channel using Pyrogram.
+    Scrapes the most recent cards from a Telegram channel using Pyrogram.
     """
     cards = []
-    seen = set()  # track unique lines
+    seen = set()
 
     try:
         # --- Start Pyrogram client if not already started ---
         if not pyro_client.is_connected:
             await pyro_client.start()
 
-        # Check if channel is accessible
+        # Check if channel exists
         try:
             await pyro_client.get_chat(channel)
         except UsernameInvalid:
-            await bot.send_message(
-                chat_id=chat_id,
-                text=f"❌ The channel username @{channel} is invalid."
-            )
+            await bot.send_message(chat_id, f"❌ The channel username @{channel} is invalid.")
             return
         except Exception:
-            await bot.send_message(
-                chat_id=chat_id,
-                text=f"❌ Unable to access @{channel}. Maybe it is private."
-            )
+            await bot.send_message(chat_id, f"❌ Unable to access @{channel}. Maybe it is private.")
             return
 
-        # Iterate through messages (Pyrogram yields newest -> oldest by default)
-        count = 0
-        async for message in pyro_client.get_chat_history(channel, limit=10000):
-            if message.text:
-                found_cards = CARD_REGEX.findall(message.text)
-                if found_cards:
-                    for card_parts in found_cards:
-                        # Normalize tuple vs string matches to avoid duplicated segments
-                        if isinstance(card_parts, tuple):
-                            segments = [p for p in card_parts if p]
+        # Iterate through messages (newest first by default)
+        async for msg in pyro_client.get_chat_history(channel, limit=amount * 20):
+            text = msg.text or msg.caption or ""
+            if not text:
+                continue
 
-                            # If the regex captured the same block twice, collapse it
-                            if len(segments) % 2 == 0:
-                                half = len(segments) // 2
-                                if segments[:half] == segments[half:]:
-                                    segments = segments[:half]
+            matches = CARD_REGEX.findall(text)
+            for match in matches:
+                # Handle tuple vs string matches
+                card_string = "|".join(match) if isinstance(match, tuple) else match
 
-                            # If still too many segments, keep the first plausible 4
-                            if len(segments) > 4:
-                                segments = segments[:4]
+                if card_string not in seen:
+                    seen.add(card_string)
+                    cards.append(card_string)
 
-                            card_string = "|".join(segments)
-                        else:
-                            card_string = card_parts
+                    # Progress update every 10 cards
+                    if len(cards) % 10 == 0:
+                        message_text = (
+                            f"[₰] Scraping cards from @{channel}...\n\n"
+                            f"[₰] Progress: {len(cards)}/{amount}\n{progress_bar(len(cards), amount)}"
+                        )
+                        try:
+                            await progress_msg.edit_text(
+                                text=escape_md(message_text),
+                                parse_mode=ParseMode.MARKDOWN_V2
+                            )
+                        except Exception:
+                            pass
 
-                        # Deduplicate across messages
-                        if card_string and card_string not in seen:
-                            seen.add(card_string)
-                            cards.append(card_string)
-                            count += 1
+                    if len(cards) >= amount:
+                        break
 
-                            # Update progress every 10 cards
-                            if count % 10 == 0:
-                                message_text = (
-                                    f"[₰] Scraping cards from @{channel}...\n\n"
-                                    f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
-                                )
-                                try:
-                                    await progress_msg.edit_text(
-                                        text=escape_md(message_text),
-                                        parse_mode=ParseMode.MARKDOWN_V2
-                                    )
-                                except Exception:
-                                    pass
-
-                            if count >= amount:
-                                break
-            if count >= amount:
+            if len(cards) >= amount:
                 break
+            await asyncio.sleep(0.5)  # Small delay to reduce FloodWait risk
 
-        # Save TXT file
+        # If no cards found
+        if not cards:
+            await bot.send_message(chat_id, "❌ No valid cards found.")
+            return
+
+        # Save TXT file (only requested amount)
         filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
-            f.write("\n".join(cards))
+            f.write("\n".join(cards[:amount]))
 
-        # Delete progress
         try:
             await progress_msg.delete()
         except Exception:
@@ -2795,18 +2779,17 @@ async def scrap_cards_background(
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
 
-        # Final caption
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"[₰] Scraped Cards\n"
             f"[₰] Channel: @{channel}\n"
-            f"[₰] Total Cards: {len(cards)}\n"
+            f"[₰] Total Cards: {len(cards[:amount])}\n"
             f"[₰] Requested by: {requester}\n"
             f"[₰] Developer\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
-        # Send file (no inline buttons)
+        # Send document
         with open(filename, "rb") as doc:
             await bot.send_document(
                 chat_id=chat_id,
@@ -2816,16 +2799,15 @@ async def scrap_cards_background(
             )
 
     except FloodWait as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ Error: FloodWait of {e.value} seconds.")
+        await bot.send_message(chat_id, f"❌ Error: FloodWait of {e.value} seconds.")
+        await asyncio.sleep(e.value)
     except AuthKeyUnregistered:
-        await bot.send_message(chat_id=chat_id, text="❌ Error: Your session string is invalid. Please get a new one.")
+        await bot.send_message(chat_id, "❌ Error: Your session string is invalid. Please get a new one.")
     except Exception as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
+        await bot.send_message(chat_id, f"❌ An unexpected error occurred: {e}")
     finally:
-        # --- Stop Pyrogram client if we started it here ---
         if pyro_client.is_connected:
             await pyro_client.stop()
-
 
 
 
