@@ -2803,7 +2803,7 @@ async def scrap_cards_background(
             f"{bullet_brackets_link} **𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎**\n"
             f"{bullet_brackets_link} 𝐂𝐡𝐚𝐧𝐧𝐞𝐥: {escape_markdown('@'+channel, version=2)}\n"
             f"{bullet_brackets_link} 𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬: {escape_markdown(str(len(cards[:amount])), version=2)}\n"
-            f"{bullet_brackets_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭�𝐝 𝐛𝐲: {requester}\n"
+            f"{bullet_brackets_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲: {requester}\n"
             f"{bullet_brackets_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫: {DEVELOPER_LINK}\n"
             f"{escape_markdown('✦━━━━━━━━━━━━━━✦', version=2)}"
         )
@@ -2831,8 +2831,6 @@ async def scrap_cards_background(
             except Exception:
                 pass
 
-
-# ----------------- Main function to run the bot -----------------
 
 
 
