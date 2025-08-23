@@ -2601,6 +2601,7 @@ user_last_scr_time = {}  # track cooldown per user
 
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
     now = datetime.now()
 
     # Check cooldown
@@ -2645,19 +2646,28 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Update cooldown
     user_last_scr_time[user_id] = now
 
-    # Send initial progress message
+    # Send initial progress message with bullet
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
     )
     progress_msg = await update.message.reply_text(
         f"[₰] **Scraping {amount} cards from @{channel}...**\n\n"
-        f"[₰] Progress: 0/{amount}",
+        f"[₰] Progress: 0/{amount} [□□□□□□□□□□]",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=keyboard
     )
 
-    # Start background scraping
-    asyncio.create_task(scrap_cards_background(progress_msg, channel, amount, user_id))
+    # Start background scraping with bot instance and chat_id
+    asyncio.create_task(
+        scrap_cards_background(
+            channel=channel,
+            amount=amount,
+            user_id=user_id,
+            chat_id=chat_id,
+            bot=update.message.bot  # pass the bot instance
+        )
+    )
+
 
 
 # ----------------- Background Scraping -----------------
@@ -2666,26 +2676,27 @@ import re
 from datetime import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-# Regex for cards:
-# - 13-16 digits (Visa, MC, etc.) with 3-digit CVV
-# - 15 digits (Amex) with 4-digit CVV
-# - mm|yy or mm|yyyy
-# - Allow spaces or dashes in card numbers
 CARD_REGEX = re.compile(
     r'\b('
-    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
+    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'  # Non-Amex
     r'|'
-    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
+    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'      # Amex
     r')\b'
 )
 
-async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_id, bot):
+def build_progress_bar(current, total, length=10):
+    filled = int(length * current / total)
+    empty = length - filled
+    return "■" * filled + "□" * empty
+
+async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_id: int, bot):
     cards = []
 
     # Send initial progress message
     progress_msg = await bot.send_message(
         chat_id=chat_id,
-        text=f"[₰] **Starting scraping {amount} cards from @{channel}...**\n\n[₰] Progress: 0/{amount}",
+        text=f"[₰] Scraping {amount} cards from @{channel}...\n\n"
+             f"[₰] Progress: 0/{amount} [□□□□□□□□□□]",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]])
     )
@@ -2707,11 +2718,12 @@ async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_i
                     card_number = match[5].replace(" ", "").replace("-", "")
                     cards.append(f"{card_number}|{match[6]}|{match[7]}|{match[8]}")
 
-            # Update progress
+            # Update progress bar
             try:
+                bar = build_progress_bar(len(cards), amount)
                 await progress_msg.edit_text(
-                    f"[₰] **Scraping {amount} cards from @{channel}...**\n\n"
-                    f"[₰] Progress: {len(cards)}/{amount}",
+                    f"[₰] Scraping {amount} cards from @{channel}...\n\n"
+                    f"[₰] Progress: {len(cards)}/{amount} [{bar}]",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]])
                 )
@@ -2727,7 +2739,7 @@ async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_i
             await progress_msg.edit_text("❌ No valid cards found.")
             return
 
-        # Save the TXT file
+        # Save TXT file
         filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
@@ -2748,7 +2760,7 @@ async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_i
         except:
             pass
 
-        # Send the TXT file with caption
+        # Send TXT file with caption
         await bot.send_document(
             chat_id=chat_id,
             document=open(filename, "rb"),
@@ -2761,7 +2773,6 @@ async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_i
             await progress_msg.edit_text(f"❌ Error: {e}")
         except:
             await bot.send_message(chat_id=chat_id, text=f"❌ Error: {e}")
-
 
 
 
