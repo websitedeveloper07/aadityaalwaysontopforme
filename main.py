@@ -2595,83 +2595,26 @@ from datetime import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
 
 COOLDOWN_SECONDS = 10
 user_last_scr_time = {}
 
-# Helper: generate progress bar
+
+# 🔹 Progress bar helper
 def progress_bar(current, total, size=10):
     filled = int(size * current / total)
     empty = size - filled
-    return f"[{'■'*filled}{'□'*empty}]"
-
-async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_id: int, bot):
-    cards = []
-
-    try:
-        # Send initial progress
-        progress_msg = await bot.send_message(
-            chat_id=chat_id,
-            text=f"[₰] Scraping {amount} cards from @{channel}...\n\n"
-                 f"[₰] Progress: 0/{amount} {progress_bar(0, amount)}",
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
-            )
-        )
-
-        # --- Dummy scraping simulation ---
-        for i in range(amount):
-            await asyncio.sleep(1)  # simulate scraping delay
-            # Simulated card data (replace with real scraping)
-            cards.append(f"400000000000000{i%10}|12|25|123")
-
-            # Update progress message
-            await progress_msg.edit_text(
-                f"[₰] Scraping {amount} cards from @{channel}...\n\n"
-                f"[₰] Progress: {len(cards)}/{amount} {progress_bar(len(cards), amount)}",
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
-                )
-            )
-
-        # Save cards to file
-        filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
-        with open(filename, "w") as f:
-            f.write("\n".join(cards))
-
-        # Delete progress message
-        await progress_msg.delete()
-
-        # Send final decorated message with TXT file
-        caption = (
-            f"[₰] Scraped Cards\n"
-            f"[₰] Channel: @{channel}\n"
-            f"[₰] Total Cards: {len(cards)}\n"
-            f"[₰] Scrapped by: Developer\n"
-            f"[₰] Credits: Deducted ✅\n"
-            f"[₰] Visit Channel: [Click Here](https://t.me/{channel})"
-        )
-
-        await bot.send_document(
-            chat_id=chat_id,
-            document=open(filename, "rb"),
-            caption=caption,
-            parse_mode=ParseMode.MARKDOWN
-        )
-
-    except Exception as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ Error: {e}")
+    return f"[{'█' * filled}{'░' * empty}]"
 
 
-# Updated command
+# 🔹 Command handler
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
     now = datetime.now()
 
-    # Check cooldown
+    # ⏳ Cooldown check
     last_time = user_last_scr_time.get(user_id)
     if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
         await update.message.reply_text(
@@ -2679,7 +2622,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Check args
+    # 📥 Args check
     if len(context.args) < 2:
         await update.message.reply_text("Usage: /scr [channel] [amount]")
         return
@@ -2691,47 +2634,48 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Amount must be a number.")
         return
 
-    # Check user credits
+    # 💳 Credits check
     user_data = await get_user(user_id)
-    if user_data['credits'] <= 0:
+    if user_data["credits"] <= 0:
         await update.message.reply_text(
-            "❌ You have no credits left.",
-            parse_mode=ParseMode.MARKDOWN
+            "❌ You have no credits left.", parse_mode=ParseMode.MARKDOWN
         )
         return
 
     # Deduct credit
     if not await consume_credit(user_id):
         await update.message.reply_text(
-            "❌ Failed to deduct credit.",
-            parse_mode=ParseMode.MARKDOWN
+            "❌ Failed to deduct credit.", parse_mode=ParseMode.MARKDOWN
         )
         return
 
-    # Update cooldown
+    # ✅ Update cooldown
     user_last_scr_time[user_id] = now
 
-    # Send initial progress message
+    # ⏳ Initial progress message
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
     )
-    await update.message.reply_text(
-        f"[₰] **Scraping {amount} cards from @{channel}...**\n\n"
-        f"[₰] Progress: 0/{amount} [□□□□□□□□□□]",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=keyboard
+    progress_msg = await update.message.reply_text(
+        f"[₰] Scraping {amount} cards from @{escape_markdown(channel, version=2)}...\n\n"
+        f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}",
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
     )
 
-    # Start background scraping
+    # Start async background task
     asyncio.create_task(
         scrap_cards_background(
             channel=channel,
             amount=amount,
             user_id=user_id,
             chat_id=chat_id,
-            bot=context.bot
+            bot=context.bot,
+            progress_msg=progress_msg,
         )
     )
+
+
 
 
 
@@ -2739,10 +2683,10 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 import re
 from datetime import datetime
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
 
+# Regex for normal + Amex
 CARD_REGEX = re.compile(
     r'\b('
     r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
@@ -2750,6 +2694,11 @@ CARD_REGEX = re.compile(
     r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
     r')\b'
 )
+
+# Escape MarkdownV2
+def escape_md(text: str) -> str:
+    special_chars = r"[_*\[\]()~`>#+\-=|{}.!]"
+    return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
 
 # Progress bar helper
 def progress_bar(current, total, size=20):
@@ -2764,25 +2713,24 @@ async def scrap_cards_background(chat_id, channel: str, amount: int, user_id: in
         # Initial progress message
         progress_msg = await bot.send_message(
             chat_id=chat_id,
-            text=f"[₰] Scraping {amount} cards from @{channel}...\n\n"
+            text=f"[₰] Scraping {amount} cards from @{escape_md(channel)}...\n\n"
                  f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}",
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
             )
         )
 
         # --- Dummy scraping simulation ---
-        # Replace with actual scraping from your channel
         for i in range(amount):
             await asyncio.sleep(1)  # simulate scraping delay
-            # Simulate card
             cards.append(f"400000000000000{i%10}|12|25|123")
+
             # Update progress
             await progress_msg.edit_text(
-                f"[₰] Scraping {amount} cards from @{channel}...\n\n"
+                f"[₰] Scraping {amount} cards from @{escape_md(channel)}...\n\n"
                 f"[₰] Progress: {len(cards)}/{amount}\n{progress_bar(len(cards), amount)}",
-                parse_mode=ParseMode.MARKDOWN,
+                parse_mode=ParseMode.MARKDOWN_V2,
                 reply_markup=InlineKeyboardMarkup(
                     [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
                 )
@@ -2796,49 +2744,35 @@ async def scrap_cards_background(chat_id, channel: str, amount: int, user_id: in
         # Delete progress
         await progress_msg.delete()
 
-        # Send final decorated message with TXT file
+        # Requested user info
+        user = await bot.get_chat(user_id)
+        requester = f"@{user.username}" if user.username else str(user_id)
+        requester = escape_md(requester)
+
+        # Final caption with ✦━━━━━━━━━━━━━━✦
         caption = (
+            f"✦━━━━━━━━━━━━━━✦\n"
             f"[₰] Scraped Cards\n"
-            f"[₰] Channel: @{channel}\n"
+            f"[₰] Channel: @{escape_md(channel)}\n"
             f"[₰] Total Cards: {len(cards)}\n"
-            f"[₰] Scrapped by: Developer\n"
-            f"[₰] Credits: Deducted ✅\n"
-            f"[₰] Visit Channel: [Click Here](https://t.me/{channel})"
+            f"[₰] Requested by: {requester}\n"
+            f"[₰] Developer\n"
+            f"✦━━━━━━━━━━━━━━✦"
         )
 
         await bot.send_document(
             chat_id=chat_id,
             document=open(filename, "rb"),
             caption=caption,
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN_V2,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
+            )
         )
 
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ Error: {e}")
 
-# Example command
-async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    chat_id = update.effective_chat.id
-
-    if len(context.args) < 2:
-        await update.message.reply_text("Usage: /scr [channel] [amount]")
-        return
-
-    channel = context.args[0].lstrip("@")
-    try:
-        amount = int(context.args[1])
-    except:
-        await update.message.reply_text("Amount must be a number.")
-        return
-
-    # Deduct credit here if needed
-    # await consume_credit(user_id)
-
-    # Start background task
-    asyncio.create_task(
-        scrap_cards_background(chat_id, channel, amount, user_id, bot=context.bot)
-    )
 
 
 
