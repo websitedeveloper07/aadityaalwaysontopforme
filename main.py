@@ -2795,6 +2795,28 @@ async def scrap_cards_background(
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
 
+# ----------------- Lifecycle functions for ApplicationBuilder -----------------
+async def post_init(application):
+    """Start Pyrogram client after bot is initialized."""
+    print("Starting Pyrogram client...")
+    try:
+        await pyro_client.start()
+        await pyro_client.get_me()
+        print("Pyrogram client started successfully.")
+    except AuthKeyUnregistered:
+        print("ERROR: Pyrogram session string is invalid or expired. Please generate a new one.")
+        raise
+    except Exception as e:
+        print(f"ERROR: Failed to start Pyrogram client: {e}")
+        raise
+
+async def shutdown(application):
+    """Stop Pyrogram client on bot shutdown."""
+    print("Stopping Pyrogram client...")
+    await pyro_client.stop()
+    print("Pyrogram client stopped.")
+
+
 
 import psutil
 from telegram.constants import ParseMode
