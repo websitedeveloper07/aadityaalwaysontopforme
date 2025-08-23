@@ -2570,14 +2570,13 @@ from pyrogram import Client
 from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
 
 # ----------------- Database Integration -----------------
-# Assuming 'db.py' is correctly set up with init_db, get_user, update_user
+# Make sure your 'db.py' has these async functions: init_db, get_user, update_user
 from db import init_db, get_user, update_user
 
 # ----------------- Pyrogram Setup -----------------
 api_id = 22751574
 api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
-# Ensure you replace this with a valid session string
-session_string = "YOUR_SESSION_STRING_HERE"
+session_string = "YOUR_SESSION_STRING_HERE"  # Replace with valid session
 
 pyro_client = Client(
     name="scraper_session",
@@ -2590,29 +2589,27 @@ pyro_client = Client(
 COOLDOWN_SECONDS = 10
 MAX_SCRAP_LIMIT = 1000
 TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
-# Use a dictionary to store cooldown times per user
 user_last_scr_time = {}
 
-# Regex for normal + Amex cards.
-# This pattern is more reliable as it captures the card number, month, year, and CVV/CVC
-# and handles spaces/hyphens within the card number.
+# Regex for card numbers
 CARD_REGEX = re.compile(
     r'\b(\d[ -]*?){13,16}\|(\d{2})\|(\d{2,4})\|(\d{3,4})\b', re.IGNORECASE
 )
 
-# Bullet link
+# Links
 BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"
 bullet_text = "₰"
-# The link is already correctly formatted for Markdown.
 bullet_bracket_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
-
-# Developer link
-# The link is already correctly formatted for Markdown.
 DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
+
+# ----------------- Logging -----------------
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s: %(message)s',
+)
 
 # ----------------- Helper Functions -----------------
 async def consume_credit(user_id: int) -> bool:
-    """Consumes one credit for a given user."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         await update_user(user_id, credits=user_data["credits"] - 1)
@@ -2620,26 +2617,18 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 def safe_md(text: str) -> str:
-    """
-    Escapes MarkdownV2 special characters.
-    The issue was likely with other special characters in the final caption.
-    This function correctly escapes the full set of MarkdownV2 special chars.
-    """
+    """Escape all Telegram MarkdownV2 special characters."""
     if not text:
         return ""
-    # List of all special characters to escape for MarkdownV2
-    special_chars = r'\_*[]()~`>#+-=|{}.!'
-    # Escape each special character with a backslash
-    return re.sub(f'([{re.escape(special_chars)}])', r'\\\1', text)
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', str(text))
 
 # ----------------- Scrap Command -----------------
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /scr command to start card scraping."""
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
     now = datetime.now()
 
-    # --- Cooldown check ---
+    # Cooldown check
     last_time = user_last_scr_time.get(user_id)
     if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
         remaining = int(COOLDOWN_SECONDS - (now - last_time).total_seconds())
@@ -2648,7 +2637,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # --- Args check ---
+    # Args check
     if len(context.args) < 2:
         await update.message.reply_text("Usage: /scr [channel] [amount]")
         return
@@ -2660,33 +2649,25 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Amount must be a number.")
         return
 
-    # --- Max limit check ---
     if amount > MAX_SCRAP_LIMIT:
         await update.message.reply_text(
             f"⚠️ Maximum cards per scrape is {MAX_SCRAP_LIMIT}. Please reduce the amount."
         )
         return
 
-    # --- Credit check ---
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left.")
         return
 
-    # --- Update cooldown ---
     user_last_scr_time[user_id] = now
 
-    # --- Initial message ---
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton(bullet_text, url=TARGET_CHANNEL_URL)]]
     )
-    # Correctly escape both the channel and amount for Markdown
     escaped_channel = safe_md(channel)
     escaped_amount = safe_md(str(amount))
 
-    # The bullet_bracket_link is already correctly formatted.
-    message_text = (
-        f"{bullet_bracket_link} Scraping {escaped_amount} cards from @{escaped_channel}..."
-    )
+    message_text = f"{bullet_bracket_link} Scraping {escaped_amount} cards from @{escaped_channel}..."
 
     try:
         progress_msg = await update.message.reply_text(
@@ -2695,7 +2676,6 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard
         )
 
-        # --- Start scraping in background ---
         asyncio.create_task(
             scrap_cards_background(
                 channel=channel,
@@ -2708,28 +2688,15 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         await update.message.reply_text(f"❌ Error starting scrape: {safe_md(str(e))}")
+        logging.exception("Error starting scrape for user_id=%s", user_id)
 
 # ----------------- Scrap Cards Background -----------------
-# Set up logging to console
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)s: %(message)s',
-)
-
-def md_escape(text: str) -> str:
-    """Escapes all MarkdownV2 special characters in text."""
-    # This is a duplicate of safe_md, but kept for clarity if needed elsewhere.
-    special_chars = r'\_*[]()~`>#+-=|{}.!'
-    return re.sub(f'([{re.escape(special_chars)}])', r'\\\1', text)
-
 async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg):
-    """Handles the background scraping process."""
     logging.info("Scrape started for channel: %s, amount: %s, user_id: %s", channel, amount, user_id)
     cards = []
     seen = set()
 
     try:
-        # Start Pyrogram client if not started
         if not pyro_client.is_connected:
             logging.info("Starting Pyrogram client...")
             await pyro_client.start()
@@ -2738,7 +2705,7 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         # Check channel access
         try:
             await pyro_client.get_chat(channel)
-            logging.info("Channel check passed: %s", channel)
+            logging.info("Channel access verified: %s", channel)
         except UsernameInvalid:
             await bot.send_message(chat_id=chat_id, text=f"❌ Invalid channel @{channel}")
             logging.error("Invalid channel username: %s", channel)
@@ -2750,29 +2717,20 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
         # Scrape messages
         count = 0
-        async for message in pyro_client.get_chat_history(channel, limit=amount * 20):
+        async for message in pyro_client.get_chat_history(channel, limit=amount*20):
             text = message.text or message.caption or ""
-            # Find all matches for the card regex
             matches = CARD_REGEX.finditer(text)
             for match in matches:
-                # The groups() method gives a tuple of all captured groups
                 card_string = "|".join(group for group in match.groups() if group)
-                
-                # Check for duplicates
                 if card_string and card_string not in seen:
                     seen.add(card_string)
                     cards.append(card_string)
                     count += 1
                     logging.info("Found card %d: %s", count, card_string)
-
                 if count >= amount:
                     break
-            
-            # This second break is crucial to exit the outer loop
             if count >= amount:
                 break
-            
-            # Add a small delay to avoid hitting rate limits too quickly
             await asyncio.sleep(0.1)
 
         if not cards:
@@ -2780,24 +2738,19 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
             logging.warning("No valid cards found in channel: %s", channel)
             return
 
-        # Save scraped cards
         filename = "CVX_Scrapped.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
         logging.info("Saved %d cards to %s", len(cards[:amount]), filename)
 
-        # Delete initial progress message
         await progress_msg.delete()
-        logging.info("Deleted progress message")
+        logging.info("Deleted initial progress message")
 
-        # Prepare requester info
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
-        requester_escaped = md_escape(requester)
-        channel_escaped = md_escape(channel)
-        
-        # Simpler caption using standard characters to avoid Markdown parsing errors
-        # The link URLs are correctly formatted, so they don't need to be escaped.
+        requester_escaped = safe_md(requester)
+        channel_escaped = safe_md(channel)
+
         caption = (
             f"━━━━━━━━━━━━━━\n"
             f"{bullet_bracket_link} Scrapped Cards\n"
@@ -2823,13 +2776,15 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         await bot.send_message(chat_id=chat_id, text="❌ Session string invalid, get a new one.")
         logging.error("AuthKeyUnregistered: session string invalid")
     except Exception as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ Unexpected error: {md_escape(str(e))}")
+        await bot.send_message(chat_id=chat_id, text=f"❌ Unexpected error: {safe_md(str(e))}")
         logging.exception("Unexpected error occurred")
-
     finally:
-        pass
-
-
+        if pyro_client.is_connected:
+            try:
+                await pyro_client.stop()
+                logging.info("Pyrogram client stopped")
+            except Exception as e:
+                logging.warning("Error stopping Pyrogram client: %s", e)
 
 
 
