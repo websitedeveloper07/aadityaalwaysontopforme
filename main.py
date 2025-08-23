@@ -2721,7 +2721,9 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ----------------- Scrap Cards Background -----------------
 async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg):
-    logging.info("Scrape started for channel: %s, amount: %s, user_id: %s", channel, amount, user_id)
+    logging.info(
+        "Scrape started for channel: %s, amount: %s, user_id: %s", channel, amount, user_id
+    )
     cards = []
     seen = set()
 
@@ -2776,44 +2778,47 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         # Delete progress message
         await progress_msg.delete()
 
-# Prepare requester info
-    user = await bot.get_chat(user_id)
-    requester = f"@{user.username}" if user.username else str(user_id)
-    requester_escaped = safe_md(requester)
-    channel_escaped = safe_md(channel)
+        # Prepare requester info
+        user = await bot.get_chat(user_id)
+        requester = f"@{user.username}" if user.username else str(user_id)
+        requester_escaped = safe_md(requester)
+        channel_escaped = safe_md(channel)
 
-    # Make the bullet clickable
-    bullet_link = f"[₰]({BULLET_GROUP_LINK})"
+        # Make the bullet clickable
+        bullet_link = f"[₰]({BULLET_GROUP_LINK})"
 
-    # Caption with box decoration and clickable bullets
-    caption = (
-        f"✦━━━━━━━━━━━━━━✦\n"
-        f"{bullet_link} Scrapped Cards\n"
-        f"{bullet_link} Channel: @{channel_escaped}\n"
-        f"{bullet_link} Total Cards: {len(cards[:amount])}\n"
-        f"{bullet_link} Requested by: {requester_escaped}\n"
-        f"{bullet_link} Developer: {DEVELOPER_LINK}\n"
-        f"✦━━━━━━━━━━━━━━✦"
-    )
+        # Caption with box decoration and clickable bullets
+        caption = (
+            f"✦━━━━━━━━━━━━━━✦\n"
+            f"{bullet_link} Scrapped Cards\n"
+            f"{bullet_link} Channel: @{channel_escaped}\n"
+            f"{bullet_link} Total Cards: {len(cards[:amount])}\n"
+            f"{bullet_link} Requested by: {requester_escaped}\n"
+            f"{bullet_link} Developer: {DEVELOPER_LINK}\n"
+            f"✦━━━━━━━━━━━━━━✦"
+        )
 
-    # Send the document
-    await bot.send_document(
-        chat_id=chat_id,
-        document=open(filename, "rb"),
-        caption=caption,
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
-    logging.info("Document sent successfully to chat: %s", chat_id)
+        # Send the document
+        await bot.send_document(
+            chat_id=chat_id,
+            document=open(filename, "rb"),
+            caption=caption,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        logging.info("Document sent successfully to chat: %s", chat_id)
 
     except FloodWait as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ FloodWait: {e.value} seconds")
         logging.warning("FloodWait exception: %s", e)
+
     except AuthKeyUnregistered:
         await bot.send_message(chat_id=chat_id, text="❌ Session string invalid, get a new one.")
         logging.error("AuthKeyUnregistered: session string invalid")
+
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ Unexpected error: {safe_md(str(e))}")
         logging.exception("Unexpected error occurred")
+
     finally:
         if pyro_client.is_connected:
             try:
@@ -2821,6 +2826,7 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
                 logging.info("Pyrogram client stopped")
             except Exception as e:
                 logging.warning("Error stopping Pyrogram client: %s", e)
+
 
 
 
