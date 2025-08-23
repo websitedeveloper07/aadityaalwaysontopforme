@@ -2664,7 +2664,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             amount=amount,
             user_id=user_id,
             chat_id=chat_id,
-            bot=update.message.bot  # pass the bot instance
+            bot=context.bot  # pass the bot instance
         )
     )
 
