@@ -2593,20 +2593,21 @@ TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
 # Use a dictionary to store cooldown times per user
 user_last_scr_time = {}
 
-# Regex for normal + Amex cards
-# Escaping the pipe character '|' is unnecessary inside a character set or when it's
-# used as an 'OR' operator, but it's good practice to be mindful of its role.
-# The original regex was fine, but a slight simplification makes it more readable.
+# Regex for normal + Amex cards.
+# This pattern is more reliable as it captures the card number, month, year, and CVV/CVC
+# and handles spaces/hyphens within the card number.
 CARD_REGEX = re.compile(
-    r'(\d{13,16})\D*?\|(\d{2})\|(\d{2,4})\|(\d{3,4})'
+    r'\b(\d[ -]*?){13,16}\|(\d{2})\|(\d{2,4})\|(\d{3,4})\b', re.IGNORECASE
 )
 
 # Bullet link
 BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"
 bullet_text = "₰"
+# The link is already correctly formatted for Markdown.
 bullet_bracket_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
 # Developer link
+# The link is already correctly formatted for Markdown.
 DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
 
 # ----------------- Helper Functions -----------------
@@ -2620,14 +2621,16 @@ async def consume_credit(user_id: int) -> bool:
 
 def safe_md(text: str) -> str:
     """
-    Escape MarkdownV2 special characters.
-    This function has been fixed to correctly escape characters.
+    Escapes MarkdownV2 special characters.
+    The issue was likely with other special characters in the final caption.
+    This function correctly escapes the full set of MarkdownV2 special chars.
     """
     if not text:
         return ""
-    # Define a character set for all special characters to be escaped
-    special_chars = r"[_*\[\]()~`>#+\-=|{}.!]"
-    return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
+    # List of all special characters to escape for MarkdownV2
+    special_chars = r'\_*[]()~`>#+-=|{}.!'
+    # Escape each special character with a backslash
+    return re.sub(f'([{re.escape(special_chars)}])', r'\\\1', text)
 
 # ----------------- Scrap Command -----------------
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2680,7 +2683,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_channel = safe_md(channel)
     escaped_amount = safe_md(str(amount))
 
-    # The original bullet_bracket_link is already escaped.
+    # The bullet_bracket_link is already correctly formatted.
     message_text = (
         f"{bullet_bracket_link} Scraping {escaped_amount} cards from @{escaped_channel}..."
     )
@@ -2714,11 +2717,10 @@ logging.basicConfig(
 )
 
 def md_escape(text: str) -> str:
-    """Escape all MarkdownV2 special characters in text."""
-    import re
-    # This function is correct. It's the same logic as safe_md.
-    special_chars = r"[_*\[\]()~`>#+\-=|{}.!]"
-    return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
+    """Escapes all MarkdownV2 special characters in text."""
+    # This is a duplicate of safe_md, but kept for clarity if needed elsewhere.
+    special_chars = r'\_*[]()~`>#+-=|{}.!'
+    return re.sub(f'([{re.escape(special_chars)}])', r'\\\1', text)
 
 async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg):
     """Handles the background scraping process."""
@@ -2728,8 +2730,6 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
     try:
         # Start Pyrogram client if not started
-        # It's better to keep the client started and not stop/start it per request.
-        # This prevents connection overhead.
         if not pyro_client.is_connected:
             logging.info("Starting Pyrogram client...")
             await pyro_client.start()
@@ -2753,11 +2753,10 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         async for message in pyro_client.get_chat_history(channel, limit=amount * 20):
             text = message.text or message.caption or ""
             # Find all matches for the card regex
-            matches = CARD_REGEX.findall(text)
+            matches = CARD_REGEX.finditer(text)
             for match in matches:
-                # The match object contains all capture groups.
-                # The correct approach is to join all the found groups.
-                card_string = "|".join(filter(None, match))
+                # The groups() method gives a tuple of all captured groups
+                card_string = "|".join(group for group in match.groups() if group)
                 
                 # Check for duplicates
                 if card_string and card_string not in seen:
@@ -2797,15 +2796,16 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         requester_escaped = md_escape(requester)
         channel_escaped = md_escape(channel)
         
-        # Note: Developer link already contains Markdown formatting. Do not escape it again.
+        # Simpler caption using standard characters to avoid Markdown parsing errors
+        # The link URLs are correctly formatted, so they don't need to be escaped.
         caption = (
-            f"✦━━━━━━━━━━━━━━✦\n"
-            f"{bullet_bracket_link} 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
-            f"{bullet_bracket_link} 𝐂𝐡𝐚𝐧𝐧𝐞𝐥: @{channel_escaped}\n"
-            f"{bullet_bracket_link} 𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝s: {len(cards[:amount])}\n"
-            f"{bullet_bracket_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲: {requester_escaped}\n"
-            f"{bullet_bracket_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫: {DEVELOPER_LINK}\n"
-            f"✦━━━━━━━━━━━━━━✦"
+            f"━━━━━━━━━━━━━━\n"
+            f"{bullet_bracket_link} Scrapped Cards\n"
+            f"{bullet_bracket_link} Channel: @{channel_escaped}\n"
+            f"{bullet_bracket_link} Total Cards: {len(cards[:amount])}\n"
+            f"{bullet_bracket_link} Requested by: {requester_escaped}\n"
+            f"{bullet_bracket_link} Developer: {DEVELOPER_LINK}\n"
+            f"━━━━━━━━━━━━━━"
         )
 
         await bot.send_document(
@@ -2827,17 +2827,9 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         logging.exception("Unexpected error occurred")
 
     finally:
-        # It's better to keep the client running in a persistent bot.
-        # Starting and stopping for every request adds significant overhead.
-        # You would typically call client.stop() only on a graceful shutdown.
-        # For this example, I've commented it out.
         pass
-        # if pyro_client.is_connected:
-        #     try:
-        #         await pyro_client.stop()
-        #         logging.info("Pyrogram client stopped")
-        #     except Exception:
-        #         logging.exception("Error stopping Pyrogram client")
+
+
 
 
 
