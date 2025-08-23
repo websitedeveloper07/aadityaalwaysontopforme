@@ -2774,14 +2774,16 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
             f"✦━━━━━━━━━━━━━━✦"
         )
 
-        # Send the document
+        # Send the document as a reply to the user's message
         await bot.send_document(
             chat_id=chat_id,
             document=open(filename, "rb"),
             caption=caption,
-            parse_mode=ParseMode.MARKDOWN_V2
+            parse_mode=ParseMode.MARKDOWN_V2,
+            reply_to_message_id=update.message.message_id
         )
         logging.info("Document sent successfully to chat: %s", chat_id)
+
 
     except FloodWait as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ FloodWait: {e.value} seconds")
