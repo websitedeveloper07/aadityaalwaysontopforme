@@ -2739,7 +2739,8 @@ CARD_REGEX = re.compile(
 
 # Bullet link
 BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"
-bullet_link = f"[₰]({BULLET_GROUP_LINK})"
+bullet_link_text = "₰"  # Only the bullet inside brackets will be clickable
+bullet_brackets_link = f"[{bullet_link_text}]({BULLET_GROUP_LINK})"
 
 # Developer clickable
 DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
@@ -2788,8 +2789,8 @@ async def scrap_cards_background(
                     # Update progress every 10 cards
                     if count % 10 == 0:
                         msg_text = (
-                            f"[₰]({BULLET_GROUP_LINK}) Scraping cards from {escape_markdown('@'+channel, version=2)}\n\n"
-                            f"[₰]({BULLET_GROUP_LINK}) Progress: {count}/{amount}\n{progress_bar(count, amount)}"
+                            f"{bullet_brackets_link} Scraping cards from {escape_markdown('@'+channel, version=2)}\n\n"
+                            f"{bullet_brackets_link} Progress: {count}/{amount}\n{escape_markdown(progress_bar(count, amount), version=2)}"
                         )
                         try:
                             await progress_msg.edit_text(text=msg_text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -2819,14 +2820,14 @@ async def scrap_cards_background(
         requester = f"@{user.username}" if user.username else str(user_id)
         requester = escape_markdown(requester, version=2)
 
-        # Final caption
+        # Final caption with brackets bullets clickable
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
-            f"[₰]({BULLET_GROUP_LINK}) 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
-            f"[₰]({BULLET_GROUP_LINK}) 𝐂𝐡𝐚𝐧𝐧𝐞𝐥: {escape_markdown('@'+channel, version=2)}\n"
-            f"[₰]({BULLET_GROUP_LINK}) 𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬: {len(cards[:amount])}\n"
-            f"[₰]({BULLET_GROUP_LINK}) 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲: {requester}\n"
-            f"[₰]({BULLET_GROUP_LINK}) 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫: {DEVELOPER_LINK}\n"
+            f"{bullet_brackets_link} 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
+            f"{bullet_brackets_link} 𝐂𝐡𝐚𝐧𝐧𝐞𝐥: {escape_markdown('@'+channel, version=2)}\n"
+            f"{bullet_brackets_link} 𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬: {len(cards[:amount])}\n"
+            f"{bullet_brackets_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲: {requester}\n"
+            f"{bullet_brackets_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫: {DEVELOPER_LINK}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
@@ -2849,6 +2850,7 @@ async def scrap_cards_background(
                 await pyro_client.stop()
             except Exception:
                 pass
+
 
 
 
