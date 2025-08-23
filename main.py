@@ -2576,7 +2576,7 @@ from db import init_db, get_user, update_user
 # ----------------- Pyrogram Setup -----------------
 api_id = 22751574
 api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
-session_string = "YOUR_SESSION_STRING_HERE"  # Replace with valid session
+session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"  # Replace with valid session
 
 pyro_client = Client(
     name="scraper_session",
