@@ -2558,111 +2558,11 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
+
 import asyncio
 import re
 from datetime import datetime
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from pyrogram import Client
-
-# ----------------- Pyrogram Setup (USER ACCOUNT via SESSION STRING) -----------------
-api_id = 22751574
-api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
-session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
-
-pyro_client = Client(
-    name="scraper_session",
-    api_id=api_id,
-    api_hash=api_hash,
-    session_string=session_string
-)
-
-# ----------------- Cooldown -----------------
-user_last_scr_time = {}
-COOLDOWN_SECONDS = 5  # Minimum seconds between /scr uses
-
-# ----------------- Dummy DB Functions -----------------
-async def consume_credit(user_id):
-    # Deduct 1 credit per command
-    return True
-
-# ----------------- Regex for card extraction -----------------
-CARD_REGEX = re.compile(r'\b(\d{13,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})\b')
-
-# ----------------- /scr Command -----------------
-async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    now = datetime.now()
-
-    # Check cooldown
-    last_time = user_last_scr_time.get(user_id)
-    if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
-        await update.message.reply_text(
-            f"⚠️ Please wait {COOLDOWN_SECONDS} seconds between /scr commands."
-        )
-        return
-
-    # Consume credit
-    if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You don't have enough credits to run this command.")
-        return
-
-    # Parse arguments
-    if len(context.args) < 2:
-        await update.message.reply_text("Usage: /scr [public_channel_username] [amount]")
-        return
-
-    channel = context.args[0].lstrip("@")
-    try:
-        amount = int(context.args[1])
-    except ValueError:
-        await update.message.reply_text("Amount must be a number.")
-        return
-
-    # Update cooldown
-    user_last_scr_time[user_id] = now
-
-    await update.message.reply_text(f"⏳ Scraping {amount} cards from @{channel} in background...")
-
-    # Run scraping in background
-    asyncio.create_task(scrap_cards_background(update, channel, amount))
-
-# ----------------- Background Scraping -----------------
-async def scrap_cards_background(update: Update, channel: str, amount: int):
-    user_id = update.effective_user.id
-    cards = []
-
-    try:
-        # Start Pyrogram client if not already started
-        if not pyro_client.is_connected:
-            await pyro_client.start()
-
-        # Iterate over messages in public channel
-        async for msg in pyro_client.get_chat_history(channel, limit=amount*20):
-            text = msg.text or msg.caption or ""
-            matches = CARD_REGEX.findall(text)
-            for match in matches:
-                cards.append("|".join(match))
-            if len(cards) >= amount:
-                break
-            await asyncio.sleep(1)  # small delay per message
-
-        if not cards:
-            await update.message.reply_text("❌ No valid cards found.")
-            return
-
-        filename = f"scraped_cards_{user_id}.txt"
-        with open(filename, "w") as f:
-            f.write("\n".join(cards[:amount]))
-
-        await update.message.reply_document(filename)
-
-    except Exception as e:
-        await update.message.reply_text(f"Error: {e}")
-import asyncio
-import re
-from datetime import datetime
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pyrogram import Client
 
@@ -2680,7 +2580,7 @@ pyro_client = Client(
 
 # ----------------- Cooldown -----------------
 user_last_scr_time = {}
-COOLDOWN_SECONDS = 5  # seconds between /scr commands
+COOLDOWN_SECONDS = 5
 
 # ----------------- Dummy Credit System -----------------
 async def consume_credit(user_id):
@@ -2690,6 +2590,15 @@ async def consume_credit(user_id):
 CARD_REGEX = re.compile(r'\b(\d{13,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})\b')
 
 # ----------------- /scr Command -----------------
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from datetime import datetime
+import asyncio
+
+COOLDOWN_SECONDS = 10  # seconds between /scr usage
+user_last_scr_time = {}  # track cooldown per user
+
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = datetime.now()
@@ -2700,11 +2609,6 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"⚠️ Please wait {COOLDOWN_SECONDS} seconds between /scr commands."
         )
-        return
-
-    # Consume credit
-    if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You don't have enough credits to run this command.")
         return
 
     # Check arguments
@@ -2719,44 +2623,127 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Amount must be a number.")
         return
 
+    # Fetch user data
+    user_data = await get_user(user_id)
+    if user_data['credits'] <= 0:
+        await update.effective_message.reply_text(
+            "❌ You have no credits left. Please get a subscription to use this command.",
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True
+        )
+        return
+
+    # Deduct 1 credit for this command
+    if not await consume_credit(user_id):
+        await update.effective_message.reply_text(
+            "❌ Failed to deduct credit. Try again later.",
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True
+        )
+        return
+
     # Update cooldown
     user_last_scr_time[user_id] = now
 
-    await update.message.reply_text(f"⏳ Scraping {amount} cards from @{channel} in background...")
+    # Send initial progress message
+    keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
+    )
+    progress_msg = await update.message.reply_text(
+        f"[₰] **Scraping {amount} cards from @{channel}...**\n\n"
+        f"[₰] Progress: 0/{amount}",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=keyboard
+    )
 
-    asyncio.create_task(scrap_cards_background(update, channel, amount))
+    # Start background scraping
+    asyncio.create_task(scrap_cards_background(progress_msg, channel, amount, user_id))
+
 
 # ----------------- Background Scraping -----------------
-async def scrap_cards_background(update: Update, channel: str, amount: int):
-    user_id = update.effective_user.id
-    cards = []
+import asyncio
+import re
+from datetime import datetime
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+# Regex for cards:
+# - 13-16 digits (Visa, MC, etc.) with 3-digit CVV
+# - 15 digits (Amex) with 4-digit CVV
+# - mm|yy or mm|yyyy
+# - Allow spaces or dashes in card numbers
+CARD_REGEX = re.compile(
+    r'\b('
+    r'(?:\d[ -]*?){13,16}\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
+    r'|'
+    r'(?:\d[ -]*?){15}\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
+    r')\b'
+)
+
+async def scrap_cards_background(progress_msg, channel: str, amount: int, user_id: int):
+    cards = []
     try:
         if not pyro_client.is_connected:
             await pyro_client.start()
 
         async for msg in pyro_client.get_chat_history(channel, limit=amount*20):
             text = msg.text or msg.caption or ""
+            text = text.replace("\n", " ").replace("\r", " ")
+
+            # Extract matches
             matches = CARD_REGEX.findall(text)
             for match in matches:
-                cards.append("|".join(match))
+                card_number = match[0].replace(" ", "").replace("-", "")
+                if match[3]:  # Non-Amex CVV
+                    cards.append(f"{card_number}|{match[1]}|{match[2]}|{match[3]}")
+                elif match[7]:  # Amex CVV
+                    cards.append(f"{card_number}|{match[5]}|{match[6]}|{match[7]}")
+
+            # Update progress
+            progress = len(cards)
+            await progress_msg.edit_text(
+                f"[₰] **Scraping {amount} cards from @{channel}...**\n\n"
+                f"[₰] Progress: {progress}/{amount}",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("[₰] Visit Channel", url="https://t.me/+9IxcXQ2wO_c0OWQ1")]]
+                )
+            )
             if len(cards) >= amount:
                 break
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
 
         if not cards:
-            await update.message.reply_text("❌ No valid cards found.")
+            await progress_msg.edit_text("❌ No valid cards found.")
             return
 
-        # Unique filename per user + timestamp
+        # Save file
         filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
 
-        await update.message.reply_document(filename)
+        # Decorated caption
+        caption = (
+            f"[₰] **Scraped Cards**\n"
+            f"[₰] Channel: @{channel}\n"
+            f"[₰] Total Cards: {len(cards[:amount])}\n"
+            f"[₰] Scrapped by: Developer\n"
+            f"[₰] Credits: Not deducted\n"
+            f"[₰] Visit channel: [Click Here](https://t.me/+9IxcXQ2wO_c0OWQ1)"
+        )
+
+        # Delete progress message
+        await progress_msg.delete()
+        await progress_msg.bot.send_document(
+            chat_id=progress_msg.chat.id,
+            document=open(filename, "rb"),
+            caption=caption,
+            parse_mode="Markdown"
+        )
 
     except Exception as e:
-        await update.message.reply_text(f"Error: {e}")
+        await progress_msg.edit_text(f"❌ Error: {e}")
+
+
 
 
 
