@@ -2780,21 +2780,33 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
             document=open(filename, "rb"),
             caption=caption,
             parse_mode=ParseMode.MARKDOWN_V2,
-            reply_to_message_id=update.message.message_id
+            reply_to_message_id=reply_to_message_id  # ✅ passed from caller
         )
         logging.info("Document sent successfully to chat: %s", chat_id)
 
-
     except FloodWait as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ FloodWait: {e.value} seconds")
+        await bot.send_message(
+            chat_id=chat_id,
+            text=f"❌ FloodWait: {e.value} seconds",
+            reply_to_message_id=reply_to_message_id
+        )
         logging.warning("FloodWait exception: %s", e)
 
     except AuthKeyUnregistered:
-        await bot.send_message(chat_id=chat_id, text="❌ Session string invalid, get a new one.")
+        await bot.send_message(
+            chat_id=chat_id,
+            text="❌ Session string invalid, get a new one.",
+            reply_to_message_id=reply_to_message_id
+        )
         logging.error("AuthKeyUnregistered: session string invalid")
 
     except Exception as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ Unexpected error: {safe_md(str(e))}")
+        await bot.send_message(
+            chat_id=chat_id,
+            text=f"❌ Unexpected error: {safe_md(str(e))}",
+            parse_mode=ParseMode.MARKDOWN_V2,
+            reply_to_message_id=reply_to_message_id
+        )
         logging.exception("Unexpected error occurred")
 
     finally:
@@ -2804,6 +2816,7 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
                 logging.info("Pyrogram client stopped")
             except Exception as e:
                 logging.warning("Error stopping Pyrogram client: %s", e)
+
 
 
 
