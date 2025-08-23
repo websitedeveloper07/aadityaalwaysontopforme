@@ -2628,24 +2628,37 @@ def escape_md(text: str) -> str:
     return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
 
 # ----------------- Command Handlers -----------------
+import asyncio
+from datetime import datetime
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
+
+# --- Configuration ---
+COOLDOWN_SECONDS = 10              # Cooldown per user
+MAX_SCRAP_LIMIT = 1000             # Max cards per scrape
+TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"  # For keyboard button
+
+# Dictionary to track last scrape time per user
+user_last_scr_time = {}
+
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /scr command to initiate card scraping."""
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
     now = datetime.now()
 
-    # The check for pyro_client.is_connected is now removed here,
-    # as the main function guarantees the client is ready.
-
-    # ⏳ Cooldown check
+    # --- Cooldown check ---
     last_time = user_last_scr_time.get(user_id)
     if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
+        remaining = int(COOLDOWN_SECONDS - (now - last_time).total_seconds())
         await update.message.reply_text(
-            f"⚠️ Please wait {COOLDOWN_SECONDS} seconds between /scr commands."
+            f"⚠️ Please wait {remaining} more seconds before using /scr again."
         )
         return
 
-    # 📥 Args check
+    # --- Args check ---
     if len(context.args) < 2:
         await update.message.reply_text("Usage: /scr [channel] [amount]")
         return
@@ -2654,36 +2667,41 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         amount = int(context.args[1])
     except ValueError:
-        await update.message.reply_text("Amount must be a number.")
+        await update.message.reply_text("❌ Amount must be a number.")
         return
 
-    # 💳 Consume credit using the database logic
+    # --- Max limit check ---
+    if amount > MAX_SCRAP_LIMIT:
+        await update.message.reply_text(
+            f"⚠️ Maximum cards per scrape is {MAX_SCRAP_LIMIT}. Please reduce the amount."
+        )
+        return
+
+    # --- Credit check ---
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left.")
         return
 
-    # ✅ Update cooldown
+    # --- Update cooldown ---
     user_last_scr_time[user_id] = now
 
-    # ⏳ Initial progress message
+    # --- Initial progress message ---
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
     )
-    
     message_text = (
-        f"[₰] Scraping {amount} cards from @{channel}...\n\n"
+        f"[₰] Scraping {amount} cards from @{escape_markdown(channel, version=2)}...\n\n"
         f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}"
     )
-    
-    # Try to send the initial message
+
     try:
         progress_msg = await update.message.reply_text(
-            text=escape_md(message_text),
+            text=message_text,
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=keyboard,
         )
 
-        # Start async background task
+        # --- Start async background task ---
         asyncio.create_task(
             scrap_cards_background(
                 channel=channel,
@@ -2694,8 +2712,10 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 progress_msg=progress_msg,
             )
         )
+
     except Exception as e:
         await update.message.reply_text(f"❌ Error starting scrape: {e}")
+
 
 import asyncio
 import re
@@ -2802,11 +2822,11 @@ async def scrap_cards_background(
         # Final caption
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
-            f"[₰]({BULLET_GROUP_LINK}) Scraped Cards\n"
-            f"[₰]({BULLET_GROUP_LINK}) Channel: {escape_markdown('@'+channel, version=2)}\n"
-            f"[₰]({BULLET_GROUP_LINK}) Total Cards: {len(cards[:amount])}\n"
-            f"[₰]({BULLET_GROUP_LINK}) Requested by: {requester}\n"
-            f"[₰]({BULLET_GROUP_LINK}) Developer: {DEVELOPER_LINK}\n"
+            f"[₰]({BULLET_GROUP_LINK}) 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
+            f"[₰]({BULLET_GROUP_LINK}) 𝐂𝐡𝐚𝐧𝐧𝐞𝐥: {escape_markdown('@'+channel, version=2)}\n"
+            f"[₰]({BULLET_GROUP_LINK}) 𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬: {len(cards[:amount])}\n"
+            f"[₰]({BULLET_GROUP_LINK}) 𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲: {requester}\n"
+            f"[₰]({BULLET_GROUP_LINK}) 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫: {DEVELOPER_LINK}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
