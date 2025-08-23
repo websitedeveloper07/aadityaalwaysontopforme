@@ -2593,13 +2593,16 @@ user_last_scr_time = {}
 TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
 
 # Regex for normal + Amex cards
-CARD_REGEX = re.compile(
-    r'\b('
-    r'(\d{13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'    # Non-Amex
-    r'|'
-    r'(\d{15})\|(\d{2})\|(\d{2,4})\|(\d{4})'       # Amex
-    r')\b'
-)
+matches = CARD_REGEX.findall(text)
+
+for match in matches:
+    # For non-amex, match[1:5]; for amex, match[5:9]
+    parts = match[1:5] if match[1] else match[5:9]
+    card_string = "|".join(parts)
+
+    if card_string and card_string not in seen:
+        seen.add(card_string)
+        cards.append(card_string)
 
 
 # ----------------- Helper Functions -----------------
@@ -2696,6 +2699,21 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ Error starting scrape: {e}")
 
+import asyncio
+import re
+from datetime import datetime
+from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
+
+# Your regex (unchanged, supports normal + Amex)
+CARD_REGEX = re.compile(
+    r'\b('
+    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
+    r'|'
+    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
+    r')\b'
+)
+
+
 async def scrap_cards_background(
     channel: str,
     amount: int,
@@ -2715,7 +2733,7 @@ async def scrap_cards_background(
         if not pyro_client.is_connected:
             await pyro_client.start()
 
-        # --- Check if the channel exists (public) ---
+        # --- Check channel exists ---
         try:
             await pyro_client.get_chat(channel)
         except UsernameInvalid:
@@ -2731,20 +2749,17 @@ async def scrap_cards_background(
             )
             return
 
-        # --- Iterate through messages (newest first) ---
+        # --- Scraping messages ---
         count = 0
-        async for msg in pyro_client.get_chat_history(channel, limit=amount * 20):
-            text = msg.text or msg.caption or ""
+        async for message in pyro_client.get_chat_history(channel, limit=amount * 20):
+            text = message.text or message.caption or ""
             matches = CARD_REGEX.findall(text)
 
             for match in matches:
-                # Handle tuple vs string matches
-                if isinstance(match, tuple):
-                    card_string = "|".join([p for p in match if p])
-                else:
-                    card_string = match.strip()
+                # Non-Amex → groups 1–4, Amex → groups 5–8
+                parts = match[1:5] if match[1] else match[5:9]
+                card_string = "|".join(parts)
 
-                # Deduplicate
                 if card_string and card_string not in seen:
                     seen.add(card_string)
                     cards.append(card_string)
@@ -2752,39 +2767,39 @@ async def scrap_cards_background(
 
                     # Update progress every 10 cards
                     if count % 10 == 0:
-                        message_text = (
+                        msg_text = (
                             f"[₰] Scraping cards from @{channel}...\n\n"
                             f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
                         )
                         try:
                             await progress_msg.edit_text(
-                                text=escape_md(message_text),
+                                text=escape_md(msg_text),
                                 parse_mode=ParseMode.MARKDOWN_V2,
                             )
                         except Exception:
                             pass
 
-                if count >= amount:
-                    break
+                    if count >= amount:
+                        break
 
             if count >= amount:
                 break
 
-        # --- If no cards found ---
-        if not cards:
-            await progress_msg.delete()
-            await bot.send_message(chat_id=chat_id, text="❌ No valid cards found.")
-            return
+            await asyncio.sleep(0.5)  # prevent FloodWaits
 
         # --- Save TXT file ---
+        if not cards:
+            await progress_msg.edit_text("❌ No valid cards found.")
+            return
+
         filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
 
-        # --- Delete progress message ---
+        # --- Delete progress ---
         await progress_msg.delete()
 
-        # --- Requested user info ---
+        # --- Requester info ---
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
 
@@ -2795,7 +2810,6 @@ async def scrap_cards_background(
             f"[₰] Channel: @{channel}\n"
             f"[₰] Total Cards: {len(cards[:amount])}\n"
             f"[₰] Requested by: {requester}\n"
-            f"[₰] Developer\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
@@ -2813,10 +2827,9 @@ async def scrap_cards_background(
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
     finally:
-        # --- Stop Pyrogram client if we started it here ---
+        # --- Stop Pyrogram client if we started it ---
         if pyro_client.is_connected:
             await pyro_client.stop()
-
 
 
 
