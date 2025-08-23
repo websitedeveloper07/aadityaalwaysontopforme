@@ -2673,9 +2673,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 # - Allow spaces or dashes in card numbers
 CARD_REGEX = re.compile(
     r'\b('
-    r'(?:\d[ -]*?){13,16}\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
+    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
     r'|'
-    r'(?:\d[ -]*?){15}\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
+    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
     r')\b'
 )
 
@@ -2689,31 +2689,39 @@ async def scrap_cards_background(progress_msg, channel: str, amount: int, user_i
             text = msg.text or msg.caption or ""
             text = text.replace("\n", " ").replace("\r", " ")
 
-            # Extract matches
             matches = CARD_REGEX.findall(text)
             for match in matches:
-                card_number = match[0].replace(" ", "").replace("-", "")
-                if match[3]:  # Non-Amex CVV
-                    cards.append(f"{card_number}|{match[1]}|{match[2]}|{match[3]}")
-                elif match[7]:  # Amex CVV
-                    cards.append(f"{card_number}|{match[5]}|{match[6]}|{match[7]}")
+                if match[1]:  # Non-Amex
+                    card_number = match[1].replace(" ", "").replace("-", "")
+                    cards.append(f"{card_number}|{match[2]}|{match[3]}|{match[4]}")
+                elif match[5]:  # Amex
+                    card_number = match[5].replace(" ", "").replace("-", "")
+                    cards.append(f"{card_number}|{match[6]}|{match[7]}|{match[8]}")
 
-            # Update progress
-            progress = len(cards)
-            await progress_msg.edit_text(
-                f"[₰] **Scraping {amount} cards from @{channel}...**\n\n"
-                f"[₰] Progress: {progress}/{amount}",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("[₰] Visit Channel", url="https://t.me/+9IxcXQ2wO_c0OWQ1")]]
+            # Update progress safely
+            try:
+                await progress_msg.edit_text(
+                    f"[₰] **Scraping {amount} cards from @{channel}...**\n\n"
+                    f"[₰] Progress: {len(cards)}/{amount}",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup(
+                        [[InlineKeyboardButton("[₰] Visit Channel", url="https://t.me/+9IxcXQ2wO_c0OWQ1")]]
+                    )
                 )
-            )
+            except:
+                pass
+
             if len(cards) >= amount:
                 break
             await asyncio.sleep(0.5)
 
         if not cards:
-            await progress_msg.edit_text("❌ No valid cards found.")
+            try:
+                await progress_msg.edit_text("❌ No valid cards found.")
+            except:
+                await progress_msg.bot.send_message(
+                    chat_id=progress_msg.chat.id, text="❌ No valid cards found."
+                )
             return
 
         # Save file
@@ -2732,7 +2740,12 @@ async def scrap_cards_background(progress_msg, channel: str, amount: int, user_i
         )
 
         # Delete progress message
-        await progress_msg.delete()
+        try:
+            await progress_msg.delete()
+        except:
+            pass
+
+        # Send new message with TXT file
         await progress_msg.bot.send_document(
             chat_id=progress_msg.chat.id,
             document=open(filename, "rb"),
@@ -2741,10 +2754,13 @@ async def scrap_cards_background(progress_msg, channel: str, amount: int, user_i
         )
 
     except Exception as e:
-        await progress_msg.edit_text(f"❌ Error: {e}")
-
-
-
+        try:
+            await progress_msg.edit_text(f"❌ Error: {e}")
+        except:
+            await progress_msg.bot.send_message(
+                chat_id=progress_msg.chat.id,
+                text=f"❌ Error: {e}"
+            )
 
 
 
