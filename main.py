@@ -2797,37 +2797,37 @@ async def scrap_cards_background(
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
 
-async def start_bot():
-    """Main function to start the bot and clients."""
-    print("Starting bot...")
-    await init_db() # Initialize the database table
-    print("Database table initialized.")
-    
-    # Start the Pyrogram client and wait for it to be ready
+# This async function will run after the bot has been initialized,
+# but before it starts polling for updates. This is the correct place
+# to start our other async client.
+async def post_init(application):
+    print("Initializing clients and database...")
+    await init_db()
     try:
-        print("Starting Pyrogram client...")
         await pyro_client.start()
-        # Verify the client is connected by fetching the bot's own info
-        await pyro_client.get_me()
         print("Pyrogram client started successfully.")
-    except AuthKeyUnregistered:
-        print("ERROR: Pyrogram session string is invalid or expired. Please generate a new one.")
-        return
     except Exception as e:
-        print(f"ERROR: Failed to start Pyrogram client: {e}")
-        return
+        print(f"Failed to start Pyrogram client: {e}")
+        # Optionally, you could stop the bot from running if a critical client fails to start
+        # await application.stop()
 
-    application = ApplicationBuilder().token("8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU").build()
-    application.add_handler(CommandHandler("scr", scrap_command))
-    
-    await application.run_polling()
-    
-    # Stop the Pyrogram client after the bot stops polling
+# This async function will run after the bot has been stopped.
+async def post_stop(application):
+    print("Stopping Pyrogram client...")
     await pyro_client.stop()
     print("Pyrogram client stopped.")
 
 if __name__ == "__main__":
-    asyncio.run(start_bot())
+    application = ApplicationBuilder().token("8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU") \
+        .post_init(post_init) \
+        .post_stop(post_stop) \
+        .build()
+
+    application.add_handler(CommandHandler("scr", scrap_command))
+
+    # We now call run_polling directly, letting the Application manage the event loop.
+    application.run_polling()
+
 
 
 
