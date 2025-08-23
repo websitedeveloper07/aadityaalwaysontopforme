@@ -2776,31 +2776,35 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         # Delete progress message
         await progress_msg.delete()
 
-        # Prepare requester info
-        user = await bot.get_chat(user_id)
-        requester = f"@{user.username}" if user.username else str(user_id)
-        requester_escaped = safe_md(requester)
-        channel_escaped = safe_md(channel)
+# Prepare requester info
+user = await bot.get_chat(user_id)
+requester = f"@{user.username}" if user.username else str(user_id)
+requester_escaped = safe_md(requester)
+channel_escaped = safe_md(channel)
 
-        # Use literal [₰] bullets
-        bullet_safe = safe_md("₰")
-        caption = (
-            f"━━━━━━━━━━━━━━\n"
-            f"[{bullet_safe}] Scrapped Cards\n"
-            f"[{bullet_safe}] Channel: @{channel_escaped}\n"
-            f"[{bullet_safe}] Total Cards: {len(cards[:amount])}\n"
-            f"[{bullet_safe}] Requested by: {requester_escaped}\n"
-            f"[{bullet_safe}] Developer: {DEVELOPER_LINK}\n"
-            f"━━━━━━━━━━━━━━"
-        )
+# Make the bullet clickable
+bullet_link = f"[₰]({BULLET_GROUP_LINK})"
 
-        await bot.send_document(
-            chat_id=chat_id,
-            document=open(filename, "rb"),
-            caption=caption,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        logging.info("Document sent successfully to chat: %s", chat_id)
+# Caption with box decoration and clickable bullets
+caption = (
+    f"✦━━━━━━━━━━━━━━✦\n"
+    f"{bullet_link} Scrapped Cards\n"
+    f"{bullet_link} Channel: @{channel_escaped}\n"
+    f"{bullet_link} Total Cards: {len(cards[:amount])}\n"
+    f"{bullet_link} Requested by: {requester_escaped}\n"
+    f"{bullet_link} Developer: {DEVELOPER_LINK}\n"
+    f"✦━━━━━━━━━━━━━━✦"
+)
+
+# Send the document with proper MarkdownV2 parsing
+await bot.send_document(
+    chat_id=chat_id,
+    document=open(filename, "rb"),
+    caption=caption,
+    parse_mode=ParseMode.MARKDOWN_V2
+)
+logging.info("Document sent successfully to chat: %s", chat_id)
+
 
     except FloodWait as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ FloodWait: {e.value} seconds")
