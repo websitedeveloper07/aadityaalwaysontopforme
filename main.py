@@ -2635,24 +2635,26 @@ async def scrap_cards_background(update: Update, channel: str, amount: int):
             await pyro_client.start()
 
         # Iterate over messages in public channel
-        async for msg in pyro_client.get_chat_history(channel, limit=amount*50):
+        async for msg in pyro_client.get_chat_history(channel, limit=amount*20):
             if msg.text:
                 for line in msg.text.split("\n"):
-                    parts = line.strip().split("|")
-                    # Accept formats: card|mm|yy or card|mm|yyyy or card|mm|yy|cvv
-                    if len(parts) in [3, 4] and all(parts):
-                        cards.append(line.strip())
+                    line = line.strip()
+                    # Extract only lines in card|mm|yy|cvv format
+                    parts = line.split("|")
+                    if len(parts) == 4 and all(parts):
+                        # Optional: check if card_number is numeric and length ~13-16
+                        if parts[0].isdigit() and 13 <= len(parts[0]) <= 16:
+                            cards.append(line)
                     if len(cards) >= amount:
                         break
             if len(cards) >= amount:
                 break
-            await asyncio.sleep(0.1)  # Short delay for stability
+            await asyncio.sleep(2)  # Small delay per message
 
         if not cards:
             await update.message.reply_text("❌ No valid cards found.")
             return
 
-        # Save file
         filename = f"scraped_cards_{user_id}.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
@@ -2660,7 +2662,8 @@ async def scrap_cards_background(update: Update, channel: str, amount: int):
         await update.message.reply_document(filename)
 
     except Exception as e:
-        await update.message.reply_text(f"❌ Error: {e}")
+        await update.message.reply_text(f"Error: {e}")
+
 
 
 
