@@ -2664,40 +2664,14 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Update cooldown ---
     user_last_scr_time[user_id] = now
 
-    # --- Prepare message ---
-    keyboard = InlineKeyboardMarkup(
-        [[InlineKeyboardButton(bullet_text, url=TARGET_CHANNEL_URL)]]
-    )
-
-    # Escape only display text for MarkdownV2
-    escaped_channel = safe_md(channel)
-    escaped_amount = safe_md(str(amount))
-
-    message_text = f"{bullet_text} Scraping {escaped_amount} cards from @{escaped_channel}..."
-
-    # Function to escape text except for URLs in MarkdownV2
-    def escape_md_except_links(text: str) -> str:
-        pattern = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
-        escaped_text = ""
-        last_end = 0
-        for m in pattern.finditer(text):
-            # Escape everything before the link
-            escaped_text += safe_md(text[last_end:m.start()])
-            # Keep the link intact, but escape display text
-            escaped_text += f"[{safe_md(m.group(1))}]({m.group(2)})"
-            last_end = m.end()
-        escaped_text += safe_md(text[last_end:])
-        return escaped_text
-
-    # Apply escaping
-    safe_message_text = escape_md_except_links(message_text)
+    # --- Simple progress message (no buttons) ---
+    message_text = f"⏳ Scraping {amount} cards from @{channel}, please wait..."
 
     try:
         # Send initial message
         progress_msg = await update.message.reply_text(
-            text=safe_message_text,
-            parse_mode=ParseMode.MARKDOWN_V2,
-            reply_markup=keyboard
+            text=message_text,
+            parse_mode=ParseMode.MARKDOWN_V2
         )
 
         # Start scraping in the background
@@ -2713,7 +2687,6 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except Exception as e:
-        # Escape exception message for MarkdownV2
         safe_error = safe_md(str(e))
         await update.message.reply_text(f"❌ Error starting scrape: {safe_error}")
         logging.exception("Error starting scrape for user_id=%s", user_id)
