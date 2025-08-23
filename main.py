@@ -2713,18 +2713,15 @@ async def scrap_cards_background(
         if not pyro_client.is_connected:
             await pyro_client.start()
 
-        # Check if the bot is a member of the channel
+        # Check if channel is accessible
         try:
-            # Just check if the channel exists (works for public channels)
             await pyro_client.get_chat(channel)
-
         except UsernameInvalid:
             await bot.send_message(
                 chat_id=chat_id,
                 text=f"❌ The channel username @{channel} is invalid."
             )
             return
-
         except Exception:
             await bot.send_message(
                 chat_id=chat_id,
@@ -2732,38 +2729,42 @@ async def scrap_cards_background(
             )
             return
 
-
-
-        # Iterate through messages and find cards
+        # Iterate through messages (newest first) and find cards
         count = 0
-        async for message in pyro_client.get_chat_history(channel, limit=10000):
+        async for message in pyro_client.get_chat_history(channel, limit=10000, reverse=True):
             if message.text:
                 found_cards = CARD_REGEX.findall(message.text)
                 if found_cards:
                     for card_parts in found_cards:
-                        card_string = "|".join(filter(None, card_parts))
-                        cards.append(card_string)
-                        count += 1
+                        # Handle tuple vs string matches to avoid duplicates
+                        if isinstance(card_parts, tuple):
+                            card_string = "|".join(p for p in card_parts if p)
+                        else:
+                            card_string = card_parts
 
-                        # Update progress message every 10 cards
-                        if count % 10 == 0:
-                            message_text = (
-                                f"[₰] Scraping cards from @{channel}...\n\n"
-                                f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
-                            )
-                            try:
-                                await progress_msg.edit_text(
-                                    text=escape_md(message_text),
-                                    parse_mode=ParseMode.MARKDOWN_V2,
-                                    reply_markup=InlineKeyboardMarkup(
-                                        [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
-                                    ),
+                        if card_string not in cards:  # avoid duplicates
+                            cards.append(card_string)
+                            count += 1
+
+                            # Update progress message every 10 cards
+                            if count % 10 == 0:
+                                message_text = (
+                                    f"[₰] Scraping cards from @{channel}...\n\n"
+                                    f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
                                 )
-                            except Exception:
-                                pass
+                                try:
+                                    await progress_msg.edit_text(
+                                        text=escape_md(message_text),
+                                        parse_mode=ParseMode.MARKDOWN_V2,
+                                        reply_markup=InlineKeyboardMarkup(
+                                            [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
+                                        ),
+                                    )
+                                except Exception:
+                                    pass
 
-                        if count >= amount:
-                            break
+                            if count >= amount:
+                                break
             if count >= amount:
                 break
 
@@ -2810,7 +2811,6 @@ async def scrap_cards_background(
         # --- Stop Pyrogram client if we started it here ---
         if pyro_client.is_connected:
             await pyro_client.stop()
-
 
 
 
