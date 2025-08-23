@@ -2701,6 +2701,8 @@ import asyncio
 import re
 from datetime import datetime
 from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
 
 # Your regex (unchanged, supports normal + Amex)
 CARD_REGEX = re.compile(
@@ -2770,12 +2772,12 @@ async def scrap_cards_background(
                     # Update progress every 10 cards
                     if count % 10 == 0:
                         msg_text = (
-                            f"{bullet_link} Scraping cards from @{channel}...\n\n"
+                            f"{bullet_link} Scraping cards from {escape_markdown('@' + channel, version=2)}\n\n"
                             f"{bullet_link} Progress: {count}/{amount}\n{progress_bar(count, amount)}"
                         )
                         try:
                             await progress_msg.edit_text(
-                                text=escape_md(msg_text),
+                                text=msg_text,
                                 parse_mode=ParseMode.MARKDOWN_V2,
                             )
                         except Exception:
@@ -2804,12 +2806,13 @@ async def scrap_cards_background(
         # --- Requester info ---
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
+        requester = escape_markdown(requester, version=2)
 
         # --- Final caption ---
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"{bullet_link} Scraped Cards\n"
-            f"{bullet_link} Channel: @{channel}\n"
+            f"{bullet_link} Channel: {escape_markdown('@' + channel, version=2)}\n"
             f"{bullet_link} Total Cards: {len(cards[:amount])}\n"
             f"{bullet_link} Requested by: {requester}\n"
             f"✦━━━━━━━━━━━━━━✦"
@@ -2818,7 +2821,7 @@ async def scrap_cards_background(
         await bot.send_document(
             chat_id=chat_id,
             document=open(filename, "rb"),
-            caption=escape_md(caption),
+            caption=caption,
             parse_mode=ParseMode.MARKDOWN_V2,
         )
 
@@ -2832,6 +2835,7 @@ async def scrap_cards_background(
         # --- Stop Pyrogram client if we started it ---
         if pyro_client.is_connected:
             await pyro_client.stop()
+
 
 
 
