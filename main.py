@@ -2730,14 +2730,20 @@ async def scrap_cards_background(
             if not text:
                 continue
 
-            matches = CARD_REGEX.findall(text)
-            for match in matches:
-                # Handle tuple vs string matches
-                card_string = "|".join(match) if isinstance(match, tuple) else match
+matches = CARD_REGEX.findall(text)
+for match in matches:
+    # Handle tuple vs string matches
+    if isinstance(match, tuple):
+        # Filter out empty strings and join once
+        card_string = "|".join([p for p in match if p])
+    else:
+        card_string = match.strip()
 
-                if card_string not in seen:
-                    seen.add(card_string)
-                    cards.append(card_string)
+    if card_string and card_string not in seen:
+        seen.add(card_string)
+        cards.append(card_string)
+
+
 
                     # Progress update every 10 cards
                     if len(cards) % 10 == 0:
