@@ -2565,18 +2565,21 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pyrogram import Client
 
 # ----------------- Pyrogram Setup -----------------
-api_id = '22751574'      # Replace with your API ID
-api_hash = '5cf63b5a7dcf40ff432c30e249b347dd'  # Replace with your API Hash
-pyro_client = Client("scraper_session", api_id=api_id, api_hash=api_hash)
+api_id = 22751574            # Replace with your API ID
+api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"  # Replace with your API Hash
+bot_token = "8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU"  # Replace with your bot token
+
+pyro_client = Client("scraper_session", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
 # ----------------- Cooldown -----------------
 user_last_scr_time = {}
 COOLDOWN_SECONDS = 5  # Minimum seconds between /scr uses
 
 # ----------------- Dummy DB Functions -----------------
-# Replace with your real DB logic
+# Replace these with your real DB logic
 async def consume_credit(user_id):
     # Deduct 1 credit per command
+    # Return True if user has credit, False otherwise
     return True
 
 # ----------------- /scr Command -----------------
@@ -2613,6 +2616,8 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_last_scr_time[user_id] = now
 
     await update.message.reply_text(f"⏳ Scraping {amount} cards from @{channel} in background...")
+
+    # Run scraping in background
     asyncio.create_task(scrap_cards_background(update, channel, amount))
 
 
@@ -2622,19 +2627,22 @@ async def scrap_cards_background(update: Update, channel: str, amount: int):
     cards = []
 
     try:
-        async with pyro_client:
-            async for msg in pyro_client.get_chat_history(channel, limit=amount*5):
-                if msg.text:
-                    for line in msg.text.split("\n"):
-                        parts = line.strip().split("|")
-                        # Accept formats: card|mm|yy or card|mm|yyyy
-                        if len(parts) == 4 and all(parts):
-                            cards.append(line.strip())
-                        if len(cards) >= amount:
-                            break
-                if len(cards) >= amount:
-                    break
-                await asyncio.sleep(5)  # 5-second delay per message
+        # Make sure Pyrogram client is started
+        if not pyro_client.is_connected:
+            await pyro_client.start()
+
+        async for msg in pyro_client.get_chat_history(channel, limit=amount*5):
+            if msg.text:
+                for line in msg.text.split("\n"):
+                    parts = line.strip().split("|")
+                    # Accept formats: card|mm|yy or card|mm|yyyy
+                    if len(parts) == 4 and all(parts):
+                        cards.append(line.strip())
+                    if len(cards) >= amount:
+                        break
+            if len(cards) >= amount:
+                break
+            await asyncio.sleep(5)  # 5-second delay per message
 
         if not cards:
             await update.message.reply_text("No valid cards found.")
