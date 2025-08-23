@@ -2516,24 +2516,22 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Developer
         DEVELOPER = "kคli liຖนxx"
 
-        # Group link
-    try:
+        # Group link + bullet
         BULLET_GROUP_LINK = "https://t.me/your_group_here"
         bullet_link = f"<a href='{BULLET_GROUP_LINK}'>✗</a>"
-
 
         # --- Final Formatted Message ---
         formatted_msg = (
             f"═══[ <b>{gateway.upper()}</b> ]═══\n"
             f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{card}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 – $𝟏💸\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ {gateway} – $𝟏💸\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ {response}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
             f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ {issuer}\n"
             f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ {country_name} {country_flag}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ @{requester}\n"
+            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
             f"{bullet_link} <b>𝐂𝐫𝐞𝐝𝐢𝐭𝐬 𝐋𝐞𝐟𝐭</b> ➜ {credits_left}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {DEVELOPER}\n"
             f"――――――――――――――――"
@@ -2551,6 +2549,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{str(e)}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
