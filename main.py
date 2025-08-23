@@ -2564,22 +2564,18 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pyrogram import Client
 
-# ----------------- Pyrogram Setup -----------------
+# ----------------- Pyrogram Setup (USER ACCOUNT) -----------------
 api_id = 22751574            # Replace with your API ID
 api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"  # Replace with your API Hash
-bot_token = "8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU"  # Replace with your bot token
-
-pyro_client = Client("scraper_session", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
+pyro_client = Client("scraper_user_session", api_id=api_id, api_hash=api_hash)  # no bot_token
 
 # ----------------- Cooldown -----------------
 user_last_scr_time = {}
 COOLDOWN_SECONDS = 5  # Minimum seconds between /scr uses
 
 # ----------------- Dummy DB Functions -----------------
-# Replace these with your real DB logic
 async def consume_credit(user_id):
     # Deduct 1 credit per command
-    # Return True if user has credit, False otherwise
     return True
 
 # ----------------- /scr Command -----------------
@@ -2627,11 +2623,12 @@ async def scrap_cards_background(update: Update, channel: str, amount: int):
     cards = []
 
     try:
-        # Make sure Pyrogram client is started
+        # Start Pyrogram client if not already started
         if not pyro_client.is_connected:
             await pyro_client.start()
 
-        async for msg in pyro_client.get_chat_history(channel, limit=amount*5):
+        # Iterate over messages in public channel
+        async for msg in pyro_client.get_chat_history(channel, limit=amount*10):
             if msg.text:
                 for line in msg.text.split("\n"):
                     parts = line.strip().split("|")
