@@ -2714,23 +2714,24 @@ async def scrap_cards_background(
             await pyro_client.start()
 
         # Check if the bot is a member of the channel
-try:
-    # Just check if the channel exists (works for public channels)
-    await pyro_client.get_chat(channel)
+        try:
+            # Just check if the channel exists (works for public channels)
+            await pyro_client.get_chat(channel)
 
-except UsernameInvalid:
-    await bot.send_message(
-        chat_id=chat_id,
-        text=f"❌ The channel username @{channel} is invalid."
-    )
-    return
+        except UsernameInvalid:
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"❌ The channel username @{channel} is invalid."
+            )
+            return
 
-except Exception:
-    await bot.send_message(
-        chat_id=chat_id,
-        text=f"❌ Unable to access @{channel}. Maybe it is private."
-    )
-    return
+        except Exception:
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"❌ Unable to access @{channel}. Maybe it is private."
+            )
+            return
+
 
 
         # Iterate through messages and find cards
