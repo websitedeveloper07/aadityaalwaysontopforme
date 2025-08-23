@@ -2444,8 +2444,8 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not context.args:
             await update.message.reply_text(
-                "⚠️ Usage: `/sh card|mm|yy or yyyy|cvv`",
-                parse_mode=ParseMode.MARKDOWN_V2
+                "⚠️ Usage: <code>/sh card|mm|yy or yyyy|cvv</code>",
+                parse_mode=ParseMode.HTML
             )
             return
 
@@ -2453,8 +2453,8 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = payload.split("|")
         if len(parts) != 4:
             await update.message.reply_text(
-                "❌ Invalid format.\nUse: `/sh 1234567812345678|12|2028|123`",
-                parse_mode=ParseMode.MARKDOWN_V2
+                "❌ Invalid format.<br>Use: <code>/sh 1234567812345678|12|2028|123</code>",
+                parse_mode=ParseMode.HTML
             )
             return
 
@@ -2478,8 +2478,8 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             data = json.loads(api_response)
         except json.JSONDecodeError:
             await update.message.reply_text(
-                f"❌ Invalid response from API:\n```\n{api_response}\n```",
-                parse_mode=ParseMode.MARKDOWN_V2
+                f"❌ Invalid response from API:<br><pre>{api_response}</pre>",
+                parse_mode=ParseMode.HTML
             )
             return
 
@@ -2506,31 +2506,31 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Bullet group link
         BULLET_GROUP_LINK = "https://t.me/your_group_here"
-        bullet_link = f"[✗]({BULLET_GROUP_LINK})"
+        bullet_link = f"<a href='{BULLET_GROUP_LINK}'>✗</a>"
 
         # --- Final Formatted Message ---
         formatted_msg = (
-            f"═══[ {gateway.upper()} ]═══\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{card}`\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response}\n"
+            f"═══[ <b>{gateway.upper()}</b> ]═══\n"
+            f"{bullet_link} <b>Card</b> ➜ <code>{card}</code>\n"
+            f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
+            f"{bullet_link} <b>Response</b> ➜ {response}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {issuer}\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country_name} {country_flag}\n"
+            f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
+            f"{bullet_link} <b>Bank</b> ➜ {issuer}\n"
+            f"{bullet_link} <b>Country</b> ➜ {country_name} {country_flag}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {DEVELOPER}\n"
+            f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
+            f"{bullet_link} <b>Developer</b> ➜ {DEVELOPER}\n"
             f"――――――――――――――――"
         )
 
-        await update.message.reply_text(formatted_msg, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
+        await update.message.reply_text(formatted_msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
     except Exception as e:
         logging.exception("Error in /sh command handler")
         await update.message.reply_text(
-            f"❌ Error: `{str(e)}`",
-            parse_mode=ParseMode.MARKDOWN_V2
+            f"❌ Error: <code>{str(e)}</code>",
+            parse_mode=ParseMode.HTML
         )
 
 
