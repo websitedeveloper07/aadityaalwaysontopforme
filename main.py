@@ -228,7 +228,7 @@ AUTHORIZED_GROUP_ID = -1002554243871
 BOT_COMMANDS = [
     "/start", "/help", "/gen", "/bin", "/chk", "/mchk", "/mass",
     "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
-    "/scr"
+    "/scr", "/sh",
 ]
 
 from telegram.ext import ApplicationHandlerStop
@@ -260,6 +260,7 @@ AUTHORIZED_CHATS = set()  # Add your authorized group IDs here
 BOT_COMMANDS = [
     "start", "help", "gen", "bin", "chk", "mchk", "mass",
     "mtchk", "fk", "fl", "open", "status", "credits", "info"
+    "scr", "sh",
 ]
 
 from telegram.ext import ApplicationHandlerStop, filters
@@ -2547,18 +2548,21 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # User
         requester = f"@{user.username}" if user.username else str(user.id)
 
-        # Developer
-        DEVELOPER = "kคli liຖนxx"
+         # Developer
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/K4linuxxxx"  # replace with your real Telegram link
+        developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+
 
         # Group link + bullet
         BULLET_GROUP_LINK = "https://t.me/your_group_here"
-        bullet_link = f"<a href='{BULLET_GROUP_LINK}'>✗</a>"
+        bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
         # --- Final Formatted Message ---
         formatted_msg = (
             f"═══[ <b>{gateway.upper()}</b> ]═══\n"
             f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{card}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ {gateway} – $𝟏💸\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ #𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟏$💸\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ {response}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
