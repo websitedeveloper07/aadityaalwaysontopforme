@@ -2689,9 +2689,14 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
     )
+
+    # Escape MarkdownV2 special characters properly
+    escaped_channel = escape_markdown(channel, version=2)
+    escaped_amount = escape_markdown(str(amount), version=2)
+
     message_text = (
-        f"[₰] Scraping {amount} cards from @{escape_markdown(channel, version=2)}...\n\n"
-        f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}"
+        f"[₰] Scraping {escaped_amount} cards from @{escaped_channel}...\n\n"
+        f"[₰] Progress: 0/{escaped_amount}\n{escape_markdown(progress_bar(0, amount), version=2)}"
     )
 
     try:
@@ -2714,7 +2719,10 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except Exception as e:
-        await update.message.reply_text(f"❌ Error starting scrape: {e}")
+        await update.message.reply_text(
+            f"❌ Error starting scrape: {escape_markdown(str(e), version=2)}"
+        )
+
 
 
 import asyncio
