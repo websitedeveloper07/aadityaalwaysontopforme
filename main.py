@@ -2565,8 +2565,8 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pyrogram import Client
 
 # ----------------- Pyrogram Setup -----------------
-api_id = 'YOUR_API_ID'      # Replace with your API ID
-api_hash = 'YOUR_API_HASH'  # Replace with your API Hash
+api_id = '22751574'      # Replace with your API ID
+api_hash = '5cf63b5a7dcf40ff432c30e249b347dd'  # Replace with your API Hash
 pyro_client = Client("scraper_session", api_id=api_id, api_hash=api_hash)
 
 # ----------------- Cooldown -----------------
