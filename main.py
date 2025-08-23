@@ -2571,7 +2571,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
             f"{bullet_link} <b>𝐂𝐫𝐞𝐝𝐢𝐭𝐬 𝐋𝐞𝐟𝐭</b> ➜ {credits_left}\n"
-            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {DEVELOPER}\n"
+            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
