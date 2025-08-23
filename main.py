@@ -2704,7 +2704,7 @@ from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
-# Your regex (unchanged, supports normal + Amex)
+# Regex (supports normal + Amex)
 CARD_REGEX = re.compile(
     r'\b('
     r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
@@ -2716,6 +2716,9 @@ CARD_REGEX = re.compile(
 # --- Clickable bullet link ---
 BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"  # <-- replace with your channel/group link
 bullet_link = f"[₰]({BULLET_GROUP_LINK})"
+
+# --- Developer clickable link ---
+DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
 
 
 async def scrap_cards_background(
@@ -2815,6 +2818,7 @@ async def scrap_cards_background(
             f"{bullet_link} Channel: {escape_markdown('@' + channel, version=2)}\n"
             f"{bullet_link} Total Cards: {len(cards[:amount])}\n"
             f"{bullet_link} Requested by: {requester}\n"
+            f"{bullet_link} Developer: {DEVELOPER_LINK}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
