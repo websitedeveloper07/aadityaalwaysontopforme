@@ -2726,12 +2726,13 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
     seen = set()
 
     try:
+        # Start Pyrogram client if not connected
         if not pyro_client.is_connected:
             logging.info("Starting Pyrogram client...")
             await pyro_client.start()
             logging.info("Pyrogram client started")
 
-        # Check channel access
+        # Verify channel access
         try:
             await pyro_client.get_chat(channel)
             logging.info("Channel access verified: %s", channel)
@@ -2748,10 +2749,9 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         count = 0
         async for message in pyro_client.get_chat_history(channel, limit=amount*20):
             text = message.text or message.caption or ""
-            matches = CARD_REGEX.finditer(text)
-            for match in matches:
-                card_string = "|".join(group for group in match.groups() if group)
-                if card_string and card_string not in seen:
+            for match in CARD_REGEX.finditer(text):
+                card_string = match.group(0).replace(" ", "").replace("-", "")
+                if card_string not in seen:
                     seen.add(card_string)
                     cards.append(card_string)
                     count += 1
@@ -2767,26 +2767,30 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
             logging.warning("No valid cards found in channel: %s", channel)
             return
 
+        # Save cards to file
         filename = "CVX_Scrapped.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
         logging.info("Saved %d cards to %s", len(cards[:amount]), filename)
 
+        # Delete progress message
         await progress_msg.delete()
-        logging.info("Deleted initial progress message")
 
+        # Prepare requester info
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
         requester_escaped = safe_md(requester)
         channel_escaped = safe_md(channel)
 
+        # Use literal [₰] bullets
+        bullet_safe = safe_md("₰")
         caption = (
             f"━━━━━━━━━━━━━━\n"
-            f"{bullet_bracket_link} Scrapped Cards\n"
-            f"{bullet_bracket_link} Channel: @{channel_escaped}\n"
-            f"{bullet_bracket_link} Total Cards: {len(cards[:amount])}\n"
-            f"{bullet_bracket_link} Requested by: {requester_escaped}\n"
-            f"{bullet_bracket_link} Developer: {DEVELOPER_LINK}\n"
+            f"[{bullet_safe}] Scrapped Cards\n"
+            f"[{bullet_safe}] Channel: @{channel_escaped}\n"
+            f"[{bullet_safe}] Total Cards: {len(cards[:amount])}\n"
+            f"[{bullet_safe}] Requested by: {requester_escaped}\n"
+            f"[{bullet_safe}] Developer: {DEVELOPER_LINK}\n"
             f"━━━━━━━━━━━━━━"
         )
 
