@@ -2632,6 +2632,11 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     now = datetime.now()
 
+    # Add a check to ensure the Pyrogram client is connected
+    if not pyro_client.is_connected:
+        await update.message.reply_text("❌ The scraper client is not yet ready. Please try again in a moment.")
+        return
+
     # ⏳ Cooldown check
     last_time = user_last_scr_time.get(user_id)
     if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
