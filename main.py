@@ -2707,6 +2707,7 @@ async def scrap_cards_background(
     Scrapes cards from a Telegram channel using Pyrogram.
     """
     cards = []
+    seen = set()  # track unique lines
 
     try:
         # --- Start Pyrogram client if not already started ---
@@ -2729,24 +2730,38 @@ async def scrap_cards_background(
             )
             return
 
-        # Iterate through messages (newest first) and find cards
+        # Iterate through messages (Pyrogram yields newest -> oldest by default)
         count = 0
-        async for message in pyro_client.get_chat_history(channel, limit=10000, reverse=True):
+        async for message in pyro_client.get_chat_history(channel, limit=10000):
             if message.text:
                 found_cards = CARD_REGEX.findall(message.text)
                 if found_cards:
                     for card_parts in found_cards:
-                        # Handle tuple vs string matches to avoid duplicates
+                        # Normalize tuple vs string matches to avoid duplicated segments
                         if isinstance(card_parts, tuple):
-                            card_string = "|".join(p for p in card_parts if p)
+                            segments = [p for p in card_parts if p]
+
+                            # If the regex captured the same block twice, collapse it
+                            if len(segments) % 2 == 0:
+                                half = len(segments) // 2
+                                if segments[:half] == segments[half:]:
+                                    segments = segments[:half]
+
+                            # If still too many segments, keep the first plausible 4
+                            if len(segments) > 4:
+                                segments = segments[:4]
+
+                            card_string = "|".join(segments)
                         else:
                             card_string = card_parts
 
-                        if card_string not in cards:  # avoid duplicates
+                        # Deduplicate across messages
+                        if card_string and card_string not in seen:
+                            seen.add(card_string)
                             cards.append(card_string)
                             count += 1
 
-                            # Update progress message every 10 cards
+                            # Update progress every 10 cards
                             if count % 10 == 0:
                                 message_text = (
                                     f"[₰] Scraping cards from @{channel}...\n\n"
@@ -2755,10 +2770,7 @@ async def scrap_cards_background(
                                 try:
                                     await progress_msg.edit_text(
                                         text=escape_md(message_text),
-                                        parse_mode=ParseMode.MARKDOWN_V2,
-                                        reply_markup=InlineKeyboardMarkup(
-                                            [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
-                                        ),
+                                        parse_mode=ParseMode.MARKDOWN_V2
                                     )
                                 except Exception:
                                     pass
@@ -2774,7 +2786,10 @@ async def scrap_cards_background(
             f.write("\n".join(cards))
 
         # Delete progress
-        await progress_msg.delete()
+        try:
+            await progress_msg.delete()
+        except Exception:
+            pass
 
         # Requested user info
         user = await bot.get_chat(user_id)
@@ -2791,15 +2806,14 @@ async def scrap_cards_background(
             f"✦━━━━━━━━━━━━━━✦"
         )
 
-        await bot.send_document(
-            chat_id=chat_id,
-            document=open(filename, "rb"),
-            caption=escape_md(caption),
-            parse_mode=ParseMode.MARKDOWN_V2,
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
-            ),
-        )
+        # Send file (no inline buttons)
+        with open(filename, "rb") as doc:
+            await bot.send_document(
+                chat_id=chat_id,
+                document=doc,
+                caption=escape_md(caption),
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
 
     except FloodWait as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ Error: FloodWait of {e.value} seconds.")
@@ -2811,6 +2825,7 @@ async def scrap_cards_background(
         # --- Stop Pyrogram client if we started it here ---
         if pyro_client.is_connected:
             await pyro_client.stop()
+
 
 
 
