@@ -2512,7 +2512,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
-        processing_msg = await update.message.reply_text("⏳ Processing your request...")
+        processing_msg = await update.message.reply_text("⏳ 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜 𝙮𝙤𝙪𝙧 𝙧𝙚𝙦𝙪𝙚𝙨𝙩…")
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=30) as resp:
