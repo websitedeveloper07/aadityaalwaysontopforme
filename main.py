@@ -2495,7 +2495,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_msg = await update.message.reply_text("⏳ 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜 𝙮𝙤𝙪𝙧 𝙧𝙚𝙦𝙪𝙚𝙨𝙩…")
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=30) as resp:
+            async with session.get(api_url, timeout=50) as resp:
                 api_response = await resp.text()
 
         try:
