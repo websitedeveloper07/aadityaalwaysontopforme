@@ -2565,11 +2565,13 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pyrogram import Client
 
 # ----------------- Pyrogram Setup (USER ACCOUNT via SESSION STRING) -----------------
-api_id = 22751574            # Replace with your API ID
-api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"  # Replace with your API Hash
+from pyrogram import Client
+
+api_id = 22751574
+api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
 session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
 
-pyro_client = Client(session_name=session_string, api_id=api_id, api_hash=api_hash)
+pyro_client = Client(name=session_string, api_id=api_id, api_hash=api_hash)
 
 
 # ----------------- Cooldown -----------------
