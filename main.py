@@ -2711,6 +2711,10 @@ CARD_REGEX = re.compile(
     r')\b'
 )
 
+# --- Clickable bullet link ---
+BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"  # <-- replace with your channel/group link
+bullet_link = f"[₰]({BULLET_GROUP_LINK})"
+
 
 async def scrap_cards_background(
     channel: str,
@@ -2766,8 +2770,8 @@ async def scrap_cards_background(
                     # Update progress every 10 cards
                     if count % 10 == 0:
                         msg_text = (
-                            f"[₰] Scraping cards from @{channel}...\n\n"
-                            f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
+                            f"{bullet_link} Scraping cards from @{channel}...\n\n"
+                            f"{bullet_link} Progress: {count}/{amount}\n{progress_bar(count, amount)}"
                         )
                         try:
                             await progress_msg.edit_text(
@@ -2804,10 +2808,10 @@ async def scrap_cards_background(
         # --- Final caption ---
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
-            f"[₰] Scraped Cards\n"
-            f"[₰] Channel: @{channel}\n"
-            f"[₰] Total Cards: {len(cards[:amount])}\n"
-            f"[₰] Requested by: {requester}\n"
+            f"{bullet_link} Scraped Cards\n"
+            f"{bullet_link} Channel: @{channel}\n"
+            f"{bullet_link} Total Cards: {len(cards[:amount])}\n"
+            f"{bullet_link} Requested by: {requester}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
