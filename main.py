@@ -2685,7 +2685,9 @@ async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_i
     # Send initial progress message
     progress_msg = await bot.send_message(
         chat_id=chat_id,
-        text=f"[₰] Starting to scrape {amount} cards from @{channel}...",
+        text=f"[₰] **Starting scraping {amount} cards from @{channel}...**\n\n[₰] Progress: 0/{amount}",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]])
     )
 
     try:
@@ -2705,31 +2707,27 @@ async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_i
                     card_number = match[5].replace(" ", "").replace("-", "")
                     cards.append(f"{card_number}|{match[6]}|{match[7]}|{match[8]}")
 
-            # Update progress safely
+            # Update progress
             try:
                 await progress_msg.edit_text(
                     f"[₰] **Scraping {amount} cards from @{channel}...**\n\n"
                     f"[₰] Progress: {len(cards)}/{amount}",
                     parse_mode="Markdown",
-                    reply_markup=InlineKeyboardMarkup(
-                        [[InlineKeyboardButton("[₰] Visit Channel", url="https://t.me/+9IxcXQ2wO_c0OWQ1")]]
-                    )
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]])
                 )
             except:
                 pass
 
             if len(cards) >= amount:
                 break
+
             await asyncio.sleep(0.5)
 
         if not cards:
-            try:
-                await progress_msg.edit_text("❌ No valid cards found.")
-            except:
-                await bot.send_message(chat_id=chat_id, text="❌ No valid cards found.")
+            await progress_msg.edit_text("❌ No valid cards found.")
             return
 
-        # Save file
+        # Save the TXT file
         filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
@@ -2740,17 +2738,17 @@ async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_i
             f"[₰] Channel: @{channel}\n"
             f"[₰] Total Cards: {len(cards[:amount])}\n"
             f"[₰] Scrapped by: Developer\n"
-            f"[₰] Credits: Not deducted\n"
-            f"[₰] Visit channel: [Click Here](https://t.me/+9IxcXQ2wO_c0OWQ1)"
+            f"[₰] Credits: Deducted ✅\n"
+            f"[₰] Visit Channel: [Click Here](https://t.me/{channel})"
         )
 
-        # Delete progress message safely
+        # Delete progress message
         try:
             await progress_msg.delete()
         except:
             pass
 
-        # Send new message with TXT file
+        # Send the TXT file with caption
         await bot.send_document(
             chat_id=chat_id,
             document=open(filename, "rb"),
@@ -2763,6 +2761,7 @@ async def scrap_cards_background(channel: str, amount: int, user_id: int, chat_i
             await progress_msg.edit_text(f"❌ Error: {e}")
         except:
             await bot.send_message(chat_id=chat_id, text=f"❌ Error: {e}")
+
 
 
 
