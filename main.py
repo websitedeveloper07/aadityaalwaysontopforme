@@ -2704,7 +2704,7 @@ async def scrap_cards_background(
     progress_msg,
 ):
     """
-    Scrapes the most recent cards from a Telegram channel using Pyrogram.
+    Scrapes cards from a Telegram channel using Pyrogram.
     """
     cards = []
     seen = set()
@@ -2714,77 +2714,80 @@ async def scrap_cards_background(
         if not pyro_client.is_connected:
             await pyro_client.start()
 
-        # Check if channel exists
+        # --- Check if the channel exists (public) ---
         try:
             await pyro_client.get_chat(channel)
         except UsernameInvalid:
-            await bot.send_message(chat_id, f"❌ The channel username @{channel} is invalid.")
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"❌ The channel username @{channel} is invalid."
+            )
             return
         except Exception:
-            await bot.send_message(chat_id, f"❌ Unable to access @{channel}. Maybe it is private.")
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"❌ Unable to access @{channel}. Maybe it is private."
+            )
             return
 
-        # Iterate through messages (newest first by default)
+        # --- Iterate through messages (newest first) ---
+        count = 0
         async for msg in pyro_client.get_chat_history(channel, limit=amount * 20):
             text = msg.text or msg.caption or ""
-            if not text:
-                continue
+            matches = CARD_REGEX.findall(text)
 
-matches = CARD_REGEX.findall(text)
-for match in matches:
-    # Handle tuple vs string matches
-    if isinstance(match, tuple):
-        # Filter out empty strings and join once
-        card_string = "|".join([p for p in match if p])
-    else:
-        card_string = match.strip()
+            for match in matches:
+                # Handle tuple vs string matches
+                if isinstance(match, tuple):
+                    card_string = "|".join([p for p in match if p])
+                else:
+                    card_string = match.strip()
 
-    if card_string and card_string not in seen:
-        seen.add(card_string)
-        cards.append(card_string)
+                # Deduplicate
+                if card_string and card_string not in seen:
+                    seen.add(card_string)
+                    cards.append(card_string)
+                    count += 1
 
-
-
-                    # Progress update every 10 cards
-                    if len(cards) % 10 == 0:
+                    # Update progress every 10 cards
+                    if count % 10 == 0:
                         message_text = (
                             f"[₰] Scraping cards from @{channel}...\n\n"
-                            f"[₰] Progress: {len(cards)}/{amount}\n{progress_bar(len(cards), amount)}"
+                            f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
                         )
                         try:
                             await progress_msg.edit_text(
                                 text=escape_md(message_text),
-                                parse_mode=ParseMode.MARKDOWN_V2
+                                parse_mode=ParseMode.MARKDOWN_V2,
                             )
                         except Exception:
                             pass
 
-                    if len(cards) >= amount:
-                        break
+                if count >= amount:
+                    break
 
-            if len(cards) >= amount:
+            if count >= amount:
                 break
-            await asyncio.sleep(0.5)  # Small delay to reduce FloodWait risk
 
-        # If no cards found
+        # --- If no cards found ---
         if not cards:
-            await bot.send_message(chat_id, "❌ No valid cards found.")
+            await progress_msg.delete()
+            await bot.send_message(chat_id=chat_id, text="❌ No valid cards found.")
             return
 
-        # Save TXT file (only requested amount)
+        # --- Save TXT file ---
         filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
 
-        try:
-            await progress_msg.delete()
-        except Exception:
-            pass
+        # --- Delete progress message ---
+        await progress_msg.delete()
 
-        # Requested user info
+        # --- Requested user info ---
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
 
+        # --- Final caption ---
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"[₰] Scraped Cards\n"
@@ -2795,23 +2798,21 @@ for match in matches:
             f"✦━━━━━━━━━━━━━━✦"
         )
 
-        # Send document
-        with open(filename, "rb") as doc:
-            await bot.send_document(
-                chat_id=chat_id,
-                document=doc,
-                caption=escape_md(caption),
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
+        await bot.send_document(
+            chat_id=chat_id,
+            document=open(filename, "rb"),
+            caption=escape_md(caption),
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
 
     except FloodWait as e:
-        await bot.send_message(chat_id, f"❌ Error: FloodWait of {e.value} seconds.")
-        await asyncio.sleep(e.value)
+        await bot.send_message(chat_id=chat_id, text=f"❌ Error: FloodWait of {e.value} seconds.")
     except AuthKeyUnregistered:
-        await bot.send_message(chat_id, "❌ Error: Your session string is invalid. Please get a new one.")
+        await bot.send_message(chat_id=chat_id, text="❌ Error: Your session string is invalid. Please get a new one.")
     except Exception as e:
-        await bot.send_message(chat_id, f"❌ An unexpected error occurred: {e}")
+        await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
     finally:
+        # --- Stop Pyrogram client if we started it here ---
         if pyro_client.is_connected:
             await pyro_client.stop()
 
