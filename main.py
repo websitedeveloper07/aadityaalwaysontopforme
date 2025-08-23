@@ -2566,7 +2566,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pyrogram import Client
-from pyrogram.errors import FloodWait, UserNotParticipant
+from pyrogram.errors import FloodWait, UserNotParticipant, AuthKeyUnregistered, UsernameInvalid
 
 # ----------------- Pyrogram Setup -----------------
 # NOTE: It is not recommended to hardcode session strings.
@@ -2698,11 +2698,6 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ You have no credits left.")
         return
 
-    # Deduct credit
-    if not await consume_credit(user_id):
-        await update.message.reply_text("❌ Failed to deduct credit.")
-        return
-
     # ✅ Update cooldown
     user_last_scr_time[user_id] = now
 
@@ -2715,24 +2710,28 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"[₰] Scraping {amount} cards from @{channel}...\n\n"
         f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}"
     )
-
-    progress_msg = await update.message.reply_text(
-        text=escape_md(message_text),
-        parse_mode=ParseMode.MARKDOWN_V2,
-        reply_markup=keyboard,
-    )
-
-    # Start async background task
-    asyncio.create_task(
-        scrap_cards_background(
-            channel=channel,
-            amount=amount,
-            user_id=user_id,
-            chat_id=chat_id,
-            bot=context.bot,
-            progress_msg=progress_msg,
+    
+    # Try to send the initial message
+    try:
+        progress_msg = await update.message.reply_text(
+            text=escape_md(message_text),
+            parse_mode=ParseMode.MARKDOWN_V2,
+            reply_markup=keyboard,
         )
-    )
+
+        # Start async background task
+        asyncio.create_task(
+            scrap_cards_background(
+                channel=channel,
+                amount=amount,
+                user_id=user_id,
+                chat_id=chat_id,
+                bot=context.bot,
+                progress_msg=progress_msg,
+            )
+        )
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error starting scrape: {e}")
 
 async def scrap_cards_background(
     channel: str,
@@ -2757,7 +2756,21 @@ async def scrap_cards_background(
                 text=f"❌ I am not a member of the channel @{channel}."
             )
             return
+        except UsernameInvalid:
+             await bot.send_message(
+                chat_id=chat_id, 
+                text=f"❌ The channel username @{channel} is invalid."
+            )
+             return
         
+        # Deduct credit after a successful channel check
+        if not await consume_credit(user_id):
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"❌ Failed to deduct credit."
+            )
+            return
+
         # Iterate through messages and find cards
         count = 0
         async for message in pyro_client.get_chat_history(channel, limit=10000):
@@ -2826,8 +2839,11 @@ async def scrap_cards_background(
 
     except FloodWait as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ Error: FloodWait of {e.value} seconds.")
+    except AuthKeyUnregistered:
+        await bot.send_message(chat_id=chat_id, text="❌ Error: Your session string is invalid. Please get a new one.")
     except Exception as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ Error: {e}")
+        await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
+
 
 
 import psutil
