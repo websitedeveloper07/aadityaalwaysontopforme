@@ -2707,18 +2707,18 @@ from telegram.helpers import escape_markdown
 # Regex for normal + Amex cards
 CARD_REGEX = re.compile(
     r'\b('
-    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'  # Non-Amex
+    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
     r'|'
-    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'      # Amex
+    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
     r')\b'
 )
 
-# Clickable bullet (only the bullet inside brackets)
+# --- Config ---
 BULLET_GROUP_LINK = "https://t.me/YourChannelOrGroup"  # replace with your channel/group link
-bullet = f"[{escape_markdown('₰', version=2)}]({BULLET_GROUP_LINK})"  # bullet clickable, brackets plain
-
 DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
 
+# Escape brackets but keep bullet clickable
+bullet = f"\\[[₰]({BULLET_GROUP_LINK})\\]"
 
 async def scrap_cards_background(
     channel: str,
@@ -2728,13 +2728,18 @@ async def scrap_cards_background(
     bot,
     progress_msg,
 ):
+    """
+    Scrapes cards from a Telegram channel using Pyrogram.
+    """
     cards = []
     seen = set()
 
     try:
+        # Start Pyrogram client if not started
         if not pyro_client.is_connected:
             await pyro_client.start()
 
+        # Check channel exists
         try:
             await pyro_client.get_chat(channel)
         except UsernameInvalid:
@@ -2744,12 +2749,14 @@ async def scrap_cards_background(
             await bot.send_message(chat_id=chat_id, text=f"❌ Unable to access @{channel}. Maybe it is private.")
             return
 
+        # Scraping messages
         count = 0
         async for message in pyro_client.get_chat_history(channel, limit=amount * 20):
             text = message.text or message.caption or ""
             matches = CARD_REGEX.findall(text)
 
             for match in matches:
+                # Non-Amex → groups 1–4, Amex → groups 5–8
                 parts = match[1:5] if match[1] else match[5:9]
                 card_string = "|".join(parts)
 
@@ -2758,27 +2765,25 @@ async def scrap_cards_background(
                     cards.append(card_string)
                     count += 1
 
+                    # Update progress every 10 cards
                     if count % 10 == 0:
                         msg_text = (
-                            f"[{bullet}] Scraping cards from {escape_markdown('@' + channel, version=2)}\n\n"
-                            f"[{bullet}] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
+                            f"{bullet} Scraping cards from {escape_markdown('@'+channel, version=2)}\n\n"
+                            f"{bullet} Progress: {count}/{amount}\n{progress_bar(count, amount)}"
                         )
                         try:
-                            await progress_msg.edit_text(
-                                text=msg_text,
-                                parse_mode=ParseMode.MARKDOWN_V2,
-                            )
+                            await progress_msg.edit_text(text=msg_text, parse_mode=ParseMode.MARKDOWN_V2)
                         except Exception:
                             pass
 
                     if count >= amount:
                         break
-
             if count >= amount:
                 break
 
             await asyncio.sleep(0.5)
 
+        # Save TXT file
         if not cards:
             await progress_msg.edit_text("❌ No valid cards found.")
             return
@@ -2787,19 +2792,22 @@ async def scrap_cards_background(
         with open(filename, "w") as f:
             f.write("\n".join(cards[:amount]))
 
+        # Delete progress
         await progress_msg.delete()
 
+        # Requester info
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
         requester = escape_markdown(requester, version=2)
 
+        # Final caption
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
-            f"[{bullet}] Scraped Cards\n"
-            f"[{bullet}] Channel: {escape_markdown('@' + channel, version=2)}\n"
-            f"[{bullet}] Total Cards: {len(cards[:amount])}\n"
-            f"[{bullet}] Requested by: {requester}\n"
-            f"[{bullet}] Developer: {DEVELOPER_LINK}\n"
+            f"{bullet} Scraped Cards\n"
+            f"{bullet} Channel: {escape_markdown('@'+channel, version=2)}\n"
+            f"{bullet} Total Cards: {len(cards[:amount])}\n"
+            f"{bullet} Requested by: {requester}\n"
+            f"{bullet} Developer: {DEVELOPER_LINK}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
@@ -2819,6 +2827,7 @@ async def scrap_cards_background(
     finally:
         if pyro_client.is_connected:
             await pyro_client.stop()
+
 
 
 
