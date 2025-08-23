@@ -2687,6 +2687,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=chat_id,
                 bot=context.bot,
                 progress_msg=progress_msg
+                reply_to_message_id=update.message.message_id
             )
         )
 
@@ -2696,7 +2697,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.exception("Error starting scrape for user_id=%s", user_id)
 
 # ----------------- Scrap Cards Background -----------------
-async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg):
+async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg, reply_to_message_id):
     logging.info(
         "Scrape started for channel: %s, amount: %s, user_id: %s", channel, amount, user_id
     )
