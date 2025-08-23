@@ -2403,6 +2403,7 @@ async def background_check_multi(update, context, cards, processing_msg):
 import aiohttp
 import json
 import logging
+import asyncio
 from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
@@ -2445,7 +2446,6 @@ async def get_bin_details(bin_number: str) -> dict:
         "country_name": "N/A",
         "country_emoji": ""
     }
-
     url = f"https://bins.antipublic.cc/bins/{bin_number}"
     headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
@@ -2470,38 +2470,18 @@ async def get_bin_details(bin_number: str) -> dict:
     return bin_data
 
 
-# --- /sh Command Handler ---
-async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# --- Background /sh processing ---
+async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     try:
         user = update.effective_user
 
-        # ✅ Enforce cooldown
-        if not await enforce_cooldown(user.id, update):
-            return
-
-        # ✅ Try to consume credit
+        # --- Consume credit ---
         has_credit = await consume_credit(user.id)
         if not has_credit:
             await update.message.reply_text("❌ You don’t have enough credits left.")
             return
 
-        # --- Argument check ---
-        if not context.args:
-            await update.message.reply_text(
-                "⚠️ Usage: <code>/sh card|mm|yy or yyyy|cvv</code>",
-                parse_mode=ParseMode.HTML
-            )
-            return
-
-        payload = " ".join(context.args).strip()
         parts = payload.split("|")
-        if len(parts) != 4:
-            await update.message.reply_text(
-                "❌ Invalid format.<br>Use: <code>/sh 1234567812345678|12|2028|123</code>",
-                parse_mode=ParseMode.HTML
-            )
-            return
-
         cc, mm, yy, cvv = [p.strip() for p in parts]
 
         # --- API URL ---
@@ -2531,7 +2511,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         updated_user = await get_user(user.id)
         credits_left = updated_user.get("credits", 0)
 
-        # Extract API fields
+        # --- Extract API fields ---
         response = data.get("Response", "Unknown")
         gateway = data.get("Gateway", "Unknown")
         card = data.get("cc", "N/A")
@@ -2539,26 +2519,24 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # --- BIN lookup ---
         bin_number = cc[:6]
         bin_details = await get_bin_details(bin_number)
-
         brand = (bin_details.get("scheme") or "N/A").upper()
         issuer = (bin_details.get("bank") or "N/A").title()
         country_name = (bin_details.get("country_name") or "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
-        # User
+        # --- User info ---
         requester = f"@{user.username}" if user.username else str(user.id)
 
-         # Developer
+        # --- Developer clickable ---
         DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/K4linuxxxx"  # replace with your real Telegram link
+        DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-
-        # Group link + bullet
+        # --- Group link + bullet ---
         BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
         bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
-        # --- Final Formatted Message ---
+        # --- Final formatted message ---
         formatted_msg = (
             f"═══[ <b>{gateway.upper()}</b> ]═══\n"
             f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{card}</code>\n"
@@ -2582,11 +2560,41 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except Exception as e:
-        logger.exception("Error in /sh command handler")
+        logger.exception("Error in processing /sh")
         await update.message.reply_text(
             f"❌ Error: <code>{str(e)}</code>",
             parse_mode=ParseMode.HTML
         )
+
+
+# --- Main /sh command ---
+async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    # ✅ Cooldown
+    if not await enforce_cooldown(user.id, update):
+        return
+
+    # --- Check arguments ---
+    if not context.args:
+        await update.message.reply_text(
+            "⚠️ Usage: <code>/sh card|mm|yy|cvv</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    payload = " ".join(context.args).strip()
+    parts = payload.split("|")
+    if len(parts) != 4:
+        await update.message.reply_text(
+            "❌ Invalid format.<br>Use: <code>/sh 1234567812345678|12|2028|123</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # ✅ Run processing in the background so bot stays responsive
+    asyncio.create_task(process_sh(update, context, payload))
+
 
 
 
