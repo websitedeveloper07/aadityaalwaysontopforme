@@ -2623,6 +2623,8 @@ def safe_md(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', str(text))
 
 # ----------------- Scrap Command -----------------
+user_last_scr_time = {}
+
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
@@ -2656,7 +2658,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # --- Credit check ---
+    # --- Credit check (example) ---
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left.")
         return
@@ -2664,17 +2666,18 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Update cooldown ---
     user_last_scr_time[user_id] = now
 
-    # --- Simple progress message (no buttons) ---
-    message_text = f"⏳ Scraping {amount} cards from @{channel}, please wait..."
+    # --- Prepare simple progress message ---
+    raw_message_text = f"{bullet_text} Scraping {amount} cards from @{channel}, please wait..."
+    message_text = safe_md(raw_message_text)  # Escape MarkdownV2 special chars
 
     try:
-        # Send initial message
+        # Send initial message (no inline buttons)
         progress_msg = await update.message.reply_text(
             text=message_text,
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-        # Start scraping in the background
+        # Start scraping in background
         asyncio.create_task(
             scrap_cards_background(
                 channel=channel,
@@ -2690,7 +2693,6 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         safe_error = safe_md(str(e))
         await update.message.reply_text(f"❌ Error starting scrape: {safe_error}")
         logging.exception("Error starting scrape for user_id=%s", user_id)
-
 
 # ----------------- Scrap Cards Background -----------------
 async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg):
