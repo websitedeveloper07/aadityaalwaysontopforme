@@ -2629,17 +2629,16 @@ async def get_user_data(user_id):
     if not user_data:
         now_str = datetime.now().strftime('%d-%m-%Y')
         # Insert new user with defaults
-        await update_user(
-            user_id,
-            credits=DEFAULT_FREE_CREDITS,
-            plan=DEFAULT_PLAN,
-            status=DEFAULT_STATUS,
-            plan_expiry=DEFAULT_PLAN_EXPIRY,
-            keys_redeemed=DEFAULT_KEYS_REDEEMED,
-            registered_at=now_str
-        )
-        # Fetch again after insertion
-        user_data = await get_user(user_id)
+        user_data = {
+            "credits": DEFAULT_FREE_CREDITS,
+            "plan": DEFAULT_PLAN,
+            "status": DEFAULT_STATUS,
+            "plan_expiry": DEFAULT_PLAN_EXPIRY,
+            "keys_redeemed": DEFAULT_KEYS_REDEEMED,
+            "registered_at": now_str
+        }
+        await update_user(user_id, **user_data)
+        # We no longer need to re-fetch as we have the data
     return user_data
 
 async def consume_credit(user_id: int) -> bool:
@@ -2843,6 +2842,30 @@ async def scrap_cards_background(
         await bot.send_message(chat_id=chat_id, text="❌ Error: Your session string is invalid. Please get a new one.")
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
+
+# ----------------- Main -----------------
+async def main():
+    """Main function to start the bot."""
+    print("Starting bot...")
+    try:
+        await pyro_client.start()
+        await pyro_client.get_me()
+        print("Pyrogram client started successfully.")
+    except AuthKeyUnregistered:
+        print("ERROR: Pyrogram session string is invalid or expired. Please generate a new one.")
+        return
+    except Exception as e:
+        print(f"ERROR: Failed to start Pyrogram client: {e}")
+        return
+
+    application = ApplicationBuilder().token("8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU").build()
+    application.add_handler(CommandHandler("scr", scrap_command))
+    await application.run_polling()
+    await pyro_client.stop()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
 
 
 
