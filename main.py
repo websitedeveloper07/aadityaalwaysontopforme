@@ -2401,14 +2401,18 @@ async def background_check_multi(update, context, cards, processing_msg):
 
 import aiohttp
 import json
+import logging
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
 async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles /sh command in the format: /sh card|mm|yyyy|cvv"""
     try:
         if not context.args:
             await update.message.reply_text(
-                "⚠️ Usage: `/sh card|mm|yy or yyyy|cvv`",
-                parse_mode=ParseMode.MARKDOWN_V2
+                "⚠️ Usage: <code>/sh card|mm|yy or yyyy|cvv</code>",
+                parse_mode=ParseMode.HTML
             )
             return
 
@@ -2416,8 +2420,8 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = payload.split("|")
         if len(parts) != 4:
             await update.message.reply_text(
-                "❌ Invalid format.\nUse: `/sh 1234567812345678|12|2028|123`",
-                parse_mode=ParseMode.MARKDOWN_V2
+                "❌ Invalid format.<br>Use: <code>/sh 1234567812345678|12|2028|123</code>",
+                parse_mode=ParseMode.HTML
             )
             return
 
@@ -2431,7 +2435,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
-        await update.message.reply_text("⏳ Processing your request...")
+        await update.message.reply_text("⏳ <b>Processing your request...</b>", parse_mode=ParseMode.HTML)
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=30) as resp:
@@ -2442,8 +2446,8 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             data = json.loads(api_response)
         except json.JSONDecodeError:
             await update.message.reply_text(
-                f"❌ Invalid response from API:\n```\n{api_response}\n```",
-                parse_mode=ParseMode.MARKDOWN_V2
+                f"❌ Invalid response from API:<br><code>{api_response}</code>",
+                parse_mode=ParseMode.HTML
             )
             return
 
@@ -2462,37 +2466,34 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
         requester = f"@{user.username}" if user.username else str(user.id)
 
-        # Developer link (set your constant)
-        DEVELOPER = "[YourDeveloperName](https://t.me/yourusername)"
+        # Developer (set your constant here)
+        DEVELOPER = '<a href="https://t.me/yourusername">YourDeveloperName</a>'
 
         # Format message
         formatted_msg = (
-            f"✦━━━━━━━━━━━━━━✦\n"
-            f"🛠 Gateway: *{gateway.title()}* ({price}$)\n"
-            f"💳 Card: `{card}`\n"
-            f"📌 Response: *{response}*\n"
-            f"🌐 Proxy: *{proxy_status}* `{proxy_ip}`\n"
-            f"🔎 BIN: `{bin_number}`\n\n"
-            f"🙋 Requested by: {requester}\n"
-            f"👨‍💻 Developer: {DEVELOPER}\n"
-            f"✦━━━━━━━━━━━━━━✦"
+            "✦━━━━━━━━━━━━━━✦\n"
+            f"🛠 <b>Gateway:</b> {gateway.title()} ({price}$)\n"
+            f"💳 <b>Card:</b> <code>{card}</code>\n"
+            f"📌 <b>Response:</b> {response}\n"
+            f"🌐 <b>Proxy:</b> {proxy_status} (<code>{proxy_ip}</code>)\n"
+            f"🔎 <b>BIN:</b> <code>{bin_number}</code>\n\n"
+            f"🙋 <b>Requested by:</b> {requester}\n"
+            f"👨‍💻 <b>Developer:</b> {DEVELOPER}\n"
+            "✦━━━━━━━━━━━━━━✦"
         )
 
         await update.message.reply_text(
             formatted_msg,
-            parse_mode=ParseMode.MARKDOWN_V2
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
         )
 
     except Exception as e:
         await update.message.reply_text(
-            f"❌ Error: {safe_md(str(e))}",
-            parse_mode=ParseMode.MARKDOWN_V2
+            f"❌ Error: <code>{str(e)}</code>",
+            parse_mode=ParseMode.HTML
         )
         logging.exception("Error in /sh command handler")
-
-
-
-
 
 
 
