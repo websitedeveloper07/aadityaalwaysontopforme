@@ -2604,7 +2604,6 @@ CARD_REGEX = re.compile(
 # ----------------- Helper Functions -----------------
 async def consume_credit(user_id: int) -> bool:
     """Consume 1 credit from DB user if available."""
-    # This function uses the imported get_user and update_user.
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -2632,10 +2631,8 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     now = datetime.now()
 
-    # Add a check to ensure the Pyrogram client is connected
-    if not pyro_client.is_connected:
-        await update.message.reply_text("❌ The scraper client is not yet ready. Please try again in a moment.")
-        return
+    # The check for pyro_client.is_connected is now removed here,
+    # as the main function guarantees the client is ready.
 
     # ⏳ Cooldown check
     last_time = user_last_scr_time.get(user_id)
@@ -2800,26 +2797,37 @@ async def scrap_cards_background(
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ An unexpected error occurred: {e}")
 
-# ----------------- Lifecycle functions for ApplicationBuilder -----------------
-async def post_init(application):
-    """Start Pyrogram client after bot is initialized."""
-    print("Starting Pyrogram client...")
+async def start_bot():
+    """Main function to start the bot and clients."""
+    print("Starting bot...")
+    await init_db() # Initialize the database table
+    print("Database table initialized.")
+    
+    # Start the Pyrogram client and wait for it to be ready
     try:
+        print("Starting Pyrogram client...")
         await pyro_client.start()
+        # Verify the client is connected by fetching the bot's own info
         await pyro_client.get_me()
         print("Pyrogram client started successfully.")
     except AuthKeyUnregistered:
         print("ERROR: Pyrogram session string is invalid or expired. Please generate a new one.")
-        raise
+        return
     except Exception as e:
         print(f"ERROR: Failed to start Pyrogram client: {e}")
-        raise
+        return
 
-async def shutdown(application):
-    """Stop Pyrogram client on bot shutdown."""
-    print("Stopping Pyrogram client...")
+    application = ApplicationBuilder().token("8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU").build()
+    application.add_handler(CommandHandler("scr", scrap_command))
+    
+    await application.run_polling()
+    
+    # Stop the Pyrogram client after the bot stops polling
     await pyro_client.stop()
     print("Pyrogram client stopped.")
+
+if __name__ == "__main__":
+    asyncio.run(start_bot())
 
 
 
