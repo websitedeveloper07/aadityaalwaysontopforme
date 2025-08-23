@@ -2566,6 +2566,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pyrogram import Client
+from pyrogram.errors import FloodWait, UserNotParticipant
 
 # ----------------- Pyrogram Setup -----------------
 # NOTE: It is not recommended to hardcode session strings.
@@ -2584,6 +2585,7 @@ pyro_client = Client(
 # ----------------- Globals & Constants -----------------
 COOLDOWN_SECONDS = 10
 user_last_scr_time = {}
+TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
 
 # Regex for normal + Amex cards
 CARD_REGEX = re.compile(
@@ -2594,14 +2596,62 @@ CARD_REGEX = re.compile(
     r')\b'
 )
 
-# ----------------- Dummy Functions (Replace with your own logic) -----------------
-async def get_user(user_id):
-    """Placeholder function for getting user data."""
-    return {"credits": 5} # Dummy data for demo
+# ----------------- Credit System (Placeholder for DB integration) -----------------
+# NOTE: These functions assume you have a file named 'db.py' with
+# `get_user` and `update_user` async functions. This is a placeholder
+# for your actual database implementation.
 
-async def consume_credit(user_id):
-    """Placeholder function for deducting credit."""
-    return True # Always allow for demo
+# In-memory dummy store to simulate DB
+_user_data_store = {}
+
+async def get_user(user_id):
+    """Simulates async get_user from DB."""
+    return _user_data_store.get(user_id)
+
+async def update_user(user_id, **kwargs):
+    """Simulates async update_user to DB."""
+    if user_id not in _user_data_store:
+        _user_data_store[user_id] = {}
+    _user_data_store[user_id].update(kwargs)
+    return True
+
+DEFAULT_FREE_CREDITS = 200
+DEFAULT_PLAN = "Free"
+DEFAULT_STATUS = "Free"
+DEFAULT_PLAN_EXPIRY = "N/A"
+DEFAULT_KEYS_REDEEMED = 0
+
+async def get_user_data(user_id):
+    """
+    Fetch user data from DB; if not exists, create with defaults then fetch.
+    """
+    user_data = await get_user(user_id)
+    if not user_data:
+        now_str = datetime.now().strftime('%d-%m-%Y')
+        # Insert new user with defaults
+        await update_user(
+            user_id,
+            credits=DEFAULT_FREE_CREDITS,
+            plan=DEFAULT_PLAN,
+            status=DEFAULT_STATUS,
+            plan_expiry=DEFAULT_PLAN_EXPIRY,
+            keys_redeemed=DEFAULT_KEYS_REDEEMED,
+            registered_at=now_str
+        )
+        # Fetch again after insertion
+        user_data = await get_user(user_id)
+    return user_data
+
+async def consume_credit(user_id: int) -> bool:
+    """
+    Deduct 1 credit if available. Return True if succeeded.
+    """
+    user_data = await get_user_data(user_id)
+    if user_data and user_data.get('credits', 0) > 0:
+        new_credits = user_data['credits'] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
 
 # ----------------- Helper Functions -----------------
 def progress_bar(current, total, size=20):
@@ -2643,7 +2693,7 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # 💳 Credits check
-    user_data = await get_user(user_id)
+    user_data = await get_user_data(user_id)
     if user_data["credits"] <= 0:
         await update.message.reply_text("❌ You have no credits left.")
         return
@@ -2658,10 +2708,9 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ⏳ Initial progress message
     keyboard = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
+        [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
     )
     
-    # Escape the entire message string
     message_text = (
         f"[₰] Scraping {amount} cards from @{channel}...\n\n"
         f"[₰] Progress: 0/{amount}\n{progress_bar(0, amount)}"
@@ -2694,31 +2743,54 @@ async def scrap_cards_background(
     progress_msg,
 ):
     """
-    Simulates a background task to scrape cards and send a file.
-    NOTE: This is a simplified version. You will need to implement
-    the actual scraping logic using pyrogram.
+    Scrapes cards from a Telegram channel using Pyrogram.
     """
     cards = []
 
     try:
-        # --- Dummy scraping simulation ---
-        for i in range(amount):
-            await asyncio.sleep(1)  # simulate scraping delay
-            cards.append(f"400000000000000{i%10}|12|25|123")
-
-            # Update progress
-            message_text = (
-                f"[₰] Scraping {amount} cards from @{channel}...\n\n"
-                f"[₰] Progress: {len(cards)}/{amount}\n{progress_bar(len(cards), amount)}"
+        # Check if the bot is a member of the channel
+        try:
+            await pyro_client.get_chat_member(channel, "me")
+        except UserNotParticipant:
+            await bot.send_message(
+                chat_id=chat_id, 
+                text=f"❌ I am not a member of the channel @{channel}."
             )
-            await progress_msg.edit_text(
-                text=escape_md(message_text),
-                parse_mode=ParseMode.MARKDOWN_V2,
-                reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
-                ),
-            )
+            return
+        
+        # Iterate through messages and find cards
+        count = 0
+        async for message in pyro_client.get_chat_history(channel, limit=10000):
+            if message.text:
+                found_cards = CARD_REGEX.findall(message.text)
+                if found_cards:
+                    for card_parts in found_cards:
+                        card_string = "|".join(filter(None, card_parts))
+                        cards.append(card_string)
+                        count += 1
+                        
+                        # Update progress message
+                        if count % 10 == 0: # Update every 10 cards to reduce API calls
+                            message_text = (
+                                f"[₰] Scraping cards from @{channel}...\n\n"
+                                f"[₰] Progress: {count}/{amount}\n{progress_bar(count, amount)}"
+                            )
+                            try:
+                                await progress_msg.edit_text(
+                                    text=escape_md(message_text),
+                                    parse_mode=ParseMode.MARKDOWN_V2,
+                                    reply_markup=InlineKeyboardMarkup(
+                                        [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
+                                    ),
+                                )
+                            except Exception:
+                                pass # Ignore edit errors if message is too old or edited by someone else
 
+                        if count >= amount:
+                            break
+            if count >= amount:
+                break
+        
         # Save TXT file
         filename = f"scraped_cards_{user_id}_{int(datetime.now().timestamp())}.txt"
         with open(filename, "w") as f:
@@ -2748,13 +2820,14 @@ async def scrap_cards_background(
             caption=escape_md(caption),
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("[₰] Visit Channel", url=f"https://t.me/{channel}")]]
+                [[InlineKeyboardButton("[₰] Visit Channel", url=TARGET_CHANNEL_URL)]]
             ),
         )
 
+    except FloodWait as e:
+        await bot.send_message(chat_id=chat_id, text=f"❌ Error: FloodWait of {e.value} seconds.")
     except Exception as e:
         await bot.send_message(chat_id=chat_id, text=f"❌ Error: {e}")
-
 
 
 import psutil
