@@ -2595,11 +2595,12 @@ TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
 # Regex for normal + Amex cards
 CARD_REGEX = re.compile(
     r'\b('
-    r'((?:\d[ -]*?){13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'      # Non-Amex
+    r'(\d{13,16})\|(\d{2})\|(\d{2,4})\|(\d{3})'    # Non-Amex
     r'|'
-    r'((?:\d[ -]*?){15})\|(\d{2})\|(\d{2,4})\|(\d{4})'          # Amex
+    r'(\d{15})\|(\d{2})\|(\d{2,4})\|(\d{4})'       # Amex
     r')\b'
 )
+
 
 # ----------------- Helper Functions -----------------
 async def consume_credit(user_id: int) -> bool:
