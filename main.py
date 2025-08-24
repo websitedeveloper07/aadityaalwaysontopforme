@@ -2471,7 +2471,8 @@ async def get_bin_details(bin_number: str) -> dict:
 
 
 # --- Background /sh processing ---
-from telegram import Update, ParseMode
+from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 import aiohttp
 import json
