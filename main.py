@@ -2606,11 +2606,19 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from db import get_user, update_user
 
+# Optional placeholder for BIN details if you don't have the function
+async def get_bin_details(bin_number: str):
+    return {
+        "scheme": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": ""
+    }
+
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
-    # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
             "❌ Usage: /seturl shop.meltingpot.com",
@@ -2622,7 +2630,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not site_input.startswith(("http://", "https://")):
         site_input = f"https://{site_input}"
 
-    # --- Check if user already has a site ---
+    # Check if user already has a site
     user_data = await get_user(user_id)
     if user_data.get("custom_url"):
         await update.message.reply_text(
@@ -2631,13 +2639,11 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # --- Send initial processing message ---
     processing_msg = await update.message.reply_text(
         f"⏳ Adding URL: <code>{escape(site_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
-    # --- Prepare API URL (fixed card) ---
     api_url = (
         "https://7feeef80303d.ngrok-free.app/autosh.php"
         "?cc=4546788796826918|09|2030|781"
@@ -2646,12 +2652,12 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
-        # --- Call API ---
-        async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=50) as resp:
+        timeout = aiohttp.ClientTimeout(total=90)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(api_url) as resp:
                 api_response = await resp.text()
 
-        # --- Parse JSON safely ---
+        # Parse JSON safely
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
@@ -2661,15 +2667,15 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        # --- Extract API fields ---
+        # Extract API fields
         response = data.get("Response", "Unknown")
-        price = data.get("Price", "1.0")
+        price = str(data.get("Price", "1.0"))
         gateway = data.get("Gateway", "Unknown")
         proxy_status = data.get("ProxyStatus", "-")
         proxy_ip = data.get("ProxyIP", "-")
         card = data.get("cc", "N/A")
 
-        # --- BIN lookup ---
+        # BIN lookup
         bin_number = card[:6]
         bin_details = await get_bin_details(bin_number)
         brand = (bin_details.get("scheme") or "N/A").upper()
@@ -2677,19 +2683,16 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         country_name = (bin_details.get("country_name") or "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
-        # --- Update user DB ---
+        # Update user DB
         await update_user(user_id, custom_url=site_input)
 
-        # --- User info ---
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        # --- Bullet for message ---
         BULLET = "[✗]"
 
-        # --- Final formatted message ---
         formatted_msg = (
             f"═══[ <b>{gateway.upper()}</b> ]═══\n"
             f"{BULLET} <b>Site</b> ➜ <code>{escape(site_input)}</code>\n"
@@ -2715,14 +2718,15 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True
         )
 
+    except asyncio.TimeoutError:
+        await processing_msg.edit_text("❌ API request timed out. Please try again later.")
     except Exception as e:
         import logging
         logging.exception("Error in /seturl")
         await processing_msg.edit_text(
-            f"❌ Error: <code>{str(e)}</code>",
+            f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
-
 
 
 
