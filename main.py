@@ -3034,7 +3034,7 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 DEVELOPER_LINK = "https://t.me/K4linuxxxx"
                 developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
                 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
-                bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
+                BULLET = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
                 
                 formatted_msg = (
