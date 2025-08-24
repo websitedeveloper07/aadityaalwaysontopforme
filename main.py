@@ -3073,9 +3073,9 @@ async def run_site_check(site_url: str, msg, user):
                 formatted_msg = (
                     f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
                     f"{BULLET} 𝐒𝐢𝐭𝐞 ➜ <code>{site_url}</code>\n"
-                    f"{BULLET} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}\n"
+                    f"{BULLET} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
                     f"{BULLET} 𝐀𝐦𝐨𝐮𝐧𝐭 ➜ {price}💸\n"
-                    f"{BULLET} Status ➜ <b>{status}</b>\n\n"
+                    f"{BULLET} 𝐒𝐭𝐚𝐭𝐮𝐬 ➜ <b>{status}</b>\n\n"
                     f"――――――――――――――――\n"
                     f"{BULLET} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
                     f"{BULLET} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
