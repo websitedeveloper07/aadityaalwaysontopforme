@@ -2702,7 +2702,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         formatted_msg = (
             f"═══[ <b>{site_status}</b> ]═══\n"
             f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
-            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {escape(price)}\n"
+            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {escape(price)}💸\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
@@ -2932,7 +2932,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"═══[ <b>𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆</b> ]═══\n"
             f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{escape(card_input)}</code>\n"
             f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
-            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {price}\n"
+            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {price}💸\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response_text)}</i>\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
@@ -3027,19 +3027,21 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 gateway = data.get("Gateway") or "shopify_payments"
 
                 # Determine Status
-                status = "Working ✅" if price_float > 0 else "Dead ❌"
+                status = "𝙒𝙤𝙧𝙠𝙞𝙣𝙜 ✅" if price_float > 0 else "𝘿𝙚𝙖𝙙 ❌"
 
                 requester = f"@{user.username}" if user.username else str(user.id)
                 DEVELOPER_NAME = "kคli liຖนxx"
                 DEVELOPER_LINK = "https://t.me/K4linuxxxx"
                 developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
-                BULLET = "[✗]"
+                BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+                bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
+                
                 formatted_msg = (
                     f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
-                    f"{BULLET} 𝐒𝐢𝐭𝐞 ➜ {site_url}\n"
-                    f"{BULLET} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}\n"
-                    f"{BULLET} 𝐀𝐦𝐨𝐮𝐧𝐭 ➜ {price}\n"
+                    f"{BULLET} 𝐒𝐢𝐭𝐞 ➜ <code>{site_url}</code>\n"
+                    f"{BULLET} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
+                    f"{BULLET} 𝐀𝐦𝐨𝐮𝐧𝐭 ➜ {price}💸\n"
                     f"{BULLET} Status ➜ <b>{status}</b>\n\n"
                     f"――――――――――――――――\n"
                     f"{BULLET} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
