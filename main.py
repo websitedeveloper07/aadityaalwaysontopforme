@@ -2746,7 +2746,6 @@ from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user, update_user
 
 logger = logging.getLogger(__name__)
 
@@ -2764,15 +2763,6 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
         return False
     user_cooldowns[user_id] = now
     return True
-
-async def consume_credit(user_id: int) -> bool:
-    """Consume 1 credit from DB user if available."""
-    user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
-        await update_user(user_id, credits=new_credits)
-        return True
-    return False
 
 async def get_bin_details(bin_number: str) -> dict:
     """Fetch BIN details from public API."""
@@ -2795,7 +2785,6 @@ async def get_bin_details(bin_number: str) -> dict:
                         bin_data["bank"] = str(data.get("bank", "N/A")).title()
                         bin_data["country_name"] = data.get("country_name", "N/A")
                         bin_data["country_emoji"] = data.get("country_flag", "")
-                        return bin_data
                     except Exception as e:
                         logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
                 else:
@@ -2816,17 +2805,13 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
-            "❌ Usage: /sp <card_number|mm|yyyy|cvv> <gateway>",
+            "❌ Usage: /sp <card_number|mm|yyyy|cvv> [gateway]",
             parse_mode=ParseMode.HTML
         )
         return
 
-    try:
-        card_input = context.args[0].strip()
-        gateway = context.args[1].strip().lower() if len(context.args) > 1 else "shopify_payments"
-    except Exception:
-        await update.message.reply_text("❌ Invalid command format.", parse_mode=ParseMode.HTML)
-        return
+    card_input = context.args[0].strip()
+    gateway = context.args[1].strip().lower() if len(context.args) > 1 else "shopify_payments"
 
     # --- BIN info ---
     cc_parts = card_input.split("|")
@@ -2837,12 +2822,6 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     issuer = (bin_details.get("bank") or "N/A").title()
     country_name = bin_details.get("country_name", "N/A")
     country_flag = bin_details.get("country_emoji", "")
-
-    # --- Consume 1 credit ---
-    has_credit = await consume_credit(user_id)
-    if not has_credit:
-        await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
-        return
 
     # --- Prepare processing message ---
     processing_msg = await update.message.reply_text(
@@ -2881,7 +2860,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bank_name = data.get("Bank") or issuer
         country_display = data.get("Country") or f"{country_flag} {country_name}"
 
-        # --- If error in response, fallback ---
+        # --- Fallback if error in response ---
         if "Error" in response_text or "SSL" in response_text:
             amount = "-"
             gateway_name = "-"
@@ -2889,17 +2868,13 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bank_name = "-"
             country_display = "-"
 
-        # --- Fetch updated credits ---
-        updated_user = await get_user(user_id)
-        credits_left = updated_user.get("credits", 0)
-
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # replace with your group
-        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
+        bullet_link = f"<a href='{BULLET_GROUP_LINK}'>✗</a>"
 
         formatted_msg = (
             f"═══[ SHOPIFY_PAYMENTS ]═══\n"
@@ -2914,7 +2889,6 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
-            f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
             f"――――――――――――――――"
         )
 
