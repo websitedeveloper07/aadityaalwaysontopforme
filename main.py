@@ -332,7 +332,7 @@ def escape_all_markdown(text: str) -> str:
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
-    bullet_link = f"[✗]({escape_all_markdown(BULLET_GROUP_LINK)})"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
@@ -418,7 +418,7 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    bullet_link = f"[✗]({escape_all_markdown(BULLET_GROUP_LINK)})"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
@@ -561,29 +561,27 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      🛒 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 \\$5\n"
+        "   💸 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 5$\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/sh` \\- *Check a single card on Shopify \\$5*\n"
+        "• `/sh` \\- *checks card on shopify 5$*\n"
         "  Example:\n"
         "  `/sh 1234567890123456\\|12\\|2026\\|123`\n\n"
-        "⚡ Use carefully, each check deducts credits."
-    )
 
+        "⚡ Use carefully, each check deducts credits.\n"
+
+    )
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
-
     await q.edit_message_text(
-        text=text,
+        text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
-
 
 
 # ---------- AutoShopify Gate ----------
@@ -685,7 +683,7 @@ def md_escape(text: str) -> str:
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's full commands menu with categories."""
 
-    bullet_link = f"[✗]({md_escape(BULLET_GROUP_LINK)})"
+    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
     cmds_message = (
         "╭━━━[ 👇 *𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂* ]━━━⬣\n\n"
