@@ -228,7 +228,7 @@ AUTHORIZED_GROUP_ID = -1002554243871
 BOT_COMMANDS = [
     "/start", "/help", "/gen", "/bin", "/chk", "/mchk", "/mass",
     "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
-    "/scr", "/sh", "/seturl", "/sp",
+    "/scr", "/sh", "/seturl", "/sp", "scr"
 ]
 
 from telegram.ext import ApplicationHandlerStop
@@ -260,7 +260,7 @@ AUTHORIZED_CHATS = set()  # Add your authorized group IDs here
 BOT_COMMANDS = [
     "start", "help", "gen", "bin", "chk", "mchk", "mass",
     "mtchk", "fk", "fl", "open", "status", "credits", "info"
-    "scr", "sh", "seturl", "sp",
+    "scr", "sh", "seturl", "sp", "scr"
 ]
 
 from telegram.ext import ApplicationHandlerStop, filters
