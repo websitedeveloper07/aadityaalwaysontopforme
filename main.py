@@ -2471,6 +2471,15 @@ async def get_bin_details(bin_number: str) -> dict:
 
 
 # --- Background /sh processing ---
+from telegram import Update, ParseMode
+from telegram.ext import ContextTypes
+import aiohttp
+import json
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     try:
         user = update.effective_user
@@ -2492,7 +2501,9 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
-        processing_msg = await update.message.reply_text("⏳ 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜 𝙮𝙤𝙪𝙧 𝙧𝙚𝙦𝙪𝙚𝙨𝙩…")
+        processing_msg = await update.message.reply_text(
+            "⏳ 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜 𝙮𝙤𝙪𝙧 𝙧𝙚𝙦𝙪𝙚𝙨𝙩…"
+        )
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
@@ -2502,7 +2513,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             data = json.loads(api_response)
         except json.JSONDecodeError:
             await processing_msg.edit_text(
-                f"❌ Invalid response from API:<br><pre>{api_response}</pre>",
+                f"❌ Invalid response from API:\n<code>{api_response}</code>",
                 parse_mode=ParseMode.HTML
             )
             return
@@ -2521,7 +2532,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         bin_details = await get_bin_details(bin_number)
         brand = (bin_details.get("scheme") or "N/A").upper()
         issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A")
+        country_name = bin_details.get("country_name", "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
         # --- User info ---
@@ -2587,13 +2598,14 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = payload.split("|")
     if len(parts) != 4:
         await update.message.reply_text(
-            "❌ Invalid format.<br>Use: <code>/sh 1234567812345678|12|2028|123</code>",
+            "❌ Invalid format.\nUse: <code>/sh 1234567812345678|12|2028|123</code>",
             parse_mode=ParseMode.HTML
         )
         return
 
     # ✅ Run processing in the background so bot stays responsive
     asyncio.create_task(process_sh(update, context, payload))
+
 
 
 
