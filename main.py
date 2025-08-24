@@ -2604,16 +2604,17 @@ import aiohttp
 from db import get_user, update_user
 from html import escape
 
-# Correct template for /seturl (no {card})
-API_CHECK_TEMPLATE_SETURL = "https://7feeef80303d.ngrok-free.app/autosh.php?cc=5444228607773355|04|28|974&site={site}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+API_CHECK_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?cc=5444228607773355|04|28|974&site={site}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler for /seturl command."""
+    """Handler for /seturl command"""
     user_id = update.effective_user.id
     args = context.args
 
     if not args:
-        await update.message.reply_text("❌ Please provide a site URL. Example: /seturl shop.meltingpot.com")
+        await update.message.reply_text(
+            "❌ Please provide a site URL. Example: /seturl shop.meltingpot.com"
+        )
         return
 
     # Fetch user data
@@ -2629,36 +2630,36 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not site_input.startswith("http://") and not site_input.startswith("https://"):
         site_input = f"https://{site_input}"
 
-    # Send initial "Adding URL..." message with monospace
+    # Send initial "Adding URL..." message
     msg = await update.message.reply_text(
-        f"⏳ Adding URL: `<code>{escape(site_input)}</code>`...", 
+        f"⏳ Adding URL: <code>{escape(site_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
-    # Check site via API
-    api_url = API_CHECK_TEMPLATE_SETURL.format(site=site_input)
+    # Call API
+    api_url = API_CHECK_TEMPLATE.format(site=site_input)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=30) as resp:
                 data = await resp.json()
     except Exception as e:
-        await msg.edit_text(f"❌ Failed to check site: {e}")
+        await msg.edit_text(f"❌ Failed to check site: {e}\nAPI URL: {api_url}")
         return
 
-    # Parse API response
+    # Extract info from API response
     response_text = data.get("Response", "Unknown")
-    price = data.get("Price", "-")
-    gateway = data.get("Gateway", "-")
+    price = data.get("Price", "1.0")  # default 1.0 if not present
+    gateway = data.get("Gateway", "Unknown")
 
-    # Update DB for the user
+    # Update DB
     await update_user(user_id, custom_url=site_input)
 
     # Format final message
     final_message = f"""
 ═══[ {gateway.upper()} ]═══
-[✗] Site ➜ {site_input}
+[✗] Site ➜ <code>{escape(site_input)}</code>
 
-[✗] Amount ➜ {price}  
+[✗] Amount ➜ {price if price else '1.0$'}  
 [✗] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response_text}
 
 ――――――――――――――――
@@ -2668,8 +2669,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ――――――――――――――――
 """
 
-    await msg.edit_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
-
+    await msg.edit_text(final_message, parse_mode=ParseMode.HTML)
 
 
 async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
