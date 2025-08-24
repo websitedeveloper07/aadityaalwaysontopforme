@@ -2865,7 +2865,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=60) as resp:
+            async with session.get(api_url, timeout=120) as resp:
                 api_text = await resp.text()
 
         # --- Strip PHP warnings / HTML tags ---
