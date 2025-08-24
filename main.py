@@ -2597,27 +2597,20 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import asyncio
+import aiohttp
+import json
+from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-import aiohttp
-from db import get_user, update_user
-from html import escape
-import logging
-import urllib.parse
-import json
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+from db import get_user, update_user, get_bin_details
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
-    # Check arguments
+    # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
             "❌ Usage: /seturl shop.meltingpot.com",
@@ -2629,7 +2622,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not site_input.startswith(("http://", "https://")):
         site_input = f"https://{site_input}"
 
-    # Check if user already has a site
+    # --- Check if user already has a site ---
     user_data = await get_user(user_id)
     if user_data.get("custom_url"):
         await update.message.reply_text(
@@ -2638,13 +2631,13 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Send initial message
+    # --- Send initial processing message ---
     processing_msg = await update.message.reply_text(
         f"⏳ Adding URL: <code>{escape(site_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
-    # Prepare API URL (fixed card)
+    # --- Prepare API URL (fixed card) ---
     api_url = (
         "https://7feeef80303d.ngrok-free.app/autosh.php"
         "?cc=4546788796826918|09|2030|781"
@@ -2653,53 +2646,83 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
+        # --- Call API ---
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
                 api_response = await resp.text()
 
+        # --- Parse JSON safely ---
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
             await processing_msg.edit_text(
-                f"❌ Invalid response from API:\n<pre>{api_response}</pre>",
+                f"❌ Invalid response from API:\n<pre>{escape(api_response)}</pre>",
                 parse_mode=ParseMode.HTML
             )
             return
 
-        # Extract fields
+        # --- Extract API fields ---
         response = data.get("Response", "Unknown")
         price = data.get("Price", "1.0")
         gateway = data.get("Gateway", "Unknown")
         proxy_status = data.get("ProxyStatus", "-")
         proxy_ip = data.get("ProxyIP", "-")
+        card = data.get("cc", "N/A")
 
-        # Update user DB
+        # --- BIN lookup ---
+        bin_number = card[:6]
+        bin_details = await get_bin_details(bin_number)
+        brand = (bin_details.get("scheme") or "N/A").upper()
+        issuer = (bin_details.get("bank") or "N/A").title()
+        country_name = (bin_details.get("country_name") or "N/A")
+        country_flag = bin_details.get("country_emoji", "")
+
+        # --- Update user DB ---
         await update_user(user_id, custom_url=site_input)
 
-        # Prepare final formatted message
+        # --- User info ---
+        requester = f"@{user.username}" if user.username else str(user.id)
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/K4linuxxxx"
+        developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+
+        # --- Bullet for message ---
+        BULLET = "[✗]"
+
+        # --- Final formatted message ---
         formatted_msg = (
             f"═══[ <b>{gateway.upper()}</b> ]═══\n"
-            f"[✗] Site ➜ <code>{escape(site_input)}</code>\n"
-            f"[✗] Amount ➜ {escape(price)}\n"
-            f"[✗] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{escape(response)}</i>\n"
-            f"[✗] Proxy Status ➜ {escape(proxy_status)}\n"
-            f"[✗] Proxy IP ➜ {escape(proxy_ip)}\n"
+            f"{BULLET} <b>Site</b> ➜ <code>{escape(site_input)}</code>\n"
+            f"{BULLET} <b>Amount</b> ➜ {escape(price)}\n"
+            f"{BULLET} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
+            f"{BULLET} <b>Proxy Status</b> ➜ {escape(proxy_status)}\n"
+            f"{BULLET} <b>Proxy IP</b> ➜ {escape(proxy_ip)}\n"
+            f"{BULLET} <b>Card</b> ➜ <code>{card}</code>\n"
+            f"{BULLET} <b>Brand</b> ➜ {brand}\n"
+            f"{BULLET} <b>Bank</b> ➜ {issuer}\n"
+            f"{BULLET} <b>Country</b> ➜ {country_name} {country_flag}\n"
             f"――――――――――――――――\n"
             f"⛓ Full API Response:\n<pre>{escape(json.dumps(data, indent=2))}</pre>\n"
             f"――――――――――――――――\n"
-            f"[✗] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ @{user.username or user.first_name}\n"
-            f"[✗] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+            f"{BULLET} <b>Request By</b> ➜ {requester}\n"
+            f"{BULLET} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
-        await processing_msg.edit_text(formatted_msg, parse_mode=ParseMode.HTML)
+        await processing_msg.edit_text(
+            formatted_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
 
     except Exception as e:
+        import logging
         logging.exception("Error in /seturl")
         await processing_msg.edit_text(
             f"❌ Error: <code>{str(e)}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
