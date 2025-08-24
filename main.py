@@ -561,6 +561,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
+
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "      🛒 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 \\$5\n"
@@ -570,12 +571,14 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "  `/sh 1234567890123456\\|12\\|2026\\|123`\n\n"
         "⚡ Use carefully, each check deducts credits."
     )
+
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
+
     await q.edit_message_text(
-        text,
+        text=text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
