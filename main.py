@@ -315,7 +315,7 @@ import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user  # Assuming db.py and get_user function exist
+from db import get_user # Assuming db.py and get_user function exist
 
 # Links
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
@@ -332,16 +332,17 @@ def escape_all_markdown(text: str) -> str:
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
+    bullet_link = f"[✗]({escape_all_markdown(BULLET_GROUP_LINK)})"
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"\\u2718 ID      : `{escape_all_markdown(str(user_id))}`\n"
-        f"\\u2718 Username: `{escape_all_markdown(uname)}`\n"
-        f"\\u2718 Credits : `{escape_all_markdown(str(credits))}`\n"
-        f"\\u2718 Plan    : `{escape_all_markdown(plan)}`\n"
-        f"\\u2718 Date    : `{escape_all_markdown(date_str)}`\n"
-        f"\\u2718 Time    : `{escape_all_markdown(time_str)}`\n\n"
+        f"{bullet_link} ID      : `{escape_all_markdown(str(user_id))}`\n"
+        f"{bullet_link} Username: `{escape_all_markdown(uname)}`\n"
+        f"{bullet_link} Credits : `{escape_all_markdown(str(credits))}`\n"
+        f"{bullet_link} Plan    : `{escape_all_markdown(plan)}`\n"
+        f"{bullet_link} Date    : `{escape_all_markdown(date_str)}`\n"
+        f"{bullet_link} Time    : `{escape_all_markdown(time_str)}`\n\n"
         "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
     )
 
@@ -417,29 +418,30 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
+    bullet_link = f"[✗]({escape_all_markdown(BULLET_GROUP_LINK)})"
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "\\u2718 `/start` – Welcome message\n"
-        "\\u2718 `/cmds` – Shows all commands\n"
-        "\\u2718 `/gen` `[bin]` `[no\\. of cards]` Gen\n"
-        "\\u2718 `/bin` `<bin>` – BIN lookup\n"
-        "\\u2718 `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
-        "\\u2718 `/mchk` – x10 Multi Stripe\n"
-        "\\u2718 `/mass` – x30 Mass Stripe Auth 2\n"
-        "\\u2718 `/mtchk` `txt file` – x200 Stripe Auth 3\n"
-        "\\u2718 `/sh` Shopify 5\\$\n"
-        "\\u2718 `/seturl` `<site url>` set a shopify site\n"
-        "\\u2718 `/remove` Remove your added site\n"
-        "\\u2718 `/sp`  check on your shopify added site\n"
-        "\\u2718 `/site`  check shopify site is working or not\n"
-        "\\u2718 `/fk` – Generate fake identity info\n"
-        "\\u2718 `/fl` `<dump>` – Fetch CCs from dump\n"
-        "\\u2718 `/open` – Extracts cards from a file\n"
-        "\\u2718 `/status` – Bot system status info\n"
-        "\\u2718 `/credits` – Chk remaining credits\n"
-        "\\u2718 `/info` – Shows your user info\n\n"
+        f"{bullet_link} `/start` – Welcome message\n"
+        f"{bullet_link} `/cmds` – Shows all commands\n"
+        f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` Gen\n"
+        f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
+        f"{bullet_link} `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
+        f"{bullet_link} `/mchk` – x10 Multi Stripe\n"
+        f"{bullet_link} `/mass` – x30 Mass Stripe Auth 2\n"
+        f"{bullet_link} `/mtchk` `txt file` – x200 Stripe Auth 3\n"
+        f"{bullet_link} `/sh` Shopify 5\\$\n"
+        f"{bullet_link} `/seturl` `<site url>` set a shopify site\n"
+        f"{bullet_link} `/remove` Remove your added site\n"
+        f"{bullet_link} `/sp`  check on your shopify added site\n"
+        f"{bullet_link} `/site`  check shopify site is working or not\n"
+        f"{bullet_link} `/fk` – Generate fake identity info\n"
+        f"{bullet_link} `/fl` `<dump>` – Fetch CCs from dump\n"
+        f"{bullet_link} `/open` – Extracts cards from a file\n"
+        f"{bullet_link} `/status` – Bot system status info\n"
+        f"{bullet_link} `/credits` – Chk remaining credits\n"
+        f"{bullet_link} `/info` – Shows your user info\n\n"
     )
     keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
     await q.edit_message_text(
@@ -651,7 +653,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
-
 
 
 
