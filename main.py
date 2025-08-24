@@ -655,7 +655,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
