@@ -255,7 +255,7 @@ async def group_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- GLOBAL STATE ---
 user_last_command = {}
-AUTHORIZED_CHATS = set()  # Add your authorized group IDs here
+AUTHORIZED_CHATS = set(-1002554243871)  # Add your authorized group IDs here
 
 BOT_COMMANDS = [
     "start", "help", "gen", "bin", "chk", "mchk", "mass",
