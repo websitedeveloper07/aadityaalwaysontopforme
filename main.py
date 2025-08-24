@@ -308,114 +308,150 @@ DEV_LINK = "https://t.me/k4linuxxxx"
 logger = logging.getLogger(__name__)
 
 # ---------- Utilities ----------
-import re
 from datetime import datetime
+import logging
 import pytz
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+import re
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from db import get_user # Assuming db.py and get_user function exist
 
-# Replace with your official links
+# Links
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
-OFFICIAL_GROUP_LINK = "https://t.me/officialgroup"
-DEV_LINK = "https://t.me/dev"
+OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
+DEV_LINK = "https://t.me/k4linuxxxx"
 
-# ---------- Helpers ----------
-def escape_md(text: str) -> str:
-    """Escape all MarkdownV2 characters for Telegram."""
-    if not text:
-        return ""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', str(text))
+logger = logging.getLogger(__name__)
 
-def build_user_card(user_id, username, credits, plan, date_str, time_str):
+# ---------- Utilities ----------
+def escape_all_markdown(text: str) -> str:
+    """Escape all MarkdownV2 special characters."""
+    special_chars = r"[_*\[\]()~`>#+-=|{}.!%]"
+    return re.sub(special_chars, r"\\\g<0>", str(text))
+
+def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
-    bullet = f"[✗]({BULLET_GROUP_LINK})"
     return (
-        f"✦━━━━━━━━━━━━━━✦\n"
-        f"   ⚡ 𝐖𝐞𝐥𝐜𝐨𝐦𝐞\n"
-        f"✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet} ID      : `{escape_md(user_id)}`\n"
-        f"{bullet} Username: `{escape_md(uname)}`\n"
-        f"{bullet} Credits : `{credits}`\n"
-        f"{bullet} Plan    : `{escape_md(plan)}`\n"
-        f"{bullet} Date    : `{escape_md(date_str)}`\n"
-        f"{bullet} Time    : `{escape_md(time_str)}`\n\n"
-        "⮞ Use the buttons below to continue 👇"
+        "✦━━━━━━━━━━━━━━✦\n"
+        "   ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        f"\\u2718 ID      : `{escape_all_markdown(str(user_id))}`\n"
+        f"\\u2718 Username: `{escape_all_markdown(uname)}`\n"
+        f"\\u2718 Credits : `{escape_all_markdown(str(credits))}`\n"
+        f"\\u2718 Plan    : `{escape_all_markdown(plan)}`\n"
+        f"\\u2718 Date    : `{escape_all_markdown(date_str)}`\n"
+        f"\\u2718 Time    : `{escape_all_markdown(time_str)}`\n\n"
+        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
     )
 
-def main_keyboard():
+async def get_user_cached(user_id, context):
+    """Get user profile with caching (faster)."""
+    if "profile" in context.user_data:
+        return context.user_data["profile"]
+    user_data = await get_user(user_id)
+    context.user_data["profile"] = user_data
+    return user_data
+
+def get_main_keyboard():
+    """Reusable main inline keyboard."""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("𝐆𝐚𝐭𝐞𝐬 🚪", callback_data="gates_menu"),
-         InlineKeyboardButton("𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⌨️", callback_data="tools_menu")],
-        [InlineKeyboardButton("𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫 ⚡", callback_data="scrapper_menu")],
-        [InlineKeyboardButton("𝐎𝐟𝐟𝐢𝐜𝐢𝐚𝐥 𝐆𝐫𝐨𝐮𝐩 👥", url=OFFICIAL_GROUP_LINK),
-         InlineKeyboardButton("𝗢𝘄𝗻𝗲𝗿 💎", url=DEV_LINK)]
+        [
+            InlineKeyboardButton("𝐆𝐚𝐭𝐞𝐬 🚪", callback_data="gates_menu"),
+            InlineKeyboardButton("𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⌨️", callback_data="tools_menu")
+        ],
+        [
+            InlineKeyboardButton("𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫 ⚡", callback_data="scrapper_menu"),
+        ],
+        [
+            InlineKeyboardButton("𝐎𝐟𝐟𝐢𝐜𝐢𝐚𝐥 𝐆𝐫𝐨𝐮𝐩 👥", url=OFFICIAL_GROUP_LINK),
+            InlineKeyboardButton("𝗢𝘄𝗻𝗲𝗿 💎", url=DEV_LINK)
+        ]
     ])
 
-# ---------- Start ----------
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
+async def build_start_message(user, context):
+    """Build profile card text and keyboard."""
     tz = pytz.timezone("Asia/Kolkata")
     now_dt = datetime.now(tz)
     date_str = now_dt.strftime("%d-%m-%Y")
     time_str = now_dt.strftime("%I:%M %p")
-
-    # Example: fetch from db
-    user_data = await context.bot_data.get("users", {}).get(user.id, {"credits":0, "plan":"Free"})
+    user_data = await get_user_cached(user.id, context)
     credits = int(user_data.get("credits", 0))
-    plan = user_data.get("plan", "Free")
+    plan = str(user_data.get("plan", "Free"))
+    text = build_final_card(
+        user_id=user.id,
+        username=user.username,
+        credits=credits,
+        plan=plan,
+        date_str=date_str,
+        time_str=time_str,
+    )
+    return text, get_main_keyboard()
 
-    text = build_user_card(user.id, user.username, credits, plan, date_str, time_str)
+# ---------- /start handler ----------
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    logger.info(f"/start by {user.id} (@{user.username})")
+    text, keyboard = await build_start_message(user, context)
+    msg = update.message or update.effective_message
+    await msg.reply_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
+        disable_web_page_preview=True,
+    )
 
-    if update.callback_query:
-        await update.callback_query.edit_message_text(
-            text, parse_mode=ParseMode.MARKDOWN_V2,
-            reply_markup=main_keyboard(),
-            disable_web_page_preview=True
-        )
-    else:
-        await update.message.reply_text(
-            text, parse_mode=ParseMode.MARKDOWN_V2,
-            reply_markup=main_keyboard(),
-            disable_web_page_preview=True
-        )
-
-# ---------- Tools Menu ----------
-async def tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# This handler edits the message to show the start menu.
+async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    bullet = f"[✗]({BULLET_GROUP_LINK})"
-    text = (
-        f"✦━━━━━━━━━━━━━━✦\n"
-        f"   ⚡ 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 𝐌𝐞𝐧𝐮\n"
-        f"✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet} `/start` – Welcome message\n"
-        f"{bullet} `/cmds` – Shows all commands\n"
-        f"{bullet} `/gen [bin] [no\\. of cards]` – Generate cards\n"
-        f"{bullet} `/bin <bin>` – BIN lookup\n"
-        f"{bullet} `/chk cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
-        f"{bullet} `/mchk` – Multi x10 Stripe Auth\n"
-        f"{bullet} `/mass` – Mass x30 Stripe Auth 2\n"
-        f"{bullet} `/mtchk txt file` – Mass x200 Stripe Auth 3\n"
-        f"{bullet} `/sh` – Shopify Charge $5\n"
-        f"{bullet} `/seturl <site url>` – Set Shopify site\n"
-        f"{bullet} `/remove` – Remove your added site\n"
-        f"{bullet} `/sp` – Auto check Shopify site\n"
-        f"{bullet} `/site <url>` – Check Shopify site live\n"
-        f"{bullet} `/fk` – Fake identity generator\n"
-        f"{bullet} `/fl <dump>` – Extract CCs from dumps\n"
-        f"{bullet} `/open` – Extract cards from file\n"
-        f"{bullet} `/status` – Bot system status\n"
-        f"{bullet} `/credits` – Check remaining credits\n"
-        f"{bullet} `/info` – Show your info\n"
+    text, keyboard = await build_start_message(q.from_user, context)
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
+        disable_web_page_preview=True,
     )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
-    ])
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=kb, disable_web_page_preview=True)
+
+# ---------- Tools Menu ----------
+async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    bullet_link = f"\\u2718"
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "   ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        f"{bullet_link} `/start` – Welcome message\n"
+        f"{bullet_link} `/cmds` – Shows all commands\n"
+        f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` Gen\n"
+        f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
+        f"{bullet_link} `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
+        f"{bullet_link} `/mchk` – x10 Multi Stripe\n"
+        f"{bullet_link} `/mass` – x30 Mass Stripe Auth 2\n"
+        f"{bullet_link} `/mtchk` `txt file` – x200 Stripe Auth 3\n"
+        f"{bullet_link} `/sh` Shopify 5\\$\n"
+        f"{bullet_link} `/seturl` `<site url>` set a shopify site\n"
+        f"{bullet_link} `/remove` Remove your added site\n"
+        f"{bullet_link} `/sp`  check on your shopify added site\n"
+        f"{bullet_link} `/site`  check shopify site is working or not\n"
+        f"{bullet_link} `/fk` – Generate fake identity info\n"
+        f"{bullet_link} `/fl` `<dump>` – Fetch CCs from dump\n"
+        f"{bullet_link} `/open` – Extracts cards from a file\n"
+        f"{bullet_link} `/status` – Bot system status info\n"
+        f"{bullet_link} `/credits` – Chk remaining credits\n"
+        f"{bullet_link} `/info` – Shows your user info\n\n"
+    )
+    keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 # ---------- Gates Menu ----------
-async def gates_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     text = (
@@ -424,15 +460,22 @@ async def gates_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Please select a feature below:"
     )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("⚡ 𝐀𝐮𝐭𝐡", callback_data="auth_sub_menu"),
-         InlineKeyboardButton("💳 𝐂𝐡𝐚𝐫𝐠𝐞", callback_data="charge_sub_menu")],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗮𝗶𝗻 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("⚡ 𝐀𝐮𝐭𝐡", callback_data="auth_sub_menu"),
+            InlineKeyboardButton("💳 𝐂𝐡𝐚𝐫𝐠𝐞", callback_data="charge_sub_menu")
+        ],
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ])
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=kb, disable_web_page_preview=True)
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
+        disable_web_page_preview=True
+    )
 
 # ---------- Auth Submenu ----------
-async def auth_sub_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     text = (
@@ -441,35 +484,48 @@ async def auth_sub_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Select a platform below:"
     )
-    kb = InlineKeyboardMarkup([
+    keyboard = [
         [InlineKeyboardButton("💳 𝗦𝗧𝗥𝗜𝗣𝗘 𝗔𝗨𝗧𝗛", callback_data="stripe_examples")],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
-    ])
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=kb, disable_web_page_preview=True)
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
+    ]
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 # ---------- Stripe Examples ----------
-async def stripe_examples(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "     💳 𝐒𝐭𝐫𝐢𝐩𝐞 𝐀𝐮𝐭𝐡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/chk` \\- Check single card\n"
-        "  Example: `/chk 1234567890123456\\|12\\|24\\|123`\n\n"
-        "• `/mchk` \\- Check up to 10 cards\n"
-        "  Example: `/mchk 1234567890123456|...` (max 10)\n\n"
-        "• `/mass` \\- Check up to 30 cards\n"
-        "  Example: `/mass <cards>`"
+        "• `/chk` \\- *Check a single card*\n"
+        "  Example:\n"
+        "  `/chk 1234567890123456\\|12\\|24\\|123`\n\n"
+        "• `/mchk` \\- *Check up to 10 cards at once*\n"
+        "  Example:\n"
+        "  `/mchk 1234567890123456\\|\\.\\.\\.`  # up to 10 cards\n\n"
+        "• `/mass` \\- *Check up to 30 cards at once*\n"
+        "  Example:\n"
+        "  `/mass <cards>`"
     )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("◀️ Back to Gates Menu", callback_data="gates_menu")],
-        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ])
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=kb, disable_web_page_preview=True)
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗚𝗔𝗧𝗘 𝗠𝗘𝗡𝗨", callback_data="auth_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 # ---------- Charge Submenu ----------
-async def charge_sub_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     text = (
@@ -478,91 +534,124 @@ async def charge_sub_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Select a charge gate below:"
     )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🛒 Shopify $5", callback_data="shopify_gate")],
-        [InlineKeyboardButton("🤖 Auto Shopify", callback_data="autoshopify_gate")],
-        [InlineKeyboardButton("◀️ Back to Gates Menu", callback_data="gates_menu")]
-    ])
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=kb, disable_web_page_preview=True)
+    keyboard = [
+        [InlineKeyboardButton("🛒 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 $𝟱", callback_data="shopify_gate")],
+        [InlineKeyboardButton("🤖 𝗔𝘂𝘁𝗼 𝗦𝗵𝗼𝗽𝗶𝗳𝘆", callback_data="autoshopify_gate")],
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
+    ]
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 # ---------- Shopify Gate ----------
-async def shopify_gate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      🛒 Shopify $5\n"
+        "      🛒 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 \\$𝟓\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/sh` - Check single card\n"
-        "  Example: `/sh 1234567890123456\\|12\\|2026\\|123`\n\n"
+        "• `/sh` \\- *Check a single card on Shopify $5*\n"
+        "  Example:\n"
+        "  `/sh 1234567890123456\\|12\\|2026\\|123`\n\n"
         "⚡ Use carefully, each check deducts credits."
     )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
-        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ])
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=kb, disable_web_page_preview=True)
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 # ---------- AutoShopify Gate ----------
-async def autoshopify_gate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   🤖 Auto Shopify\n"
+        "   🤖 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/sp` - Auto Shopify Checker\n"
-        "• `/seturl <site>` - Set custom Shopify site\n"
-        "• `/remove` - Remove saved site\n\n"
-        "✨ First set your Shopify site using `/seturl` then run `/sp`."
+        "• `/sp` \\- *Auto Shopify Checker*\n"
+        "  Example:\n"
+        "  `/sp 1234567890123456\\|12\\|2026\\|123`\n\n"
+        "• `/seturl <shopify site>` \\- *Set your custom Shopify site*\n"
+        "  Example:\n"
+        "  `/seturl https:\\/\\/yourshopify\\.com`\n\n"
+        "• `/remove` \\- *Remove your saved Shopify site*\n"
+        "  Example:\n"
+        "  `/remove`\n\n"
+        "✨ First set your preferred Shopify site using `/seturl`\\.\n"
+        "Then run `/sp` to automatically check cards on that site 🚀\n"
+        "If you no longer want to use a custom site, run `/remove`\\."
     )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
-        [InlineKeyboardButton("◀️ Back to Gates Menu", callback_data="gates_menu")]
-    ])
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=kb, disable_web_page_preview=True)
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 # ---------- Scrapper Menu ----------
-async def scrapper_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   ⚡ Scrapper\n"
+        "   ⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/scr <channel_username> <amount>`\n"
-        "  Example: `/scr @examplechannel 50`\n\n"
-        "👉 Scrapes cards from the given channel.\n"
-        "⚠️ Maximum amount: 1000 cards."
+        "• `/scr` `<channel_username>` `<amount>`\n"
+        "  Example:\n"
+        "  `/scr @examplechannel 50`\n\n"
+        "👉 Scrapes cards from the given channel\\.\n"
+        "⚠️ Maximum amount allowed: *1000 cards*\\."
     )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ])
-    await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN_V2, reply_markup=kb, disable_web_page_preview=True)
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 # ---------- Callback Router ----------
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles all inline button callback queries."""
     q = update.callback_query
     await q.answer()
     data = q.data
-
-    routes = {
-        "back_to_start": start,
-        "tools_menu": tools_menu,
-        "gates_menu": gates_menu,
-        "auth_sub_menu": auth_sub_menu,
-        "charge_sub_menu": charge_sub_menu,
-        "shopify_gate": shopify_gate,
-        "autoshopify_gate": autoshopify_gate,
-        "stripe_examples": stripe_examples,
-        "scrapper_menu": scrapper_menu
-    }
-
-    if data in routes:
-        await routes[data](update, context)
+    if data == "tools_menu":
+        await show_tools_menu(update, context)
+    elif data == "gates_menu":
+        await gates_menu_handler(update, context)
+    elif data == "auth_sub_menu":
+        await auth_sub_menu_handler(update, context)
+    elif data == "charge_sub_menu":
+        await charge_sub_menu_handler(update, context)
+    elif data == "shopify_gate":
+        await shopify_gate_handler(update, context)
+    elif data == "autoshopify_gate":
+        await autoshopify_gate_handler(update, context)
+    elif data == "stripe_examples":
+        await stripe_examples_handler(update, context)
+    elif data == "scrapper_menu":
+        await scrapper_menu_handler(update, context)
+    elif data == "back_to_start":
+        await back_to_start_handler(update, context)
     else:
-        await q.answer("⚠️ Unknown option.", show_alert=True)
-
+        await q.answer("⚠️ Unknown option selected.", show_alert=True)
 
 
 
