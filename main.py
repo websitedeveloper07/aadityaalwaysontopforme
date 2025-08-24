@@ -2826,12 +2826,14 @@ async def sp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cc, mm, yy, cvv = [p.strip() for p in parts]
 
-    try:
-        # --- Consume credit ---
-        has_credit = await consume_credit(user_id)
-        if not has_credit:
-            await update.message.reply_text("❌ You don’t have enough credits left.")
-            return
+async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
 
         # --- Send processing message ---
         processing_msg = await update.message.reply_text(
