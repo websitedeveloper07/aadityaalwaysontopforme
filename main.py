@@ -350,6 +350,9 @@ def get_main_keyboard():
             InlineKeyboardButton("𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⌨️", callback_data="tools_menu")
         ],
         [
+            InlineKeyboardButton("𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫 ⚡", callback_data="scrapper_menu"),
+        ],
+        [
             InlineKeyboardButton("𝐎𝐟𝐟𝐢𝐜𝐢𝐚𝐥 𝐆𝐫𝐨𝐮𝐩 👥", url=OFFICIAL_GROUP_LINK),
             InlineKeyboardButton("𝗢𝘄𝗻𝗲𝗿 💎", url=DEV_LINK)
         ]
@@ -378,6 +381,7 @@ async def build_start_message(user, context):
 
     return text, get_main_keyboard()
 
+
 # ---------- /start handler ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -404,13 +408,18 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "   ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet_link} `/start` – Welcome message\n"
-        f"{bullet_link} `/help` – Shows all commands\n"
+        f"{bullet_link} `/cmds` – Shows all commands\n"
         f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` Gen\n"
         f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
         f"{bullet_link} `/chk` `cc|mm|yy|cvv` – Stripe Auth\n"
         f"{bullet_link} `/mchk` – x10 Multi Stripe\n"
         f"{bullet_link} `/mass` – x30 Mass Stripe Auth 2\n"
         f"{bullet_link} `/mtchk` `txt file` – x200 Stripe Auth 3\n"
+        f"{bullet_link} `/sh` Shopify 5$\n"
+        f"{bullet_link} `/seturl` `<site url>` set a shopify site\n"
+        f"{bullet_link} `/remove` Remove your added site\n"
+        f"{bullet_link} `/sp`  check on your shopify added site\n"
+        f"{bullet_link} `/site`  check shopify site is working or not\n"
         f"{bullet_link} `/fk` – Generate fake identity info\n"
         f"{bullet_link} `/fl` `<dump>` – Fetch CCs from dump\n"
         f"{bullet_link} `/open` – Extracts cards from a file\n"
@@ -510,6 +519,7 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
 
 
 # ----------------- Charge Submenu -----------------
+# ----------------- Charge Submenu -----------------
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -518,13 +528,14 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         "✦━━━━━━━━━━━━━━✦\n"
         "      ⚡ 𝐂𝐡𝐚𝐫𝐠𝐞 𝐆𝐚𝐭𝐞 ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "🚧 𝐓𝐡𝐢𝐬 𝐠𝐚𝐭𝐞 𝐢𝐬 𝐮𝐧𝐝𝐞𝐫 𝐦𝐚𝐢𝐧𝐭𝐞𝐧𝐚𝐧𝐜𝐞\n"
-        "🔄 𝐒𝐨𝐨𝐧 𝐨𝐩𝐞𝐧𝐞𝐝\n\n"
-        "✅ 𝐔𝐧𝐭𝐢𝐥 𝐭𝐡𝐞𝐧, 𝐲𝐨𝐮 𝐜𝐚𝐧 𝐮𝐬𝐞:\n"
-        "   ➤ 🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞"
+        "✨ Select a charge gate below:\n"
     )
 
-    keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
+    keyboard = [
+        [InlineKeyboardButton("🛒 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 $𝟱", callback_data="shopify_gate")],
+        [InlineKeyboardButton("🤖 𝗔𝘂𝘁𝗼 𝗦𝗵𝗼𝗽𝗶𝗳𝘆", callback_data="autoshopify_gate")],
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
+    ]
 
     await q.edit_message_text(text,
                               parse_mode=ParseMode.MARKDOWN_V2,
@@ -532,16 +543,68 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
                               disable_web_page_preview=True)
 
 
-# ----------------- Back to Main Menu -----------------
-async def start_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Back to main menu (reuses start message)."""
-    user = update.effective_user
-    text, keyboard = await build_start_message(user, context)
+# ----------------- Shopify Gate -----------------
+async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
 
-    await update.callback_query.edit_message_text(text,
-                                                  parse_mode=ParseMode.MARKDOWN_V2,
-                                                  reply_markup=keyboard,
-                                                  disable_web_page_preview=True)
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      🛒 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 $𝟓\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "• `/sh` \\- *Check a single card on Shopify $5*\n"
+        "  Example:\n"
+        "  `\\/sh 1234567890123456\\|12\\|2026\\|123`\n\n"
+        "⚡ Use carefully, each check deducts credits."
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+
+    await q.edit_message_text(text,
+                              parse_mode=ParseMode.MARKDOWN_V2,
+                              reply_markup=InlineKeyboardMarkup(keyboard),
+                              disable_web_page_preview=True)
+
+
+# ----------------- Auto Shopify Gate -----------------
+# ----------------- AutoShopify Submenu -----------------
+async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "   🤖 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "• `/sp` \\- *Auto Shopify Checker*\n"
+        "  Example:\n"
+        "  `\\/sp`\n\n"
+        "• `/seturl <shopify site>` \\- *Set your custom Shopify site*\n"
+        "  Example:\n"
+        "  `\\/seturl https://yourshopify.com`\n\n"
+        "• `/remove` \\- *Remove your saved Shopify site*\n"
+        "  Example:\n"
+        "  `\\/remove`\n\n"
+        "✨ First set your preferred Shopify site using `/seturl`.\n"
+        "Then run `/sp` to automatically check cards on that site 🚀\n"
+        "If you no longer want to use a custom site, run `/remove`."
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
+
 
 
 # ----------------- Callback Router -----------------
@@ -558,12 +621,17 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await auth_sub_menu_handler(update, context)
     elif data == "charge_sub_menu":
         await charge_sub_menu_handler(update, context)
+    elif data == "shopify_gate":
+        await shopify_gate_handler(update, context)
+    elif data == "autoshopify_gate":
+        await autoshopify_gate_handler(update, context)
     elif data == "stripe_examples":
         await stripe_examples_handler(update, context)
     elif data == "back_to_start":
         await start_menu_handler(update, context)
     else:
         await q.answer("Unknown option.", show_alert=True)
+
 
 
 
@@ -576,34 +644,49 @@ from telegram.ext import ContextTypes
 # Replace with your *legit* group/channel link
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows the bot's help menu with a list of commands."""
-    
+async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Shows the bot's full commands menu with categories."""
+
     bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
-    
-    help_message = (
-        "╭━━━[ 🤖 *Help Menu* ]━━━⬣\n"
-        f"{bullet_link} `/start` \\- Welcome message\n"
-        f"{bullet_link} `/help` \\- Shows this help message\n"
-        f"{bullet_link} `/gen [bin] [no\\. of cards]` \\- Generate cards from BIN\n"
-        f"{bullet_link} `/bin <bin>` \\- BIN lookup \\(bank, country, type\\)\n"
-        f"{bullet_link} `/fk <country>` \\- Generate fake identity info\n"
-        f"{bullet_link} `/fl <dump>` \\- Extracts cards from dumps\n"
-        f"{bullet_link} `/open` \\- Extracts cards from a text file\n"
-        f"{bullet_link} `/status` \\- Bot system status info\n"
-        f"{bullet_link} `/credits` \\- Check your remaining credits\n"
-        f"{bullet_link} `/info` \\- Shows your user info\n"
-        f"{bullet_link} `/chk` \\- Checks card on Stripe Auth\n"
-        f"{bullet_link} `/mchk` \\- Checks up to 10 cards on Stripe Auth\n"
-        f"{bullet_link} `/mtchk` \\- Checks a txt file upto 200 cards on Stripe Auth\n"
-        f"{bullet_link} `/mass` \\- Checks up to 30 cards on Stripe Auth\n"
+
+    cmds_message = (
+        "╭━━━[ 👇 *𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂* ]━━━⬣\n\n"
+
+        "🔹 *𝙎𝙩𝙧𝙞𝙥𝙚 𝙏𝙤𝙤𝙡𝙨*\n"
+        f"{bullet_link} `/chk cc|mm|yy|cvv` – Single Stripe Auth\n"
+        f"{bullet_link} `/mchk` – Multi x10 Stripe Auth\n"
+        f"{bullet_link} `/mass` – Mass x30 Stripe Auth 2\n"
+        f"{bullet_link} `/mtchk txt file` – Mass x200 Stripe Auth 3\n\n"
+
+        "🔹 *𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙏𝙤𝙤𝙡𝙨*\n"
+        f"{bullet_link} `/sh` – Shopify Charge $5\n"
+        f"{bullet_link} `/seturl <site url>` – Set your Shopify site\n"
+        f"{bullet_link} `/remove` – Remove your saved Shopify site\n"
+        f"{bullet_link} `/sp` – Auto check on your saved Shopify site\n"
+        f"{bullet_link} `/site <url>` – Check if Shopify site is live\n\n"
+
+        "🔹 *𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨*\n"
+        f"{bullet_link} `/gen [bin] [no. of cards]` – Generate cards from BIN\n"
+        f"{bullet_link} `/bin <bin>` – BIN lookup (Bank, Country, Type)\n"
+        f"{bullet_link} `/fk <country>` – Fake identity generator\n"
+        f"{bullet_link} `/fl <dump>` – Extract CCs from dumps\n"
+        f"{bullet_link} `/open` – Extract cards from uploaded file\n\n"
+
+        "🔹 *𝙎𝙮𝙨𝙩𝙚𝙢 ＆ 𝙐𝙨𝙚𝙧*\n"
+        f"{bullet_link} `/start` – Welcome message\n"
+        f"{bullet_link} `/cmds` – Show all commands\n"
+        f"{bullet_link} `/status` – Bot system status\n"
+        f"{bullet_link} `/credits` – Check your remaining credits\n"
+        f"{bullet_link} `/info` – Show your user info\n"
     )
 
     await update.effective_message.reply_text(
-        help_message,
+        cmds_message,
         parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True  # This prevents the link preview
+        disable_web_page_preview=True
     )
+
+
 
 
 from telegram import Update
@@ -4204,7 +4287,7 @@ def main():
 
     # ✨ Public Commands
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("cmds", cmds_command))
     application.add_handler(CommandHandler("info", info))
     application.add_handler(CommandHandler("credits", credits_command))
     application.add_handler(CommandHandler("chk", chk_command))
