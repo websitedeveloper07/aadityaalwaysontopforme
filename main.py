@@ -522,6 +522,11 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
 
 
 # ---------- Charge Submenu ----------
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# ---------- Charge Sub Menu ----------
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -554,11 +559,11 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      🛒 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 $𝟓\n"
+        "      🛒 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 \\$𝟓\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/sh` \\- *Check a single card on Shopify $5*\n"
         "  Example:\n"
-        "  `/sh 1234567890123456|12|2026|123`\n\n"
+        "  `/sh 1234567890123456\\|12\\|2026\\|123`\n\n"
         "⚡ Use carefully, each check deducts credits."
     )
 
@@ -589,13 +594,13 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         "  `/sp`\n\n"
         "• `/seturl <shopify site>` \\- *Set your custom Shopify site*\n"
         "  Example:\n"
-        "  `/seturl https://yourshopify.com`\n\n"
+        "  `/seturl https:\\/\\/yourshopify\\.com`\n\n"
         "• `/remove` \\- *Remove your saved Shopify site*\n"
         "  Example:\n"
         "  `/remove`\n\n"
-        "✨ First set your preferred Shopify site using `/seturl`.\n"
-        "Then run `/sp` to automatically check cards on that site 🚀\n"
-        "If you no longer want to use a custom site, run `/remove`."
+        "✨ First set your preferred Shopify site using `/seturl`\\.\n"
+        "Then run `/sp` to automatically check cards on that site 🚀\\.\n"
+        "If you no longer want to use a custom site, run `/remove`\\."
     )
 
     keyboard = [
@@ -618,13 +623,13 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   ⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫 \n"
+        "   ⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/scr <channel_username> <amount>`\n"
         "  Example:\n"
         "  `/scr @examplechannel 50`\n\n"
-        "👉 Scrapes cards from the given channel.\n"
-        "⚠️ Maximum amount allowed: *1000 cards*."
+        "👉 Scrapes cards from the given channel\\.\n"
+        "⚠️ Maximum amount allowed: *1000 cards*\\."
     )
 
     keyboard = [
