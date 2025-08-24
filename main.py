@@ -3098,6 +3098,54 @@ from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
 # Make sure your 'db.py' has these async functions: init_db, get_user, update_user
 from db import init_db, get_user, update_user
 
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Private chats: only OWNER_ID or users with an active paid plan can use.
+    Authorized chats (groups/channels): free for everyone.
+    Other groups: only OWNER_ID or users with an active paid plan can use.
+    """
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+    chat_type = update.effective_chat.type
+
+    # ✅ Owner bypass
+    if user_id == OWNER_ID:
+        return True
+
+    # ✅ Free access in authorized chats
+    if chat_id in AUTHORIZED_CHATS:
+        return True
+
+    # ✅ Everywhere else requires active paid plan
+    if not await has_active_paid_plan(user_id):
+        await update.effective_message.reply_text(
+            escape_markdown(
+                "🚫 You need an *active paid plan* to use this command.\n"
+                "💳 Or use for free in our authorized group.",
+                version=2,
+            ),
+            parse_mode=ParseMode.MARKDOWN_V2,
+        )
+        return False
+
+    return True
+
+
+async def consume_credit(user_id: int) -> bool:
+    """
+    Consume 1 credit from the user's account.
+    Returns True if successful, False if user has no credits.
+    """
+    try:
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("credits", 0) > 0:
+            new_credits = user_data["credits"] - 1
+            await update_user(user_id, credits=new_credits)
+            return True
+    except Exception as e:
+        print(f"[consume_credit] Error updating user {user_id}: {e}")
+
+    return False
 # ----------------- Pyrogram Setup -----------------
 api_id = 22751574
 api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
