@@ -2976,10 +2976,9 @@ from html import escape
 # Cooldown tracker
 last_site_usage = {}
 
-# Replace with your API template
 API_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?site={site_url}"
 
-# Your credit system
+# Credit system
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -3016,11 +3015,17 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     site_url = context.args[0].strip()
 
+    # Send immediate response
     msg = await update.message.reply_text(
         f"⏳ Checking site: <code>{escape(site_url)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
+    # Run checker in background
+    asyncio.create_task(run_site_check(site_url, msg, user))
+
+
+async def run_site_check(site_url: str, msg, user):
     api_url = API_TEMPLATE.format(site_url=site_url)
 
     try:
@@ -3028,7 +3033,6 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with session.get(api_url, timeout=120) as resp:
                 api_text = await resp.text()
 
-                # Clean junk HTML if present
                 clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
                 json_start = clean_text.find('{')
                 if json_start != -1:
@@ -3054,7 +3058,6 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 gateway = data.get("Gateway") or "shopify_payments"
                 status = "𝙒𝙤𝙧𝙠𝙞𝙣𝙜 ✅" if price_float > 0 else "𝘿𝙚𝙖𝙙 ❌"
 
-                # Requester and dev info
                 requester = f"@{user.username}" if user.username else str(user.id)
                 DEVELOPER_NAME = "kคli liຖนxx"
                 DEVELOPER_LINK = "https://t.me/K4linuxxxx"
@@ -3062,13 +3065,12 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
                 BULLET = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
-                # Format output
                 formatted_msg = (
                     f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
                     f"{BULLET} 𝐒𝐢𝐭𝐞 ➜ <code>{site_url}</code>\n"
                     f"{BULLET} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}\n"
                     f"{BULLET} 𝐀𝐦𝐨𝐮𝐧𝐭 ➜ {price}💸\n"
-                    f"{BULLET} 𝐒𝐭𝐚𝐭𝐮𝐬 ➜ <b>{status}</b>\n\n"
+                    f"{BULLET} Status ➜ <b>{status}</b>\n\n"
                     f"――――――――――――――――\n"
                     f"{BULLET} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
                     f"{BULLET} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
@@ -3091,6 +3093,7 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
