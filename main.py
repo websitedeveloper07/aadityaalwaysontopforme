@@ -2603,6 +2603,13 @@ from telegram.ext import ContextTypes
 import aiohttp
 from db import get_user, update_user
 from html import escape
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for /seturl command."""
@@ -2641,26 +2648,32 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
     )
 
+    logging.info(f"Calling API URL: {api_url}")
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=30) as resp:
+                text = await resp.text()
+                logging.info(f"Raw API response: {text}")
                 try:
                     data = await resp.json()
-                except:
-                    await msg.edit_text(f"❌ Failed to check site: Invalid response\nAPI URL: {api_url}")
+                except Exception as e:
+                    logging.error(f"Failed to parse JSON: {e}")
+                    await msg.edit_text(
+                        f"❌ Failed to check site: Invalid JSON response\nAPI URL: {api_url}\nResponse Text: {text}"
+                    )
                     return
     except Exception as e:
+        logging.error(f"HTTP request failed: {e}")
         await msg.edit_text(f"❌ Failed to check site: {e}\nAPI URL: {api_url}")
         return
 
     # Extract API response
     response_text = data.get("Response", "-")
-    price = data.get("Price", "1.0")
+    price = data.get("Price") or "1.0"
     gateway = data.get("Gateway", "-")
 
-    # If Price missing in API, set default 1.0
-    if not price:
-        price = "1.0"
+    logging.info(f"Parsed API data -> Response: {response_text}, Price: {price}, Gateway: {gateway}")
 
     # Update DB for the user
     await update_user(user_id, custom_url=site_input)
@@ -2680,6 +2693,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ――――――――――――――――
 """
     await msg.edit_text(final_message, parse_mode=ParseMode.HTML)
+
 
 
 
