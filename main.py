@@ -558,27 +558,32 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
     )
 
 # ---------- Shopify Gate ----------
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
+
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   💸 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 5$\n"
+        "      🛒 <b>Shopify $5</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/sh` \\- *checks card on shopify 5$*\n"
+        "• <code>/sh</code> - <i>Check a single card on Shopify $5</i>\n"
         "  Example:\n"
-        "  `/sh 1234567890123456\\|12\\|2026\\|123`\n\n"
-
-        "⚡ Use carefully, each check deducts credits.\n"
-
+        "  <code>/sh 1234567890123456|12|2026|123</code>\n\n"
+        "⚡ Use carefully, each check deducts credits."
     )
+
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ BACK TO CHARGE MENU", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ BACK TO MAIN MENU", callback_data="back_to_start")]
     ]
+
     await q.edit_message_text(
-        text,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        text=text,
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
