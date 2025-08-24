@@ -3019,6 +3019,12 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not site_url.startswith(("http://", "https://")):
         site_url = "https://" + site_url
 
+    # Send initial message
+    msg = await update.message.reply_text(
+        f"⏳ Checking site: <code>{escape(site_url)}</code>...",
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
 
     # Run checker in background
     asyncio.create_task(run_site_check(site_url, msg, user))
