@@ -481,6 +481,11 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 # ---------- Auth Submenu ----------
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# ---------- Auth Submenu ----------
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -501,7 +506,6 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         disable_web_page_preview=True
     )
 
-
 # ---------- Stripe Examples ----------
 async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -515,7 +519,7 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         "  `/chk 1234567890123456\\|12\\|24\\|123`\n\n"
         "• `/mchk` \\- *Check up to 10 cards at once*\n"
         "  Example:\n"
-        "  `/mchk 1234567890123456\\|\\.\\.\\.`  # up to 10 cards\n\n"
+        "  `/mchk 1234567890123456\\|\\.\\.\\.`  \\# up to 10 cards\n\n"
         "• `/mass` \\- *Check up to 30 cards at once*\n"
         "  Example:\n"
         "  `/mass <cards>`"
@@ -530,7 +534,6 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
-
 
 # ---------- Charge Submenu ----------
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -553,7 +556,6 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
-
 
 # ---------- Shopify Gate ----------
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -578,6 +580,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
+
 
 
 # ---------- AutoShopify Gate ----------
