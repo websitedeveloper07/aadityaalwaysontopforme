@@ -2808,110 +2808,99 @@ async def get_bin_details(bin_number: str) -> dict:
     return bin_data
 
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler for /sp card|mm|yy|cvv"""
     user = update.effective_user
     user_id = user.id
 
-    # --- Cooldown check ---
-    if not await enforce_cooldown(user_id, update):
-        return
-
-    # --- Check credits ---
-    if not await consume_credit(user_id):
-        await update.message.reply_text(
-            "❌ You have no credits left. Please buy more to use this command."
-        )
-        return
-
-    # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
-            "❌ Usage: /sp <card_number|mm|yyyy|cvv>",
+            "❌ Please provide card details. Example: /sp 5444228607773355|04|28|974",
             parse_mode=ParseMode.HTML
         )
         return
 
     card_input = context.args[0].strip()
-    bin_number = card_input.split("|")[0][:6]
 
-    # --- Fetch BIN info ---
-    bin_details = await get_bin_details(bin_number)
-    brand = bin_details.get("scheme", "N/A").upper()
-    bank = bin_details.get("bank", "N/A").title()
-    country_name = bin_details.get("country_name", "N/A")
-    country_flag = bin_details.get("country_emoji", "")
+    # Fetch user data
+    user_data = await get_user(user_id)
+    custom_url = user_data.get("custom_url")
+    if not custom_url:
+        await update.message.reply_text(
+            "❌ You don't have a site set. Use /seturl to set your site first.",
+            parse_mode=ParseMode.HTML
+        )
+        return
 
-    # --- Send processing message ---
-    processing_msg = await update.message.reply_text(
+    # Send initial "Checking..." message
+    msg = await update.message.reply_text(
         f"⏳ Checking card: <code>{escape(card_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
-    # --- Prepare API URL ---
-    api_url = (
-        "https://7feeef80303d.ngrok-free.app/autosh.php"
-        f"?cc={card_input}"
-        "&site=https://example.com"
-        "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-    )
+    api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
-                api_response = await resp.text()
+                api_text = await resp.text()
+                try:
+                    data = json.loads(api_text)
+                except json.JSONDecodeError:
+                    await msg.edit_text(
+                        f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
+                        parse_mode=ParseMode.HTML
+                    )
+                    return
 
-        # --- Parse JSON safely ---
-        try:
-            data = json.loads(api_response)
-        except json.JSONDecodeError:
-            data = {"Response": api_response.strip(), "Price": "-"}
+        # Extract API fields safely
+        response_text = data.get("Response", "Unknown")
+        price = data.get("Price", "-")
+        gateway = data.get("Gateway", "-")
+        brand = data.get("Brand", "-")
+        bank = data.get("Bank", "-")
+        country = data.get("Country", "-")
+        credits_left = user_data.get("credits", 0)
 
-        # --- Extract API fields ---
-        response = data.get("Response", "Unknown")
-        amount = data.get("Price", "-")
-        gateway_name = data.get("Gateway", "shopify_payments")
-        brand_name = data.get("Brand", brand)
-        bank_name = data.get("Bank", bank)
-        country_display = data.get("Country", f"{country_flag} {country_name}")
-
-        # --- Format message ---
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
+        # Clickable bullet linking to your group/channel
         BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # <-- replace with your link
         bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
         formatted_msg = (
-            f"═══[ SHOPIFY_PAYMENTS ]═══\n"
+            f"═══[ <b>{gateway.upper()}</b> ]═══\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway_name)}\n"
-            f"{bullet_link} <b>Amount</b> ➜ {escape(str(amount))}\n"
-            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
+            f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
+            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Brand</b> ➜ {escape(brand_name)}\n"
-            f"{bullet_link} <b>Bank</b> ➜ {escape(bank_name)}\n"
-            f"{bullet_link} <b>Country</b> ➜ {escape(country_display)}\n"
+            f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
+            f"{bullet_link} <b>Bank</b> ➜ {bank}\n"
+            f"{bullet_link} <b>Country</b> ➜ {country}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Requested By</b> ➜ {requester}\n"
+            f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
+            f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
-        await processing_msg.edit_text(
+        await msg.edit_text(
             formatted_msg,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
 
     except asyncio.TimeoutError:
-        await processing_msg.edit_text(
+        await msg.edit_text(
             "❌ Error: API request timed out. Try again later.",
             parse_mode=ParseMode.HTML
         )
     except Exception as e:
-        logger.exception("Error in /sp")
-        await processing_msg.edit_text(
+        import logging
+        logging.exception("Error in /sp command")
+        await msg.edit_text(
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
