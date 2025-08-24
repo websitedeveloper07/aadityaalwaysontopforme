@@ -2801,12 +2801,11 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Extract API fields safely
         response_text = data.get("Response", "Unknown")
-        price = data.get("Price", "-")
+        amount = data.get("Price", "-")  # <-- showing amount instead of credits
         gateway = data.get("Gateway", "-")
         brand = data.get("Brand", "-")
         bank = data.get("Bank", "-")
         country = data.get("Country", "-")
-        credits_left = user_data.get("credits", 0)
 
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
@@ -2821,6 +2820,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"═══[ <b>{gateway.upper()}</b> ]═══\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
             f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
+            f"{bullet_link} <b>Amount</b> ➜ {amount}\n"
             f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
@@ -2828,7 +2828,6 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{bullet_link} <b>Country</b> ➜ {country}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
-            f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
