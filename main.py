@@ -2603,6 +2603,7 @@ from telegram.ext import ContextTypes
 import aiohttp
 from db import get_user, update_user
 from html import escape
+import json
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for /seturl command"""
@@ -2634,7 +2635,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML
     )
 
-    # Build API URL directly for site check (fixed logic)
+    # Build API URL directly for site check
     api_url = (
         "https://7feeef80303d.ngrok-free.app/autosh.php"
         "?cc=4546788796826918|09|2030|781"
@@ -2644,15 +2645,20 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=50) as resp:
-                data = await resp.json()
+            async with session.get(api_url, timeout=30) as resp:
+                text_data = await resp.text()
+                try:
+                    data = json.loads(text_data)
+                except json.JSONDecodeError:
+                    await msg.edit_text(f"❌ Failed to check site: API did not return JSON\nRaw response:\n{text_data}")
+                    return
     except Exception as e:
         await msg.edit_text(f"❌ Failed to check site: {e}\nAPI URL: {api_url}")
         return
 
     # Extract info from API response
     response_text = data.get("Response", "Unknown")
-    price = data.get("Price", "1.0")  # default 1.0 if missing
+    price = data.get("Price") or "1.0$"  # default to 1.0$ if missing
     gateway = data.get("Gateway", "Unknown")
 
     # Update DB
@@ -2663,7 +2669,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ═══[ {gateway.upper()} ]═══
 [✗] Site ➜ <code>{escape(site_input)}</code>
 
-[✗] Amount ➜ {price if price else '1.0$'}  
+[✗] Amount ➜ {price}  
 [✗] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response_text}
 
 ――――――――――――――――
@@ -2674,6 +2680,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
 
     await msg.edit_text(final_message, parse_mode=ParseMode.HTML)
+
 
 
 
