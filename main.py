@@ -2963,30 +2963,59 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-import aiohttp
-import asyncio
-import json
+import time
 import re
+import json
+import asyncio
+import aiohttp
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from html import escape
 
+# Cooldown tracker
+last_site_usage = {}
+
+# Replace with your API template
 API_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?site={site_url}"
+
+# Your credit system
+async def consume_credit(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
 
 async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
+    # === Cooldown check ===
+    now = time.time()
+    if user_id in last_site_usage and (now - last_site_usage[user_id]) < 3:
+        await update.message.reply_text("⏳ Please wait 3 seconds before using /site again.")
+        return
+    last_site_usage[user_id] = now
+
+    # === Credit check ===
+    has_credit = await consume_credit(user_id)
+    if not has_credit:
+        await update.message.reply_text("❌ You don’t have enough credits to use this command.")
+        return
+
+    # === Argument check ===
     if not context.args:
         await update.message.reply_text(
-            "❌ Please provide a site URL. Example:\n/site https://example.com",
+            "❌ Please provide a site URL.\nExample:\n<code>/site https://example.com</code>",
             parse_mode=ParseMode.HTML
         )
         return
 
     site_url = context.args[0].strip()
-    
+
     msg = await update.message.reply_text(
         f"⏳ Checking site: <code>{escape(site_url)}</code>...",
         parse_mode=ParseMode.HTML
@@ -2998,13 +3027,13 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=120) as resp:
                 api_text = await resp.text()
-                
-                # Remove PHP warnings / HTML tags
+
+                # Clean junk HTML if present
                 clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
                 json_start = clean_text.find('{')
                 if json_start != -1:
                     clean_text = clean_text[json_start:]
-                
+
                 try:
                     data = json.loads(clean_text)
                 except json.JSONDecodeError:
@@ -3014,7 +3043,7 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     return
 
-                # Safely extract Price
+                # Extract fields
                 price_float = 0.0
                 try:
                     price_float = float(data.get("Price", 0))
@@ -3022,13 +3051,10 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
 
                 price = f"{price_float}$" if price_float else "0$"
-
-                # Safely extract Gateway
                 gateway = data.get("Gateway") or "shopify_payments"
-
-                # Determine Status
                 status = "𝙒𝙤𝙧𝙠𝙞𝙣𝙜 ✅" if price_float > 0 else "𝘿𝙚𝙖𝙙 ❌"
 
+                # Requester and dev info
                 requester = f"@{user.username}" if user.username else str(user.id)
                 DEVELOPER_NAME = "kคli liຖนxx"
                 DEVELOPER_LINK = "https://t.me/K4linuxxxx"
@@ -3036,13 +3062,13 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
                 BULLET = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
-                
+                # Format output
                 formatted_msg = (
                     f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
                     f"{BULLET} 𝐒𝐢𝐭𝐞 ➜ <code>{site_url}</code>\n"
-                    f"{BULLET} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
+                    f"{BULLET} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}\n"
                     f"{BULLET} 𝐀𝐦𝐨𝐮𝐧𝐭 ➜ {price}💸\n"
-                    f"{BULLET} Status ➜ <b>{status}</b>\n\n"
+                    f"{BULLET} 𝐒𝐭𝐚𝐭𝐮𝐬 ➜ <b>{status}</b>\n\n"
                     f"――――――――――――――――\n"
                     f"{BULLET} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
                     f"{BULLET} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
