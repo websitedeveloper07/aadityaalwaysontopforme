@@ -3814,7 +3814,7 @@ def main():
     application.add_handler(CommandHandler("mtchk", mtchk))
     application.add_handler(CommandHandler("sh", sh_command))
     application.add_handler(CommandHandler("seturl", seturl, block=False))
-    application.add_handler(CommandHandler("remove", removeurl, block=False))
+    application.add_handler(CommandHandler("remove", remove, block=False))
     application.add_handler(CommandHandler("sp", sp, block=False))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("open", open_command))
