@@ -2963,6 +2963,106 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+import aiohttp
+import asyncio
+import json
+import re
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from html import escape
+
+API_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?site={site_url}"
+
+async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_id = user.id
+
+    if not context.args:
+        await update.message.reply_text(
+            "❌ Please provide a site URL. Example:\n/site https://example.com",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    site_url = context.args[0].strip()
+    
+    msg = await update.message.reply_text(
+        f"⏳ Checking site: <code>{escape(site_url)}</code>...",
+        parse_mode=ParseMode.HTML
+    )
+
+    api_url = API_TEMPLATE.format(site_url=site_url)
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=120) as resp:
+                api_text = await resp.text()
+                
+                # Remove PHP warnings / HTML tags
+                clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
+                json_start = clean_text.find('{')
+                if json_start != -1:
+                    clean_text = clean_text[json_start:]
+                
+                try:
+                    data = json.loads(clean_text)
+                except json.JSONDecodeError:
+                    await msg.edit_text(
+                        f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
+                        parse_mode=ParseMode.HTML
+                    )
+                    return
+
+                # Safely extract Price
+                price_float = 0.0
+                try:
+                    price_float = float(data.get("Price", 0))
+                except (ValueError, TypeError):
+                    pass
+
+                price = f"{price_float}$" if price_float else "0$"
+
+                # Safely extract Gateway
+                gateway = data.get("Gateway") or "shopify_payments"
+
+                # Determine Status
+                status = "Working ✅" if price_float > 0 else "Dead ❌"
+
+                requester = f"@{user.username}" if user.username else str(user.id)
+                DEVELOPER_NAME = "kคli liຖนxx"
+                DEVELOPER_LINK = "https://t.me/K4linuxxxx"
+                developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+                BULLET = "[✗]"
+
+                formatted_msg = (
+                    f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
+                    f"{BULLET} 𝐒𝐢𝐭𝐞 ➜ {site_url}\n"
+                    f"{BULLET} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}\n"
+                    f"{BULLET} 𝐀𝐦𝐨𝐮𝐧𝐭 ➜ {price}\n"
+                    f"{BULLET} Status ➜ <b>{status}</b>\n\n"
+                    f"――――――――――――――――\n"
+                    f"{BULLET} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
+                    f"{BULLET} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+                    f"――――――――――――――――"
+                )
+
+                await msg.edit_text(
+                    formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True
+                )
+
+    except asyncio.TimeoutError:
+        await msg.edit_text(
+            "❌ Error: API request timed out. Try again later.",
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        await msg.edit_text(
+            f"❌ Error: <code>{escape(str(e))}</code>",
+            parse_mode=ParseMode.HTML
+        )
 
 
 
@@ -4079,6 +4179,7 @@ def main():
     application.add_handler(CommandHandler("seturl", seturl, block=False))
     application.add_handler(CommandHandler("remove", remove, block=False))
     application.add_handler(CommandHandler("sp", sp, block=False))
+    application.add_handler(CommandHandler("site", site))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(CommandHandler("open", open_command))
     application.add_handler(CommandHandler("adcr", adcr_command))
