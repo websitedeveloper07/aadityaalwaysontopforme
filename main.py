@@ -2644,7 +2644,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=30) as resp:
+            async with session.get(api_url, timeout=50) as resp:
                 data = await resp.json()
     except Exception as e:
         await msg.edit_text(f"❌ Failed to check site: {e}\nAPI URL: {api_url}")
