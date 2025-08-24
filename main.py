@@ -2604,21 +2604,16 @@ from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user, update_user
+from db import get_user, update_user, init_db
 
-# Optional placeholder for BIN details if you don't have the function
-async def get_bin_details(bin_number: str):
-    return {
-        "scheme": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": ""
-    }
+# Ensure DB is initialized (create missing columns if needed)
+asyncio.get_event_loop().run_until_complete(init_db())
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
+    # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
             "❌ Usage: /seturl shop.meltingpot.com",
@@ -2630,8 +2625,9 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not site_input.startswith(("http://", "https://")):
         site_input = f"https://{site_input}"
 
-    # Check if user already has a site
+    # --- Fetch user data ---
     user_data = await get_user(user_id)
+
     if user_data.get("custom_url"):
         await update.message.reply_text(
             "❌ You already have a site set. Remove it first using /remove.",
@@ -2639,11 +2635,13 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # --- Send processing message ---
     processing_msg = await update.message.reply_text(
         f"⏳ Adding URL: <code>{escape(site_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
+    # --- Prepare API URL ---
     api_url = (
         "https://7feeef80303d.ngrok-free.app/autosh.php"
         "?cc=4546788796826918|09|2030|781"
@@ -2652,12 +2650,11 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
-        timeout = aiohttp.ClientTimeout(total=90)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(api_url) as resp:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=50) as resp:
                 api_response = await resp.text()
 
-        # Parse JSON safely
+        # --- Parse JSON safely ---
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
@@ -2667,30 +2664,22 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        # Extract API fields
+        # --- Extract API fields ---
         response = data.get("Response", "Unknown")
-        price = str(data.get("Price", "1.0"))
+        price = data.get("Price", "1.0")
         gateway = data.get("Gateway", "Unknown")
         proxy_status = data.get("ProxyStatus", "-")
         proxy_ip = data.get("ProxyIP", "-")
         card = data.get("cc", "N/A")
 
-        # BIN lookup
-        bin_number = card[:6]
-        bin_details = await get_bin_details(bin_number)
-        brand = (bin_details.get("scheme") or "N/A").upper()
-        issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A")
-        country_flag = bin_details.get("country_emoji", "")
-
-        # Update user DB
+        # --- Update user DB safely ---
         await update_user(user_id, custom_url=site_input)
 
+        # --- Format message ---
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
-
         BULLET = "[✗]"
 
         formatted_msg = (
@@ -2701,9 +2690,6 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{BULLET} <b>Proxy Status</b> ➜ {escape(proxy_status)}\n"
             f"{BULLET} <b>Proxy IP</b> ➜ {escape(proxy_ip)}\n"
             f"{BULLET} <b>Card</b> ➜ <code>{card}</code>\n"
-            f"{BULLET} <b>Brand</b> ➜ {brand}\n"
-            f"{BULLET} <b>Bank</b> ➜ {issuer}\n"
-            f"{BULLET} <b>Country</b> ➜ {country_name} {country_flag}\n"
             f"――――――――――――――――\n"
             f"⛓ Full API Response:\n<pre>{escape(json.dumps(data, indent=2))}</pre>\n"
             f"――――――――――――――――\n"
@@ -2719,7 +2705,10 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except asyncio.TimeoutError:
-        await processing_msg.edit_text("❌ API request timed out. Please try again later.")
+        await processing_msg.edit_text(
+            "❌ Error: API request timed out. Try again later.",
+            parse_mode=ParseMode.HTML
+        )
     except Exception as e:
         import logging
         logging.exception("Error in /seturl")
@@ -2727,6 +2716,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
