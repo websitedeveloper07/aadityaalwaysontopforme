@@ -2604,7 +2604,11 @@ import aiohttp
 from db import get_user, update_user
 from html import escape
 
-API_CHECK_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?cc=5444228607773355|04|28|974&site={site}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+# Template for checking site via API (card & proxy are fixed for site validation)
+API_CHECK_TEMPLATE = (
+    "https://7feeef80303d.ngrok-free.app/autosh.php?"
+    "cc=5444228607773355|04|28|974&site={site}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+)
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for /seturl command."""
@@ -2612,7 +2616,9 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
 
     if not args:
-        await update.message.reply_text("❌ Please provide a site URL. Example: /seturl shop.meltingpot.com")
+        await update.message.reply_text(
+            "❌ Please provide a site URL. Example: /seturl shop.meltingpot.com"
+        )
         return
 
     # Fetch user data
@@ -2629,7 +2635,9 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         site_input = f"https://{site_input}"
 
     # Send initial "Adding URL..." message
-    msg = await update.message.reply_text(f"⏳ Adding URL: {escape(site_input)}...", parse_mode=ParseMode.HTML)
+    msg = await update.message.reply_text(
+        f"⏳ Adding URL: {escape(site_input)}...", parse_mode=ParseMode.HTML
+    )
 
     # Check site via API
     api_url = API_CHECK_TEMPLATE.format(site=site_input)
@@ -2650,8 +2658,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update_user(user_id, custom_url=site_input)
 
     # Format final message
-    final_message = f"""
-═══[ {gateway.upper()} ]═══
+    final_message = f"""═══[ {gateway.upper()} ]═══
 [✗] Site ➜ {site_input}
 
 [✗] Amount ➜ {price}  
@@ -2667,8 +2674,8 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await msg.edit_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-
 async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler for /remove command to remove user's custom URL."""
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
 
@@ -2677,7 +2684,10 @@ async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update_user(user_id, custom_url=None)
-    await update.message.reply_text("✅ Your URL has been removed. You can now set a new one using /seturl.")
+    await update.message.reply_text(
+        "✅ Your URL has been removed. You can now set a new one using /seturl."
+    )
+
 
 
 
