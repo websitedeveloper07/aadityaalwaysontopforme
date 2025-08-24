@@ -2737,7 +2737,6 @@ async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 import asyncio
 import aiohttp
 import json
@@ -2774,6 +2773,37 @@ async def consume_credit(user_id: int) -> bool:
         await update_user(user_id, credits=new_credits)
         return True
     return False
+
+async def get_bin_details(bin_number: str) -> dict:
+    """Fetch BIN details from public API."""
+    bin_data = {
+        "scheme": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": ""
+    }
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=7) as response:
+                if response.status == 200:
+                    try:
+                        data = await response.json(content_type=None)
+                        bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                        bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                        bin_data["country_name"] = data.get("country_name", "N/A")
+                        bin_data["country_emoji"] = data.get("country_flag", "")
+                        return bin_data
+                    except Exception as e:
+                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
+                else:
+                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
+    except Exception as e:
+        logger.warning(f"BIN API call failed for {bin_number}: {e}")
+
+    return bin_data
 
 async def sp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
