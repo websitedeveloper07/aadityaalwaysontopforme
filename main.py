@@ -315,7 +315,7 @@ import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user # Assuming db.py and get_user function exist
+from db import get_user  # Assuming db.py and get_user function exist
 
 # Links
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
@@ -417,30 +417,29 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    bullet_link = f"\\u2718"
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet_link} `/start` – Welcome message\n"
-        f"{bullet_link} `/cmds` – Shows all commands\n"
-        f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` Gen\n"
-        f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
-        f"{bullet_link} `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
-        f"{bullet_link} `/mchk` – x10 Multi Stripe\n"
-        f"{bullet_link} `/mass` – x30 Mass Stripe Auth 2\n"
-        f"{bullet_link} `/mtchk` `txt file` – x200 Stripe Auth 3\n"
-        f"{bullet_link} `/sh` Shopify 5\\$\n"
-        f"{bullet_link} `/seturl` `<site url>` set a shopify site\n"
-        f"{bullet_link} `/remove` Remove your added site\n"
-        f"{bullet_link} `/sp`  check on your shopify added site\n"
-        f"{bullet_link} `/site`  check shopify site is working or not\n"
-        f"{bullet_link} `/fk` – Generate fake identity info\n"
-        f"{bullet_link} `/fl` `<dump>` – Fetch CCs from dump\n"
-        f"{bullet_link} `/open` – Extracts cards from a file\n"
-        f"{bullet_link} `/status` – Bot system status info\n"
-        f"{bullet_link} `/credits` – Chk remaining credits\n"
-        f"{bullet_link} `/info` – Shows your user info\n\n"
+        "\\u2718 `/start` – Welcome message\n"
+        "\\u2718 `/cmds` – Shows all commands\n"
+        "\\u2718 `/gen` `[bin]` `[no\\. of cards]` Gen\n"
+        "\\u2718 `/bin` `<bin>` – BIN lookup\n"
+        "\\u2718 `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
+        "\\u2718 `/mchk` – x10 Multi Stripe\n"
+        "\\u2718 `/mass` – x30 Mass Stripe Auth 2\n"
+        "\\u2718 `/mtchk` `txt file` – x200 Stripe Auth 3\n"
+        "\\u2718 `/sh` Shopify 5\\$\n"
+        "\\u2718 `/seturl` `<site url>` set a shopify site\n"
+        "\\u2718 `/remove` Remove your added site\n"
+        "\\u2718 `/sp`  check on your shopify added site\n"
+        "\\u2718 `/site`  check shopify site is working or not\n"
+        "\\u2718 `/fk` – Generate fake identity info\n"
+        "\\u2718 `/fl` `<dump>` – Fetch CCs from dump\n"
+        "\\u2718 `/open` – Extracts cards from a file\n"
+        "\\u2718 `/status` – Bot system status info\n"
+        "\\u2718 `/credits` – Chk remaining credits\n"
+        "\\u2718 `/info` – Shows your user info\n\n"
     )
     keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
     await q.edit_message_text(
@@ -666,7 +665,7 @@ BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 
 def md_escape(text: str) -> str:
     """Escape text for Markdown V2."""
-    escape_chars = r"_*[]()~`>#+-=|{}.!"
+    escape_chars = r"_*[]()~`>#+-=|{}.!<>"
     return ''.join(f"\\{c}" if c in escape_chars else c for c in text)
 
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -684,17 +683,17 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} `/mtchk txt file` – Mass x200 Stripe Auth 3\n\n"
 
         "🔹 *𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙏𝙤𝙤𝙡𝙨*\n"
-        f"{bullet_link} `/sh` – Shopify Charge $5\n"
-        f"{bullet_link} `/seturl <site url>` – Set your Shopify site\n"
+        f"{bullet_link} `/sh` – Shopify Charge \\$5\n"
+        f"{bullet_link} `/seturl \\<site url\\>` – Set your Shopify site\n"
         f"{bullet_link} `/remove` – Remove your saved Shopify site\n"
         f"{bullet_link} `/sp` – Auto check on your saved Shopify site\n"
-        f"{bullet_link} `/site <url>` – Check if Shopify site is live\n\n"
+        f"{bullet_link} `/site \\<url\\>` – Check if Shopify site is live\n\n"
 
         "🔹 *𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨*\n"
         f"{bullet_link} `/gen [bin] [no\\. of cards]` – Generate cards from BIN\n"
-        f"{bullet_link} `/bin <bin>` – BIN lookup (Bank, Country, Type)\n"
-        f"{bullet_link} `/fk <country>` – Fake identity generator\n"
-        f"{bullet_link} `/fl <dump>` – Extract CCs from dumps\n"
+        f"{bullet_link} `/bin \\<bin\\>` – BIN lookup (Bank, Country, Type)\n"
+        f"{bullet_link} `/fk \\<country\\>` – Fake identity generator\n"
+        f"{bullet_link} `/fl \\<dump\\>` – Extract CCs from dumps\n"
         f"{bullet_link} `/open` – Extract cards from uploaded file\n\n"
 
         "🔹 *𝙎𝙮𝙨𝙩𝙚𝙢 ＆ 𝙐𝙨𝙚𝙧*\n"
@@ -710,6 +709,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
