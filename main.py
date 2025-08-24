@@ -2667,10 +2667,6 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # --- Extract API fields ---
         response = data.get("Response", "Unknown")
         price = data.get("Price", "1.0")
-        gateway = data.get("Gateway", "Unknown")
-        proxy_status = data.get("ProxyStatus", "-")
-        proxy_ip = data.get("ProxyIP", "-")
-        card = data.get("cc", "N/A")
 
         # --- Update user DB safely ---
         await update_user(user_id, custom_url=site_input)
@@ -2680,21 +2676,22 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
-        BULLET = "[✗]"
+
+        # Clickable bullet linking to your group/channel
+        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # <-- replace with your link
+        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
+
+        # Determine site status
+        site_status = "Site Added ✅" if "Error" not in response else "❌ Failed to Add Site"
 
         formatted_msg = (
-            f"═══[ <b>{gateway.upper()}</b> ]═══\n"
-            f"{BULLET} <b>Site</b> ➜ <code>{escape(site_input)}</code>\n"
-            f"{BULLET} <b>Amount</b> ➜ {escape(price)}\n"
-            f"{BULLET} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
-            f"{BULLET} <b>Proxy Status</b> ➜ {escape(proxy_status)}\n"
-            f"{BULLET} <b>Proxy IP</b> ➜ {escape(proxy_ip)}\n"
-            f"{BULLET} <b>Card</b> ➜ <code>{card}</code>\n"
+            f"═══[ <b>{site_status}</b> ]═══\n"
+            f"{bullet_link} <b>Site</b> ➜ <code>{escape(site_input)}</code>\n"
+            f"{bullet_link} <b>Amount</b> ➜ {escape(price)}\n"
+            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
             f"――――――――――――――――\n"
-            f"⛓ Full API Response:\n<pre>{escape(json.dumps(data, indent=2))}</pre>\n"
-            f"――――――――――――――――\n"
-            f"{BULLET} <b>Request By</b> ➜ {requester}\n"
-            f"{BULLET} <b>Developer</b> ➜ {developer_clickable}\n"
+            f"{bullet_link} <b>Requested By</b> ➜ {requester}\n"
+            f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
@@ -2716,6 +2713,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
@@ -2748,38 +2746,55 @@ from db import get_user
 from html import escape
 
 API_CHECK_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?cc={card}&site={site}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+BULLET_GROUP_LINK = "https://t.me/your_group_here"  # Make bullet clickable
 
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for /sp card|mm|yy|cvv"""
-    user_id = update.effective_user.id
+    user = update.effective_user
+    user_id = user.id
     args = context.args
 
     if not args:
-        await update.message.reply_text("❌ Please provide card details. Example: /sp 5444228607773355|04|28|974")
+        await update.message.reply_text(
+            "❌ Please provide card details.\nExample: /sp 5444228607773355|04|28|974",
+            parse_mode=ParseMode.HTML
+        )
         return
 
     user_data = await get_user(user_id)
     custom_url = user_data.get("custom_url")
     if not custom_url:
-        await update.message.reply_text("❌ You don't have a site set. Use /seturl to set your site first.")
+        await update.message.reply_text(
+            "❌ You don't have a site set. Use /seturl to set your site first.",
+            parse_mode=ParseMode.HTML
+        )
         return
 
     card_input = args[0].strip()
-
-    # Send initial "Checking..." message
-    msg = await update.message.reply_text(f"⏳ Checking card: {escape(card_input)}...", parse_mode=ParseMode.HTML)
+    msg = await update.message.reply_text(
+        f"⏳ Checking card: <code>{escape(card_input)}</code>...",
+        parse_mode=ParseMode.HTML
+    )
 
     api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=30) as resp:
-                data = await resp.json()
+                if resp.status != 200:
+                    await msg.edit_text(f"❌ API returned HTTP {resp.status}")
+                    return
+                try:
+                    data = await resp.json()
+                except Exception:
+                    text = await resp.text()
+                    await msg.edit_text(f"❌ Invalid API response:\n<pre>{escape(text)}</pre>", parse_mode=ParseMode.HTML)
+                    return
     except Exception as e:
-        await msg.edit_text(f"❌ Failed to check card: {e}")
+        await msg.edit_text(f"❌ Failed to check card: <code>{escape(str(e))}</code>", parse_mode=ParseMode.HTML)
         return
 
-    # Parse API response
+    # Extract API fields safely
     response_text = data.get("Response", "Unknown")
     price = data.get("Price", "-")
     gateway = data.get("Gateway", "-")
@@ -2788,24 +2803,28 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country = data.get("Country", "-")
     credits_left = user_data.get("credits", 0)
 
-    # Format final message
-    final_message = f"""
-═══[ {gateway.upper()} ]═══
-[✗] 𝐂𝐚𝐫𝐝 ➜ {card_input}
-[✗] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}
-[✗] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response_text}
-――――――――――――――――
-[✗] 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}
-[✗] 𝐁𝐚𝐧𝐤 ➜ {bank}
-[✗] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country}
-――――――――――――――――
-[✗] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ @{update.effective_user.username or update.effective_user.first_name}
-[✗] 𝐂𝐫𝐞𝐝𝐢𝐭𝐬 𝐋𝐞𝐟𝐭 ➜ {credits_left}
-[✗] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx
-――――――――――――――――
-"""
+    # Clickable bullet
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>✗</a>"
 
-    await msg.edit_text(final_message, parse_mode=ParseMode.MARKDOWN_V2)
+    # Format final message
+    final_message = (
+        f"═══[ <b>{escape(gateway.upper())}</b> ]═══\n"
+        f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
+        f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway)}\n"
+        f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} <b>Brand</b> ➜ {escape(brand)}\n"
+        f"{bullet_link} <b>Bank</b> ➜ {escape(bank)}\n"
+        f"{bullet_link} <b>Country</b> ➜ {escape(country)}\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} <b>Request By</b> ➜ @{user.username or user.first_name}\n"
+        f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
+        f"{bullet_link} <b>Developer</b> ➜ kคli liຖนxx\n"
+        f"――――――――――――――――"
+    )
+
+    await msg.edit_text(final_message, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+
 
 
 
