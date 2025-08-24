@@ -2741,6 +2741,7 @@ async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 import aiohttp
 import json
+import re
 from html import escape
 from datetime import datetime
 from telegram import Update
@@ -2866,17 +2867,25 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
                 api_text = await resp.text()
-                try:
-                    data = json.loads(api_text)
-                except json.JSONDecodeError:
-                    await msg.edit_text(
-                        f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
-                        parse_mode=ParseMode.HTML
-                    )
-                    return
 
+        # --- Strip PHP warnings / HTML tags ---
+        clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
+        json_start = clean_text.find('{')
+        if json_start != -1:
+            clean_text = clean_text[json_start:]
+
+        try:
+            data = json.loads(clean_text)
+        except json.JSONDecodeError:
+            await msg.edit_text(
+                f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # Extract fields
         response_text = data.get("Response", "Unknown")
-        price = f"{data.get('Price', '1.0')}$"
+        price = f"{data.get('Price', '1.0')}$"  # $ at the end
         gateway = data.get("Gateway", "-")
         country = f"{country_flag} {country_name}"
 
@@ -2921,6 +2930,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
