@@ -2805,7 +2805,7 @@ async def get_bin_details(bin_number: str) -> dict:
 
     return bin_data
 
-async def sp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
