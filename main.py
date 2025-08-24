@@ -315,12 +315,12 @@ import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user  # Keep your existing function
+from db import get_user  # Assuming db.py and get_user function exist
 
 # Links
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
-DEV_LINK = "https://t.me/k4linuxxxx"
+DEV_LINK = "https://tme/k4linuxxxx"
 
 logger = logging.getLogger(__name__)
 
@@ -332,19 +332,18 @@ def escape_all_markdown(text: str) -> str:
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     uname = f"@{username}" if username else "N/A"
-    # Escaping '[' and ']' characters
-    bullet = f"\\[[✗]({escape_all_markdown(BULLET_GROUP_LINK)})]"
+    bullet = f"\\u2718"  # Using a Unicode character to avoid Markdown issues
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet} ID      : `{escape_all_markdown(str(user_id))}`\n"
-        f"{bullet} Username: `{escape_all_markdown(uname)}`\n"
-        f"{bullet} Credits : `{escape_all_markdown(str(credits))}`\n"
-        f"{bullet} Plan    : `{escape_all_markdown(plan)}`\n"
-        f"{bullet} Date    : `{escape_all_markdown(date_str)}`\n"
-        f"{bullet} Time    : `{escape_all_markdown(time_str)}`\n\n"
-        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭𝐨 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
+        f"\\u2718 ID      : `{escape_all_markdown(str(user_id))}`\n"
+        f"\\u2718 Username: `{escape_all_markdown(uname)}`\n"
+        f"\\u2718 Credits : `{escape_all_markdown(str(credits))}`\n"
+        f"\\u2718 Plan    : `{escape_all_markdown(plan)}`\n"
+        f"\\u2718 Date    : `{escape_all_markdown(date_str)}`\n"
+        f"\\u2718 Time    : `{escape_all_markdown(time_str)}`\n\n"
+        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 bellow 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
     )
 
 async def get_user_cached(user_id, context):
@@ -419,7 +418,7 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    bullet_link = f"\\[[✗]({escape_all_markdown(BULLET_GROUP_LINK)})]"
+    bullet_link = f"\\u2718"
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
@@ -444,7 +443,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} `/credits` – Chk remaining credits\n"
         f"{bullet_link} `/info` – Shows your user info\n\n"
     )
-    keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
+    keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
     await q.edit_message_text(
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
@@ -467,7 +466,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             InlineKeyboardButton("⚡ 𝐀𝐮𝐭𝐡", callback_data="auth_sub_menu"),
             InlineKeyboardButton("💳 𝐂𝐡𝐚𝐫𝐠𝐞", callback_data="charge_sub_menu")
         ],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ])
     await q.edit_message_text(
         text,
@@ -488,7 +487,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     )
     keyboard = [
         [InlineKeyboardButton("💳 𝗦𝗧𝗥𝗜𝗣𝗘 𝗔𝗨𝗧𝗛", callback_data="stripe_examples")],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
     ]
     await q.edit_message_text(
         text,
@@ -654,7 +653,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
-
 
 
 
