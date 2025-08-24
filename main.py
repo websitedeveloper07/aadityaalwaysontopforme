@@ -2603,10 +2603,9 @@ from telegram.ext import ContextTypes
 import aiohttp
 from db import get_user, update_user
 from html import escape
-import json
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler for /seturl command"""
+    """Handler for /seturl command."""
     user_id = update.effective_user.id
     args = context.args
 
@@ -2631,11 +2630,10 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send initial "Adding URL..." message
     msg = await update.message.reply_text(
-        f"⏳ Adding URL: <code>{escape(site_input)}</code>...",
-        parse_mode=ParseMode.HTML
+        f"⏳ Adding URL: <code>{escape(site_input)}</code>...", parse_mode=ParseMode.HTML
     )
 
-    # Build API URL directly for site check
+    # Prepare API URL (fixed card for seturl)
     api_url = (
         "https://7feeef80303d.ngrok-free.app/autosh.php"
         "?cc=4546788796826918|09|2030|781"
@@ -2646,25 +2644,28 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=30) as resp:
-                text_data = await resp.text()
                 try:
-                    data = json.loads(text_data)
-                except json.JSONDecodeError:
-                    await msg.edit_text(f"❌ Failed to check site: API did not return JSON\nRaw response:\n{text_data}")
+                    data = await resp.json()
+                except:
+                    await msg.edit_text(f"❌ Failed to check site: Invalid response\nAPI URL: {api_url}")
                     return
     except Exception as e:
         await msg.edit_text(f"❌ Failed to check site: {e}\nAPI URL: {api_url}")
         return
 
-    # Extract info from API response
-    response_text = data.get("Response", "Unknown")
-    price = data.get("Price") or "1.0$"  # default to 1.0$ if missing
-    gateway = data.get("Gateway", "Unknown")
+    # Extract API response
+    response_text = data.get("Response", "-")
+    price = data.get("Price", "1.0")
+    gateway = data.get("Gateway", "-")
 
-    # Update DB
+    # If Price missing in API, set default 1.0
+    if not price:
+        price = "1.0"
+
+    # Update DB for the user
     await update_user(user_id, custom_url=site_input)
 
-    # Format final message
+    # Send final formatted message
     final_message = f"""
 ═══[ {gateway.upper()} ]═══
 [✗] Site ➜ <code>{escape(site_input)}</code>
@@ -2678,8 +2679,8 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 [✗] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx
 ――――――――――――――――
 """
-
     await msg.edit_text(final_message, parse_mode=ParseMode.HTML)
+
 
 
 
