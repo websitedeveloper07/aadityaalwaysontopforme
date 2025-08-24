@@ -2604,7 +2604,7 @@ from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user, update_user, get_bin_details
+from db import get_user, update_user
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
