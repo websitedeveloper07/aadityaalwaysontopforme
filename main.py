@@ -434,7 +434,40 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                               disable_web_page_preview=True)
 
 
-# ---------- Gates Menu ----------
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# ---------- Main Menu ----------
+async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        q = update.callback_query
+        await q.answer()
+        message_edit = q.edit_message_text
+    else:
+        message_edit = update.message.reply_text
+
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      🤖 𝐌𝐚𝐢𝐧 𝐌𝐞𝐧𝐮\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "✨ Select a feature below:"
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⚡ 𝐀𝐮𝐭𝐡", callback_data="auth_sub_menu"),
+         InlineKeyboardButton("💳 𝐂𝐡𝐚𝐫𝐠𝐞", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("📝 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫", callback_data="scrapper_menu")]
+    ])
+
+    await message_edit(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
+        disable_web_page_preview=True
+    )
+
+
 # ---------- Gates Menu ----------
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -444,7 +477,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "✦━━━━━━━━━━━━━━✦\n"
         "   🚪 𝐆𝐚𝐭𝐞𝐬 𝐌𝐞𝐧𝐮\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "✨ Please select a feature below:\n\n"
+        "✨ Please select a feature below:"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -452,7 +485,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             InlineKeyboardButton("⚡ 𝐀𝐮𝐭𝐡", callback_data="auth_sub_menu"),
             InlineKeyboardButton("💳 𝐂𝐡𝐚𝐫𝐠𝐞", callback_data="charge_sub_menu")
         ],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗮𝗶𝗻 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ])
 
     await q.edit_message_text(
@@ -472,7 +505,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "✦━━━━━━━━━━━━━━✦\n"
         "     🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "✨ Select a platform below:\n"
+        "✨ Select a platform below:"
     )
 
     keyboard = [
@@ -505,7 +538,7 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         "  `/mchk 1234567890123456|...`  # up to 10 cards\n\n"
         "• `/mass` \\- *Check up to 30 cards at once*\n"
         "  Example:\n"
-        "  `/mass <cards>`\n"
+        "  `/mass <cards>`"
     )
 
     keyboard = [
@@ -522,11 +555,6 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
 
 
 # ---------- Charge Submenu ----------
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-# ---------- Charge Sub Menu ----------
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -535,7 +563,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         "✦━━━━━━━━━━━━━━✦\n"
         "      ⚡ 𝐂𝐡𝐚𝐫𝐠𝐞 𝐆𝐚𝐭𝐞 ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "✨ Select a charge gate below:\n"
+        "✨ Select a charge gate below:"
     )
 
     keyboard = [
@@ -569,7 +597,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗚𝗔𝗧𝗘 𝗠𝗘𝗡𝗨", callback_data="gates_menu")]
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
 
     await q.edit_message_text(
@@ -578,6 +606,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
+
 
 
 # ---------- AutoShopify Gate ----------
@@ -591,7 +620,7 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/sp` \\- *Auto Shopify Checker*\n"
         "  Example:\n"
-        "  `/sp`\n\n"
+        "  `/sp 1234567890123456\\|12\\|2026\\|123`\n\n"
         "• `/seturl <shopify site>` \\- *Set your custom Shopify site*\n"
         "  Example:\n"
         "  `/seturl https:\\/\\/yourshopify\\.com`\n\n"
@@ -700,16 +729,21 @@ from telegram.ext import ContextTypes
 # Replace with your *legit* group/channel link
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 
+def md_escape(text: str) -> str:
+    """Escape text for Markdown V2."""
+    escape_chars = r"_*[]()~`>#+-=|{}.!"
+    return ''.join(f"\\{c}" if c in escape_chars else c for c in text)
+
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's full commands menu with categories."""
-
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    
+    bullet_link = f"[✗]({md_escape(BULLET_GROUP_LINK)})"
 
     cmds_message = (
         "╭━━━[ 👇 *𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂* ]━━━⬣\n\n"
 
         "🔹 *𝙎𝙩𝙧𝙞𝙥𝙚 𝙏𝙤𝙤𝙡𝙨*\n"
-        f"{bullet_link} `/chk cc|mm|yy|cvv` – Single Stripe Auth\n"
+        f"{bullet_link} `/chk cc\\|mm\\|yy\\|cvv` – Single Stripe Auth\n"
         f"{bullet_link} `/mchk` – Multi x10 Stripe Auth\n"
         f"{bullet_link} `/mass` – Mass x30 Stripe Auth 2\n"
         f"{bullet_link} `/mtchk txt file` – Mass x200 Stripe Auth 3\n\n"
@@ -722,7 +756,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} `/site <url>` – Check if Shopify site is live\n\n"
 
         "🔹 *𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨*\n"
-        f"{bullet_link} `/gen [bin] [no. of cards]` – Generate cards from BIN\n"
+        f"{bullet_link} `/gen [bin] [no\\. of cards]` – Generate cards from BIN\n"
         f"{bullet_link} `/bin <bin>` – BIN lookup (Bank, Country, Type)\n"
         f"{bullet_link} `/fk <country>` – Fake identity generator\n"
         f"{bullet_link} `/fl <dump>` – Extract CCs from dumps\n"
@@ -741,7 +775,6 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
-
 
 
 
