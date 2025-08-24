@@ -435,18 +435,19 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ---------- Gates Menu ----------
+# ---------- Gates Menu ----------
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
 
-    auth_message = (
+    text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "   🚪 𝐆𝐚𝐭𝐞𝐬 𝐌𝐞𝐧𝐮\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Please select a feature below:\n\n"
     )
 
-    auth_keyboard = InlineKeyboardMarkup([
+    keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("⚡ 𝐀𝐮𝐭𝐡", callback_data="auth_sub_menu"),
             InlineKeyboardButton("💳 𝐂𝐡𝐚𝐫𝐠𝐞", callback_data="charge_sub_menu")
@@ -454,10 +455,12 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ])
 
-    await q.edit_message_text(auth_message,
-                              parse_mode=ParseMode.MARKDOWN_V2,
-                              reply_markup=auth_keyboard,
-                              disable_web_page_preview=True)
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=keyboard,
+        disable_web_page_preview=True
+    )
 
 
 # ---------- Auth Submenu ----------
@@ -465,7 +468,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     q = update.callback_query
     await q.answer()
 
-    gates_message = (
+    text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "     🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
@@ -477,10 +480,12 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
     ]
 
-    await q.edit_message_text(gates_message,
-                              parse_mode=ParseMode.MARKDOWN_V2,
-                              reply_markup=InlineKeyboardMarkup(keyboard),
-                              disable_web_page_preview=True)
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 
 # ---------- Stripe Examples ----------
@@ -488,19 +493,19 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
     q = update.callback_query
     await q.answer()
 
-    examples_message = (
+    text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "     💳 𝐒𝐭𝐫𝐢𝐩𝐞 𝐀𝐮𝐭𝐡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/chk` \\- *Check a single card*\n"
         "  Example:\n"
-        "  `\\/chk 1234567890123456\\|12\\|24\\|123`\n\n"
+        "  `/chk 1234567890123456|12|24|123`\n\n"
         "• `/mchk` \\- *Check up to 10 cards at once*\n"
         "  Example:\n"
-        "  `\\/mchk 1234567890123456\\|\\.\\.\\. \\# up to 10 cards`\n\n"
+        "  `/mchk 1234567890123456|...`  # up to 10 cards\n\n"
         "• `/mass` \\- *Check up to 30 cards at once*\n"
         "  Example:\n"
-        "  `\\/mass <cards>`\n"
+        "  `/mass <cards>`\n"
     )
 
     keyboard = [
@@ -508,10 +513,12 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
 
-    await q.edit_message_text(examples_message,
-                              parse_mode=ParseMode.MARKDOWN_V2,
-                              reply_markup=InlineKeyboardMarkup(keyboard),
-                              disable_web_page_preview=True)
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 
 # ---------- Charge Submenu ----------
@@ -532,10 +539,12 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
     ]
 
-    await q.edit_message_text(text,
-                              parse_mode=ParseMode.MARKDOWN_V2,
-                              reply_markup=InlineKeyboardMarkup(keyboard),
-                              disable_web_page_preview=True)
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 
 # ---------- Shopify Gate ----------
@@ -549,7 +558,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/sh` \\- *Check a single card on Shopify $5*\n"
         "  Example:\n"
-        "  `\\/sh 1234567890123456\\|12\\|2026\\|123`\n\n"
+        "  `/sh 1234567890123456|12|2026|123`\n\n"
         "⚡ Use carefully, each check deducts credits."
     )
 
@@ -558,10 +567,12 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗚𝗔𝗧𝗘 𝗠𝗘𝗡𝗨", callback_data="gates_menu")]
     ]
 
-    await q.edit_message_text(text,
-                              parse_mode=ParseMode.MARKDOWN_V2,
-                              reply_markup=InlineKeyboardMarkup(keyboard),
-                              disable_web_page_preview=True)
+    await q.edit_message_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
 
 
 # ---------- AutoShopify Gate ----------
@@ -575,13 +586,13 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/sp` \\- *Auto Shopify Checker*\n"
         "  Example:\n"
-        "  `\\/sp`\n\n"
+        "  `/sp`\n\n"
         "• `/seturl <shopify site>` \\- *Set your custom Shopify site*\n"
         "  Example:\n"
-        "  `\\/seturl https://yourshopify.com`\n\n"
+        "  `/seturl https://yourshopify.com`\n\n"
         "• `/remove` \\- *Remove your saved Shopify site*\n"
         "  Example:\n"
-        "  `\\/remove`\n\n"
+        "  `/remove`\n\n"
         "✨ First set your preferred Shopify site using `/seturl`.\n"
         "Then run `/sp` to automatically check cards on that site 🚀\n"
         "If you no longer want to use a custom site, run `/remove`."
@@ -599,8 +610,9 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         disable_web_page_preview=True
     )
 
+
+# ---------- Scrapper Menu ----------
 async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler for Scrapper menu when user clicks button."""
     q = update.callback_query
     await q.answer()
 
@@ -608,9 +620,9 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "✦━━━━━━━━━━━━━━✦\n"
         "   ⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫 \n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/scr {channel_username} {amount}`\n"
-        "   Example:\n"
-        "   `/scr @examplechannel 50`\n\n"
+        "• `/scr <channel_username> <amount>`\n"
+        "  Example:\n"
+        "  `/scr @examplechannel 50`\n\n"
         "👉 Scrapes cards from the given channel.\n"
         "⚠️ Maximum amount allowed: *1000 cards*."
     )
@@ -625,6 +637,7 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
+
 
 
 
