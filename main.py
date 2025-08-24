@@ -2616,7 +2616,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
-            "❌ Usage: /seturl shop.meltingpot.com",
+            "❌ 𝙐𝙨𝙖𝙜𝙚: /𝙨𝙚𝙩𝙪𝙧𝙡 {𝙨𝙞𝙩𝙚_𝙪𝙧𝙡}",
             parse_mode=ParseMode.HTML
         )
         return
@@ -2630,14 +2630,14 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_data.get("custom_url"):
         await update.message.reply_text(
-            "❌ You already have a site set. Remove it first using /remove.",
+            "❌ 𝙔𝙤𝙪 𝙖𝙡𝙧𝙚𝙖𝙙𝙮 𝙝𝙖𝙫𝙚 𝙖 𝙨𝙞𝙩𝙚 𝙨𝙚𝙩. 𝙍𝙚𝙢𝙤𝙫𝙚 𝙞𝙩 𝙛𝙞𝙧𝙨𝙩 𝙪𝙨𝙞𝙣𝙜 /𝙧𝙚𝙢𝙤𝙫𝙚.",
             parse_mode=ParseMode.HTML
         )
         return
 
     # --- Send processing message ---
     processing_msg = await update.message.reply_text(
-        f"⏳ Adding URL: <code>{escape(site_input)}</code>...",
+        f"⏳ 𝓐𝓭𝓭𝓲𝓷𝓰 𝓤𝓡𝐿: <code>{escape(site_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
@@ -2666,7 +2666,8 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # --- Extract API fields ---
         response = data.get("Response", "Unknown")
-        price = data.get("Price", "1.0")
+        price = f"{data.get('Price', '1.0')}$"
+
 
         # --- Update user DB safely ---
         await update_user(user_id, custom_url=site_input)
@@ -2682,16 +2683,16 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
         # Determine site status
-        site_status = "Site Added ✅" if "Error" not in response else "❌ Failed to Add Site"
+        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝 " if "Error" not in response else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝 𝐭𝐨 𝐀𝐝𝐝 𝐒𝐢𝐭𝐞"
 
         formatted_msg = (
             f"═══[ <b>{site_status}</b> ]═══\n"
-            f"{bullet_link} <b>Site</b> ➜ <code>{escape(site_input)}</code>\n"
-            f"{bullet_link} <b>Amount</b> ➜ {escape(price)}\n"
-            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
+            f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
+            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {escape(price)}\n"
+            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Requested By</b> ➜ {requester}\n"
-            f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
+            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
+            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
@@ -2727,12 +2728,12 @@ async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
 
     if not user_data.get("custom_url"):
-        await update.message.reply_text("❌ You don’t have any URL set.")
+        await update.message.reply_text("❌ 𝗬𝗼𝘂 𝗱𝗼𝗻’𝘁 𝗵𝗮𝘃𝗲 𝗮𝗻𝘆 𝗨𝗥𝗟 𝘀𝗲𝘁.")
         return
 
     await update_user(user_id, custom_url=None)
     await update.message.reply_text(
-        "✅ Your URL has been removed. You can now set a new one using /seturl."
+        "✅ 𝙔𝙤𝙪𝙧 𝙐𝙍𝙇 𝙝𝙖𝙨 𝙗𝙚𝙚𝙣 𝙧𝙚𝙢𝙤𝙫𝙚𝙙. 𝙎𝙚𝙩 𝙖 𝙣𝙚𝙬 𝙤𝙣𝙚 𝙪𝙨𝙞𝙣𝙜 /𝙨𝙚𝙩𝙪𝙧𝙡."
     )
 
 
@@ -2822,7 +2823,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Argument check
     if not context.args:
         await update.message.reply_text(
-            "❌ Please provide card details. Example: /sp 5444228607773355|04|28|974",
+            "❌ Please provide card details. Example: /sp card|mm|yy|cvv",
             parse_mode=ParseMode.HTML
         )
         return
@@ -2840,7 +2841,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     custom_url = user_data.get("custom_url")
     if not custom_url:
         await update.message.reply_text(
-            "❌ You don't have a site set. Use /seturl to set your site first.",
+            "❌ 𝓨𝓸𝓾 𝓭𝓸𝓷'𝓽 𝓱𝓪𝓿𝓮 𝓪 𝓼𝓲𝓽𝓮 𝓼𝓮𝓽. 𝓤𝓼𝓮 /seturl 𝓽𝓸 𝓼𝓮𝓽 𝔂𝓸𝓾𝓻 𝓼𝓲𝓽𝓮 𝓯𝓲𝓻𝓼𝓽.",
             parse_mode=ParseMode.HTML
         )
         return
@@ -2875,7 +2876,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
         response_text = data.get("Response", "Unknown")
-        price = data.get("Price", "1.0")
+        price = f"{data.get('Price', '1.0')}$"
         gateway = data.get("Gateway", "-")
         country = f"{country_flag} {country_name}"
 
@@ -2884,22 +2885,22 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"
+        BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
         bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
         formatted_msg = (
-            f"═══[ <b>{gateway.upper()}</b> ]═══\n"
-            f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
-            f"{bullet_link} <b>Amount</b> ➜ {price}\n"
-            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
+            f"═══[ <b>𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆</b> ]═══\n"
+            f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{escape(card_input)}</code>\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
+            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {price}\n"
+            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response_text)}</i>\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
-            f"{bullet_link} <b>Bank</b> ➜ {issuer}\n"
-            f"{bullet_link} <b>Country</b> ➜ {country}\n"
+            f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
+            f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ {issuer}\n"
+            f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ {country}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
-            f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
+            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
+            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
