@@ -27,7 +27,8 @@ async def init_db():
             status TEXT DEFAULT '{DEFAULT_STATUS}',
             plan_expiry TEXT DEFAULT '{DEFAULT_PLAN_EXPIRY}',
             keys_redeemed INT DEFAULT {DEFAULT_KEYS_REDEEMED},
-            registered_at TEXT
+            registered_at TEXT,
+            custom_url TEXT DEFAULT NULL
         );
     """)
     await conn.close()
@@ -79,14 +80,14 @@ async def update_user(user_id, **kwargs):
 # === Get all users ===
 async def get_all_users():
     conn = await connect()
-    rows = await conn.fetch("SELECT id, plan FROM users")
-    await conn.close()
-    return [dict(row) for row in rows]
-
-# === Get total user count ===
-async def get_all_users():
-    conn = await connect()
-    rows = await conn.fetch("SELECT id, plan FROM users")
+    rows = await conn.fetch("SELECT id, plan, custom_url FROM users")
     await conn.close()
     print(f"[DEBUG] Fetched {len(rows)} users from DB")
     return [dict(row) for row in rows]
+
+# === Get total user count ===
+async def get_user_count():
+    conn = await connect()
+    count = await conn.fetchval("SELECT COUNT(*) FROM users")
+    await conn.close()
+    return count
