@@ -2995,7 +2995,7 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # === Cooldown check ===
     now = time.time()
     if user_id in last_site_usage and (now - last_site_usage[user_id]) < 3:
-        await update.message.reply_text("⏳ Please wait 3 seconds before using /site again.")
+        await update.message.reply_text("⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 3 𝘀𝗲𝗰𝗼𝗻𝗱𝘀 𝗯𝗲𝗳𝗼𝗿𝗲 𝘂𝘀𝗶𝗻𝗴 /𝘀𝗶𝘁𝗲 𝗮𝗴𝗮𝗶𝗻.")
         return
     last_site_usage[user_id] = now
 
@@ -3008,7 +3008,7 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # === Argument check ===
     if not context.args:
         await update.message.reply_text(
-            "❌ Please provide a site URL.\nExample:\n<code>/site https://example.com</code>",
+            "❌ 𝘗𝘭𝘦𝘢𝘴𝘦 𝘱𝘳𝘰𝘷𝘪𝘥𝘦 𝘢 𝘴𝘪𝘵𝘦 𝘜𝘙𝘓.\nExample:\n<code>/site https://example.com</code>",
             parse_mode=ParseMode.HTML
         )
         return
@@ -3021,7 +3021,7 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send initial message
     msg = await update.message.reply_text(
-        f"⏳ Checking site: <code>{escape(site_url)}</code>...",
+        f"⏳ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈 𝒔𝒊𝒕𝒆: <code>{escape(site_url)}</code>...",
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
