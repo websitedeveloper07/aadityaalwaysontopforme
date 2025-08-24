@@ -2740,24 +2740,23 @@ async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 import aiohttp
 import json
-import logging
 from html import escape
 from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from db import get_user, update_user, init_db
+import logging
 
 logger = logging.getLogger(__name__)
 
-# --- Ensure DB is initialized ---
+# --- Initialize DB ---
 asyncio.get_event_loop().run_until_complete(init_db())
 
 # --- User cooldowns ---
 user_cooldowns = {}
 
 async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
-    """Prevent spam by enforcing a cooldown per user."""
     last_run = user_cooldowns.get(user_id, 0)
     now = datetime.now().timestamp()
     if now - last_run < cooldown_seconds:
@@ -2769,7 +2768,6 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
     return True
 
 async def consume_credit(user_id: int) -> bool:
-    """Consume 1 credit from DB user if available."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -2778,7 +2776,6 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 async def get_bin_details(bin_number: str) -> dict:
-    """Fetch BIN details from public API."""
     bin_data = {
         "scheme": "N/A",
         "bank": "N/A",
@@ -2807,15 +2804,6 @@ async def get_bin_details(bin_number: str) -> dict:
 
     return bin_data
 
-import asyncio
-import aiohttp
-import json
-from html import escape
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-from db import get_user
-
 API_CHECK_TEMPLATE = (
     "https://7feeef80303d.ngrok-free.app/autosh.php"
     "?cc={card}"
@@ -2824,10 +2812,14 @@ API_CHECK_TEMPLATE = (
 )
 
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler for /sp card|mm|yy|cvv"""
     user = update.effective_user
     user_id = user.id
 
+    # Cooldown check
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    # Argument check
     if not context.args:
         await update.message.reply_text(
             "❌ Please provide card details. Example: /sp 5444228607773355|04|28|974",
@@ -2836,8 +2828,14 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     card_input = context.args[0].strip()
+    cc = card_input.split("|")[0]
 
-    # Fetch user data
+    # Consume credit
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
+        return
+
+    # Fetch user custom site URL
     user_data = await get_user(user_id)
     custom_url = user_data.get("custom_url")
     if not custom_url:
@@ -2853,8 +2851,16 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML
     )
 
-    api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
+    # BIN lookup
+    bin_number = cc[:6]
+    bin_details = await get_bin_details(bin_number)
+    brand = bin_details.get("scheme", "N/A").upper()
+    issuer = bin_details.get("bank", "N/A").title()
+    country_name = bin_details.get("country_name", "N/A")
+    country_flag = bin_details.get("country_emoji", "")
 
+    # API call
+    api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
@@ -2868,36 +2874,31 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     return
 
-        # Extract API fields safely
         response_text = data.get("Response", "Unknown")
-        price = data.get("Price", "-")
+        price = data.get("Price", "1.0")
         gateway = data.get("Gateway", "-")
-        brand = data.get("Brand", "-")
-        bank = data.get("Bank", "-")
-        country = data.get("Country", "-")
-        credits_left = user_data.get("credits", 0)
+        country = f"{country_flag} {country_name}"
 
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        # Clickable bullet linking to your group/channel
-        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"  # <-- replace with your link
+        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"
         bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
 
         formatted_msg = (
             f"═══[ <b>{gateway.upper()}</b> ]═══\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{escape(card_input)}</code>\n"
             f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
+            f"{bullet_link} <b>Amount</b> ➜ {price}\n"
             f"{bullet_link} <b>Response</b> ➜ <i>{escape(response_text)}</i>\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
-            f"{bullet_link} <b>Bank</b> ➜ {bank}\n"
+            f"{bullet_link} <b>Bank</b> ➜ {issuer}\n"
             f"{bullet_link} <b>Country</b> ➜ {country}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
-            f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
@@ -2914,7 +2915,6 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML
         )
     except Exception as e:
-        import logging
         logging.exception("Error in /sp command")
         await msg.edit_text(
             f"❌ Error: <code>{escape(str(e))}</code>",
