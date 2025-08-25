@@ -2715,8 +2715,8 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Bullet + group link ---
         BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
-            bullet_text = escape_all_markdown("[⌇]")
-            bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+        bullet_text = escape_all_markdown("[⌇]")
+        bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
         # --- Final formatted message ---
         formatted_msg = (
