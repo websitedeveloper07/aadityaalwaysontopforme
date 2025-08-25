@@ -1255,8 +1255,8 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     
     # Define the bullet point with the hyperlink
-     bullet_text = escape_all_markdown("[⌇]")
-     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+    bullet_text = escape_all_markdown("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     credits = str(user_data.get('credits', 0))
     plan = user_data.get('plan', 'N/A')
@@ -1281,6 +1281,7 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
