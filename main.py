@@ -346,7 +346,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
     Constructs the final profile card text for the welcome message.
     """
     uname = f"@{username}" if username else "N/A"
-    bullet_link = f"\\[⌇\\]({BULLET_GROUP_LINK})"
+    bullet_link = f"\\[⌇\\]\\({BULLET_GROUP_LINK}\\)"
 
     return (
         "✦━━━━━━━━━━━━━━✦\n"
