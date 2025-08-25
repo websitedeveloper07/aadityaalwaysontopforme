@@ -289,6 +289,67 @@ async def group_filter(update, context):
     # Private chats or authorized groups → do nothing
 
 
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+
+# --------------------------
+# Store closed commands
+# --------------------------
+closed_commands = set()
+
+# --------------------------
+# /close command handler
+# --------------------------
+async def close_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 1:
+        await update.message.reply_text("Usage: /close <command>")
+        return
+    cmd = context.args[0].lower()
+    closed_commands.add(cmd)
+    await update.message.reply_text(f"The /{cmd} command is now closed for maintenance.")
+
+# --------------------------
+# /restart command handler
+# --------------------------
+async def restart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 1:
+        await update.message.reply_text("Usage: /restart <command>")
+        return
+    cmd = context.args[0].lower()
+    closed_commands.discard(cmd)
+    await update.message.reply_text(f"The /{cmd} command is now available.")
+
+# --------------------------
+# Interceptor for all commands
+# --------------------------
+async def command_interceptor(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message.text.startswith("/"):
+        return
+
+    cmd = update.message.text.split()[0][1:].split("@")[0].lower()
+    if cmd in closed_commands:
+        await update.message.reply_text(
+            "🚧 Gate is under maintenance. New updates are coming!"
+        )
+        return
+
+# --------------------------
+# Example commands
+# --------------------------
+async def example_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ Example command executed!")
+
+async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🛒 Shopify command executed!")
+
+
+
 from datetime import datetime
 import logging
 import pytz
@@ -4371,6 +4432,8 @@ def main():
     application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=-1)
 
     # ✨ Public Commands
+    application.add_handler(CommandHandler("close", close_command))
+    application.add_handler(CommandHandler("restart", restart_command))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("cmds", cmds_command))
     application.add_handler(CommandHandler("info", info))
