@@ -308,54 +308,73 @@ DEV_LINK = "https://t.me/k4linuxxxx"
 logger = logging.getLogger(__name__)
 
 # ---------- Utilities ----------
-from datetime import datetime
 import logging
-import pytz
 import re
+import pytz
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user # Assuming db.py and get_user function exist
 
-# Links
+# Assuming these imports and functions exist in your project.
+from db import get_user
+
+# --------------------
+# Configuration
+# --------------------
+# Links for the inline keyboard buttons
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
 DEV_LINK = "https://t.me/k4linuxxxx"
 
+# Set up logging for better error tracking
 logger = logging.getLogger(__name__)
 
-# ---------- Utilities ----------
+# --------------------
+# Utility Functions
+# --------------------
 def escape_all_markdown(text: str) -> str:
-    """Escape all MarkdownV2 special characters."""
+    """
+    Escapes all MarkdownV2 special characters to prevent formatting issues
+    when sending text with ParseMode.MARKDOWN_V2.
+    """
     special_chars = r"[_*\[\]()~`>#+-=|{}.!%]"
     return re.sub(special_chars, r"\\\g<0>", str(text))
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
+    """
+    Constructs the final profile card text for the welcome message.
+    """
     uname = f"@{username}" if username else "N/A"
     bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
     return (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
+        "     ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet_link} ID      : `{escape_all_markdown(str(user_id))}`\n"
+        f"{bullet_link} ID       : `{escape_all_markdown(str(user_id))}`\n"
         f"{bullet_link} Username: `{escape_all_markdown(uname)}`\n"
         f"{bullet_link} Credits : `{escape_all_markdown(str(credits))}`\n"
         f"{bullet_link} Plan    : `{escape_all_markdown(plan)}`\n"
         f"{bullet_link} Date    : `{escape_all_markdown(date_str)}`\n"
         f"{bullet_link} Time    : `{escape_all_markdown(time_str)}`\n\n"
-        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
+        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮�𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
     )
 
 async def get_user_cached(user_id, context):
-    """Get user profile with caching (faster)."""
+    """
+    Retrieves user profile data from the database, using a cache
+    (context.user_data) to speed up subsequent calls.
+    """
     if "profile" in context.user_data:
         return context.user_data["profile"]
     user_data = await get_user(user_id)
     context.user_data["profile"] = user_data
     return user_data
 
-def get_main_keyboard():
-    """Reusable main inline keyboard."""
+def get_main_keyboard() -> InlineKeyboardMarkup:
+    """
+    Creates and returns the main inline keyboard with all primary buttons.
+    """
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("𝐆𝐚𝐭𝐞𝐬 🚪", callback_data="gates_menu"),
@@ -370,8 +389,10 @@ def get_main_keyboard():
         ]
     ])
 
-async def build_start_message(user, context):
-    """Build profile card text and keyboard."""
+async def build_start_message(user, context) -> tuple[str, InlineKeyboardMarkup]:
+    """
+    Assembles the complete message text and keyboard for the welcome message.
+    """
     tz = pytz.timezone("Asia/Kolkata")
     now_dt = datetime.now(tz)
     date_str = now_dt.strftime("%d-%m-%Y")
@@ -379,6 +400,7 @@ async def build_start_message(user, context):
     user_data = await get_user_cached(user.id, context)
     credits = int(user_data.get("credits", 0))
     plan = str(user_data.get("plan", "Free"))
+    
     text = build_final_card(
         user_id=user.id,
         username=user.username,
@@ -389,18 +411,24 @@ async def build_start_message(user, context):
     )
     return text, get_main_keyboard()
 
-# ---------- /start handler ----------
-# ---------- /start handler with image ----------
+# --------------------
+# Command and Callback Handlers
+# --------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles the /start command. It sends a single message containing
+    the welcome image, profile card, and inline keyboard.
+    """
     user = update.effective_user
     logger.info(f"/start by {user.id} (@{user.username})")
     
-    # Build the text and keyboard
+    # Get the text and keyboard from the helper function
     text, keyboard = await build_start_message(user, context)
     
+    # Get the message object to reply to
     msg = update.message or update.effective_message
     
-    # Send photo with caption
+    # Send a photo with a caption. The caption is where the text and buttons appear.
     await msg.reply_photo(
         photo="https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png",
         caption=text,
@@ -409,27 +437,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-
-# This handler edits the message to show the start menu.
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Callback handler to return to the main start menu by editing the message.
+    """
     q = update.callback_query
     await q.answer()
     text, keyboard = await build_start_message(q.from_user, context)
-    await q.edit_message_text(
+    await q.edit_message_caption(
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=keyboard,
         disable_web_page_preview=True,
     )
 
-# ---------- Tools Menu ----------
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Commands' button."""
     q = update.callback_query
     await q.answer()
     bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
+        "     ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet_link} `/start` – Welcome message\n"
         f"{bullet_link} `/cmds` – Shows all commands\n"
@@ -452,20 +481,20 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} `/info` – Shows your user info\n\n"
     )
     keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
-    await q.edit_message_text(
+    await q.edit_message_caption(
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
 
-# ---------- Gates Menu ----------
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Gates' button."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   🚪 𝐆𝐚𝐭𝐞𝐬 𝐌𝐞𝐧𝐮\n"
+        "     🚪 𝐆𝐚𝐭𝐞𝐬 𝐌𝐞𝐧𝐮\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Please select a feature below:"
     )
@@ -476,30 +505,20 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ],
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ])
-    await q.edit_message_text(
+    await q.edit_message_caption(
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=keyboard,
         disable_web_page_preview=True
     )
 
-# ---------- Auth Submenu ----------
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-# ---------- Auth Submenu ----------
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-# ---------- Auth Submenu ----------
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Auth' button."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "     🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞\n"
+        "      🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Select a platform below:"
     )
@@ -507,20 +526,20 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("💳 𝗦𝗧𝗥𝗜𝗣𝗘 𝗔𝗨𝗧𝗛", callback_data="stripe_examples")],
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
     ]
-    await q.edit_message_text(
+    await q.edit_message_caption(
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
 
-# ---------- Stripe Examples ----------
 async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Stripe Auth' button."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "     💳 𝐒𝐭𝐫𝐢𝐩𝐞 𝐀𝐮𝐭𝐡\n"
+        "      💳 𝐒𝐭𝐫𝐢𝐩𝐞 𝐀𝐮𝐭𝐡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/chk` \\- *Check a single card*\n"
         "  Example:\n"
@@ -536,15 +555,15 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗚𝗔𝗧𝗘 𝗠𝗘𝗡𝗨", callback_data="auth_sub_menu")],
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
-    await q.edit_message_text(
+    await q.edit_message_caption(
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
 
-# ---------- Charge Submenu ----------
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Charge' button."""
     q = update.callback_query
     await q.answer()
     text = (
@@ -558,22 +577,17 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("⚡ 𝗔𝘂𝘁𝗼 𝗦𝗵𝗼𝗽𝗶𝗳𝘆", callback_data="autoshopify_gate")],
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
     ]
-    await q.edit_message_text(
+    await q.edit_message_caption(
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
 
-# ---------- Shopify Gate ----------
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Shopify 5$' button."""
     q = update.callback_query
     await q.answer()
-
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "      💸 <b>Shopify 5$</b>\n"
@@ -583,27 +597,24 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "  <code>/sh 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits."
     )
-
     keyboard = [
         [InlineKeyboardButton("◀️ BACK TO CHARGE MENU", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ BACK TO MAIN MENU", callback_data="back_to_start")]
     ]
-
-    await q.edit_message_text(
+    await q.edit_message_caption(
         text=text,
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
 
-
-# ---------- AutoShopify Gate ----------
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Auto Shopify' button."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   ⚡ 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲\n"
+        "    ⚡ 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/sp` \\- *Auto Shopify Checker*\n"
         "  Example:\n"
@@ -622,20 +633,20 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
-    await q.edit_message_text(
+    await q.edit_message_caption(
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
 
-# ---------- Scrapper Menu ----------
 async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Scrapper' button."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   ⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫\n"
+        "    ⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• `/scr` `<channel_username>` `<amount>`\n"
         "  Example:\n"
@@ -646,16 +657,18 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
-    await q.edit_message_text(
+    await q.edit_message_caption(
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
         disable_web_page_preview=True
     )
 
-# ---------- Callback Router ----------
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles all inline button callback queries."""
+    """
+    Handles all inline button callback queries and routes them to the
+    appropriate handler function.
+    """
     q = update.callback_query
     await q.answer()
     data = q.data
@@ -667,7 +680,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await auth_sub_menu_handler(update, context)
     elif data == "charge_sub_menu":
         await charge_sub_menu_handler(update, context)
-    elif data == "shopify_gate":
+    elif data == "shopify_gate":a
         await shopify_gate_handler(update, context)
     elif data == "autoshopify_gate":
         await autoshopify_gate_handler(update, context)
@@ -679,6 +692,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
