@@ -353,7 +353,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet_link} ID       : `{escape_all_markdown(str(user_id))}`\n"
         f"{bullet_link} Username: `{escape_all_markdown(uname)}`\n"
-        f"{bullet_link} Credits : `{escape_all_markdown(str(credits)})`\n"
+        f"{bullet_link} Credits : `{escape_all_markdown(str(credits))}`\n"
         f"{bullet_link} Plan    : `{escape_all_markdown(plan)}`\n"
         f"{bullet_link} Date    : `{escape_all_markdown(date_str)}`\n"
         f"{bullet_link} Time    : `{escape_all_markdown(time_str)}`\n\n"
