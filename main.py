@@ -357,7 +357,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         f"{bullet_link} Plan    : `{escape_all_markdown(plan)}`\n"
         f"{bullet_link} Date    : `{escape_all_markdown(date_str)}`\n"
         f"{bullet_link} Time    : `{escape_all_markdown(time_str)}`\n\n"
-        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
+        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧�𝐞👇"
     )
 
 async def get_user_cached(user_id, context):
@@ -491,7 +491,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "     🚪 �𝐚𝐭𝐞𝐬 𝐌𝐞𝐧𝐮\n"
+        "     🚪 𝐆𝐚𝐭𝐞𝐬 𝐌𝐞𝐧𝐮\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Please select a feature below:"
     )
@@ -646,7 +646,7 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "⚠️ Maximum amount allowed: *1000 cards*\\."
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗰𝗸 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
         text,
