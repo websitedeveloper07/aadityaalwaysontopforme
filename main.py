@@ -346,7 +346,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
     Constructs the final profile card text for the welcome message.
     """
     uname = f"@{username}" if username else "N/A"
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "     ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
@@ -451,7 +451,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
     await q.answer()
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "     ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
@@ -700,7 +700,7 @@ def md_escape(text: str) -> str:
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's full commands menu with categories."""
 
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
 
     cmds_message = (
         "━━━[ 👇 *𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂* ]━━━⬣\n\n"
@@ -760,7 +760,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
 
     # Escape all dynamic values
     first_name = escape_markdown_v2(user.first_name or 'N/A')
@@ -1129,7 +1129,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
 
     # Get user data
     user_data = await get_user(user.id)
@@ -1235,7 +1235,7 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
 
     credits = str(user_data.get('credits', 0))
     plan = user_data.get('plan', 'N/A')
@@ -1358,7 +1358,7 @@ async def get_bin_details(bin_number: str) -> dict:
 
 # ✅ Background check now uses live BIN data
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
     
     try:
         bin_number = parts[0][:6]
@@ -1488,7 +1488,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
     # Define bullet link
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
 
     # Processing message
     processing_text = (
@@ -2364,7 +2364,7 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update.message.reply_to_message and update.message.reply_to_message.document
     )
     if not document:
-        await update.message.reply_text("📂 Please send or reply to a txt file containing up to 200 cards.")
+        await update.message.reply_text("📂 Please send or reply to a txt file containing up to 50 cards.")
         return
 
     if not document.file_name.endswith(".txt"):
@@ -2477,7 +2477,7 @@ async def background_check_multi(update, context, cards, processing_msg):
             pass
 
     async with aiohttp.ClientSession() as session:
-        semaphore = asyncio.Semaphore(7)
+        semaphore = asyncio.Semaphore(5)
         tasks = [check_card_with_semaphore(session, card, semaphore) for card in cards]
 
         for i, task in enumerate(asyncio.as_completed(tasks)):
@@ -2691,7 +2691,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Bullet + group link ---
         BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
-        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
+        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
 
         # --- Final formatted message ---
         formatted_msg = (
@@ -2831,7 +2831,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         BULLET_GROUP_LINK = "https://t.me/YourGroupHere"
-        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
+        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
 
         site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if "Error" not in response else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
 
@@ -3001,7 +3001,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     custom_url = user_data.get("custom_url")
     if not custom_url:
         await update.message.reply_text(
-            "❌ 𝓨𝓸𝓾 𝓭𝓸𝓷'𝓽 𝓱𝓪𝓿𝓮 𝓪 𝓼𝓲𝓽𝓮 𝓼𝓮𝓽. 𝓤𝓼𝓮 /seturl 𝓽𝓸 𝓼𝓮𝓽 𝔂𝓸𝓾𝓻 𝓼𝓲𝓽𝓮 𝓯𝓲𝓻𝓼𝓽.",
+            "❌ 𝘠𝘰𝘶 𝘥𝘰𝘯'𝘵 𝘩𝘢𝘷𝘦 𝘢 𝘴𝘪𝘵𝘦 𝘴𝘦𝘵. 𝘜𝘴𝘦 /seturl 𝘵𝘰 𝘴𝘦𝘵 𝘺𝘰𝘶𝘳 𝘴𝘪𝘵𝘦 𝘧𝘪𝘳𝘴𝘵.",
             parse_mode=ParseMode.HTML
         )
         return
@@ -3062,7 +3062,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
-        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
+        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
 
         formatted_msg = (
             f"═══[ <b>𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆</b> ]═══\n"
@@ -3204,7 +3204,7 @@ async def run_site_check(site_url: str, msg, user):
                 DEVELOPER_LINK = "https://t.me/K4linuxxxx"
                 developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
                 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
-                BULLET = f"[<a href='{BULLET_GROUP_LINK}'>✗</a>]"
+                BULLET = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
 
                 formatted_msg = (
                     f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
@@ -3256,7 +3256,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
 
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
     
     # Cooldown check
     if not await enforce_cooldown(update.effective_user.id, update):
