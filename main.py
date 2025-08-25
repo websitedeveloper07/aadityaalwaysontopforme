@@ -304,7 +304,7 @@ async def check_closed_command(update: Update, context: ContextTypes.DEFAULT_TYP
     cmd = update.message.text.split()[0][1:].split("@")[0].lower()
     if cmd in closed_commands:
         await update.message.reply_text(
-            "🚧 Gate is under maintenance. New updates are coming!"
+            "🚧 𝗚𝗮𝘁𝗲 𝗨𝗻𝗱𝗲𝗿 𝗠𝗮𝗶𝗻𝘁𝗲𝗻𝗮𝗻𝗰𝗲 𝗘𝘅𝗰𝗶𝘁𝗶𝗻𝗴 𝗨𝗽𝗱𝗮𝘁𝗲𝘀 𝗔𝗿𝗲 𝗼𝗻 𝘁𝗵𝗲 𝗪𝗮𝘆! 🚧"
         )
         return False  # Block command
     return True  # Allow command
