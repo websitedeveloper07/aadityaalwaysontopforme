@@ -357,7 +357,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         f"{bullet_link} Plan    : `{escape_all_markdown(plan)}`\n"
         f"{bullet_link} Date    : `{escape_all_markdown(date_str)}`\n"
         f"{bullet_link} Time    : `{escape_all_markdown(time_str)}`\n\n"
-        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮?𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
+        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢�𝐮𝐞👇"
     )
 
 async def get_user_cached(user_id, context):
@@ -434,7 +434,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         caption=text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=keyboard,
-        disable_web_page_preview=True
     )
 
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -664,8 +663,6 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         disable_web_page_preview=True
     )
 
-# ... other handlers ...
-
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles all inline button callback queries and routes them to the
@@ -674,7 +671,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     data = q.data
-    # All of these 'if' and 'elif' statements should be at the same indentation level
     if data == "tools_menu":
         await show_tools_menu(update, context)
     elif data == "gates_menu":
@@ -695,6 +691,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
