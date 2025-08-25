@@ -717,7 +717,8 @@ def md_escape(text: str) -> str:
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's full commands menu with categories."""
 
-    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
+    bullet_text = escape_all_markdown("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     cmds_message = (
         "━━━[ 👇 *𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂* ]━━━⬣\n\n"
@@ -777,7 +778,8 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
+    bullet_text = escape_all_markdown("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Escape all dynamic values
     first_name = escape_markdown_v2(user.first_name or 'N/A')
@@ -1146,7 +1148,8 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
+    bullet_text = escape_all_markdown("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Get user data
     user_data = await get_user(user.id)
@@ -1252,7 +1255,8 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
+     bullet_text = escape_all_markdown("[⌇]")
+     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     credits = str(user_data.get('credits', 0))
     plan = user_data.get('plan', 'N/A')
@@ -1375,7 +1379,8 @@ async def get_bin_details(bin_number: str) -> dict:
 
 # ✅ Background check now uses live BIN data
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
+    bullet_text = escape_all_markdown("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
     
     try:
         bin_number = parts[0][:6]
@@ -1505,7 +1510,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
     # Define bullet link
-    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
+    bullet_text = escape_all_markdown("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Processing message
     processing_text = (
@@ -2708,7 +2714,8 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Bullet + group link ---
         BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
-        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
+            bullet_text = escape_all_markdown("[⌇]")
+            bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
         # --- Final formatted message ---
         formatted_msg = (
@@ -2847,8 +2854,9 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         DEVELOPER_LINK = "https://t.me/K4linuxxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        BULLET_GROUP_LINK = "https://t.me/YourGroupHere"
-        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
+        BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
+        bullet_text = escape_all_markdown("[⌇]")
+        bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
         site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if "Error" not in response else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
 
@@ -3079,7 +3087,8 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
-        bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
+        bullet_text = escape_all_markdown("[⌇]")
+        bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
         formatted_msg = (
             f"═══[ <b>𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆</b> ]═══\n"
@@ -3221,7 +3230,8 @@ async def run_site_check(site_url: str, msg, user):
                 DEVELOPER_LINK = "https://t.me/K4linuxxxx"
                 developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
                 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
-                BULLET = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
+                    bullet_text = escape_all_markdown("[⌇]")
+                    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
                 formatted_msg = (
                     f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
@@ -3273,7 +3283,8 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
 
     # Define the bullet point with the hyperlink
-    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
+    bullet_text = escape_all_markdown("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
     
     # Cooldown check
     if not await enforce_cooldown(update.effective_user.id, update):
