@@ -3088,30 +3088,31 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
-        bullet_text = escape_all_markdown("[⌇]")
+        bullet_text = "[⌇]"
         bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
         formatted_msg = (
-            f"═══[ <b>𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆</b> ]═══\n"
-            f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{escape(card_input)}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
-            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {price}💸\n"
-            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response_text)}</i>\n"
-            f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ {brand}\n"
-            f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ {issuer}\n"
-            f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ {country}\n"
-            f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
-            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
-            f"――――――――――――――――"
-        )
-
+       "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
+       f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ {card_input}\n"
+       f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
+       f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price}💸\n"
+       f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response_text}\n\n"
+       "――――――――――――――――\n"
+       f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ {brand}\n"
+       f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ {issuer}\n"
+       f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ {country}\n\n"
+       "――――――――――――――――\n"
+       f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
+       f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+       "――――――――――――――――"
+       )
+ 
         await msg.edit_text(
             formatted_msg,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
-        )
+       )
+
 
     except asyncio.TimeoutError:
         await msg.edit_text(
@@ -3233,24 +3234,24 @@ async def run_site_check(site_url: str, msg, user):
                 BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
                 bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
+               formatted_msg = (
+               f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
+               f"{bullet_link} 𝐒𝐢𝐭𝐞       ➜ <code>{site_url}</code>\n"
+               f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
+               f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➜ {price}💸\n"
+               f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬      ➜ <b>{status}</b>\n\n"
+               f"――――――――――――――――\n"
+               f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
+               f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+               f"――――――――――――――――"
+        )
+ 
+        await msg.edit_text(
+            formatted_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
 
-                formatted_msg = (
-                    f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
-                    f"{BULLET} 𝐒𝐢𝐭𝐞 ➜ <code>{site_url}</code>\n"
-                    f"{BULLET} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
-                    f"{BULLET} 𝐀𝐦𝐨𝐮𝐧𝐭 ➜ {price}💸\n"
-                    f"{BULLET} 𝐒𝐭𝐚𝐭𝐮𝐬 ➜ <b>{status}</b>\n\n"
-                    f"――――――――――――――――\n"
-                    f"{BULLET} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
-                    f"{BULLET} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
-                    f"――――――――――――――――"
-                )
-
-                await msg.edit_text(
-                    formatted_msg,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True
-                )
 
     except asyncio.TimeoutError:
         await msg.edit_text(
