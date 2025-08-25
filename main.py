@@ -362,9 +362,10 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         f"{bullet_link} Credits  : `{escape_all_markdown(str(credits))}`\n"
         f"{bullet_link} Plan     : `{escape_all_markdown(plan)}`\n"
         f"{bullet_link} Date     : `{escape_all_markdown(date_str)}`\n"
-        f"{bullet_link} Time     : `{escape_all_markdown(time_str))}`\n\n"
+        f"{bullet_link} Time     : `{escape_all_markdown(time_str)}`\n\n"
         "⮞ 𝗣𝗹𝗲𝗮𝘀𝗲 𝗰𝗹𝗶𝗰𝗸 𝘁𝗵𝗲 𝗯𝘂𝘁𝘁𝗼𝗻𝘀 𝗯𝗲𝗹𝗼𝘄 𝘁𝗼 𝗽𝗿𝗼𝗰𝗲𝗲𝗱 👇"
     )
+
 
 async def get_user_cached(user_id, context):
     """
