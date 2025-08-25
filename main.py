@@ -333,6 +333,8 @@ logger = logging.getLogger(__name__)
 # --------------------
 # Utility Functions
 # --------------------
+import re
+
 def escape_all_markdown(text: str) -> str:
     """
     Escapes all MarkdownV2 special characters to prevent formatting issues
@@ -346,19 +348,21 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
     Constructs the final profile card text for the welcome message.
     """
     uname = f"@{username}" if username else "N/A"
-    bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
 
+    # Properly escaped clickable bullet with brackets
+    bullet_text = escape_all_markdown("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "     ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet_link} ID       : `{escape_all_markdown(str(user_id))}`\n"
-        f"{bullet_link} Username: `{escape_all_markdown(uname)}`\n"
-        f"{bullet_link} Credits : `{escape_all_markdown(str(credits))}`\n"
-        f"{bullet_link} Plan    : `{escape_all_markdown(plan)}`\n"
-        f"{bullet_link} Date    : `{escape_all_markdown(date_str)}`\n"
-        f"{bullet_link} Time    : `{escape_all_markdown(time_str)}`\n\n"
+        f"{bullet_link} Username : `{escape_all_markdown(uname)}`\n"
+        f"{bullet_link} Credits  : `{escape_all_markdown(str(credits))}`\n"
+        f"{bullet_link} Plan     : `{escape_all_markdown(plan)}`\n"
+        f"{bullet_link} Date     : `{escape_all_markdown(date_str)}`\n"
+        f"{bullet_link} Time     : `{escape_all_markdown(time_str))}`\n\n"
         "⮞ 𝗣𝗹𝗲𝗮𝘀𝗲 𝗰𝗹𝗶𝗰𝗸 𝘁𝗵𝗲 𝗯𝘂𝘁𝘁𝗼𝗻𝘀 𝗯𝗲𝗹𝗼𝘄 𝘁𝗼 𝗽𝗿𝗼𝗰𝗲𝗲𝗱 👇"
     )
 
