@@ -226,9 +226,9 @@ AUTHORIZED_GROUP_ID = -1002554243871
 
 # List of your bot commands
 BOT_COMMANDS = [
-    "/start", "/help", "/gen", "/bin", "/chk", "/mchk", "/mass",
+    "/start", "/cmds", "/gen", "/bin", "/chk", "/mchk", "/mass",
     "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
-    "/scr", "/sh", "/seturl", "/sp", "scr", "/remove"
+    "/scr", "/sh", "/seturl", "/sp", "scr", "/remove", 
 ]
 
 from telegram.ext import ApplicationHandlerStop
@@ -258,7 +258,7 @@ user_last_command = {}
 AUTHORIZED_CHATS = set((-1002554243871,))  # Add your authorized group IDs here
 
 BOT_COMMANDS = [
-    "start", "help", "gen", "bin", "chk", "mchk", "mass",
+    "start", "cmds", "gen", "bin", "chk", "mchk", "mass",
     "mtchk", "fk", "fl", "open", "status", "credits", "info"
     "scr", "sh", "seturl", "sp", "scr", "remove"
 ]
@@ -390,17 +390,25 @@ async def build_start_message(user, context):
     return text, get_main_keyboard()
 
 # ---------- /start handler ----------
+# ---------- /start handler with image ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     logger.info(f"/start by {user.id} (@{user.username})")
+    
+    # Build the text and keyboard
     text, keyboard = await build_start_message(user, context)
+    
     msg = update.message or update.effective_message
-    await msg.reply_text(
-        text,
+    
+    # Send photo with caption
+    await msg.reply_photo(
+        photo="https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png",
+        caption=text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=keyboard,
-        disable_web_page_preview=True,
+        disable_web_page_preview=True
     )
+
 
 # This handler edits the message to show the start menu.
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
