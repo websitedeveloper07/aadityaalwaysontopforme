@@ -353,11 +353,11 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet_link} ID       : `{escape_all_markdown(str(user_id))}`\n"
         f"{bullet_link} Username: `{escape_all_markdown(uname)}`\n"
-        f"{bullet_link} Credits : `{escape_all_markdown(str(credits))}`\n"
+        f"{bullet_link} Credits : `{escape_all_markdown(str(credits))})`\n"
         f"{bullet_link} Plan    : `{escape_all_markdown(plan)}`\n"
         f"{bullet_link} Date    : `{escape_all_markdown(date_str)}`\n"
         f"{bullet_link} Time    : `{escape_all_markdown(time_str)}`\n\n"
-        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢�𝐮𝐞👇"
+        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
     )
 
 async def get_user_cached(user_id, context):
@@ -447,7 +447,6 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=keyboard,
-        disable_web_page_preview=True,
     )
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -484,7 +483,6 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
-        disable_web_page_preview=True
     )
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -493,7 +491,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "     🚪 𝐆𝐚𝐭𝐞𝐬 𝐌𝐞𝐧𝐮\n"
+        "     🚪 �𝐚𝐭𝐞𝐬 𝐌𝐞𝐧𝐮\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Please select a feature below:"
     )
@@ -508,7 +506,6 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=keyboard,
-        disable_web_page_preview=True
     )
 
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -529,7 +526,6 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
-        disable_web_page_preview=True
     )
 
 async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -558,7 +554,6 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
-        disable_web_page_preview=True
     )
 
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -580,7 +575,6 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
-        disable_web_page_preview=True
     )
 
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -604,7 +598,6 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         text=text,
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
-        disable_web_page_preview=True
     )
 
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -636,7 +629,6 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
-        disable_web_page_preview=True
     )
 
 async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -660,7 +652,6 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
-        disable_web_page_preview=True
     )
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
