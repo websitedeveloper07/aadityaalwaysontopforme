@@ -464,7 +464,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         special_chars = r"[_*\[\]()~`>#+-=|{}.!]"
         return re.sub(special_chars, r"\\\g<0>", str(text))
 
-    bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
+    bullet_text = escape_all_markdown("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
