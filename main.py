@@ -20,8 +20,8 @@ from config import ADMIN_IDS
 
 # === CONFIGURATION ===
 # IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
-TOKEN = "8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU"
-OWNER_ID = 8406230162
+TOKEN = "7495157174:AAGGjnAegsJFuFbVp1i3neh6AiR360y3v6Y"
+OWNER_ID = 8473354074
 
 
 
@@ -1130,7 +1130,7 @@ from telegram.helpers import escape_markdown as escape_markdown_v2
 async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Adds a specified number of credits to a user's account, restricted to a specific owner."""
     # Owner ID is hardcoded
-    OWNER_ID = 8406230162
+    OWNER_ID = 8473354074
 
     # Check if the user is the owner
     if update.effective_user.id != OWNER_ID:
@@ -4215,7 +4215,7 @@ import asyncpg
 from telegram import Update
 from telegram.ext import ContextTypes
 
-ADMIN_USER_ID = 8406230162  # Replace with your admin user ID
+ADMIN_USER_ID = 8473354074  # Replace with your admin user ID
 
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -4392,10 +4392,10 @@ from db import init_db
 
 # 🛡️ Security
 AUTHORIZED_CHATS = set()  # Groups you manually authorize
-OWNER_ID = 8406230162     # Replace with your Telegram user ID
+OWNER_ID = 8473354074     # Replace with your Telegram user ID
 
 # 🔑 Bot token
-BOT_TOKEN = "8392489510:AAGujPltw1BvXv9KZtolvgsZOc_lfVbTYwU"
+BOT_TOKEN = "7495157174:AAGGjnAegsJFuFbVp1i3neh6AiR360y3v6Y"
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
