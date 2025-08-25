@@ -3230,9 +3230,9 @@ async def run_site_check(site_url: str, msg, user):
                 DEVELOPER_NAME = "kคli liຖนxx"
                 DEVELOPER_LINK = "https://t.me/K4linuxxxx"
                 developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
-                BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
-                bullet_text = escape_all_markdown("[⌇]")
-                bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+                BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
+                bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
 
                 formatted_msg = (
                     f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
