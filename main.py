@@ -334,7 +334,7 @@ def command_with_check(handler_func, command_name):
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if command_name in closed_commands:
             await update.message.reply_text(
-                "🚧 Gate is under maintenance. New updates are coming!"
+                "🚧 𝗚𝗮𝘁𝗲 𝗨𝗻𝗱𝗲𝗿 𝗠𝗮𝗶𝗻𝘁𝗲𝗻𝗮𝗻𝗰𝗲 𝗘𝘅𝗰𝗶𝘁𝗶𝗻𝗴 𝗨𝗽𝗱𝗮𝘁𝗲𝘀 𝗔𝗿𝗲 𝗼𝗻 𝘁𝗵𝗲 𝗪𝗮𝘆! 🚧"
             )
             return
         await handler_func(update, context)
