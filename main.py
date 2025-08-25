@@ -3090,29 +3090,30 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
         bullet_text = "[⌇]"
-        bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
         formatted_msg = (
-       "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
-       f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ {card_input}\n"
-       f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
-       f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price}💸\n"
-       f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response_text}\n\n"
-       "――――――――――――――――\n"
-       f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ {brand}\n"
-       f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ {issuer}\n"
-       f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ {country}\n\n"
-       "――――――――――――――――\n"
-       f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
-       f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
-       "――――――――――――――――"
-       )
- 
+                "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
+                f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ {card_input}\n"
+                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
+                f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price}💸\n"
+                f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response_text}\n\n"
+                "――――――――――――――――\n"
+                f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ {brand}\n"
+                f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ {issuer}\n"
+                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ {country}\n\n"
+                "――――――――――――――――\n"
+                f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
+                f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+                "――――――――――――――――"
+        )
+
         await msg.edit_text(
-            formatted_msg,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True
-       )
+                formatted_msg,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
+        )
+
 
 
     except asyncio.TimeoutError:
