@@ -357,7 +357,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         f"{bullet_link} Plan    : `{escape_all_markdown(plan)}`\n"
         f"{bullet_link} Date    : `{escape_all_markdown(date_str)}`\n"
         f"{bullet_link} Time    : `{escape_all_markdown(time_str)}`\n\n"
-        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧�𝐞👇"
+        "⮞ 𝐔𝐬𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
     )
 
 async def get_user_cached(user_id, context):
@@ -376,17 +376,11 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     Creates and returns the main inline keyboard with all primary buttons.
     """
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("𝐆𝐚𝐭𝐞𝐬 🚪", callback_data="gates_menu"),
-            InlineKeyboardButton("𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⌨️", callback_data="tools_menu")
-        ],
-        [
-            InlineKeyboardButton("𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫 ⚡", callback_data="scrapper_menu"),
-        ],
-        [
-            InlineKeyboardButton("𝐎𝐟𝐟𝐢𝐜𝐢𝐚𝐥 𝐆𝐫𝐨𝐮𝐩 👥", url=OFFICIAL_GROUP_LINK),
-            InlineKeyboardButton("𝗢𝘄𝗻𝗲𝗿 💎", url=DEV_LINK)
-        ]
+        [InlineKeyboardButton("🚪 𝐆𝐚𝐭𝐞𝐬", callback_data="gates_menu")],
+        [InlineKeyboardButton("⌨️ �𝐨𝐦𝐦𝐚𝐧𝐝𝐬", callback_data="tools_menu")],
+        [InlineKeyboardButton("⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫", callback_data="scrapper_menu")],
+        [InlineKeyboardButton("👥 Official Group", url=OFFICIAL_GROUP_LINK)],
+        [InlineKeyboardButton("💎 Owner", url=DEV_LINK)]
     ])
 
 async def build_start_message(user, context) -> tuple[str, InlineKeyboardMarkup]:
@@ -595,7 +589,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("◀️ BACK TO MAIN MENU", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
-        text=text,
+        text,
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
@@ -646,7 +640,7 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "⚠️ Maximum amount allowed: *1000 cards*\\."
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗰𝗸 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗰k 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
         text,
@@ -682,6 +676,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
