@@ -357,7 +357,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
         f"{bullet_link} Plan    : `{escape_all_markdown(plan)}`\n"
         f"{bullet_link} Date    : `{escape_all_markdown(date_str)}`\n"
         f"{bullet_link} Time    : `{escape_all_markdown(time_str)}`\n\n"
-        "⮞ 𝐔�𝐞 𝐭𝐡𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐛𝐞𝐥𝐨𝐰 𝐭o 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞👇"
+        "⮞ 𝗣𝗹𝗲𝗮𝘀𝗲 𝗰𝗹𝗶𝗰𝗸 𝘁𝗵𝗲 𝗯𝘂𝘁𝘁𝗼𝗻𝘀 𝗯𝗲𝗹𝗼𝘄 𝘁𝗼 𝗽𝗿𝗼𝗰𝗲𝗲𝗱 👇"
     )
 
 async def get_user_cached(user_id, context):
@@ -589,8 +589,8 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "⚡ Use carefully, each check deducts credits."
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ BACK TO CHARGE MENU", callback_data="charge_sub_menu")],
-        [InlineKeyboardButton("◀️ BACK TO MAIN MENU", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
         text,
@@ -703,7 +703,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet_link = f"\[[✗]({BULLET_GROUP_LINK})\]"
 
     cmds_message = (
-        "╭━━━[ 👇 *𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂* ]━━━⬣\n\n"
+        "━━━[ 👇 *𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂* ]━━━⬣\n\n"
 
         "🔹 *𝙎𝙩𝙧𝙞𝙥𝙚 𝙏𝙤𝙤𝙡𝙨*\n"
         f"{bullet_link} `/chk cc\\|mm\\|yy\\|cvv` – Single Stripe Auth\n"
