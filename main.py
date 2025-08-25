@@ -3094,7 +3094,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         formatted_msg = (
                 "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
-                f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ {card_input}\n"
+                f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
                 f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
                 f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price}💸\n"
                 f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response_text}\n\n"
