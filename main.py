@@ -294,59 +294,51 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     ContextTypes,
-    MessageHandler,
     filters,
 )
 
-# --------------------------
-# Store closed commands
-# --------------------------
 closed_commands = set()
 
-# --------------------------
-# /close command handler
-# --------------------------
-async def close_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) != 1:
-        await update.message.reply_text("Usage: /close <command>")
-        return
-    cmd = context.args[0].lower()
-    closed_commands.add(cmd)
-    await update.message.reply_text(f"The /{cmd} command is now closed for maintenance.")
-
-# --------------------------
-# /restart command handler
-# --------------------------
-async def restart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) != 1:
-        await update.message.reply_text("Usage: /restart <command>")
-        return
-    cmd = context.args[0].lower()
-    closed_commands.discard(cmd)
-    await update.message.reply_text(f"The /{cmd} command is now available.")
-
-# --------------------------
-# Interceptor for all commands
-# --------------------------
-async def command_interceptor(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message.text.startswith("/"):
-        return
-
+# Check if command is closed
+async def check_closed_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cmd = update.message.text.split()[0][1:].split("@")[0].lower()
     if cmd in closed_commands:
         await update.message.reply_text(
             "🚧 Gate is under maintenance. New updates are coming!"
         )
+        return False  # Block command
+    return True  # Allow command
+
+# /close
+async def close_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 1:
+        await update.message.reply_text("Usage: /close <command>")
         return
+    closed_commands.add(context.args[0].lower())
+    await update.message.reply_text(f"The /{context.args[0]} command is now closed.")
 
-# --------------------------
-# Example commands
-# --------------------------
-async def example_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Example command executed!")
+# /restart
+async def restart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 1:
+        await update.message.reply_text("Usage: /restart <command>")
+        return
+    closed_commands.discard(context.args[0].lower())
+    await update.message.reply_text(f"The /{context.args[0]} command is now available.")
 
-async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🛒 Shopify command executed!")
+# Example command
+async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ /sh command executed!")
+
+# Wrapper to block closed commands
+def command_with_check(handler_func, command_name):
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if command_name in closed_commands:
+            await update.message.reply_text(
+                "🚧 Gate is under maintenance. New updates are coming!"
+            )
+            return
+        await handler_func(update, context)
+    return wrapper
 
 
 
@@ -4442,7 +4434,7 @@ def main():
     application.add_handler(CommandHandler("mchk", mchk_command))
     application.add_handler(CommandHandler("mass", mass_command))
     application.add_handler(CommandHandler("mtchk", mtchk))
-    application.add_handler(CommandHandler("sh", sh_command))
+    application.add_handler(CommandHandler("sh", command_with_check(sh_command, "sh")))
     application.add_handler(CommandHandler("seturl", seturl, block=False))
     application.add_handler(CommandHandler("remove", remove, block=False))
     application.add_handler(CommandHandler("sp", sp, block=False))
