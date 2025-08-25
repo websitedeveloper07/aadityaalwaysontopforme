@@ -458,31 +458,40 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
     await q.answer()
+
+    def escape_md(text: str) -> str:
+        """Escape all MarkdownV2 special characters."""
+        special_chars = r"[_*\[\]()~`>#+-=|{}.!]"
+        return re.sub(special_chars, r"\\\g<0>", str(text))
+
     bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
+
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "     ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet_link} `/start` – Welcome message\n"
         f"{bullet_link} `/cmds` – Shows all commands\n"
-        f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` Gen\n"
+        f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` – Generate cards\n"
         f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
         f"{bullet_link} `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
         f"{bullet_link} `/mchk` – x10 Multi Stripe\n"
         f"{bullet_link} `/mass` – x30 Mass Stripe Auth 2\n"
         f"{bullet_link} `/mtchk` `txt file` – x200 Stripe Auth 3\n"
         f"{bullet_link} `/sh` Shopify 5\\$\n"
-        f"{bullet_link} `/seturl` `<site url>` set a shopify site\n"
-        f"{bullet_link} `/remove` Remove your added site\n"
-        f"{bullet_link} `/sp`  check on your shopify added site\n"
-        f"{bullet_link} `/site`  check shopify site is working or not\n"
+        f"{bullet_link} `/seturl` `<site url>` – Set a Shopify site\n"
+        f"{bullet_link} `/remove` – Remove your added site\n"
+        f"{bullet_link} `/sp` – Check on your added Shopify site\n"
+        f"{bullet_link} `/site` – Check if Shopify site is working\n"
         f"{bullet_link} `/fk` – Generate fake identity info\n"
         f"{bullet_link} `/fl` `<dump>` – Fetch CCs from dump\n"
-        f"{bullet_link} `/open` – Extracts cards from a file\n"
+        f"{bullet_link} `/open` – Extract cards from a file\n"
         f"{bullet_link} `/status` – Bot system status info\n"
-        f"{bullet_link} `/credits` – Chk remaining credits\n"
-        f"{bullet_link} `/info` – Shows your user info\n\n"
+        f"{bullet_link} `/credits` – Check remaining credits\n"
+        f"{bullet_link} `/info` – Show your user info\n\n"
     )
+
+
     keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
     await q.edit_message_caption(
         text,
