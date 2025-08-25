@@ -2861,24 +2861,23 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if "Error" not in response else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
 
-       formatted_msg = (
-        f"═══[ <b>{site_status}</b> ]═══\n"
-        f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
-        f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {escape(price)}💸\n"
-        f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
-        "――――――――――――――――\n"
-        f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
-        f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
-        "――――――――――――――――"
+        formatted_msg = (
+                f"═══[ <b>{site_status}</b> ]═══\n"
+                f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
+                f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {escape(price)}💸\n"
+                f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
+                f"――――――――――――――――\n"
+                f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
+                f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
+                f"――――――――――――――――"
         )
-
-
 
         await processing_msg.edit_text(
-            formatted_msg,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True
+                formatted_msg,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
         )
+
 
     except asyncio.TimeoutError:
         await processing_msg.edit_text(
