@@ -346,7 +346,7 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
     Constructs the final profile card text for the welcome message.
     """
     uname = f"@{username}" if username else "N/A"
-    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
     return (
         "✦━━━━━━━━━━━━━━✦\n"
         "     ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
@@ -451,7 +451,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
     await q.answer()
-    bullet_link = f"\[[⌇]({BULLET_GROUP_LINK})\]"
+    bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "     ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
