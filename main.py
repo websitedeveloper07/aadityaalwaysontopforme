@@ -3234,7 +3234,7 @@ async def run_site_check(site_url: str, msg, user):
                 BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
                 bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-       formatted_msg = (
+        formatted_msg = (
                f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
                f"{bullet_link} 𝐒𝐢𝐭𝐞       ➜ <code>{site_url}</code>\n"
                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
