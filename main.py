@@ -1717,12 +1717,12 @@ import asyncio
 import aiohttp
 import time
 from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
+from telegram.helpers import escape
 
-# === FORMAT STATUS IN BOLD ===
-def format_status_bold(api_status: str) -> str:
-    escaped_status = escape_markdown(api_status, version=2)
-    return f"*{escaped_status}*"
+# === FORMAT STATUS IN BOLD USING HTML ===
+def format_status_html(api_status: str) -> str:
+    safe_status = escape(api_status)
+    return f"<b>{safe_status}</b>"
 
 # === BACKGROUND CARD CHECK ===
 async def mchk_cards(cards_to_check, processing_msg):
@@ -1740,7 +1740,7 @@ async def mchk_cards(cards_to_check, processing_msg):
             if len(parts) != 4:
                 checked_count += 1
                 error_count += 1
-                return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
+                return f"❌ Invalid card format: <code>{escape(raw)}</code>"
 
             if len(parts[2]) == 4:
                 parts[2] = parts[2][-2:]  # normalize year
@@ -1757,10 +1757,10 @@ async def mchk_cards(cards_to_check, processing_msg):
             except Exception as e:
                 checked_count += 1
                 error_count += 1
-                return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
+                return f"❌ API Error for card <code>{escape(cc_normalized)}</code>: {escape(str(e))}"
 
             api_status = data.get("status", "Unknown")
-            status_text = format_status_bold(api_status)
+            status_text = format_status_html(api_status)
 
             if "Approved" in api_status:
                 approved_count += 1
@@ -1770,7 +1770,7 @@ async def mchk_cards(cards_to_check, processing_msg):
                 error_count += 1
 
             checked_count += 1
-            return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
+            return f"<code>{escape(cc_normalized)}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
 
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
@@ -1798,7 +1798,7 @@ async def mchk_cards(cards_to_check, processing_msg):
                         summary_text
                         + "\n\n"
                         + "\n──────── ⸙ ─────────\n".join(results),
-                        parse_mode=ParseMode.MARKDOWN_V2,
+                        parse_mode=ParseMode.HTML,
                     )
                 except Exception:
                     pass
@@ -1820,7 +1820,7 @@ async def mchk_cards(cards_to_check, processing_msg):
         + "\n\n"
         + "\n──────── ⸙ ─────────\n".join(results)
         + "\n──────── ⸙ ─────────",
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
     )
 
 
