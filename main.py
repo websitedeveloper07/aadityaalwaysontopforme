@@ -1751,42 +1751,44 @@ import re
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
+# === Helper: Format API status into styled text ===
+def format_status(api_status: str) -> str:
+    try:
+        lower_status = api_status.lower()
+        if "approved" in lower_status:
+            return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+        elif "declined" in lower_status:
+            return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        elif "ccn live" in lower_status:
+            return "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
+        elif "incorrect" in lower_status or "your number" in lower_status:
+            return "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
+        elif "3ds" in lower_status or "auth required" in lower_status:
+            return "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
+        elif "insufficient funds" in lower_status:
+            return "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
+        elif "expired" in lower_status:
+            return "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
+        elif "stolen" in lower_status:
+            return "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
+        elif "pickup card" in lower_status:
+            return "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
+        elif "fraudulent" in lower_status:
+            return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
+        elif "generic decline" in lower_status:
+            return "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        else:
+            return api_status.upper()  # fallback
+    except Exception:
+        return "❌ ERROR ❌"
+
+# === Main async checker ===
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
 
-    semaphore = asyncio.Semaphore(5)  # limit to 5 concurrent requests
-
-    def format_status(api_status: str) -> str:
-        try:
-            lower_status = api_status.lower()
-
-            if "approved" in lower_status:
-                return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-            elif "declined" in lower_status or "generic decline" in lower_status:
-                return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-            elif "ccn live" in lower_status:
-                return "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
-            elif "incorrect" in lower_status or "your number" in lower_status:
-                return "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
-            elif "3ds" in lower_status or "auth required" in lower_status:
-                return "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
-            elif "insufficient funds" in lower_status:
-                return "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
-            elif "expired" in lower_status:
-                return "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
-            elif "stolen" in lower_status:
-                return "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
-            elif "pickup card" in lower_status:
-                return "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
-            elif "fraudulent" in lower_status:
-                return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
-            else:
-                return api_status.upper()  # fallback
-        except Exception as e:
-            print(f"Status formatting error: {e}")
-            return "❌ ERROR ❌"
+    semaphore = asyncio.Semaphore(5)  # limit concurrent requests
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
@@ -1813,8 +1815,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         data = await resp.json()
                     except Exception as e:
                         raw_text = await resp.text()
-                        print(f"[DEBUG] JSON decode failed for {cc_normalized}: {e}, raw={raw_text[:200]}...")
-                        raise Exception(f"JSON decode failed: {e}")
+                        raise Exception(f"JSON decode failed: {e}, raw={raw_text[:200]}...")
             except Exception as e:
                 checked_count += 1
                 error_count += 1
@@ -1822,7 +1823,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             api_response = data.get("status", "Unknown")
             api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
-            status_text = format_status(api_response_clean)
+            status_text = format_status(api_response_clean)  # ✅ Apply formatting
 
             # Count stats
             api_response_lower = api_response_clean.lower()
@@ -1844,7 +1845,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
-            # Update Telegram message periodically
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
@@ -1854,8 +1854,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
                     f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
                     f"✘ 𝐓𝐢𝐦𝐞↣{round(time.time() - start_time, 2)}s\n"
-                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-                    f"──────── ⸙ ─────────"
+                    f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
                 try:
                     await processing_msg.edit_text(
@@ -1875,8 +1874,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
-        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n"
-        f"──────── ⸙ ─────────"
+        f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
         escape_markdown(final_summary, version=2) + "\n\n" +
@@ -1884,7 +1882,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
 
 
 
