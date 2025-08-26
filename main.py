@@ -1617,29 +1617,38 @@ import time
 import re
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.error import TelegramError
 
+# API and concurrency settings
 API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
 CONCURRENCY = 5
 UPDATE_INTERVAL = 3  # seconds
 
 def escape_md(text: str) -> str:
-    """Escape all MarkdownV2 special characters"""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!|])', r'\\\1', text)
+    """Escape all special characters for MarkdownV2."""
+    # This regex correctly escapes all special characters for MarkdownV2.
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 async def check_card(session, card: str):
-    """Send card to API and return formatted result and status type"""
+    """Send card to API and return formatted result and status type."""
     try:
-        async with session.get(API_URL_TEMPLATE + card) as resp:
+        async with session.get(API_URL_TEMPLATE + card, timeout=15) as resp:
             data = await resp.json()
         status = data.get("status", "Unknown")
-        card_escaped = escape_md(card)
-        status_escaped = escape_md(status)
+
+        # Consistent status handling with lowercase and correct emojis.
         if status.lower() == "approved":
-            return f"`{card_escaped}`\n***{status_escaped} ✅***", "approved"
+            # Apply escape_md to the card number and status text
+            return f"`{escape_md(card)}`\n***{escape_md(status)} ✅***", "approved"
         else:
-            return f"`{card_escaped}`\n**{status_escaped} ❌**", "declined"
-    except:
-        return f"`{escape_md(card)}`\n**Error ❌**", "error"
+            # Apply escape_md to the card number and status text
+            return f"`{escape_md(card)}`\n**{escape_md(status)} ❌**", "declined"
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        # Handle network-related errors gracefully.
+        return f"`{escape_md(card)}`\n**Error: Network ❌**", "error"
+    except Exception:
+        # Catch any other unexpected errors.
+        return f"`{escape_md(card)}`\n**Error: Unknown ❌**", "error"
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -1651,14 +1660,18 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results = ["Pending..."] * total
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
     start_time = time.time()
+    separator = "──────── ⸙ ─────────"
 
-    # Escape initial message
-    msg = await update.message.reply_text(escape_md("Starting mass check..."), parse_mode="MarkdownV2")
+    try:
+        initial_message_text = escape_md("Starting mass check...")
+        msg = await update.message.reply_text(initial_message_text, parse_mode="MarkdownV2")
+    except TelegramError as e:
+        print(f"Failed to send initial message: {e}")
+        return
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
     async with aiohttp.ClientSession() as session:
-
         async def worker(idx, card):
             async with semaphore:
                 result_text, status = await check_card(session, card)
@@ -1670,11 +1683,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tasks = [worker(i, c) for i, c in enumerate(cards)]
         pending = tasks
 
-        separator = escape_md("──────── ⸙ ─────────")
-
         # Update loop while tasks are running
         while pending:
             done, pending = await asyncio.wait(pending, timeout=UPDATE_INTERVAL, return_when=asyncio.FIRST_COMPLETED)
+            
             elapsed = round(time.time() - start_time, 2)
             header = (
                 f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
@@ -1682,23 +1694,33 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
                 f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
-                f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n{separator}\n"
+                f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s"
             )
-            # Escape each result before joining
-            safe_results = [r for r in results]
-            await msg.edit_text(header + f"\n{separator}\n".join(safe_results), parse_mode="MarkdownV2")
 
-        # Final update
-        elapsed = round(time.time() - start_time, 2)
-        header = (
-            f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
-            f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
-            f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
-            f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
-            f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
-            f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n{separator}\n"
-        )
-        await msg.edit_text(header + f"\n{separator}\n".join(results), parse_mode="MarkdownV2")
+            content = f"{escape_md(header)}\n{escape_md(separator)}\n" + "\n".join(results)
+            
+            try:
+                await msg.edit_text(content, parse_mode="MarkdownV2")
+            except TelegramError as e:
+                print(f"Failed to edit message: {e}")
+
+    # Final update after all tasks complete
+    elapsed = round(time.time() - start_time, 2)
+    header = (
+        f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
+        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
+        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
+        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
+        f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
+        f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s"
+    )
+
+    content = f"{escape_md(header)}\n{escape_md(separator)}\n" + "\n".join(results)
+    
+    try:
+        await msg.edit_text(content, parse_mode="MarkdownV2")
+    except TelegramError as e:
+        print(f"Failed to send final message: {e}")
 
 
 
