@@ -1699,9 +1699,8 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
-
+    
     async with aiohttp.ClientSession() as session:
-        # **FIX:** Define the worker function BEFORE the tasks list is created.
         async def worker(idx, card):
             async with semaphore:
                 result_text, status = await check_card(session, card)
@@ -1716,6 +1715,8 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await asyncio.sleep(UPDATE_INTERVAL)
             
             elapsed = round(time.time() - start_time, 2)
+            # **FINAL, MOST RELIABLE FIX**
+            # Manually replace the period with an escaped period.
             elapsed_escaped = str(elapsed).replace('.', '\\.')
             
             header = (
@@ -1753,8 +1754,6 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(content, parse_mode="MarkdownV2")
     except TelegramError as e:
         print(f"Failed to send final message: {e}")
-
-
 
 
 
