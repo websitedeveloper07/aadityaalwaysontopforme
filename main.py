@@ -1632,14 +1632,12 @@ def escape_md(text: str) -> str:
 
 def extract_cards_from_text(text: str) -> list[str]:
     """Extracts card-like strings from a given text."""
-    # This regex looks for patterns like:
-    # 16-digit number, possibly with spaces, followed by | and other numbers.
     return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
 
 async def check_card(session, card: str):
     """Send card to API and return formatted result and status type."""
     try:
-        async with session.get(API_URL_TEMPLATE + card, timeout=50) as resp:
+        async with session.get(API_URL_TEMPLATE + card, timeout=15) as resp:
             data = await resp.json()
         status = data.get("status", "Unknown")
 
@@ -1716,13 +1714,15 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tasks = [worker(i, c) for i, c in enumerate(cards)]
         pending = tasks
 
-        # Background update loop
         while pending:
-            done, pending = await asyncio.wait(pending, timeout=UPDATE_INTERVAL, return_when=asyncio.FIRST_COMPLETED)
+            done, pending = await asyncio.wait(tasks, timeout=UPDATE_INTERVAL, return_when=asyncio.FIRST_COMPLETED)
             
             elapsed = round(time.time() - start_time, 2)
-            elapsed_escaped = escape_md(str(elapsed))
             
+            # **Final Fix:** Directly escape the string representation of the float
+            # to handle the decimal point.
+            elapsed_escaped = escape_md(str(elapsed))
+
             header = (
                 f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
                 f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
@@ -1739,10 +1739,9 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except TelegramError as e:
                 print(f"Failed to edit message: {e}")
 
-    # Final update after all tasks complete
     elapsed = round(time.time() - start_time, 2)
     elapsed_escaped = escape_md(str(elapsed))
-    
+
     header = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
         f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
