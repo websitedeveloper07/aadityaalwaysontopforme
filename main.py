@@ -1489,40 +1489,40 @@ except Exception as e:
         status_text = "❌ ERROR ❌"
         print(f"Status formatting error: {e}")
 
+# Prepare header and italic API status
+header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
+formatted_response = f"_{escape_markdown_v2(api_status)}_"
 
+# Build final message
+final_text = (
+        f"{header}\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+        f"――――――――――――――――"
+)
 
-        
-        header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
-
-        formatted_response = api_status  # or api_response if you want the actual API message
-
-        final_text = (
-            f"{header}\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
-            f"――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
-            f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-            f"――――――――――――――――"
-        )
-
+# Send the message with MarkdownV2
+try:
         await processing_msg.edit_text(
-            final_text,
-            parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True
+                final_text,
+                parse_mode=ParseMode.MARKDOWN_V2,
+                disable_web_page_preview=True
+        )
+except Exception as e:
+        await processing_msg.edit_text(
+                f"❌ API Error: {escape_markdown_v2(str(e))}",
+                parse_mode=ParseMode.MARKDOWN_V2,
+                disable_web_page_preview=True
         )
 
-    except Exception as e:
-        await processing_msg.edit_text(
-            f"❌ API Error: {escape_markdown_v2(str(e))}",
-            parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True
-        )
 
 
 
