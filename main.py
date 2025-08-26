@@ -1754,26 +1754,26 @@ from telegram.helpers import escape_markdown
 # === Helper: Format API status into stylish text ===
 def format_status(api_status: str) -> str:
     try:
-        lower_status = api_status.lower()
-        if "approved" in lower_status:
+        clean_status = api_status.strip().lower()
+        if "approved" in clean_status:
             return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-        elif "declined" in lower_status or "generic decline" in lower_status:
+        elif "declined" in clean_status or "generic decline" in clean_status:
             return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-        elif "ccn live" in lower_status:
+        elif "ccn live" in clean_status:
             return "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
-        elif "incorrect" in lower_status or "your number" in lower_status:
+        elif "incorrect" in clean_status or "your number" in clean_status:
             return "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
-        elif "3ds" in lower_status or "auth required" in lower_status:
+        elif "3ds" in clean_status or "auth required" in clean_status:
             return "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
-        elif "insufficient funds" in lower_status:
+        elif "insufficient funds" in clean_status:
             return "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
-        elif "expired" in lower_status:
+        elif "expired" in clean_status:
             return "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
-        elif "stolen" in lower_status:
+        elif "stolen" in clean_status:
             return "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
-        elif "pickup card" in lower_status:
+        elif "pickup card" in clean_status:
             return "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
-        elif "fraudulent" in lower_status:
+        elif "fraudulent" in clean_status:
             return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
         else:
             return api_status.upper()
@@ -1785,19 +1785,18 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
-    semaphore = asyncio.Semaphore(5)  # Limit concurrent requests
+    semaphore = asyncio.Semaphore(5)
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
 
         async with semaphore:
-            parts = raw.split("|")
+            parts = raw.strip().split("|")
             if len(parts) != 4:
                 checked_count += 1
                 error_count += 1
                 return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
 
-            # Normalize year (YYYY → YY)
             if len(parts[2]) == 4:
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
@@ -1810,20 +1809,19 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         raise Exception(f"HTTP {resp.status}")
                     try:
                         data = await resp.json()
-                    except Exception as e:
+                    except Exception:
                         raw_text = await resp.text()
-                        raise Exception(f"JSON decode failed: {e}, raw={raw_text[:200]}...")
+                        raise Exception(f"JSON decode failed, raw={raw_text[:200]}")
             except Exception as e:
                 checked_count += 1
                 error_count += 1
-                return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
+                return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
 
-            api_response = data.get("status", "Unknown")
-            api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
-            status_text = format_status(api_response_clean)  # ✅ Always formatted
+            api_response = str(data.get("status", "Unknown")).strip()
+            status_text = format_status(api_response)  # Always apply stylish formatting
 
             # Update counts
-            api_response_lower = api_response_clean.lower()
+            api_response_lower = api_response.lower()
             if "approved" in api_response_lower:
                 approved_count += 1
             elif "declined" in api_response_lower or "incorrect" in api_response_lower:
@@ -1841,7 +1839,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
-            # Periodic summary update
+            # Periodic summary
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 summary_text = (
@@ -1873,11 +1871,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
-        final_summary + "\n\n" +
-        "\n──────── ⸙ ─────────\n".join(results) +
-        "\n──────── ⸙ ─────────",
+        final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
