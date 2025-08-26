@@ -1787,8 +1787,8 @@ def format_status(api_status: str) -> str:
         return "❌ ERROR ❌"
 
 # ---
-## Main Async Checker
----
+# ## Main Async Checker
+# ---
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     """
     Asynchronously checks a list of credit cards against an API and provides
