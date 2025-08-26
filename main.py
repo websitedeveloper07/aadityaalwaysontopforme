@@ -1758,40 +1758,40 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
     semaphore = asyncio.Semaphore(5)  # limit to 5 concurrent requests
 
-    # Function to format API status into styled text
+    # Format API status into styled text
     def format_status(api_status: str) -> str:
         try:
-            status_text = api_status.upper()
-            lower_status = api_status.lower()
+            # Clean the string: remove emojis, zero-width chars, extra spaces
+            clean_status = re.sub(r'[\U00010000-\U0010ffff\u200b]', '', api_status).strip()
+            lower_status = clean_status.lower()
 
             if "approved" in lower_status:
-                status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+                return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
             elif "declined" in lower_status:
-                status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+                return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
             elif "ccn live" in lower_status:
-                status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
+                return "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
             elif "incorrect" in lower_status or "your number" in lower_status:
-                status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
+                return "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
             elif "3ds" in lower_status or "auth required" in lower_status:
-                status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
+                return "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
             elif "insufficient funds" in lower_status:
-                status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
+                return "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
             elif "expired" in lower_status:
-                status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
+                return "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
             elif "stolen" in lower_status:
-                status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
+                return "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
             elif "pickup card" in lower_status:
-                status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
+                return "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
             elif "fraudulent" in lower_status:
-                status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
+                return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
             elif "generic decline" in lower_status:
-                status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+                return "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
             else:
-                status_text = api_status.upper()  # fallback
+                return clean_status.upper()  # fallback
         except Exception as e:
-            status_text = "❌ ERROR ❌"
             print(f"Status formatting error: {e}")
-        return status_text
+            return "❌ ERROR ❌"
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
@@ -1826,14 +1826,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
 
             api_response = data.get("status", "Unknown")
-            api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
-            status_text = format_status(api_response_clean)
+            status_text = format_status(api_response)
 
             # Update counters
-            api_response_lower = api_response_clean.lower()
-            if "approved" in api_response_lower:
+            lower_status = re.sub(r'[\U00010000-\U0010ffff\u200b]', '', api_response).strip().lower()
+            if "approved" in lower_status:
                 approved_count += 1
-            elif "declined" in api_response_lower or "incorrect" in api_response_lower:
+            elif "declined" in lower_status or "incorrect" in lower_status:
                 declined_count += 1
 
             checked_count += 1
@@ -1890,8 +1889,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
-
 
 
 
