@@ -3132,6 +3132,74 @@ async def run_site_check(site_url: str, msg, user):
             parse_mode=ParseMode.HTML
         )
 
+import time, os
+from telegram import Update, InputFile
+from telegram.ext import CommandHandler, ContextTypes
+from dorker import async_google_search, async_check_site_details
+
+async def cmd_dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text("Usage: /dork <query> <count>")
+        return
+
+    # split query and count
+    query_part = " ".join(context.args[:-1])
+    count_str = context.args[-1]
+
+    if not count_str.isdigit():
+        await update.message.reply_text("Please provide a valid integer for <count>.")
+        return
+
+    limit = max(1, min(int(count_str), 300))
+    await update.message.reply_text(
+        f"Searching for up to {limit} results for:\n{query_part}\nPlease wait..."
+    )
+
+    try:
+        results = await async_google_search(query_part, limit, 0)
+    except Exception as e:
+        await update.message.reply_text(f"Error scraping Google: {e}")
+        return
+
+    if not results:
+        await update.message.reply_text("No results found (maybe Google blocked).")
+        return
+
+    details_list = []
+    for url in results:
+        d = await async_check_site_details(url)
+        details_list.append(d)
+
+    filename = f"results_{int(time.time())}.txt"
+    lines = []
+    for d in details_list:
+        lines.append(
+            f"URL: {d['url']}\n"
+            f"DNS: {d['dns']}\n"
+            f"SSL: {d['ssl']}\n"
+            f"Status: {d['status_code']}\n"
+            f"Cloudflare: {d['cloudflare']}\n"
+            f"Captcha: {d['captcha']}\n"
+            f"Gateways: {d['gateways']}\n"
+            f"GraphQL: {d['graphql']}\n"
+            f"Language: {d['language']}\n"
+            f"Front-end: {d['front_end']}\n"
+            f"Back-end: {d['back_end']}\n"
+            f"Design: {d['design']}\n"
+            "\n----------------------------------------\n"
+        )
+
+    with open(filename, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+    try:
+        with open(filename, "rb") as file_data:
+            await update.message.reply_document(
+                document=InputFile(file_data, filename=filename),
+                caption="Here are your results."
+            )
+    finally:
+        os.remove(filename)
 
 
 
@@ -4257,6 +4325,7 @@ def main():
     application.add_handler(CommandHandler("open", command_with_check(open_command, "open")))
     application.add_handler(CommandHandler("adcr", command_with_check(adcr_command, "adcr")))
     application.add_handler(CommandHandler("bin", command_with_check(bin_lookup, "bin")) )
+    application.add_handler(CommandHandler("dork", cmd_dork))
     application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
