@@ -1618,6 +1618,18 @@ import re
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from telegram.error import TelegramError
+from db import get_user, update_user  # your async DB functions
+
+async def consume_credit(user_id: int) -> bool:
+    try:
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("credits", 0) > 0:
+            new_credits = user_data["credits"] - 1
+            await update_user(user_id, credits=new_credits)
+            return True
+    except Exception as e:
+        print(f"[consume_credit] Error updating user {user_id}: {e}")
+    return False
 
 # API and concurrency settings
 API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
@@ -1657,15 +1669,30 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     current_time = time.time()
 
-    if user_id in user_last_command_time and (current_time - user_last_command_time[user_id]) < RATE_LIMIT_SECONDS:
-        remaining_time = round(RATE_LIMIT_SECONDS - (current_time - user_last_command_time[user_id]), 2)
+    # 5 sec cooldown check
+    if user_id in user_last_command_time:
+        elapsed = current_time - user_last_command_time[user_id]
+        if elapsed < RATE_LIMIT_SECONDS:
+            remaining = round(RATE_LIMIT_SECONDS - elapsed, 2)
+            await update.message.reply_text(
+                f"⚠️ Please wait <b>{remaining}</b> seconds before using /mchk again.",
+                parse_mode="HTML"
+            )
+            return
+
+    # Credit check
+    has_credit = await consume_credit(user_id)
+    if not has_credit:
         await update.message.reply_text(
-            f"Please wait <code>{remaining_time}</code> seconds before using this command again.", 
+            "❌ You don’t have enough credits to use <b>/mchk</b>.",
             parse_mode="HTML"
         )
         return
-    
+
+    # Update last command time if passed checks
     user_last_command_time[user_id] = current_time
+
+
 
     cards = []
     if context.args:
