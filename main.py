@@ -1781,7 +1781,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_type = update.effective_chat.type
 
     # ✅ Authorization
-    if not await check_authorization(update):
+    if not await check_authorization(update, context):
         return
 
     # ✅ enforce cooldown
