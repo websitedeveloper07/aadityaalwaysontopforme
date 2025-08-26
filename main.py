@@ -1706,6 +1706,10 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # === CARD CHECKING ===
+def extract_cards_from_text(text: str) -> list[str]:
+    """Extracts card-like strings from a given text."""
+    return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
+
 async def check_card(session, card: str):
     """Send card to API and return formatted result and status type."""
     try:
@@ -1722,11 +1726,24 @@ async def check_card(session, card: str):
         else:
             formatted_status = f"<i>{status} ❌</i>"
             return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "declined"
-
     except (aiohttp.ClientError, asyncio.TimeoutError):
-        return f"<code>{card}</code>\n<b>Status ➳</b> <b><i>Error: Network ❌</i></b>", "error"
+        formatted_status = "<b><i>Error: Network ❌</i></b>"
+        return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "error"
     except Exception:
-        return f"<code>{card}</code>\n<b>Status ➳</b> <b><i>Error: Unknown ❌</i></b>", "error"
+        formatted_status = "<b><i>Error: Unknown ❌</i></b>"
+        return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "error"
+
+async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    current_time = time.time()
+
+    if user_id in user_last_command_time and (current_time - user_last_command_time[user_id]) < RATE_LIMIT_SECONDS:
+        remaining_time = round(RATE_LIMIT_SECONDS - (current_time - user_last_command_time[user_id]), 2)
+        await update.message.reply_text(
+            f"Please wait <code>{remaining_time}</code> seconds before using this command again.", 
+            parse_mode="HTML"
+        )
+        return
 
 
 async def check_cards_background(cards, user_id, user_name, processing_msg, start_time):
