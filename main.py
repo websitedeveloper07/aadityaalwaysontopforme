@@ -3293,57 +3293,6 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-from telegram import Update
-from telegram.ext import ContextTypes
-from gate import scan_multiple
-
-
-async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Expect URLs passed after command, e.g. /gate https://example.com
-    if not context.args:
-        await update.message.reply_text("Usage: /gate <url1> <url2> ...")
-        return
-
-    urls = context.args
-    await update.message.reply_text(f"🔍 Scanning {len(urls)} site(s), please wait...")
-
-    # Run bulk scan
-    results = scan_multiple(urls)
-
-    if not results:
-        await update.message.reply_text("❌ No gateways found (or blocked by security).")
-        return
-
-    reply_blocks = []
-    for entry in results:
-        # Safely prepare values
-        gateways = ", ".join(entry.get("gateways", ["❌ None"]))
-        captcha = "✅ Yes" if entry.get("captcha") else "❌ No"
-        cloudflare = "✅ Yes" if entry.get("cloudflare") else "❌ No"
-
-        # Build formatted block
-        block = (
-            "═══[ Checked ✅ ]═══\n"
-            f"[⌇] Site ➜ {entry.get('url', 'Unknown')}\n"
-            f"[⌇] Payment 𝐆𝐚𝐭𝐞𝐰𝐚𝐲s ➜ {gateways}\n"
-            f"[⌇] Captcha ➜ {captcha}\n"
-            f"[⌇] Cloudflare ➜ {cloudflare}\n"
-            "――――――――――――――――\n"
-            f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.first_name}\n"
-            f"[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
-            "――――――――――――――――"
-        )
-        reply_blocks.append(block)
-
-    # Send safely within Telegram message length limits
-    for block in reply_blocks:
-        for i in range(0, len(block), 4000):
-            await update.message.reply_text(block[i:i+4000])
-
-
-
-
-
 
 
 import asyncio
@@ -4311,7 +4260,6 @@ def main():
     application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
-    application.add_handler(CommandHandler("gate", gate_command))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
     application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
 
