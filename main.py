@@ -3307,7 +3307,9 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     urls = context.args
     await update.message.reply_text(f"🔍 Scanning {len(urls)} site(s), please wait...")
 
-    results = run_gateway_scan(urls)
+    from gate import scan_multiple
+     results = scan_multiple(urls)
+
 
     if not results:
         await update.message.reply_text("❌ No gateways found (or blocked by security).")
