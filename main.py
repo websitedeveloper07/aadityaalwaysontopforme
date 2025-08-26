@@ -3305,7 +3305,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     urls = context.args
-    await update.message.reply_text(f"🔍 Scanning {len(urls)} URLs, please wait...")
+    await update.message.reply_text(f"🔍 Scanning {len(urls)} site(s), please wait...")
 
     results = run_gateway_scan(urls)
 
@@ -3313,21 +3313,41 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ No gateways found (or blocked by security).")
         return
 
-    # Format results nicely
-    reply_lines = []
+    reply_blocks = []
     for entry in results:
-        reply_lines.append(
-            f"🌐 {entry['url']}\n"
-            f"💳 Gateways: {', '.join(entry['gateways'])}\n"
-            f"Captcha: {'Yes' if entry['captcha'] else 'No'} | "
-            f"Cloudflare: {'Yes' if entry['cloudflare'] else 'No'}\n"
-            f"{'-'*30}"
-        )
+        # Prepare values safely
+        gateways = ", ".join(entry.get("gateways", ["❌ None"]))
+        captcha = "✅ Yes" if entry.get("captcha") else "❌ No"
+        cloudflare = "✅ Yes" if entry.get("cloudflare") else "❌ No"
 
-    # Telegram messages max 4096 chars → split if needed
-    text = "\n".join(reply_lines)
-    for i in range(0, len(text), 4000):
-        await update.message.reply_text(text[i:i+4000])
+        # Static placeholders for now
+        security = "Unknown"
+        cvv_cvc = "❌ Not Detected"
+        inbuilt = "❌ Not Detected"
+
+        # Build formatted block
+        block = (
+            "═══[ Checked ✅ ]═══\n"
+            f"[⌇] Site ➜ {entry['url']}\n"
+            f"[⌇] Payment 𝐆𝐚𝐭𝐞𝐰𝐚𝐲s ➜ {gateways}\n"
+            f"[⌇] Captcha ➜ {captcha}\n"
+            "――――――――――――――――\n"
+            f"[⌇] Cloudflare ➜ {cloudflare}\n"
+            f"[⌇] Security ➜ {security}\n"
+            f"[⌇] CVV/CVC ➜ {cvv_cvc}\n"
+            f"[⌇] Inbuilt System ➜ {inbuilt}\n"
+            "――――――――――――――――\n"
+            f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.first_name}\n"
+            f"[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+            "――――――――――――――――"
+        )
+        reply_blocks.append(block)
+
+    # Telegram message length safety
+    for block in reply_blocks:
+        for i in range(0, len(block), 4000):
+            await update.message.reply_text(block[i:i+4000])
+
 
 
 
