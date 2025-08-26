@@ -1721,42 +1721,16 @@ from telegram.helpers import escape_markdown
 
 
 # === FORMAT STATUS ===
-def format_status(api_status: str, api_response: str) -> str:
-    """
-    Map API status/response strings to stylish bot responses.
-    """
-    try:
-        clean_status = str(api_status).strip().lower()
-        clean_response = str(api_response).strip().lower()
-
-        # Merge into one string for matching
-        combined = f"{clean_status} {clean_response}"
-
-        mapping = {
-            "approved": "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅",
-            "succeeded": "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅",
-            "success": "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅",
-            "declined": "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌",
-            "generic decline": "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌",
-            "incorrect": "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌",
-            "ccn live": "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎",
-            "auth required": "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒",
-            "3ds": "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒",
-            "insufficient funds": "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸",
-            "expired": "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛",
-            "stolen": "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫",
-            "pickup card": "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑",
-            "fraudulent": "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️",
-        }
-
-        for key, styled in mapping.items():
-            if key in combined:
-                return styled
-
-        return "❓ 𝗨𝗡𝗞𝗡𝗢𝗪𝗡 ❓"
-
-    except Exception:
-        return "❌ ERROR ❌"
+def format_status(api_response: str) -> str:
+    resp = api_response.strip()
+    formatted = f"***{resp}***"  # bold + italic
+    
+    if "Approved" in resp:
+        return f"✅ {formatted}"
+    elif "Declined" in resp:
+        return f"❌ {formatted}"
+    else:
+        return formatted
 
 
 # === BACKGROUND CHECK ===
