@@ -1721,38 +1721,40 @@ from telegram.helpers import escape_markdown
 
 
 # === FORMAT STATUS ===
-def format_status(api_status: str) -> str:
+def format_status(api_status: str, api_response: str) -> str:
+    """
+    Map API status/response strings to stylish bot responses.
+    """
     try:
-        clean_status = (
-            str(api_status)
-            .strip()
-            .lower()
-            .replace("\n", "")
-            .replace("\r", "")
-        )
+        clean_status = str(api_status).strip().lower()
+        clean_response = str(api_response).strip().lower()
 
-        if "approved" in clean_status:
-            return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-        elif "declined" in clean_status or "generic decline" in clean_status:
-            return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-        elif "ccn live" in clean_status:
-            return "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
-        elif "incorrect" in clean_status or "your number" in clean_status:
-            return "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
-        elif "3ds" in clean_status or "auth required" in clean_status:
-            return "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
-        elif "insufficient funds" in clean_status:
-            return "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
-        elif "expired" in clean_status:
-            return "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
-        elif "stolen" in clean_status:
-            return "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
-        elif "pickup card" in clean_status:
-            return "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
-        elif "fraudulent" in clean_status:
-            return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
-        else:
-            return str(api_status).strip()
+        # Merge into one string for matching
+        combined = f"{clean_status} {clean_response}"
+
+        mapping = {
+            "approved": "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅",
+            "succeeded": "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅",
+            "success": "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅",
+            "declined": "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌",
+            "generic decline": "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌",
+            "incorrect": "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌",
+            "ccn live": "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎",
+            "auth required": "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒",
+            "3ds": "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒",
+            "insufficient funds": "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸",
+            "expired": "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛",
+            "stolen": "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫",
+            "pickup card": "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑",
+            "fraudulent": "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️",
+        }
+
+        for key, styled in mapping.items():
+            if key in combined:
+                return styled
+
+        return "❓ 𝗨𝗡𝗞𝗡𝗢𝗪𝗡 ❓"
+
     except Exception:
         return "❌ ERROR ❌"
 
@@ -1797,15 +1799,16 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"{escape_markdown(str(e), version=2)}"
                 )
 
-            # Always use formatted status
-            api_response = str(data.get("status", "Unknown")).strip()
-            status_text = format_status(api_response)
+            # Get both fields from API
+            api_status = data.get("status", "Unknown")
+            api_response = data.get("response", "")
+
+            status_text = format_status(api_status, api_response)
 
             # Update counters
-            api_response_lower = api_response.lower()
-            if "approved" in api_response_lower:
+            if "approved" in status_text or "✅" in status_text:
                 approved_count += 1
-            elif "declined" in api_response_lower or "incorrect" in api_response_lower:
+            elif "declined" in status_text or "❌" in status_text:
                 declined_count += 1
 
             checked_count += 1
@@ -1829,9 +1832,9 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 summary_text = (
                     f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                     f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
-                    f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count}\n"
-                    f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
-                    f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count}\n"
+                    f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count} ✅\n"
+                    f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count} ❌\n"
+                    f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count} ⚠️\n"
                     f"✘ 𝐓𝗶𝗺𝗲↣{round(time.time() - start_time, 2)}s\n"
                     f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
@@ -1850,9 +1853,9 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
         f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
-        f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count}\n"
-        f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
-        f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count}\n"
+        f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count} ✅\n"
+        f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count} ❌\n"
+        f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count} ⚠️\n"
         f"✘ 𝐓𝗶𝗺𝗲↣{final_time_taken}s\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
