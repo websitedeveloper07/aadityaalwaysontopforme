@@ -1619,7 +1619,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
 
-async def mchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /mchk card|mm|yy|cvv")
         return
