@@ -1745,7 +1745,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Update last command time if passed checks
+    # Update last command time
     user_last_command_time[user_id] = current_time
 
     # Collect cards
@@ -1762,10 +1762,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Initial reply
-    msg = await update.message.reply_text("<b>Starting mass check in background...</b>", parse_mode="HTML")
+    # Step 1: Send processing message (immediate response)
+    msg = await update.message.reply_text("⏳ <b>Processing your cards...</b>", parse_mode="HTML")
 
-    # Spawn the worker in background
+    # Step 2: Run the checker in background
     asyncio.create_task(run_mass_check(msg, cards, user_id))
 
 
