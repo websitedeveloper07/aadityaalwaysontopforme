@@ -1621,7 +1621,7 @@ from telegram.error import TelegramError
 
 # API and concurrency settings
 API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
-CONCURRENCY = 5
+CONCURRENCY = 3
 UPDATE_INTERVAL = 3  # seconds
 RATE_LIMIT_SECONDS = 5
 user_last_command_time = {}
@@ -1687,7 +1687,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No cards found in the message.", parse_mode="HTML")
         return
 
-    results = ["Pending..."] * total
+    results = []
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
     start_time = time.time()
     separator = "──────── ⸙ ─────────"
@@ -1702,19 +1702,18 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     semaphore = asyncio.Semaphore(CONCURRENCY)
     
     async with aiohttp.ClientSession() as session:
-        async def worker(idx, card):
+        async def worker(card):
             async with semaphore:
                 result_text, status = await check_card(session, card)
-                results[idx] = result_text
                 counters["checked"] += 1
                 if status in counters:
                     counters[status] += 1
-        
-        tasks = [asyncio.create_task(worker(i, c)) for i, c in enumerate(cards)]
+                return result_text
 
-        while not all(task.done() for task in tasks):
-            await asyncio.sleep(UPDATE_INTERVAL)
-            
+        for card in cards:
+            result_text = await worker(card)
+            results.append(result_text)
+
             elapsed = round(time.time() - start_time, 2)
 
             header = (
@@ -1732,25 +1731,9 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await msg.edit_text(content, parse_mode="HTML")
             except TelegramError as e:
                 print(f"Failed to edit message: {e}")
-        
-    # Final update after all tasks complete
-    elapsed = round(time.time() - start_time, 2)
 
-    header = (
-        f"✘ <b>Total</b> ↣ {total}\n"
-        f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
-        f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
-        f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
-        f"✘ <b>Error</b> ↣ {counters['error']}\n"
-        f"✘ <b>Time</b> ↣ {elapsed}s"
-    )
+            await asyncio.sleep(UPDATE_INTERVAL)
 
-    content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
-    
-    try:
-        await msg.edit_text(content, parse_mode="HTML")
-    except TelegramError as e:
-        print(f"Failed to send final message: {e}")
 
 
 
