@@ -1721,8 +1721,8 @@ from telegram.helpers import escape
 
 # === FORMAT STATUS IN BOLD USING HTML ===
 def format_status_html(api_status: str) -> str:
-    safe_status = escape(api_status)
-    return f"<b>{safe_status}</b>"
+    return f"<b>{api_status}</b>"
+
 
 # === BACKGROUND CARD CHECK ===
 async def mchk_cards(cards_to_check, processing_msg):
@@ -1761,6 +1761,8 @@ async def mchk_cards(cards_to_check, processing_msg):
 
             api_status = data.get("status", "Unknown")
             status_text = format_status_html(api_status)
+            return f"<code>{cc_normalized}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
+
 
             if "Approved" in api_status:
                 approved_count += 1
