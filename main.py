@@ -1770,7 +1770,7 @@ async def mchk_cards(cards_to_check, processing_msg):
                 error_count += 1
 
             checked_count += 1
-            return f"<code>{escape(cc_normalized)}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
+            return f"<code>{escape(cc_normalized)}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <b>{status_text}</b>"
 
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
@@ -1786,7 +1786,7 @@ async def mchk_cards(cards_to_check, processing_msg):
                 last_update = time.time()
                 summary_text = (
                     f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                    f"✘ 𝐂𝐡𝐞𝐜𝗸𝐞𝗱↣{checked_count}\n"
+                    f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝗱↣{checked_count}\n"
                     f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count} ✅\n"
                     f"✘ 𝐃𝐞𝗰𝗹𝗶𝗻𝗲𝗱↣{declined_count} ❌\n"
                     f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count} ⚠️\n"
@@ -1807,7 +1807,7 @@ async def mchk_cards(cards_to_check, processing_msg):
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-        f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
+        f"✘ 𝐂𝐡𝐞𝗰𝐤𝐞𝗱↣{checked_count}\n"
         f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count} ✅\n"
         f"✘ 𝐃𝐞𝗰𝗹𝗶𝗻𝗲𝗱↣{declined_count} ❌\n"
         f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count} ⚠️\n"
