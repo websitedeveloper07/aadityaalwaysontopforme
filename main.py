@@ -1675,7 +1675,8 @@ async def run_mass_check(msg, cards, user_id):
     results_header = "𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸"
     start_time = time.time()
 
-    semaphore = asyncio.Semaphore(CONCURRENCY)
+    queue = asyncio.Queue()
+    semaphore = asyncio.Semaphore(3)  # limit to 3 in parallel
 
     async with aiohttp.ClientSession() as session:
         async def worker(card):
@@ -1683,12 +1684,25 @@ async def run_mass_check(msg, cards, user_id):
                 result_text, status = await check_card(session, card)
                 counters["checked"] += 1
                 counters[status] = counters.get(status, 0) + 1
-                results.append(result_text)
+                # Push result into queue when ready
+                await queue.put(result_text)
 
+        # Start all workers in background
         tasks = [asyncio.create_task(worker(c)) for c in cards]
 
-        async def updater():
-            while not all(t.done() for t in tasks):
+        async def consumer():
+            while True:
+                try:
+                    # Wait for next result
+                    result_text = await asyncio.wait_for(queue.get(), timeout=5)
+                except asyncio.TimeoutError:
+                    # Break if all workers finished and queue is empty
+                    if all(t.done() for t in tasks):
+                        break
+                    continue
+
+                # Add result line and update message
+                results.append(result_text)
                 elapsed = round(time.time() - start_time, 2)
                 header = (
                     f"✘ <b>Total</b> ↣ {total}\n"
@@ -1703,22 +1717,23 @@ async def run_mass_check(msg, cards, user_id):
                     await msg.edit_text(content, parse_mode="HTML")
                 except TelegramError:
                     pass
-                await asyncio.sleep(UPDATE_INTERVAL)
 
-        await asyncio.gather(*tasks, updater())
+                await asyncio.sleep(1)  # wait 1s before showing next line
 
-    # Final update
-    elapsed = round(time.time() - start_time, 2)
-    header = (
-        f"✘ <b>Total</b> ↣ {total}\n"
-        f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
-        f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
-        f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
-        f"✘ <b>Error</b> ↣ {counters['error']}\n"
-        f"✘ <b>Time</b> ↣ {elapsed}s"
-    )
-    content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
-    await msg.edit_text(content, parse_mode="HTML")
+            # Final update after all done
+            elapsed = round(time.time() - start_time, 2)
+            header = (
+                f"✘ <b>Total</b> ↣ {total}\n"
+                f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
+                f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
+                f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
+                f"✘ <b>Error</b> ↣ {counters['error']}\n"
+                f"✘ <b>Time</b> ↣ {elapsed}s"
+            )
+            content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
+            await msg.edit_text(content, parse_mode="HTML")
+
+        await asyncio.gather(*tasks, consumer())
 
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
