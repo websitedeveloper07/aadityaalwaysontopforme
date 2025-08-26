@@ -1640,7 +1640,7 @@ async def check_card(session, card: str):
     except:
         return f"`{escape_md(card)}`\n**Error ❌**", "error"
 
-async def mchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /mchk card1|mm|yy|cvv card2|mm|yy|cvv ...")
         return
