@@ -1529,91 +1529,89 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
 
 
-async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    chat = update.effective_chat
-    user_id = user.id
+        async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+                user = update.effective_user
+                chat = update.effective_chat
+                user_id = user.id
 
-    # Get user data
-    user_data = await get_user(user_id)
-    if not user_data:
-        await update.effective_message.reply_text(
-            "❌ Could not fetch your user data. Try again later.",
-            parse_mode=None
-        )
-        return
+                # Get user data
+                user_data = await get_user(user_id)
+                if not user_data:
+                        await update.effective_message.reply_text(
+                                "❌ Could not fetch your user data. Try again later.",
+                                parse_mode=None
+                        )
+                        return
 
-    # Check credits
-    if user_data.get("credits", 0) <= 0:
-        await update.effective_message.reply_text(
-            "❌ You have no credits left. Please buy a plan to get more credits.",
-            parse_mode=None
-        )
-        return
+                # Check credits
+                if user_data.get("credits", 0) <= 0:
+                        await update.effective_message.reply_text(
+                                "❌ You have no credits left. Please buy a plan to get more credits.",
+                                parse_mode=None
+                        )
+                        return
 
-    # Cooldown check
-    if not await enforce_cooldown(user_id, update):
-        return
+                # Cooldown check
+                if not await enforce_cooldown(user_id, update):
+                        return
 
-    # Get card: reply or argument
-    raw = None
-    if update.message.reply_to_message and update.message.reply_to_message.text:
-        raw = update.message.reply_to_message.text.strip()
-    elif context.args:
-        raw = ' '.join(context.args).strip()
+                # Get card: reply or argument
+                raw = None
+                if update.message.reply_to_message and update.message.reply_to_message.text:
+                        raw = update.message.reply_to_message.text.strip()
+                elif context.args:
+                        raw = ' '.join(context.args).strip()
 
-    if not raw or "|" not in raw:
-        await update.effective_message.reply_text(
-            "Usage: reply to a message containing number|mm|yy|cvv or use /chk number|mm|yy|cvv",
-            parse_mode=None
-        )
-        return
+                if not raw or "|" not in raw:
+                        await update.effective_message.reply_text(
+                                "Usage: reply to a message containing number|mm|yy|cvv or use /chk number|mm|yy|cvv",
+                                parse_mode=None
+                        )
+                        return
 
-    parts = raw.split("|")
-    if len(parts) != 4:
-        await update.effective_message.reply_text(
-            "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
-            parse_mode=None
-        )
-        return
+                parts = raw.split("|")
+                if len(parts) != 4:
+                        await update.effective_message.reply_text(
+                                "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+                                parse_mode=None
+                        )
+                        return
 
-    # Normalize year
-    if len(parts[2]) == 4:
-        parts[2] = parts[2][-2:]
-    cc_normalized = "|".join(parts)
+                # Normalize year
+                if len(parts[2]) == 4:
+                        parts[2] = parts[2][-2:]
+                cc_normalized = "|".join(parts)
 
-    # Deduct credit
-    if not await consume_credit(user_id):
-        await update.effective_message.reply_text(
-            "❌ No credits left.",
-            parse_mode=None
-        )
-        return
+                # Deduct credit
+                if not await consume_credit(user_id):
+                        await update.effective_message.reply_text(
+                                "❌ No credits left.",
+                                parse_mode=None
+                        )
+                        return
 
+                # Define bullet link
+                bullet_text = escape_all_markdown("[⌇]")
+                bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
-    # Define bullet link
-    bullet_text = escape_all_markdown("[⌇]")
-    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+                # Processing message
+                processing_text = (
+                        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
+                        f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+                        f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+                        f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
+                        "════════════════════"
+                )
 
-    # Processing message
-    processing_text = (
-        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-        f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-        f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
-        "════════════════════"
-    )
+                # Send processing message (await inside async function)
+                processing_msg = await update.effective_message.reply_text(
+                        processing_text,
+                        parse_mode=ParseMode.MARKDOWN_V2,
+                        disable_web_page_preview=True
+                )
 
-    # Send processing message (await inside async function)
-    processing_msg = await update.effective_message.reply_text(
-        processing_text,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True
-    )
-
-    # Start background task
-    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
-
+                # Start background task
+                asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
 import asyncio
