@@ -1428,7 +1428,7 @@ async def get_bin_details(bin_number: str) -> dict:
 
 # ✅ Background check now uses live BIN data
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-        bullet_text = escape_markdown("[⌇]")
+        bullet_text = escape_markdown_v2("[⌇]")
         bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
         
         try:
@@ -1458,11 +1458,11 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                         if "approved" in lower_status:
                                 status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
                         elif "declined" in lower_status:
-                                status_text = "�𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+                                status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
                         elif "ccn live" in lower_status:
                                 status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
                         elif "incorrect" in lower_status or "your number" in lower_status:
-                                status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
+                                status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘�𝗧 ❌"
                         elif "3ds" in lower_status or "auth required" in lower_status:
                                 status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
                         elif "insufficient funds" in lower_status:
@@ -1586,7 +1586,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
 
         # Define bullet link
-        bullet_text = escape_markdown("[⌇]")
+        bullet_text = escape_markdown_v2("[⌇]")
         bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
         # Processing message
