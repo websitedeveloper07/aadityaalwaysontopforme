@@ -1615,7 +1615,7 @@ import asyncio
 import aiohttp
 import time
 import re
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from telegram.error import TelegramError
 
@@ -1628,7 +1628,9 @@ user_last_command_time = {}
 
 def escape_md(text: str) -> str:
     """Escape all special characters for MarkdownV2."""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+    if not text:
+        return ""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', str(text))
 
 def extract_cards_from_text(text: str) -> list[str]:
     """Extracts card-like strings from a given text."""
@@ -1663,7 +1665,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_id in user_last_command_time and (current_time - user_last_command_time[user_id]) < RATE_LIMIT_SECONDS:
         remaining_time = round(RATE_LIMIT_SECONDS - (current_time - user_last_command_time[user_id]), 2)
-        await update.message.reply_text(f"Please wait `{remaining_time}` seconds before using this command again.", parse_mode="MarkdownV2")
+        await update.message.reply_text(
+            f"Please wait `{escape_md(remaining_time)}` seconds before using this command again.", 
+            parse_mode="MarkdownV2"
+        )
         return
     
     user_last_command_time[user_id] = current_time
@@ -1677,7 +1682,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cards = extract_cards_from_text(replied_text)
     
     if not cards:
-        await update.message.reply_text("Usage: `/mchk card1|mm|yy|cvv ...` or reply to a message containing cards.", parse_mode="MarkdownV2")
+        await update.message.reply_text(
+            "Usage: `/mchk card1|mm|yy|cvv ...` or reply to a message containing cards.", 
+            parse_mode="MarkdownV2"
+        )
         return
 
     total = len(cards)
@@ -1692,8 +1700,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results_header = "𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸"
 
     try:
-        initial_message_text = escape_md("Starting mass check...")
-        msg = await update.message.reply_text(initial_message_text, parse_mode="MarkdownV2")
+        msg = await update.message.reply_text(escape_md("Starting mass check..."), parse_mode="MarkdownV2")
     except TelegramError as e:
         print(f"Failed to send initial message: {e}")
         return
@@ -1715,20 +1722,18 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await asyncio.sleep(UPDATE_INTERVAL)
             
             elapsed = round(time.time() - start_time, 2)
-            # **FINAL, MOST RELIABLE FIX**
-            # Manually replace the period with an escaped period.
-            elapsed_escaped = str(elapsed).replace('.', '\\.')
-            
+            elapsed_escaped = escape_md(elapsed)
+
             header = (
-                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
-                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
-                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
-                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
-                f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
+                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{escape_md(total)}\n"
+                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{escape_md(counters['checked'])}\n"
+                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{escape_md(counters['approved'])}\n"
+                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{escape_md(counters['declined'])}\n"
+                f"✘ 𝐄𝐫𝐫𝐨𝐫↣{escape_md(counters['error'])}\n"
                 f"✘ 𝐓𝐢𝐦𝐞↣{elapsed_escaped}s"
             )
 
-            content = f"{escape_md(header)}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
+            content = f"{header}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
             
             try:
                 await msg.edit_text(content, parse_mode="MarkdownV2")
@@ -1737,18 +1742,18 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     # Final update after all tasks complete
     elapsed = round(time.time() - start_time, 2)
-    elapsed_escaped = str(elapsed).replace('.', '\\.')
+    elapsed_escaped = escape_md(elapsed)
 
     header = (
-        f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
-        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
-        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
-        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
-        f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
+        f"✘ 𝐓𝐨𝐭𝐚𝐥↣{escape_md(total)}\n"
+        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{escape_md(counters['checked'])}\n"
+        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{escape_md(counters['approved'])}\n"
+        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{escape_md(counters['declined'])}\n"
+        f"✘ 𝐄𝐫𝐫𝐨𝐫↣{escape_md(counters['error'])}\n"
         f"✘ 𝐓𝐢𝐦𝐞↣{elapsed_escaped}s"
     )
 
-    content = f"{escape_md(header)}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
+    content = f"{header}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
     
     try:
         await msg.edit_text(content, parse_mode="MarkdownV2")
