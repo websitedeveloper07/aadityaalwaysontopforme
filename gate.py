@@ -1,101 +1,133 @@
-# gate.py
 import requests
 import re
 import os
 import threading
-from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# ---------------------------
+# Expanded Payment Gateways
+# ---------------------------
 PAYMENT_GATEWAYS = [
-    "PayPal", "Stripe", "Braintree", "Square", "magento", "Convergepay",
-    "PaySimple", "oceanpayments", "eProcessing", "hipay", "worldpay", "cybersourse",
-    "payjunction", "Authorize.Net", "2Checkout", "Adyen", "Checkout.com", "PayFlow",
-    "Payeezy", "usaepay", "creo", "SquareUp", "Authnet", "ebizcharge", "cpay",
-    "Moneris", "recurly", "cardknox", "payeezy", "matt sorra", "ebizcharge",
-    "payflow", "Chargify", "payflow", "Paytrace", "hostedpayments", "securepay",
-    "eWay", "blackbaud", "LawPay", "clover", "cardconnect", "bluepay", "fluidpay",
-    "Worldpay", "Ebiz", "chasepaymentech", "cardknox", "2checkout", "Auruspay",
-    "sagepayments", "paycomet", "geomerchant", "realexpayments",
-    "Rocketgateway", "Rocketgate", "Rocket", "Auth.net", "Authnet", "rocketgate.com",
-    "Shopify", "WooCommerce", "BigCommerce", "Magento Payments",
-    "OpenCart", "PrestaShop", "Razorpay"
+    # Major Global & Popular Gateways
+    "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
+    "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
+    "Checkout.com", "Bolt", "Eway", "PayFlow", "Payeezy",
+    "Paddle", "Mollie", "Viva Wallet", "Rocketgateway", "Rocketgate",
+    "Rocket", "Auth.net", "Authnet", "rocketgate.com", "Recurly",
+
+    # E-commerce Platforms
+    "Shopify", "WooCommerce", "BigCommerce", "Magento", "Magento Payments",
+    "OpenCart", "PrestaShop", "3DCart", "Ecwid", "Shift4Shop",
+    "Shopware", "VirtueMart", "CS-Cart", "X-Cart", "LemonStand",
+
+    # Additional Payment Solutions
+    "AVS", "Convergepay", "PaySimple", "oceanpayments", "eProcessing",
+    "hipay", "cybersourse", "payjunction", "usaepay", "creo",
+    "SquareUp", "ebizcharge", "cpay", "Moneris", "cardknox",
+    "matt sorra", "Chargify", "Paytrace", "hostedpayments", "securepay",
+    "blackbaud", "LawPay", "clover", "cardconnect", "bluepay",
+    "fluidpay", "Ebiz", "chasepaymentech", "Auruspay", "sagepayments",
+    "paycomet", "geomerchant", "realexpayments", "Razorpay",
+
+    # Digital Wallets & Payment Apps
+    "Apple Pay", "Google Pay", "Samsung Pay", "Venmo", "Cash App",
+    "Revolut", "Zelle", "Alipay", "WeChat Pay", "PayPay", "Line Pay",
+    "Skrill", "Neteller", "WebMoney", "Payoneer", "Paysafe",
+    "Payeer", "GrabPay", "PayMaya", "MoMo", "TrueMoney",
+    "Touch n Go", "GoPay", "Dana", "JKOPay", "EasyPaisa",
+
+    # Regional & Country Specific
+    "Paytm", "UPI", "PayU", "CCAvenue",
+    "Mercado Pago", "PagSeguro", "Yandex.Checkout", "PayFort", "MyFatoorah",
+    "Kushki", "DLocal", "RuPay", "BharatPe", "Midtrans", "MOLPay",
+    "iPay88", "KakaoPay", "Toss Payments", "NaverPay", "OVO", "GCash",
+    "Bizum", "Culqi", "Pagar.me", "Rapyd", "PayKun", "Instamojo",
+    "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "Atom", "BillDesk",
+    "Citrus Pay", "RazorpayX", "Cashfree", "PayUbiz", "EBS",
+
+    # Buy Now Pay Later
+    "Klarna", "Affirm", "Afterpay", "Zip", "Sezzle",
+    "Splitit", "Perpay", "Quadpay", "Laybuy", "Openpay",
+    "Atome", "Cashalo", "Hoolah", "Pine Labs", "ChargeAfter",
+
+    # Cryptocurrency
+    "BitPay", "Coinbase Commerce", "CoinGate", "CoinPayments", "Crypto.com Pay",
+    "BTCPay Server", "NOWPayments", "OpenNode", "Utrust", "MoonPay",
+    "Binance Pay", "CoinsPaid", "BitGo", "Flexa", "Circle",
+
+    # European Payment Methods
+    "iDEAL", "Giropay", "Sofort", "Bancontact", "Przelewy24",
+    "EPS", "Multibanco", "Trustly", "PPRO", "EcoPayz",
+
+    # Enterprise Solutions
+    "ACI Worldwide", "Bank of America Merchant Services",
+    "JP Morgan Payment Services", "Wells Fargo Payment Solutions",
+    "Deutsche Bank Payments", "Barclaycard", "American Express Payment Gateway",
+    "Discover Network", "UnionPay", "JCB Payment Gateway",
+
+    # New Payment Technologies
+    "Plaid", "Stripe Terminal", "Square Terminal", "Adyen Terminal",
+    "Toast POS", "Lightspeed Payments", "Poynt", "PAX",
+    "SumUp", "iZettle", "Tyro", "Vend", "ShopKeep", "Revel",
+
+    # Extra
+    "HiPay", "Dotpay", "PayBox", "PayStack", "Flutterwave",
+    "Opayo", "MultiSafepay", "PayXpert", "Bambora", "RedSys",
+    "NPCI", "JazzCash", "Blik", "PagBank", "VibePay", "Mode",
+    "Primer", "TrueLayer", "GoCardless", "Modulr", "Currencycloud",
+    "Volt", "Form3", "Banking Circle", "Mangopay", "Checkout Finland",
+    "Vipps", "Swish", "MobilePay"
 ]
 
-# Security indicators
-SECURITY_INDICATORS = {
-    'captcha': ['captcha', 'protected by recaptcha', "i'm not a robot", 'recaptcha/api.js'],
-    'cloudflare': ['cloudflare', 'cdnjs.cloudflare.com', 'challenges.cloudflare.com']
-}
+# ---------------------------
+# CAPTCHA & Cloudflare Detection
+# ---------------------------
+def find_captcha_details(content: str):
+    details = []
+    if "recaptcha" in content.lower():
+        if "recaptcha v1" in content.lower():
+            details.append("reCAPTCHA v1: Deprecated")
+        if "recaptcha v2" in content.lower():
+            details.append("reCAPTCHA v2: Checkbox/image challenges")
+        if "recaptcha v3" in content.lower():
+            details.append("reCAPTCHA v3: Invisible scoring")
+        if "recaptcha enterprise" in content.lower():
+            details.append("reCAPTCHA Enterprise: Advanced risk analysis")
+    if "hcaptcha" in content.lower():
+        details.append("hCaptcha: Privacy-focused image labeling")
+    if "funcaptcha" in content.lower():
+        details.append("FunCAPTCHA: Gamified challenges")
+    if "arkoselabs" in content.lower():
+        details.append("Arkose Labs: 3D puzzles, AI defense")
+    if "text-based captcha" in content.lower():
+        details.append("Legacy text-based CAPTCHA")
+
+    return details if details else ["No CAPTCHA services detected"]
 
 
+def find_cloudflare_services(content: str):
+    services = []
+    lower = content.lower()
+    if "cloudflare turnstile" in lower:
+        services.append("Cloudflare Turnstile: Invisible/no-interaction CAPTCHA")
+    if "ddos protection" in lower:
+        services.append("Cloudflare DDoS Protection")
+    if "web application firewall" in lower:
+        services.append("Cloudflare WAF: SQLi/XSS defense")
+    if "rate limiting" in lower:
+        services.append("Cloudflare Rate Limiting")
+    if "bot management" in lower:
+        services.append("Cloudflare Bot Management")
+    if "ssl/tls encryption" in lower:
+        services.append("Cloudflare SSL/TLS Encryption")
+    if "zero trust security" in lower:
+        services.append("Cloudflare Zero Trust Security")
 
-def normalize_url(url):
-    if not re.match(r'^https?://', url, re.I):
-        url = 'http://' + url
-    return url
+    return services if services else ["No Cloudflare services detected"]
 
-
-def find_payment_gateways(content):
-    detected = set()
-    for gateway in PAYMENT_GATEWAYS:
-        if re.search(r'\b' + re.escape(gateway) + r'\b', content, re.I):
-            detected.add(gateway)
-    return list(detected)
-
-
-def check_security(content):
-    captcha_present = any(re.search(ind, content, re.I) for ind in SECURITY_INDICATORS['captcha'])
-    cloudflare_present = any(re.search(ind, content, re.I) for ind in SECURITY_INDICATORS['cloudflare'])
-    return captcha_present, cloudflare_present
-
-
-def fetch_content(url, session):
-    try:
-        response = session.get(url, timeout=10)
-        response.raise_for_status()
-        return response.text
-    except requests.RequestException:
-        return None
-
-
-def process_url(url, session, lock):
-    normalized = normalize_url(url)
-    content = fetch_content(normalized, session)
-    if content is None:
-        return None
-    gateways = find_payment_gateways(content)
-    captcha, cloudflare = check_security(content)
-
-    if not gateways:
-        return None
-
-    if not captcha and not cloudflare:
-        return {
-            'url': normalized,
-            'gateways': gateways,
-            'captcha': captcha,
-            'cloudflare': cloudflare
-        }
-    return None
-
-
-def run_gateway_scan(urls: list[str]):
-    """Run scan on list of URLs and return results list."""
-    results = []
-
-    lock = threading.Lock()
-    session = requests.Session()
-    adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-
-    max_threads = min(32, os.cpu_count() + 4)
-
-    with ThreadPoolExecutor(max_workers=max_threads) as executor:
-        futures = [executor.submit(process_url, url, session, lock) for url in urls]
-        for future in as_completed(futures):
-            entry = future.result()
-            if entry:
-                results.append(entry)
-
-    return results
+# ---------------------------
+# Gateway Detection
+# ---------------------------
+def find_payment_gateways(content: str):
+    detected = [g for g in PAYMENT_GATEWAYS if g.lower() in content.lower()]
+    return detected if detected else ["Unknown"]
