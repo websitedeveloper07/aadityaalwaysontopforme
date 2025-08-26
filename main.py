@@ -1706,46 +1706,20 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # === CARD CHECKING ===
-def extract_cards_from_text(text: str) -> list[str]:
-    """Extracts card-like strings from a given text."""
-    return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
-
-async def check_card(session, card: str):
-    """Send card to API and return formatted result and status type."""
-    try:
-        async with session.get(API_URL_TEMPLATE + card, timeout=15) as resp:
-            data = await resp.json()
-        status = data.get("status", "Unknown")
-
-        if status.lower() == "approved":
-            formatted_status = f"<b><i>{status} ✅</i></b>"
-            return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "approved"
-        elif status.lower() == "unknown":
-            formatted_status = f"<i>{status} 🚫</i>"
-            return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "declined"
-        else:
-            formatted_status = f"<i>{status} ❌</i>"
-            return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "declined"
-    except (aiohttp.ClientError, asyncio.TimeoutError):
-        formatted_status = "<b><i>Error: Network ❌</i></b>"
-        return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "error"
-    except Exception:
-        formatted_status = "<b><i>Error: Unknown ❌</i></b>"
-        return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "error"
-
-async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    current_time = time.time()
-
-    if user_id in user_last_command_time and (current_time - user_last_command_time[user_id]) < RATE_LIMIT_SECONDS:
-        remaining_time = round(RATE_LIMIT_SECONDS - (current_time - user_last_command_time[user_id]), 2)
-        await update.message.reply_text(
-            f"Please wait <code>{remaining_time}</code> seconds before using this command again.", 
-            parse_mode="HTML"
-        )
-        return
+# --- Stylish status formatter ---
+def format_status(card: str, status: str) -> str:
+    """Return stylish formatted per-card status line."""
+    if status == "approved":
+        return f"<code>{card}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ ✅ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝"
+    elif status == "declined":
+        return f"<code>{card}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ ❌ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝"
+    elif status == "error":
+        return f"<code>{card}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ 🚫 𝐄𝐫𝐫𝐨𝐫"
+    else:
+        return f"<code>{card}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ ❓ 𝐔𝐧𝐤𝐧𝐨𝐰𝐧"
 
 
+# --- Background worker ---
 async def check_cards_background(cards, user_id, user_name, processing_msg, start_time):
     """Background task that checks cards and updates the message line by line."""
     total = len(cards)
@@ -1763,11 +1737,14 @@ async def check_cards_background(cards, user_id, user_name, processing_msg, star
                 counters["checked"] += 1
                 if status in counters:
                     counters[status] += 1
-                return result_text
+                # return both card and status for custom formatting
+                return card, status
 
         for card in cards:
-            result_text = await worker(card)
-            results.append(result_text)
+            card, status = await worker(card)
+
+            stylish_status = format_status(card, status)
+            results.append(f"{stylish_status}\n{separator}")
 
             elapsed = round(time.time() - start_time, 2)
 
@@ -1781,7 +1758,10 @@ async def check_cards_background(cards, user_id, user_name, processing_msg, star
                 f"👤 <b>User</b> ↣ {user_name}"
             )
 
-            content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
+            content = (
+                f"{header}\n\n<b>{results_header}</b>\n{separator}\n"
+                + "\n".join(results)
+            )
 
             try:
                 await processing_msg.edit_text(content, parse_mode="HTML")
