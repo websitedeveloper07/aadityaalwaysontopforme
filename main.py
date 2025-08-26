@@ -1665,6 +1665,62 @@ async def check_card(session, card: str):
         formatted_status = "<b><i>Error: Unknown ❌</i></b>"
         return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "error"
 
+
+
+async def run_mass_check(msg, cards, user_id):
+    total = len(cards)
+    counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
+    results = []
+    separator = "──────── ⸙ ─────────"
+    results_header = "𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸"
+    start_time = time.time()
+
+    semaphore = asyncio.Semaphore(CONCURRENCY)
+
+    async with aiohttp.ClientSession() as session:
+        async def worker(card):
+            async with semaphore:
+                result_text, status = await check_card(session, card)
+                counters["checked"] += 1
+                counters[status] = counters.get(status, 0) + 1
+                results.append(result_text)
+
+        tasks = [asyncio.create_task(worker(c)) for c in cards]
+
+        async def updater():
+            while not all(t.done() for t in tasks):
+                elapsed = round(time.time() - start_time, 2)
+                header = (
+                    f"✘ <b>Total</b> ↣ {total}\n"
+                    f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
+                    f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
+                    f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
+                    f"✘ <b>Error</b> ↣ {counters['error']}\n"
+                    f"✘ <b>Time</b> ↣ {elapsed}s"
+                )
+                content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
+                try:
+                    await msg.edit_text(content, parse_mode="HTML")
+                except TelegramError:
+                    pass
+                await asyncio.sleep(UPDATE_INTERVAL)
+
+        await asyncio.gather(*tasks, updater())
+
+    # Final update
+    elapsed = round(time.time() - start_time, 2)
+    header = (
+        f"✘ <b>Total</b> ↣ {total}\n"
+        f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
+        f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
+        f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
+        f"✘ <b>Error</b> ↣ {counters['error']}\n"
+        f"✘ <b>Time</b> ↣ {elapsed}s"
+    )
+    content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
+    await msg.edit_text(content, parse_mode="HTML")
+
+
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     current_time = time.time()
@@ -1712,57 +1768,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Spawn the worker in background
     asyncio.create_task(run_mass_check(msg, cards, user_id))
 
-    total = len(cards)
-    if total == 0:
-        await update.message.reply_text("No cards found in the message.", parse_mode="HTML")
-        return
 
-    results = []
-    counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
-    start_time = time.time()
-    separator = "──────── ⸙ ─────────"
-    results_header = "𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸"
-
-    try:
-        msg = await update.message.reply_text("<b>Starting mass check...</b>", parse_mode="HTML")
-    except TelegramError as e:
-        print(f"Failed to send initial message: {e}")
-        return
-
-    semaphore = asyncio.Semaphore(CONCURRENCY)
-    
-    async with aiohttp.ClientSession() as session:
-        async def worker(card):
-            async with semaphore:
-                result_text, status = await check_card(session, card)
-                counters["checked"] += 1
-                if status in counters:
-                    counters[status] += 1
-                return result_text
-
-        for card in cards:
-            result_text = await worker(card)
-            results.append(result_text)
-
-            elapsed = round(time.time() - start_time, 2)
-
-            header = (
-                f"✘ <b>Total</b> ↣ {total}\n"
-                f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
-                f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
-                f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
-                f"✘ <b>Error</b> ↣ {counters['error']}\n"
-                f"✘ <b>Time</b> ↣ {elapsed}s"
-            )
-
-            content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
-            
-            try:
-                await msg.edit_text(content, parse_mode="HTML")
-            except TelegramError as e:
-                print(f"Failed to edit message: {e}")
-
-            await asyncio.sleep(UPDATE_INTERVAL)
 
 
 
