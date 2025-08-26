@@ -290,7 +290,7 @@ PAYMENT_GATEWAYS = [
     "Handelsbanken (SE)": [r"handelsbanken", r"card\.handelsbanken"],
     "Zimpler (SE)": [r"zimpler\.com"],
     "Nordea (FI/SE)": [r"nordea\.com", r"nordea pay"],
-}
+]
 
 # ---------------------------
 # Captcha & Cloudflare Detection
