@@ -1831,6 +1831,109 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
+import asyncio
+import re
+import time
+from telegram import Update
+from telegram.ext import ContextTypes
+
+async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_id = user.id
+    chat_type = update.effective_chat.type
+
+    # ✅ Private chat restriction
+    if chat_type == "private":
+        try:
+            user_data = await get_user(user_id)
+            plan = user_data.get("plan", "Free") if user_data else "Free"
+            credits = user_data.get("credits", 0) if user_data else 0
+        except Exception as e:
+            print(f"[mchk_command] DB error for user {user_id}: {e}")
+            await update.effective_message.reply_text(
+                "❌ Error fetching your account info. Try again later."
+            )
+            return
+
+        # Block if no active plan or no credits
+        if plan.lower() == "free" or credits <= 0:
+            await update.effective_message.reply_text(
+                "🚫 You cannot use this command in private chat.\n"
+                "👉 You need an active paid plan with credits.\n"
+                "💳 Or use for free in our group."
+            )
+            return
+
+    else:
+        # ✅ In groups — anyone can run, but still needs credits
+        try:
+            user_data = await get_user(user_id)
+            credits = user_data.get("credits", 0) if user_data else 0
+        except Exception as e:
+            print(f"[mchk_command] DB error for user {user_id}: {e}")
+            await update.effective_message.reply_text(
+                "❌ Error fetching your account info. Try again later."
+            )
+            return
+
+        if credits <= 0:
+            await update.effective_message.reply_text(
+                "❌ You have no credits left. Please buy a plan to get more credits."
+            )
+            return
+
+    # ✅ enforce cooldown
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    # ✅ consume 1 credit
+    if not await consume_credit(user_id):
+        await update.effective_message.reply_text(
+            "❌ You have no credits left. Please buy a plan to get more credits."
+        )
+        return
+
+    # ✅ extract raw cards
+    raw_cards = ""
+    if context.args:
+        raw_cards = " ".join(context.args)
+    elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
+        raw_cards = update.effective_message.reply_to_message.text
+
+    if not raw_cards.strip():
+        await update.effective_message.reply_text(
+            "⚠️ Usage: /mchk number|mm|yy|cvv"
+        )
+        return
+
+    # ✅ card regex
+    card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
+    card_lines = card_pattern.findall(raw_cards)
+    if not card_lines:
+        await update.effective_message.reply_text(
+            "⚠️ Please provide at least one card in the format: number|mm|yy|cvv."
+        )
+        return
+
+    # ✅ limit 10 cards
+    cards_to_check = card_lines[:10]
+    if len(card_lines) > 10:
+        await update.effective_message.reply_text(
+            "⚠️ Only 10 cards are allowed. Checking the first 10 now."
+        )
+
+    # ✅ initial processing message
+    processing_msg = await update.effective_message.reply_text("🔎𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜...")
+    start_time = time.time()
+
+    # ✅ run background task
+    task = asyncio.create_task(
+        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time),
+        name="card_checker"
+    )
+    task.add_done_callback(
+        lambda t: t.exception() and print(f"[mchk] Background error: {t.exception()}")
+    )
 
 
 
