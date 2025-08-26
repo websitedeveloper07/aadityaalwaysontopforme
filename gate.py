@@ -322,7 +322,7 @@ def find_cloudflare(content: str, headers: dict):
     return details if details else ["None"]
 
 # ---------------------------
-# Gateway Detection (regex-based)
+# Gateway Detection
 # ---------------------------
 def find_payment_gateways(content: str):
     detected = []
@@ -331,29 +331,32 @@ def find_payment_gateways(content: str):
             if re.search(pat, content, re.IGNORECASE):
                 detected.append(gateway)
                 break
-    return list(set(detected)) if detected else ["Unknown"]
+    return list(set(detected)) if detected else []
 
 # ---------------------------
-# Main Scanner
+# Single URL Scanner
 # ---------------------------
 def run_gateway_scan(url: str) -> dict:
     try:
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/117.0 Safari/537.36",
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/117.0 Safari/537.36"
+            ),
             "Accept": "*/*",
             "Accept-Encoding": "gzip, deflate",
-            "Connection": "keep-alive"
+            "Connection": "keep-alive",
         }
 
         session = requests.Session()
         resp = session.get(url, headers=headers, timeout=15, allow_redirects=True)
         content = resp.text
 
+        # Step 1: Scan main HTML
         found_gateways = find_payment_gateways(content)
 
-        # Also check JS/CSS assets
+        # Step 2: Check linked assets (JS/CSS)
         assets = re.findall(r'src=["\'](.*?\.js)["\']', content)
         assets += re.findall(r'href=["\'](.*?\.css)["\']', content)
 
@@ -372,7 +375,7 @@ def run_gateway_scan(url: str) -> dict:
         return {
             "url": url,
             "status_code": resp.status_code,
-            "gateways": list(set(found_gateways)),
+            "gateways": list(set(found_gateways)) or ["❌ None"],
             "captcha": find_captcha_details(content),
             "cloudflare": find_cloudflare(content, resp.headers),
             "redirects": [h.url for h in resp.history],
@@ -381,16 +384,16 @@ def run_gateway_scan(url: str) -> dict:
         return {
             "url": url,
             "error": str(e),
-            "gateways": ["Unknown"],
-            "captcha": ["Unknown"],
-            "cloudflare": ["Unknown"],
-            "redirects": []
+            "gateways": ["❌ None"],
+            "captcha": False,
+            "cloudflare": False,
+            "redirects": [],
         }
 
 # ---------------------------
-# Bulk Scan
+# Bulk Scanner
 # ---------------------------
-def scan_multiple(urls: list, workers: int = 5):
+def scan_multiple(urls: list[str], workers: int = 5) -> list[dict]:
     results = []
     with ThreadPoolExecutor(max_workers=workers) as executor:
         future_to_url = {executor.submit(run_gateway_scan, u): u for u in urls}
