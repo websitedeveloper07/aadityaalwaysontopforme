@@ -1612,7 +1612,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 import asyncio
 import aiohttp
 import time
@@ -1624,13 +1623,12 @@ API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autost
 CONCURRENCY = 5
 UPDATE_INTERVAL = 3  # seconds
 
-def escape_md(text):
-    """
-    Escape text for MarkdownV2
-    """
+def escape_md(text: str) -> str:
+    """Escape all special characters for MarkdownV2"""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
-async def check_card(session, card):
+async def check_card(session, card: str):
+    """Send card to API and return formatted result and status type"""
     try:
         async with session.get(API_URL_TEMPLATE + card) as resp:
             data = await resp.json()
@@ -1642,7 +1640,7 @@ async def check_card(session, card):
     except:
         return f"`{escape_md(card)}`\n**Error ❌**", "error"
 
-async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def mchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /mchk card1|mm|yy|cvv card2|mm|yy|cvv ...")
         return
@@ -1653,7 +1651,9 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
     start_time = time.time()
 
-    msg = await update.message.reply_text("Starting mass check...", parse_mode="MarkdownV2")
+    # Escape initial message
+    safe_text = escape_md("Starting mass check...")
+    msg = await update.message.reply_text(safe_text, parse_mode="MarkdownV2")
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
@@ -1668,8 +1668,11 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     counters[status] += 1
 
         tasks = [worker(i, c) for i, c in enumerate(cards)]
-
         pending = tasks
+
+        separator = escape_md("──────── ⸙ ─────────")
+
+        # Update loop while tasks are running
         while pending:
             done, pending = await asyncio.wait(pending, timeout=UPDATE_INTERVAL, return_when=asyncio.FIRST_COMPLETED)
             elapsed = round(time.time() - start_time, 2)
@@ -1679,9 +1682,9 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
                 f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
-                f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n──────── ⸙ ─────────\n"
+                f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n{separator}\n"
             )
-            await msg.edit_text(header + "\n──────── ⸙ ─────────\n".join(results), parse_mode="MarkdownV2")
+            await msg.edit_text(header + f"\n{separator}\n".join(results), parse_mode="MarkdownV2")
 
         # Final update after all tasks complete
         elapsed = round(time.time() - start_time, 2)
@@ -1691,9 +1694,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
             f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
             f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
-            f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n──────── ⸙ ─────────\n"
+            f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n{separator}\n"
         )
-        await msg.edit_text(header + "\n──────── ⸙ ─────────\n".join(results), parse_mode="MarkdownV2")
+        await msg.edit_text(header + f"\n{separator}\n".join(results), parse_mode="MarkdownV2")
+
 
 
 
