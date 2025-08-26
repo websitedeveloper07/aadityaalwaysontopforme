@@ -1701,9 +1701,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
     async with aiohttp.ClientSession() as session:
-        # Create tasks for all cards at the beginning
-        tasks = [asyncio.create_task(worker(i, c)) for i, c in enumerate(cards)]
-        
+        # **FIX:** Define the worker function BEFORE the tasks list is created.
         async def worker(idx, card):
             async with semaphore:
                 result_text, status = await check_card(session, card)
@@ -1711,13 +1709,13 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 counters["checked"] += 1
                 if status in counters:
                     counters[status] += 1
+        
+        tasks = [asyncio.create_task(worker(i, c)) for i, c in enumerate(cards)]
 
-        # Wait for all tasks to complete while periodically updating
         while not all(task.done() for task in tasks):
             await asyncio.sleep(UPDATE_INTERVAL)
             
             elapsed = round(time.time() - start_time, 2)
-            # **Final fix:** Explicitly escape the period in the float string
             elapsed_escaped = str(elapsed).replace('.', '\\.')
             
             header = (
