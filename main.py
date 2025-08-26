@@ -1722,10 +1722,11 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
-# === FORMAT STATUS IN ITALIC ===
-def format_status_italic(api_status: str) -> str:
-    """Wrap the API status in italic for MarkdownV2"""
-    return f"_{escape_markdown(api_status, version=2)}_"
+# === FORMAT STATUS IN BOLD ===
+def format_status_bold(api_status: str) -> str:
+    """Wrap the API status in bold for MarkdownV2"""
+    return f"*{escape_markdown(api_status, version=2)}*"
+
 
 # === BACKGROUND CARD CHECK ===
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
@@ -1769,7 +1770,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             # ✅ Use API "status" field in italic
             api_status = data.get("status", "Unknown")
-            status_text = format_status_italic(api_status)
+            status_text = format_status_bold(api_status)
 
             # Update counters
             if api_status.lower() == "approved":
@@ -1798,9 +1799,9 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 summary_text = (
                     f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                     f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
-                    f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count} ✅\n"
-                    f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝐞𝐝↣{declined_count} ❌\n"
-                    f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count} ⚠️\n"
+                    f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count} \n"
+                    f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝐞𝐝↣{declined_count} \n"
+                    f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count} \n"
                     f"✘ 𝐓𝗶𝗺𝗲↣{round(time.time() - start_time, 2)}s\n"
                     f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
@@ -1819,9 +1820,9 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
         f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
-        f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count} ✅\n"
-        f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝐞𝐝↣{declined_count} ❌\n"
-        f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count} ⚠️\n"
+        f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count} \n"
+        f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝐞𝐝↣{declined_count} \n"
+        f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count} \n"
         f"✘ 𝐓𝗶𝗺𝗲↣{final_time_taken}s\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
