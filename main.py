@@ -3294,8 +3294,8 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes
-from gate import run_gateway_scan
+from telegram.ext import ContextTypes
+from gate import scan_multiple
 
 
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3307,9 +3307,8 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     urls = context.args
     await update.message.reply_text(f"🔍 Scanning {len(urls)} site(s), please wait...")
 
-    from gate import scan_multiple
-     results = scan_multiple(urls)
-
+    # Run bulk scan
+    results = scan_multiple(urls)
 
     if not results:
         await update.message.reply_text("❌ No gateways found (or blocked by security).")
@@ -3317,27 +3316,18 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_blocks = []
     for entry in results:
-        # Prepare values safely
+        # Safely prepare values
         gateways = ", ".join(entry.get("gateways", ["❌ None"]))
         captcha = "✅ Yes" if entry.get("captcha") else "❌ No"
         cloudflare = "✅ Yes" if entry.get("cloudflare") else "❌ No"
 
-        # Static placeholders for now
-        security = "Unknown"
-        cvv_cvc = "❌ Not Detected"
-        inbuilt = "❌ Not Detected"
-
         # Build formatted block
         block = (
             "═══[ Checked ✅ ]═══\n"
-            f"[⌇] Site ➜ {entry['url']}\n"
+            f"[⌇] Site ➜ {entry.get('url', 'Unknown')}\n"
             f"[⌇] Payment 𝐆𝐚𝐭𝐞𝐰𝐚𝐲s ➜ {gateways}\n"
             f"[⌇] Captcha ➜ {captcha}\n"
-            "――――――――――――――――\n"
             f"[⌇] Cloudflare ➜ {cloudflare}\n"
-            f"[⌇] Security ➜ {security}\n"
-            f"[⌇] CVV/CVC ➜ {cvv_cvc}\n"
-            f"[⌇] Inbuilt System ➜ {inbuilt}\n"
             "――――――――――――――――\n"
             f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.first_name}\n"
             f"[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
@@ -3345,7 +3335,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         reply_blocks.append(block)
 
-    # Telegram message length safety
+    # Send safely within Telegram message length limits
     for block in reply_blocks:
         for i in range(0, len(block), 4000):
             await update.message.reply_text(block[i:i+4000])
