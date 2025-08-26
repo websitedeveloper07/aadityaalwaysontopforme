@@ -1629,34 +1629,28 @@ from db import get_user, update_user  # Your async DB functions here
 OWNER_ID = 8438505794  # Replace with your Telegram user ID
 user_cooldowns = {}
 
-# Mapping to normalize stylish text (used for API responses like "𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝")
+# Mapping to normalize stylish text
 STYLISH_MAP = {
-    '𝐀': 'A','𝐁': 'B','𝐂': 'C','𝐃': 'D','𝐄': 'E','𝐅': 'F','𝐆': 'G','𝐇': 'H','𝐈': 'I','𝐉': 'J',
-    '𝐊': 'K','𝐋': 'L','𝐌': 'M','𝐍': 'N','𝐎': 'O','𝐏': 'P','𝐐': 'Q','𝐑': 'R','𝐒': 'S','𝐓': 'T',
-    '𝐔': 'U','𝐕': 'V','𝐖': 'W','𝐗': 'X','𝐘': 'Y','𝐙': 'Z',
-    '𝐚': 'a','𝐛': 'b','𝐜': 'c','𝐝': 'd','𝐞': 'e','𝐟': 'f','𝐠': 'g','𝐡': 'h','𝐢': 'i','𝐣': 'j',
-    '𝐤': 'k','𝐥': 'l','𝐦': 'm','𝐧': 'n','𝐨': 'o','𝐩': 'p','𝐪': 'q','𝐫': 'r','𝐬': 's','𝐭': 't',
-    '𝐮': 'u','𝐯': 'v','𝐰': 'w','𝐱': 'x','𝐲': 'y','𝐳': 'z',
-    '𝗔': 'A','𝗕': 'B','𝗖': 'C','𝗗': 'D','𝗘': 'E','𝗙': 'F','𝗚': 'G','𝗛': 'H','𝗜': 'I','𝗝': 'J',
-    '𝗞': 'K','𝗟': 'L','𝗠': 'M','𝗡': 'N','𝗢': 'O','𝗣': 'P','𝗤': 'Q','𝗥': 'R','𝗦': 'S','𝗧': 'T',
-    '𝗨': 'U','𝗩': 'V','𝗪': 'W','𝗫': 'X','𝗬': 'Y','𝗭': 'Z',
-    '𝗮': 'a','𝗯': 'b','𝗰': 'c','𝗱': 'd','𝗲': 'e','𝗳': 'f','𝗴': 'g','𝗵': 'h','𝗶': 'i','𝗷': 'j',
-    '𝗸': 'k','𝗹': 'l','𝗺': 'm','𝗻': 'n','𝗼': 'o','𝗽': 'p','𝗾': 'q','𝗿': 'r','𝘀': 's','𝘁': 't',
-    '𝘂': 'u','𝘃': 'v','𝘄': 'w','𝘅': 'x','𝘆': 'y','𝘇': 'z',
-    '𝟑': '3'
+    '𝐀':'A','𝐁':'B','𝐂':'C','𝐃':'D','𝐄':'E','𝐅':'F','𝐆':'G','𝐇':'H','𝐈':'I','𝐉':'J',
+    '𝐊':'K','𝐋':'L','𝐌':'M','𝐍':'N','𝐎':'O','𝐏':'P','𝐐':'Q','𝐑':'R','𝐒':'S','𝐓':'T',
+    '𝐔':'U','𝐕':'V','𝐖':'W','𝐗':'X','𝐘':'Y','𝐙':'Z',
+    '𝐚':'a','𝐛':'b','𝐜':'c','𝐝':'d','𝐞':'e','𝐟':'f','𝐠':'g','𝐡':'h','𝐢':'i','𝐣':'j',
+    '𝐤':'k','𝐥':'l','𝐦':'m','𝐧':'n','𝐨':'o','𝐩':'p','𝐪':'q','𝐫':'r','𝐬':'s','𝐭':'t',
+    '𝐮':'u','𝐯':'v','𝐰':'w','𝐱':'x','𝐲':'y','𝐳':'z',
+    '𝗔':'A','𝗕':'B','𝗖':'C','𝗗':'D','𝗘':'E','𝗙':'F','𝗚':'G','𝗛':'H','𝗜':'I','𝗝':'J',
+    '𝗞':'K','𝗟':'L','𝗠':'M','𝗡':'N','𝗢':'O','𝗣':'P','𝗤':'Q','𝗥':'R','𝗦':'S','𝗧':'T',
+    '𝗨':'U','𝗩':'V','𝗪':'W','𝗫':'X','𝗬':'Y','𝗭':'Z',
+    '𝗮':'a','𝗯':'b','𝗰':'c','𝗱':'d','𝗲':'e','𝗳':'f','𝗴':'g','𝗵':'h','𝗶':'i','𝗷':'j',
+    '𝗸':'k','𝗹':'l','𝗺':'m','𝗻':'n','𝗼':'o','𝗽':'p','𝗾':'q','𝗿':'r','𝘀':'s','𝘁':'t',
+    '𝘂':'u','𝘃':'v','𝘄':'w','𝘅':'x','𝘆':'y','𝘇':'z',
+    '𝟑':'3'
 }
 
 def normalize_text(text: str) -> str:
-    """Replace stylish letters/numbers with normal ones."""
     return "".join(STYLISH_MAP.get(ch, ch) for ch in text)
-
 
 # --- PLAN VALIDATION ---
 async def has_active_paid_plan(user_id: int) -> bool:
-    """
-    Check if user has an active paid plan (not Free and not expired).
-    Returns True if plan is active.
-    """
     user_data = await get_user(user_id)
     if not user_data:
         return False
@@ -1664,11 +1658,9 @@ async def has_active_paid_plan(user_id: int) -> bool:
     plan = str(user_data.get("plan", "Free"))
     expiry = user_data.get("plan_expiry", "N/A")
 
-    # Free plan is not valid
     if plan.lower() == "free":
         return False
 
-    # Expiry check
     if expiry != "N/A":
         try:
             expiry_date = datetime.strptime(expiry, "%d-%m-%Y")
@@ -1676,39 +1668,24 @@ async def has_active_paid_plan(user_id: int) -> bool:
                 return False
         except Exception:
             return False
-
     return True
 
-
 async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """
-    Private chats: only OWNER_ID or users with an active paid plan can use.
-    Group chats: only OWNER_ID or users with an active paid plan can use.
-    """
     user_id = update.effective_user.id
     chat_type = update.effective_chat.type
 
-    # ✅ Owner bypass
     if user_id == OWNER_ID:
         return True
 
-    # ✅ Both private & group require active paid plan
     if not await has_active_paid_plan(user_id):
         await update.effective_message.reply_text(
-            "🚫 You need an *active paid plan* to use this command.\n"
-            "💳 or use for free in our grorup."
+            "🚫 You need an *active paid plan* to use this command.\n💳 or use for free in our group."
         )
         return False
-
     return True
 
-
-# --- COOLDOWN HANDLER ---
+# --- COOLDOWN ---
 async def enforce_cooldown(user_id: int, update: Update, cooldown: int = 5) -> bool:
-    """
-    Enforces a per-user cooldown for commands.
-    Returns True if user can proceed, False if still on cooldown.
-    """
     now = time.time()
     last_time = user_cooldowns.get(user_id, 0)
 
@@ -1723,13 +1700,8 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown: int = 5) -> b
     user_cooldowns[user_id] = now
     return True
 
-
-# --- CREDITS HANDLER (optional, mostly for groups if you want per-use charging) ---
+# --- CREDITS ---
 async def consume_credit(user_id: int) -> bool:
-    """
-    Consume 1 credit from the user's account.
-    Returns True if successful, False if user has no credits.
-    """
     try:
         user_data = await get_user(user_id)
         if user_data and user_data.get("credits", 0) > 0:
@@ -1738,23 +1710,12 @@ async def consume_credit(user_id: int) -> bool:
             return True
     except Exception as e:
         print(f"[consume_credit] Error updating user {user_id}: {e}")
-
     return False
 
-
-
-
-import asyncio
-import aiohttp
-import time
-import re
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-
-# === Helper: Format API status into stylish text ===
+# === FORMAT STATUS ===
 def format_status(api_status: str) -> str:
     try:
-        clean_status = str(api_status).strip().lower()  # normalize
+        clean_status = str(api_status).strip().lower()
         if "approved" in clean_status:
             return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
         elif "declined" in clean_status or "generic decline" in clean_status:
@@ -1776,16 +1737,16 @@ def format_status(api_status: str) -> str:
         elif "fraudulent" in clean_status:
             return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
         else:
-            return api_status.upper()  # fallback
+            return api_status.upper()
     except Exception:
         return "❌ ERROR ❌"
 
-# === Main async checker ===
+# === CHECK CARDS BACKGROUND ===
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
-    semaphore = asyncio.Semaphore(5)  # Limit concurrent requests
+    semaphore = asyncio.Semaphore(5)
 
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
@@ -1797,7 +1758,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 error_count += 1
                 return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
 
-            # Normalize year (YYYY → YY)
             if len(parts[2]) == 4:
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
@@ -1808,17 +1768,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 async with session.get(api_url, timeout=45) as resp:
                     if resp.status != 200:
                         raise Exception(f"HTTP {resp.status}")
-                    try:
-                        data = await resp.json()
-                    except Exception:
-                        raw_text = await resp.text()
-                        raise Exception(f"JSON decode failed, raw={raw_text[:200]}")
+                    data = await resp.json()
             except Exception as e:
                 checked_count += 1
                 error_count += 1
                 return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
 
-            # Always map API status to stylish text
+            # Use API status
             api_response = str(data.get("status", "Unknown")).strip()
             status_text = format_status(api_response)
 
@@ -1841,12 +1797,11 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
-            # Periodic summary
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 summary_text = (
                     f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-                    f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝗱↣{checked_count}\n"
+                    f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
                     f"✘ 𝐀𝐩𝗽𝗿𝗼𝗏𝗲𝗱↣{approved_count}\n"
                     f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
                     f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count}\n"
@@ -1861,12 +1816,11 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 except Exception:
                     pass
 
-    # Final summary
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-        f"✘ 𝐂𝐡𝐞𝐜𝗸𝐞𝗱↣{checked_count}\n"
-        f"✘ 𝐀𝐩𝗽𝗿𝗼𝗏𝗲𝗱↣{approved_count}\n"
+        f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
+        f"✘ 𝐀𝐩𝗽𝗿𝗼𝗩𝗘𝗗↣{approved_count}\n"
         f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
         f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count}\n"
         f"✘ 𝐓𝗶𝗺𝗲↣{final_time_taken}s\n"
@@ -1877,107 +1831,6 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-
-
-
-
-async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    user_id = user.id
-    chat_type = update.effective_chat.type
-
-    # ✅ Private chat restriction
-    if chat_type == "private":
-        try:
-            user_data = await get_user(user_id)
-            plan = user_data.get("plan", "Free") if user_data else "Free"
-            credits = user_data.get("credits", 0) if user_data else 0
-        except Exception as e:
-            print(f"[mchk_command] DB error for user {user_id}: {e}")
-            await update.effective_message.reply_text(
-                "❌ Error fetching your account info. Try again later."
-            )
-            return
-
-        # Block if no active plan or no credits
-        if plan.lower() == "free" or credits <= 0:
-            await update.effective_message.reply_text(
-                "🚫 You cannot use this command in private chat.\n"
-                "👉 You need an active paid plan with credits.\n"
-                "💳 or use for free in our group."
-            )
-            return
-
-    else:
-        # ✅ In groups — anyone can run, but still needs credits
-        try:
-            user_data = await get_user(user_id)
-            credits = user_data.get("credits", 0) if user_data else 0
-        except Exception as e:
-            print(f"[mchk_command] DB error for user {user_id}: {e}")
-            await update.effective_message.reply_text(
-                "❌ Error fetching your account info. Try again later."
-            )
-            return
-
-        if credits <= 0:
-            await update.effective_message.reply_text(
-                "❌ You have no credits left. Please buy a plan to get more credits."
-            )
-            return
-
-    # ✅ enforce cooldown
-    if not await enforce_cooldown(user_id, update):
-        return
-
-    # ✅ consume 1 credit
-    if not await consume_credit(user_id):
-        await update.effective_message.reply_text(
-            "❌ You have no credits left. Please buy a plan to get more credits."
-        )
-        return
-
-    # ✅ extract raw cards
-    raw_cards = ""
-    if context.args:
-        raw_cards = " ".join(context.args)
-    elif update.effective_message.reply_to_message and update.effective_message.reply_to_message.text:
-        raw_cards = update.effective_message.reply_to_message.text
-
-    if not raw_cards.strip():
-        await update.effective_message.reply_text("⚠️ Usage: /mchk number|mm|yy|cvv")
-        return
-
-    # ✅ card regex
-    card_pattern = re.compile(r"(\d{13,16}\|\d{1,2}\|(?:\d{2}|\d{4})\|\d{3,4})")
-    card_lines = card_pattern.findall(raw_cards)
-
-    if not card_lines:
-        await update.effective_message.reply_text(
-            "⚠️ Please provide at least one card in the format: number|mm|yy|cvv."
-        )
-        return
-
-    # ✅ limit 10
-    cards_to_check = card_lines[:10]
-    if len(card_lines) > 10:
-        await update.effective_message.reply_text(
-            "⚠️ Only 10 cards are allowed. Checking the first 10 now."
-        )
-
-    # ✅ initial processing message
-    processing_msg = await update.effective_message.reply_text("🔎𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜...")
-    start_time = time.time()
-
-    # ✅ run background task
-    task = asyncio.create_task(
-        check_cards_background(cards_to_check, user_id, user.first_name, processing_msg, start_time),
-        name="card_checker"
-    )
-
-    task.add_done_callback(
-        lambda t: t.exception() and print(f"[mchk] Background error: {t.exception()}")
-    )
 
 
 
