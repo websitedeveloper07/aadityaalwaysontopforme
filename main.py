@@ -1692,22 +1692,25 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Update last command time if passed checks
     user_last_command_time[user_id] = current_time
 
-
-
+    # Collect cards
     cards = []
     if context.args:
         cards = context.args
-    elif update.message.reply_to_message:
-        replied_text = update.message.reply_to_message.text
-        if replied_text:
-            cards = extract_cards_from_text(replied_text)
-    
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        cards = extract_cards_from_text(update.message.reply_to_message.text)
+
     if not cards:
         await update.message.reply_text(
             "Usage: <code>/mchk card1|mm|yy|cvv ...</code> or reply to a message containing cards.", 
             parse_mode="HTML"
         )
         return
+
+    # Initial reply
+    msg = await update.message.reply_text("<b>Starting mass check in background...</b>", parse_mode="HTML")
+
+    # Spawn the worker in background
+    asyncio.create_task(run_mass_check(msg, cards, user_id))
 
     total = len(cards)
     if total == 0:
