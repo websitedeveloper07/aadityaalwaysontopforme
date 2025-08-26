@@ -1611,7 +1611,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 import asyncio
 import aiohttp
 import time
@@ -1624,8 +1623,8 @@ CONCURRENCY = 5
 UPDATE_INTERVAL = 3  # seconds
 
 def escape_md(text: str) -> str:
-    """Escape all special characters for MarkdownV2"""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+    """Escape all MarkdownV2 special characters"""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!|])', r'\\\1', text)
 
 async def check_card(session, card: str):
     """Send card to API and return formatted result and status type"""
@@ -1633,10 +1632,12 @@ async def check_card(session, card: str):
         async with session.get(API_URL_TEMPLATE + card) as resp:
             data = await resp.json()
         status = data.get("status", "Unknown")
+        card_escaped = escape_md(card)
+        status_escaped = escape_md(status)
         if status.lower() == "approved":
-            return f"`{escape_md(card)}`\n***{escape_md(status)} ✅***", "approved"
+            return f"`{card_escaped}`\n***{status_escaped} ✅***", "approved"
         else:
-            return f"`{escape_md(card)}`\n**{escape_md(status)} ❌**", "declined"
+            return f"`{card_escaped}`\n**{status_escaped} ❌**", "declined"
     except:
         return f"`{escape_md(card)}`\n**Error ❌**", "error"
 
@@ -1652,8 +1653,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_time = time.time()
 
     # Escape initial message
-    safe_text = escape_md("Starting mass check...")
-    msg = await update.message.reply_text(safe_text, parse_mode="MarkdownV2")
+    msg = await update.message.reply_text(escape_md("Starting mass check..."), parse_mode="MarkdownV2")
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
@@ -1684,9 +1684,11 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
                 f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n{separator}\n"
             )
-            await msg.edit_text(header + f"\n{separator}\n".join(results), parse_mode="MarkdownV2")
+            # Escape each result before joining
+            safe_results = [r for r in results]
+            await msg.edit_text(header + f"\n{separator}\n".join(safe_results), parse_mode="MarkdownV2")
 
-        # Final update after all tasks complete
+        # Final update
         elapsed = round(time.time() - start_time, 2)
         header = (
             f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
@@ -1697,9 +1699,6 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n{separator}\n"
         )
         await msg.edit_text(header + f"\n{separator}\n".join(results), parse_mode="MarkdownV2")
-
-
-
 
 
 
