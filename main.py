@@ -1758,6 +1758,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
     semaphore = asyncio.Semaphore(5)  # limit to 5 concurrent requests
 
+    # Function to format API status into styled text
     def format_status(api_status: str) -> str:
         try:
             status_text = api_status.upper()
@@ -1828,7 +1829,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
             status_text = format_status(api_response_clean)
 
-            # Count stats
+            # Update counters
             api_response_lower = api_response_clean.lower()
             if "approved" in api_response_lower:
                 approved_count += 1
@@ -1839,6 +1840,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(status_text, version=2)}"
 
+    # Run all card checks concurrently
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
         update_interval = 3
@@ -1848,6 +1850,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
+            # Periodically update Telegram message
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 current_summary = (
@@ -1887,6 +1890,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 
