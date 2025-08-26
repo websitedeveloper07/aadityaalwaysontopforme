@@ -3293,6 +3293,46 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
 
 
+from telegram import Update
+from telegram.ext import CommandHandler, ContextTypes
+from gate import run_gateway_scan
+
+
+async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Expect URLs passed after command, e.g. /gate https://example.com
+    if not context.args:
+        await update.message.reply_text("Usage: /gate <url1> <url2> ...")
+        return
+
+    urls = context.args
+    await update.message.reply_text(f"🔍 Scanning {len(urls)} URLs, please wait...")
+
+    results = run_gateway_scan(urls)
+
+    if not results:
+        await update.message.reply_text("❌ No gateways found (or blocked by security).")
+        return
+
+    # Format results nicely
+    reply_lines = []
+    for entry in results:
+        reply_lines.append(
+            f"🌐 {entry['url']}\n"
+            f"💳 Gateways: {', '.join(entry['gateways'])}\n"
+            f"Captcha: {'Yes' if entry['captcha'] else 'No'} | "
+            f"Cloudflare: {'Yes' if entry['cloudflare'] else 'No'}\n"
+            f"{'-'*30}"
+        )
+
+    # Telegram messages max 4096 chars → split if needed
+    text = "\n".join(reply_lines)
+    for i in range(0, len(text), 4000):
+        await update.message.reply_text(text[i:i+4000])
+
+
+
+
+
 
 import asyncio
 import re
@@ -4259,6 +4299,7 @@ def main():
     application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
+    application.add_handler(CommandHandler("gate", gate_command))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
     application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
 
