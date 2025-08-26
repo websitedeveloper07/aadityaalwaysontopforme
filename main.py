@@ -1927,20 +1927,30 @@ async def check_card(session, card: str):
     try:
         async with session.get(API_URL_TEMPLATE + card, timeout=50) as resp:
             data = await resp.json()
-        status = data.get("status", "Unknown")
 
-        if status.lower() == "approved":
-            formatted_status = f"<b><i>{status} ✅</i></b>"
+        status = str(data.get("status", "Unknown")).lower()
+
+        # Normalize status outputs
+        if "approved" in status:
+            formatted_status = "<b><i>Approved ✅</i></b>"
             return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "approved"
-        elif status.lower() == "unknown":
-            formatted_status = f"<i>{status} 🚫</i>"
+
+        elif "declined" in status:
+            formatted_status = "<i>Declined ❌</i>"
             return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "declined"
+
+        elif "unknown" in status:
+            formatted_status = "<i>Unknown 🚫</i>"
+            return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "declined"
+
         else:
-            formatted_status = f"<i>{status} ❌</i>"
+            formatted_status = f"<i>{data.get('status', 'Error')} ❌</i>"
             return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "declined"
+
     except (aiohttp.ClientError, asyncio.TimeoutError):
         formatted_status = "<b><i>Error: Network ❌</i></b>"
         return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "error"
+
     except Exception:
         formatted_status = "<b><i>Error: Unknown ❌</i></b>"
         return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "error"
@@ -2213,55 +2223,50 @@ from telegram.constants import ParseMode
 # Assuming these functions are defined elsewhere in your project
 # from your_module import check_paid_access, enforce_cooldown
 
-# ─── Utility Function ──────────────────────────────
-def normalize_status_text(s: str) -> str:
-    """Normalizes various unicode and stylistic characters to standard ASCII and converts to uppercase."""
-    mapping = {
-        '𝐀':'A','𝐁':'B','𝐂':'C','𝐃':'D','𝐄':'E','𝐅':'F','𝐆':'G','𝐇':'H','𝐈':'I','𝐉':'J',
-        '𝐊':'K','𝐋':'L','𝗠':'M','𝐍':'N','𝐎':'O','𝐏':'P','𝐐':'Q','𝐑':'R','𝐒':'S','𝐓':'T',
-        '𝐔':'U','𝐕':'V','𝐖':'W','𝐗':'X','𝐘':'Y','𝐙':'Z',
-        '𝐚':'a','𝐛':'b','𝐜':'c','𝐝':'d','𝐞':'e','𝐟':'f','𝐠':'g','𝐡':'h','𝐢':'i','𝐣':'j',
-        '𝐤':'k','𝐥':'l','𝐦':'m','𝐧':'n','𝐨':'o','𝐩':'p','𝐪':'q','𝐫':'r','𝐬':'s','𝐭':'t',
-        '𝐮':'u','𝐯':'v','𝐰':'w','𝐱':'x','𝐲':'y','𝐳':'z',
-        '𝗔':'A','𝗕':'B','𝗖':'C','𝗗':'D','𝗘':'E','𝗙':'F','𝗚':'G','𝗛':'H','𝗜':'I','𝗝':'J',
-        '𝗞':'K','𝗟':'L','𝗠':'M','𝗡':'N','𝗢':'O','𝗣':'P','𝗤':'Q','𝗥':'R','𝗦':'S','𝗧':'T',
-        '𝗨':'U','𝗩':'𝗩','𝗪':'W','𝗫':'X','𝗬':'Y','𝗭':'Z',
-        '𝗮':'a','𝗯':'b','𝗰':'c','𝗱':'d','𝗲':'e','𝗳':'f','𝗴':'g','𝗵':'h','𝗶':'i','𝗷':'j',
-        '𝗸':'k','𝗹':'l','𝗺':'m','𝗻':'o','𝗼':'o','𝗽':'p','𝗾':'q','𝗿':'r','𝘀':'s','𝘁':'t',
-        '𝘂':'u','𝘃':'v','𝘄':'w','𝘅':'x','𝘆':'y','𝘇':'z',
-        '𝟑':'3',
-        '𝑨':'A', '✅':'', '❎':'', '❌':'', '❗':''
-    }
-    s = s.strip()
-    return "".join(mapping.get(char, char) for char in s).upper()
-
 # ─── /mtchk Handler ──────────────────────────────
 import os
 import asyncio
-from telegram import Update
+import json
+import re
+import aiohttp
+from telegram import Update, InputFile
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
+# === Normalize status text like /mchk & /mass ===
+def normalize_status_text(api_status: str) -> str:
+    try:
+        lower_status = api_status.lower()
+        if "approved" in lower_status or "live" in lower_status:
+            return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+        elif "declined" in lower_status or "insufficient" in lower_status:
+            return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        elif "ccn" in lower_status:
+            return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
+        elif "3ds" in lower_status or "redirect" in lower_status:
+            return "⚠️ 𝟯𝗗𝗦"
+        elif "error" in lower_status:
+            return "❌ 𝗘𝗥𝗥𝗢𝗥"
+        else:
+            return "❓ 𝗨𝗡𝗞𝗡𝗢𝗪𝗡"
+    except Exception:
+        return "❓ 𝗨𝗡𝗞𝗡𝗢𝗪𝗡"
+        
+# ─── /mtchk Command ──────────────────────────────
 async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat = update.effective_chat
 
-    # ✅ Authorization (group/private logic + credits)
     if not await check_mtchk_access(user_id, chat, update):
         return
 
-    # ✅ Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-
-
-    # ✅ Deduct 1 credit for this file
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You don’t have enough credits.")
         return
 
-    
-    # ✅ Ensure a .txt file is attached or replied to
     document = update.message.document or (
         update.message.reply_to_message and update.message.reply_to_message.document
     )
@@ -2273,7 +2278,6 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Only txt files are supported.")
         return
 
-    # ✅ Download file
     file_path = f"input_cards_{user_id}.txt"
     try:
         file = await context.bot.get_file(document.file_id)
@@ -2282,7 +2286,6 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Failed to download file: {e}")
         return
 
-    # ✅ Read and clean up file
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             cards = [line.strip() for line in f if line.strip()]
@@ -2293,38 +2296,26 @@ async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if os.path.exists(file_path):
             os.remove(file_path)
 
-    # ✅ Validate card count
     if len(cards) > 50:
         await update.message.reply_text("⚠️ Maximum 50 cards allowed per file.")
         return
 
-    # ✅ Initial progress message
-    estimated_time = max(len(cards) / 7, 1)  # assume 10 cards in parallel
-    try:
-        processing_msg = await update.message.reply_text(
-            f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {len(cards)} | ⌚𝐄𝐬𝐭𝐢𝐦𝐚𝐭𝐞𝐝 𝐓𝐢𝐦𝐞 ➼ ~{estimated_time:.0f}s\n"
-            f"✦━━━━━━━━━━✦\n"
-            f"▌ [□□□□□□□□□□] 0/{len(cards)} ▌\n"
-            f"✦━━━━━━━━━━━━━━━━━━━✦"
-        )
-    except Exception as e:
-        await update.message.reply_text(f"❌ Failed to send progress message: {e}")
-        return
+    estimated_time = max(len(cards) / 7, 1)
+    processing_msg = await update.message.reply_text(
+        f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
+        f"💳𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {len(cards)} | ⌚𝐄𝐬𝐭𝐢𝐦𝐚𝐭𝐞𝐝 𝐓𝐢𝐦𝐞 ➼ ~{estimated_time:.0f}s\n"
+        f"✦━━━━━━━━━━✦\n"
+        f"▌ [□□□□□□□□□□] 0/{len(cards)} ▌\n"
+        f"✦━━━━━━━━━━━━━━━━━━━✦"
+    )
 
-    # ✅ Launch background check
     asyncio.create_task(
         background_check_multi(update, context, cards, processing_msg),
         name=f"mtchk_user_{user_id}"
     )
 
-
 # ─── Background Task ──────────────────────────────
 async def background_check_multi(update, context, cards, processing_msg):
-    """
-    Performs the background card check and handles all status updates and file output.
-    This version processes cards in parallel with robust error handling.
-    """
     results = []
     approved = 0
     declined = 0
@@ -2348,16 +2339,12 @@ async def background_check_multi(update, context, cards, processing_msg):
                 timeout=45
             ) as resp:
                 text_data = await resp.text()
-
-                # Attempt to parse JSON
                 try:
                     json_data = json.loads(text_data)
                     status_text = json_data.get("status", "Unknown")
                 except (json.JSONDecodeError, KeyError):
                     status_text = text_data.strip()
-                
                 return card, status_text
-
         except Exception as e:
             return card, f"Error: {str(e)}"
 
@@ -2365,7 +2352,6 @@ async def background_check_multi(update, context, cards, processing_msg):
         filled_len = round((current_count / total) * 10)
         empty_len = 10 - filled_len
         bar = "■" * filled_len + "□" * empty_len
-        
         progress_text = (
             f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
             f"💳𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {total} | ✅𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➼ {current_count}/{total}\n"
@@ -2383,26 +2369,27 @@ async def background_check_multi(update, context, cards, processing_msg):
         tasks = [check_card_with_semaphore(session, card, semaphore) for card in cards]
 
         for i, task in enumerate(asyncio.as_completed(tasks)):
-            card, status_text = await task
-            
-            normalized_status = normalize_status_text(status_text)
+            card, raw_status = await task
+            styled_status = normalize_status_text(raw_status)
 
-            # Check for the specific statuses in order of priority
-            if "✅" in status_text:
+            # Increment counters based on styled status
+            if "✅" in styled_status:
                 approved += 1
-            elif "❌" in status_text:
+            elif "❌" in styled_status and "𝗘𝗥𝗥𝗢𝗥" not in styled_status:
                 declined += 1
-            elif "CCN LIVE" in normalized_status:  # Prioritize CCN Live check
+            elif "𝗖𝗖𝗡" in styled_status:
                 ccn_live += 1
-            elif "❎" in status_text:  # Check for 3DS only if not CCN Live
+            elif "𝟯𝗗𝗦" in styled_status:
                 threed += 1
             else:
                 unknown += 1
-            
-            results.append(f"{card} -> {status_text}")
-            
+
+            # ✅ Write same stylish response as /mchk & /mass
+            results.append(f"{card} → {styled_status}")
+
             await update_progress(len(results))
 
+    # Save file
     output_filename = "checked.txt"
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(results))
@@ -2436,6 +2423,7 @@ async def background_check_multi(update, context, cards, processing_msg):
         os.remove(output_filename)
     except Exception:
         pass
+
 
 
 import aiohttp
