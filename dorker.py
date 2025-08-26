@@ -297,54 +297,21 @@ def detect_tech_stack(html_text: str):
         "design": ", ".join(set(design_found)) if design_found else "None",
     }
 
-def create_local_driver():
-    """
-    Create and return a new headless Chrome Selenium driver with stealth settings.
-    """
-    chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-logging")
-    chrome_options.add_argument("--disable-dev-tools")
-    chrome_options.add_argument("--disable-software-rasterizer")
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 
-    # Make the language explicitly English, helps reduce local disclaimers => @Mod_By_Kamal
-    chrome_options.add_argument("--lang=en-US")
+chrome_path = "/usr/bin/chromium-browser"
+driver_path = "/usr/bin/chromedriver"
 
-    # Prevent some automated detection => @Mod_By_Kamal
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+options = webdriver.ChromeOptions()
+options.binary_location = chrome_path
+options.add_argument("--headless")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
 
-    # Make sure Chrome is installed at this path: => @Mod_By_Kamal
-    chrome_options.binary_location = "/usr/bin/google-chrome"
+service = Service(driver_path)
+driver = webdriver.Chrome(service=service, options=options)
 
-    chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_experimental_option("useAutomationExtension", False)
-
-    service = ChromeService(executable_path='/usr/local/bin/chromedriver')
-    local_driver = webdriver.Chrome(service=service, options=chrome_options)
-
-    # Apply stealth settings => @Mod_By_Kamal
-    stealth(
-        local_driver,
-        user_agent=(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/110.0.5481.105 Safari/537.36"
-        ),
-        languages=["en-US", "en"],
-        vendor="Google Inc.",
-        platform="Win32",
-        webgl_vendor="Intel Inc.",
-        renderer="Intel Iris OpenGL Engine",
-        fix_hairline=True,
-    )
-
-    local_driver.set_page_load_timeout(20)
-    return local_driver
 
 def click_google_consent_if_needed(driver, wait_seconds=2):
     """
