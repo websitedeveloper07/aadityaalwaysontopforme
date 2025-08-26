@@ -1748,7 +1748,7 @@ import asyncio
 import aiohttp
 import time
 import re
-from telegram import ParseMode
+from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
