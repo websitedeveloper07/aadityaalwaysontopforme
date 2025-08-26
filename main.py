@@ -1616,6 +1616,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 import aiohttp
 import time
+import re
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
@@ -1623,17 +1624,23 @@ API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autost
 CONCURRENCY = 5
 UPDATE_INTERVAL = 3  # seconds
 
+def escape_md(text):
+    """
+    Escape text for MarkdownV2
+    """
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+
 async def check_card(session, card):
     try:
         async with session.get(API_URL_TEMPLATE + card) as resp:
             data = await resp.json()
         status = data.get("status", "Unknown")
         if status.lower() == "approved":
-            return f"`{card}`\n***{status} ✅***", "approved"
+            return f"`{escape_md(card)}`\n***{escape_md(status)} ✅***", "approved"
         else:
-            return f"`{card}`\n**{status} ❌**", "declined"
+            return f"`{escape_md(card)}`\n**{escape_md(status)} ❌**", "declined"
     except:
-        return f"`{card}`\n**Error ❌**", "error"
+        return f"`{escape_md(card)}`\n**Error ❌**", "error"
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -1687,6 +1694,8 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s\n──────── ⸙ ─────────\n"
         )
         await msg.edit_text(header + "\n──────── ⸙ ─────────\n".join(results), parse_mode="MarkdownV2")
+
+
 
 
 
