@@ -1620,6 +1620,45 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from telegram.error import TelegramError
 from db import get_user, update_user  # your async DB functions
 
+
+
+
+# --- PLAN VALIDATION ---
+async def has_active_paid_plan(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if not user_data:
+        return False
+
+    plan = str(user_data.get("plan", "Free"))
+    expiry = user_data.get("plan_expiry", "N/A")
+
+    if plan.lower() == "free":
+        return False
+
+    if expiry != "N/A":
+        try:
+            expiry_date = datetime.strptime(expiry, "%d-%m-%Y")
+            if expiry_date < datetime.now():
+                return False
+        except Exception:
+            return False
+    return True
+
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    user_id = update.effective_user.id
+    chat_type = update.effective_chat.type
+
+    if user_id == OWNER_ID:
+        return True
+
+    if not await has_active_paid_plan(user_id):
+        await update.effective_message.reply_text(
+            "🚫 You need an *active paid plan* to use this command.\n💳 or use for free in our group."
+        )
+        return False
+    return True
+    
+
 async def consume_credit(user_id: int) -> bool:
     try:
         user_data = await get_user(user_id)
@@ -1736,52 +1775,77 @@ async def run_mass_check(msg, cards, user_id):
         await asyncio.gather(*tasks, consumer())
 
 
+import time
+import asyncio
+import logging
+from telegram import Update
+from telegram.ext import ContextTypes
+
+# Cooldown settings
+RATE_LIMIT_SECONDS = 5
+user_last_command_time = {}  # {user_id: last_time}
+
+# --- /mchk Command Handler ---
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     current_time = time.time()
 
-    # 5 sec cooldown check
-    if user_id in user_last_command_time:
-        elapsed = current_time - user_last_command_time[user_id]
-        if elapsed < RATE_LIMIT_SECONDS:
-            remaining = round(RATE_LIMIT_SECONDS - elapsed, 2)
+    try:
+        # --- Step 1: Plan validation ---
+        if not await check_authorization(update, context):
+            return  # unauthorized users stop here
+
+        # --- Step 2: 5s cooldown check ---
+        if user_id in user_last_command_time:
+            elapsed = current_time - user_last_command_time[user_id]
+            if elapsed < RATE_LIMIT_SECONDS:
+                remaining = round(RATE_LIMIT_SECONDS - elapsed, 2)
+                await update.message.reply_text(
+                    f"⚠️ Please wait <b>{remaining}</b> seconds before using /mchk again.",
+                    parse_mode="HTML"
+                )
+                return
+
+        # --- Step 3: Credit check ---
+        has_credit = await consume_credit(user_id)
+        if not has_credit:
             await update.message.reply_text(
-                f"⚠️ Please wait <b>{remaining}</b> seconds before using /mchk again.",
+                "❌ You don’t have enough credits to use <b>/mchk</b>.",
                 parse_mode="HTML"
             )
             return
 
-    # Credit check
-    has_credit = await consume_credit(user_id)
-    if not has_credit:
-        await update.message.reply_text(
-            "❌ You don’t have enough credits to use <b>/mchk</b>.",
-            parse_mode="HTML"
-        )
-        return
+        # Update last command time
+        user_last_command_time[user_id] = current_time
 
-    # Update last command time
-    user_last_command_time[user_id] = current_time
+        # --- Step 4: Collect cards ---
+        cards = []
+        if context.args:
+            cards = context.args
+        elif update.message.reply_to_message and update.message.reply_to_message.text:
+            cards = extract_cards_from_text(update.message.reply_to_message.text)
 
-    # Collect cards
-    cards = []
-    if context.args:
-        cards = context.args
-    elif update.message.reply_to_message and update.message.reply_to_message.text:
-        cards = extract_cards_from_text(update.message.reply_to_message.text)
+        if not cards:
+            await update.message.reply_text(
+                "❌ No cards found.\nUsage: <code>/mchk card1|mm|yy|cvv ...</code>\n"
+                "Or reply to a message containing cards.", 
+                parse_mode="HTML"
+            )
+            return
 
-    if not cards:
-        await update.message.reply_text(
-            "Usage: <code>/mchk card1|mm|yy|cvv ...</code> or reply to a message containing cards.", 
-            parse_mode="HTML"
-        )
-        return
+        # --- Step 5: Send immediate processing message ---
+        msg = await update.message.reply_text("⏳ <b>Processing your cards...</b>", parse_mode="HTML")
 
-    # Step 1: Send processing message (immediate response)
-    msg = await update.message.reply_text("⏳ <b>Processing your cards...</b>", parse_mode="HTML")
+        # --- Step 6: Run background task (non-blocking) ---
+        asyncio.create_task(run_mass_check(msg, cards, user_id))
 
-    # Step 2: Run the checker in background
-    asyncio.create_task(run_mass_check(msg, cards, user_id))
+    except Exception as e:
+        logging.error(f"[mchk_command] Error: {e}", exc_info=True)
+        try:
+            await update.message.reply_text("⚠️ An unexpected error occurred while processing your request.")
+        except Exception:
+            pass
+
 
 
 
