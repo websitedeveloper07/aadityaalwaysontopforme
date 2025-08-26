@@ -1456,7 +1456,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         api_status = (data.get("status") or "Unknown").strip()
 
-        # Status formatting
+# Status formatting
 status_text = api_status.upper()
 
 lower_status = api_status.lower()
@@ -1469,14 +1469,23 @@ elif "ccn live" in lower_status:
         status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
 elif "incorrect" in lower_status or "your number" in lower_status:
         status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
-elif "3ds" in lower_status:
+elif "3ds" in lower_status or "auth required" in lower_status:
         status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
 elif "insufficient funds" in lower_status:
         status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
 elif "expired" in lower_status:
         status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
+elif "stolen" in lower_status:
+        status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
+elif "pickup card" in lower_status:
+        status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
+elif "fraudulent" in lower_status:
+        status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
+elif "generic decline" in lower_status:
+        status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
 else:
         status_text = api_status.upper()  # fallback
+
 
         
         header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
