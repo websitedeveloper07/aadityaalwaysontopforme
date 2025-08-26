@@ -1753,6 +1753,10 @@ from telegram.helpers import escape_markdown
 
 # === Helper: Format API status into styled text ===
 def format_status(api_status: str) -> str:
+    """
+    Formats the raw API status string into a more readable, emoji-styled text
+    for Telegram display.
+    """
     try:
         lower_status = api_status.lower()
         if "approved" in lower_status:
@@ -1782,12 +1786,17 @@ def format_status(api_status: str) -> str:
     except Exception:
         return "❌ ERROR ❌"
 
-# === Main async checker ===
+# ---
+## Main Async Checker
+---
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
+    """
+    Asynchronously checks a list of credit cards against an API and provides
+    real-time status updates via Telegram message edits.
+    """
     approved_count = declined_count = checked_count = error_count = 0
     results = []
     total_cards = len(cards_to_check)
-
     semaphore = asyncio.Semaphore(5)  # limit concurrent requests
 
     async def check_card(session, raw):
@@ -1811,6 +1820,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 async with session.get(api_url, timeout=45) as resp:
                     if resp.status != 200:
                         raise Exception(f"HTTP {resp.status}")
+                    
                     try:
                         data = await resp.json()
                     except Exception as e:
@@ -1823,7 +1833,9 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             api_response = data.get("status", "Unknown")
             api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
-            status_text = format_status(api_response_clean)  # ✅ Apply formatting
+            
+            # The formatted status text from your function
+            status_text = format_status(api_response_clean)  
 
             # Count stats
             api_response_lower = api_response_clean.lower()
@@ -1833,8 +1845,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 declined_count += 1
 
             checked_count += 1
-
-            return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(status_text, version=2)}"
+            
+            # This is the key line. We must escape the card number and the surrounding
+            # text, but leave the `status_text` unescaped so its formatting is preserved.
+            return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
 
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
@@ -1850,10 +1864,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 current_summary = (
                     f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                     f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
-                    f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝗲𝗱↣{approved_count}\n"
-                    f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
-                    f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count}\n"
-                    f"✘ 𝐓𝐢𝗺𝗲↣{round(time.time() - start_time, 2)}s\n"
+                    f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+                    f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+                    f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
+                    f"✘ 𝐓𝐢𝐦𝐞↣{round(time.time() - start_time, 2)}s\n"
                     f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
                 try:
@@ -1862,27 +1876,32 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                         "\n──────── ⸙ ─────────\n".join(results),
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
-                except Exception:
+                except Exception as e:
+                    print(f"Error updating message: {e}")  # For debugging
                     pass
 
     # Final summary
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
-        f"✘ 𝐂𝐡𝐞𝗰𝐤𝗲𝗱↣{checked_count}\n"
-        f"✘ 𝐀𝐩𝗽𝗿𝗼𝗏𝗲𝗱↣{approved_count}\n"
-        f"✘ 𝐃𝐞𝗰𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
-        f"✘ 𝐄𝗿𝗿𝗼𝗿↣{error_count}\n"
-        f"✘ 𝐓𝗶𝗺𝗲↣{final_time_taken}s\n"
+        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{checked_count}\n"
+        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{approved_count}\n"
+        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{declined_count}\n"
+        f"✘ 𝐄𝐫𝐫𝐨𝐫↣{error_count}\n"
+        f"✘ 𝐓𝐢𝐦𝐞↣{final_time_taken}s\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
-    await processing_msg.edit_text(
-        escape_markdown(final_summary, version=2) + "\n\n" +
-        "\n──────── ⸙ ─────────\n".join(results) +
-        "\n──────── ⸙ ─────────",
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
-
+    
+    # Final message assembly
+    try:
+        await processing_msg.edit_text(
+            escape_markdown(final_summary, version=2) + "\n\n" +
+            "\n──────── ⸙ ─────────\n".join(results) +
+            "\n──────── ⸙ ─────────",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except Exception as e:
+        print(f"Error sending final message: {e}")
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
