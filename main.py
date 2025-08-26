@@ -1626,12 +1626,6 @@ UPDATE_INTERVAL = 3  # seconds
 RATE_LIMIT_SECONDS = 5
 user_last_command_time = {}
 
-def escape_md(text: str) -> str:
-    """Escape all special characters for MarkdownV2."""
-    if not text:
-        return ""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', str(text))
-
 def extract_cards_from_text(text: str) -> list[str]:
     """Extracts card-like strings from a given text."""
     return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
@@ -1644,20 +1638,20 @@ async def check_card(session, card: str):
         status = data.get("status", "Unknown")
 
         if status.lower() == "approved":
-            formatted_status = f"*_{escape_md(status)} ✅_*"
-            return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "approved"
+            formatted_status = f"<b><i>{status} ✅</i></b>"
+            return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "approved"
         elif status.lower() == "unknown":
-            formatted_status = f"_{escape_md(status)} 🚫_"
-            return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "declined"
+            formatted_status = f"<i>{status} 🚫</i>"
+            return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "declined"
         else:
-            formatted_status = f"_{escape_md(status)} ❌_"
-            return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "declined"
+            formatted_status = f"<i>{status} ❌</i>"
+            return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "declined"
     except (aiohttp.ClientError, asyncio.TimeoutError):
-        formatted_status = "*_Error: Network ❌_*"
-        return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "error"
+        formatted_status = "<b><i>Error: Network ❌</i></b>"
+        return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "error"
     except Exception:
-        formatted_status = "*_Error: Unknown ❌_*"
-        return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "error"
+        formatted_status = "<b><i>Error: Unknown ❌</i></b>"
+        return f"<code>{card}</code>\n<b>Status ➳</b> {formatted_status}", "error"
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -1666,8 +1660,8 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in user_last_command_time and (current_time - user_last_command_time[user_id]) < RATE_LIMIT_SECONDS:
         remaining_time = round(RATE_LIMIT_SECONDS - (current_time - user_last_command_time[user_id]), 2)
         await update.message.reply_text(
-            f"Please wait `{escape_md(remaining_time)}` seconds before using this command again.", 
-            parse_mode="MarkdownV2"
+            f"Please wait <code>{remaining_time}</code> seconds before using this command again.", 
+            parse_mode="HTML"
         )
         return
     
@@ -1683,14 +1677,14 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not cards:
         await update.message.reply_text(
-            "Usage: `/mchk card1|mm|yy|cvv ...` or reply to a message containing cards.", 
-            parse_mode="MarkdownV2"
+            "Usage: <code>/mchk card1|mm|yy|cvv ...</code> or reply to a message containing cards.", 
+            parse_mode="HTML"
         )
         return
 
     total = len(cards)
     if total == 0:
-        await update.message.reply_text("No cards found in the message.", parse_mode="MarkdownV2")
+        await update.message.reply_text("No cards found in the message.", parse_mode="HTML")
         return
 
     results = ["Pending..."] * total
@@ -1700,7 +1694,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results_header = "𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸"
 
     try:
-        msg = await update.message.reply_text(escape_md("Starting mass check..."), parse_mode="MarkdownV2")
+        msg = await update.message.reply_text("<b>Starting mass check...</b>", parse_mode="HTML")
     except TelegramError as e:
         print(f"Failed to send initial message: {e}")
         return
@@ -1722,43 +1716,42 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await asyncio.sleep(UPDATE_INTERVAL)
             
             elapsed = round(time.time() - start_time, 2)
-            elapsed_escaped = escape_md(elapsed)
 
             header = (
-                f"✘ 𝐓𝐨𝐭𝐚𝐥↣{escape_md(total)}\n"
-                f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{escape_md(counters['checked'])}\n"
-                f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{escape_md(counters['approved'])}\n"
-                f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{escape_md(counters['declined'])}\n"
-                f"✘ 𝐄𝐫𝐫𝐨𝐫↣{escape_md(counters['error'])}\n"
-                f"✘ 𝐓𝐢𝐦𝐞↣{elapsed_escaped}s"
+                f"✘ <b>Total</b> ↣ {total}\n"
+                f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
+                f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
+                f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
+                f"✘ <b>Error</b> ↣ {counters['error']}\n"
+                f"✘ <b>Time</b> ↣ {elapsed}s"
             )
 
-            content = f"{header}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
+            content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
             
             try:
-                await msg.edit_text(content, parse_mode="MarkdownV2")
+                await msg.edit_text(content, parse_mode="HTML")
             except TelegramError as e:
                 print(f"Failed to edit message: {e}")
         
     # Final update after all tasks complete
     elapsed = round(time.time() - start_time, 2)
-    elapsed_escaped = escape_md(elapsed)
 
     header = (
-        f"✘ 𝐓𝐨𝐭𝐚𝐥↣{escape_md(total)}\n"
-        f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{escape_md(counters['checked'])}\n"
-        f"✘ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝↣{escape_md(counters['approved'])}\n"
-        f"✘ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝↣{escape_md(counters['declined'])}\n"
-        f"✘ 𝐄𝐫𝐫𝐨𝐫↣{escape_md(counters['error'])}\n"
-        f"✘ 𝐓𝐢𝐦𝐞↣{elapsed_escaped}s"
+        f"✘ <b>Total</b> ↣ {total}\n"
+        f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
+        f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
+        f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
+        f"✘ <b>Error</b> ↣ {counters['error']}\n"
+        f"✘ <b>Time</b> ↣ {elapsed}s"
     )
 
-    content = f"{header}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
+    content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
     
     try:
-        await msg.edit_text(content, parse_mode="MarkdownV2")
+        await msg.edit_text(content, parse_mode="HTML")
     except TelegramError as e:
         print(f"Failed to send final message: {e}")
+
 
 
 
