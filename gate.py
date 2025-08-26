@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # ---------------------------
 # Payment Gateways (expanded list)
 # ---------------------------
-PAYMENT_GATEWAYS = [
+PAYMENT_GATEWAYS = {
     "PayPal": [r"paypal\.com", r"paypalobjects", r"www\.paypal", r"paypal\.me", r"payflowlink"],
     "Stripe": [r"stripe\.com", r"stripe\.js", r"checkout\.stripe", r"api\.stripe", r"js\.stripe"],
     "Braintree": [r"braintreegateway\.com", r"braintreepayments\.com", r"client-token", r"braintree"],
@@ -290,7 +290,7 @@ PAYMENT_GATEWAYS = [
     "Handelsbanken (SE)": [r"handelsbanken", r"card\.handelsbanken"],
     "Zimpler (SE)": [r"zimpler\.com"],
     "Nordea (FI/SE)": [r"nordea\.com", r"nordea pay"],
-]
+}
 
 # ---------------------------
 # Captcha & Cloudflare Detection
