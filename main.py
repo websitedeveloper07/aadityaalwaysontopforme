@@ -1752,9 +1752,10 @@ from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
 # === Helper: Format API status into stylish text ===
+# Format status more robustly
 def format_status(api_status: str) -> str:
     try:
-        clean_status = api_status.strip().lower()
+        clean_status = str(api_status).strip().lower()  # normalize
         if "approved" in clean_status:
             return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
         elif "declined" in clean_status or "generic decline" in clean_status:
@@ -1776,7 +1777,8 @@ def format_status(api_status: str) -> str:
         elif "fraudulent" in clean_status:
             return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
         else:
-            return api_status.upper()
+            # fallback for unexpected capitalization
+            return api_status.upper()  # raw fallback
     except Exception:
         return "❌ ERROR ❌"
 
@@ -1818,7 +1820,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
 
             api_response = str(data.get("status", "Unknown")).strip()
-            status_text = format_status(api_response)  # Always apply stylish formatting
+            status_text = format_status(api_response)  # always map to stylish text
 
             # Update counts
             api_response_lower = api_response.lower()
