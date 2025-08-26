@@ -1829,6 +1829,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             except Exception as e:
                 checked_count += 1
                 error_count += 1
+                # Ensure card and error message are escaped
                 return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
 
             api_response = data.get("status", "Unknown")
@@ -1846,8 +1847,8 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             checked_count += 1
             
-            # This is the key line. We must escape the card number and the surrounding
-            # text, but leave the `status_text` unescaped so its formatting is preserved.
+            # Construct the line with proper escaping.
+            # The card number is escaped, but the styled status is not.
             return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
 
     async with aiohttp.ClientSession() as session:
@@ -1870,14 +1871,17 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"✘ 𝐓𝐢𝐦𝐞↣{round(time.time() - start_time, 2)}s\n"
                     f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
                 )
+                
+                message_text = escape_markdown(current_summary, version=2) + "\n\n" + \
+                               "\n──────── ⸙ ─────────\n".join(results)
+                
                 try:
                     await processing_msg.edit_text(
-                        escape_markdown(current_summary, version=2) + "\n\n" +
-                        "\n──────── ⸙ ─────────\n".join(results),
+                        message_text,
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 except Exception as e:
-                    print(f"Error updating message: {e}")  # For debugging
+                    print(f"Error updating message: {e}")
                     pass
 
     # Final summary
@@ -1893,11 +1897,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
     )
     
     # Final message assembly
+    final_message_text = escape_markdown(final_summary, version=2) + "\n\n" + \
+                         "\n──────── ⸙ ─────────\n".join(results) + \
+                         "\n──────── ⸙ ─────────"
+    
     try:
         await processing_msg.edit_text(
-            escape_markdown(final_summary, version=2) + "\n\n" +
-            "\n──────── ⸙ ─────────\n".join(results) +
-            "\n──────── ⸙ ─────────",
+            final_message_text,
             parse_mode=ParseMode.MARKDOWN_V2
         )
     except Exception as e:
