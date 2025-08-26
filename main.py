@@ -1661,13 +1661,11 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     current_time = time.time()
 
-    # Rate-limiting check
     if user_id in user_last_command_time and (current_time - user_last_command_time[user_id]) < RATE_LIMIT_SECONDS:
         remaining_time = round(RATE_LIMIT_SECONDS - (current_time - user_last_command_time[user_id]), 2)
         await update.message.reply_text(f"Please wait `{remaining_time}` seconds before using this command again.", parse_mode="MarkdownV2")
         return
     
-    # Update last command time for the user
     user_last_command_time[user_id] = current_time
 
     cards = []
@@ -1703,6 +1701,9 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     semaphore = asyncio.Semaphore(CONCURRENCY)
 
     async with aiohttp.ClientSession() as session:
+        # Create tasks for all cards at the beginning
+        tasks = [asyncio.create_task(worker(i, c)) for i, c in enumerate(cards)]
+        
         async def worker(idx, card):
             async with semaphore:
                 result_text, status = await check_card(session, card)
@@ -1711,18 +1712,14 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if status in counters:
                     counters[status] += 1
 
-        tasks = [worker(i, c) for i, c in enumerate(cards)]
-        pending = tasks
-
-        while pending:
-            done, pending = await asyncio.wait(tasks, timeout=UPDATE_INTERVAL, return_when=asyncio.FIRST_COMPLETED)
+        # Wait for all tasks to complete while periodically updating
+        while not all(task.done() for task in tasks):
+            await asyncio.sleep(UPDATE_INTERVAL)
             
             elapsed = round(time.time() - start_time, 2)
+            # **Final fix:** Explicitly escape the period in the float string
+            elapsed_escaped = str(elapsed).replace('.', '\\.')
             
-            # **Final Fix:** Directly escape the string representation of the float
-            # to handle the decimal point.
-            elapsed_escaped = escape_md(str(elapsed))
-
             header = (
                 f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
                 f"✘ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝↣{counters['checked']}\n"
@@ -1738,9 +1735,10 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await msg.edit_text(content, parse_mode="MarkdownV2")
             except TelegramError as e:
                 print(f"Failed to edit message: {e}")
-
+        
+    # Final update after all tasks complete
     elapsed = round(time.time() - start_time, 2)
-    elapsed_escaped = escape_md(str(elapsed))
+    elapsed_escaped = str(elapsed).replace('.', '\\.')
 
     header = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total}\n"
