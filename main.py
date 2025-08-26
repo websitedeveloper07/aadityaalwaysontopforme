@@ -1744,6 +1744,13 @@ async def consume_credit(user_id: int) -> bool:
 
 
 
+import asyncio
+import aiohttp
+import time
+import re
+from telegram import ParseMode
+from telegram.helpers import escape_markdown
+
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
@@ -1751,10 +1758,44 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
     semaphore = asyncio.Semaphore(5)  # limit to 5 concurrent requests
 
+    def format_status(api_status: str) -> str:
+        try:
+            status_text = api_status.upper()
+            lower_status = api_status.lower()
+
+            if "approved" in lower_status:
+                status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+            elif "declined" in lower_status:
+                status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+            elif "ccn live" in lower_status:
+                status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
+            elif "incorrect" in lower_status or "your number" in lower_status:
+                status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
+            elif "3ds" in lower_status or "auth required" in lower_status:
+                status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
+            elif "insufficient funds" in lower_status:
+                status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
+            elif "expired" in lower_status:
+                status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
+            elif "stolen" in lower_status:
+                status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
+            elif "pickup card" in lower_status:
+                status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
+            elif "fraudulent" in lower_status:
+                status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
+            elif "generic decline" in lower_status:
+                status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+            else:
+                status_text = api_status.upper()  # fallback
+        except Exception as e:
+            status_text = "❌ ERROR ❌"
+            print(f"Status formatting error: {e}")
+        return status_text
+
     async def check_card(session, raw):
         nonlocal approved_count, declined_count, checked_count, error_count
 
-        async with semaphore:  # acquire semaphore before running
+        async with semaphore:
             parts = raw.split("|")
             if len(parts) != 4:
                 checked_count += 1
@@ -1784,10 +1825,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 return f"❌ API Error for card `{cc_normalized}`: {escape_markdown(str(e) or 'Unknown', version=2)}"
 
             api_response = data.get("status", "Unknown")
-            api_response_clean = normalize_text(
-                re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
-            )
+            api_response_clean = re.sub(r'[\U00010000-\U0010ffff]', '', api_response).strip()
+            status_text = format_status(api_response_clean)
 
+            # Count stats
             api_response_lower = api_response_clean.lower()
             if "approved" in api_response_lower:
                 approved_count += 1
@@ -1796,10 +1837,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
 
             checked_count += 1
 
-            return (
-                f"`{cc_normalized}`\n"
-                f"𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(api_response_clean, version=2)}"
-            )
+            return f"`{cc_normalized}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {escape_markdown(status_text, version=2)}"
 
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
@@ -1849,6 +1887,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
 
 
 
