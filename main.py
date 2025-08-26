@@ -1723,8 +1723,15 @@ from telegram.helpers import escape_markdown
 # === FORMAT STATUS ===
 def format_status(api_status: str) -> str:
     try:
-        clean_status = str(api_status).strip().lower().replace("\n", "").replace("\r", "")
-        if "Approved" in clean_status:
+        clean_status = (
+            str(api_status)
+            .strip()
+            .lower()
+            .replace("\n", "")
+            .replace("\r", "")
+        )
+
+        if "approved" in clean_status:
             return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
         elif "declined" in clean_status or "generic decline" in clean_status:
             return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
@@ -1745,7 +1752,7 @@ def format_status(api_status: str) -> str:
         elif "fraudulent" in clean_status:
             return "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
         else:
-            return api_status.strip().upper()
+            return str(api_status).strip()
     except Exception:
         return "❌ ERROR ❌"
 
@@ -1790,7 +1797,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
                     f"{escape_markdown(str(e), version=2)}"
                 )
 
-            # Format API status
+            # Always use formatted status
             api_response = str(data.get("status", "Unknown")).strip()
             status_text = format_status(api_response)
 
@@ -1857,6 +1864,7 @@ async def check_cards_background(cards_to_check, user_id, user_first_name, proce
         + "\n──────── ⸙ ─────────",
         parse_mode=ParseMode.MARKDOWN_V2,
     )
+
 
 
 import asyncio
