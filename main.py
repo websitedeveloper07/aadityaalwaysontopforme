@@ -1626,7 +1626,6 @@ UPDATE_INTERVAL = 3  # seconds
 
 def escape_md(text: str) -> str:
     """Escape all special characters for MarkdownV2."""
-    # This regex correctly escapes all special characters for MarkdownV2.
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 async def check_card(session, card: str):
@@ -1638,17 +1637,25 @@ async def check_card(session, card: str):
 
         # Consistent status handling with lowercase and correct emojis.
         if status.lower() == "approved":
-            # Apply escape_md to the card number and status text
-            return f"`{escape_md(card)}`\n***{escape_md(status)} ✅***", "approved"
+            # Approved status: bold, italic, and green checkmark
+            formatted_status = f"*_{escape_md(status)} ✅_*"
+            return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "approved"
+        elif status.lower() == "unknown":
+            # Unknown status: italic and red cross
+            formatted_status = f"_{escape_md(status)}_ 🚫"
+            return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "declined"
         else:
-            # Apply escape_md to the card number and status text
-            return f"`{escape_md(card)}`\n**{escape_md(status)} ❌**", "declined"
+            # Declined or other status: italic and red cross
+            formatted_status = f"_{escape_md(status)}_ ❌"
+            return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "declined"
     except (aiohttp.ClientError, asyncio.TimeoutError):
         # Handle network-related errors gracefully.
-        return f"`{escape_md(card)}`\n**Error: Network ❌**", "error"
+        formatted_status = "_Error: Network_ ❌"
+        return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "error"
     except Exception:
         # Catch any other unexpected errors.
-        return f"`{escape_md(card)}`\n**Error: Unknown ❌**", "error"
+        formatted_status = "_Error: Unknown_ ❌"
+        return f"`{escape_md(card)}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {formatted_status}", "error"
 
 async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -1661,6 +1668,8 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
     start_time = time.time()
     separator = "──────── ⸙ ─────────"
+    # Header for the results section
+    results_header = "𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸"
 
     try:
         initial_message_text = escape_md("Starting mass check...")
@@ -1697,7 +1706,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s"
             )
 
-            content = f"{escape_md(header)}\n{escape_md(separator)}\n" + "\n".join(results)
+            content = f"{escape_md(header)}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
             
             try:
                 await msg.edit_text(content, parse_mode="MarkdownV2")
@@ -1715,7 +1724,7 @@ async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✘ 𝐓𝐢𝐦𝐞↣{elapsed}s"
     )
 
-    content = f"{escape_md(header)}\n{escape_md(separator)}\n" + "\n".join(results)
+    content = f"{escape_md(header)}\n\n{escape_md(results_header)}\n{escape_md(separator)}\n" + f"\n{escape_md(separator)}\n".join(results)
     
     try:
         await msg.edit_text(content, parse_mode="MarkdownV2")
