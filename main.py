@@ -21,7 +21,7 @@ from config import ADMIN_IDS
 # === CONFIGURATION ===
 # IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
 TOKEN = "8482235621:AAGoRfV7pFVAcXJxmSd0P4W2oKljXbJDv9s"
-OWNER_ID = 8473354074
+OWNER_ID = 8493360284
 
 
 
@@ -1130,7 +1130,7 @@ from telegram.helpers import escape_markdown as escape_markdown_v2
 async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Adds a specified number of credits to a user's account, restricted to a specific owner."""
     # Owner ID is hardcoded
-    OWNER_ID = 8473354074
+    OWNER_ID = 8493360284
 
     # Check if the user is the owner
     if update.effective_user.id != OWNER_ID:
@@ -2104,7 +2104,7 @@ from telegram.helpers import escape_markdown
 from db import get_user, update_user  # Your DB functions
 from config import AUTHORIZED_CHATS   # ✅ Add your group IDs here
 
-OWNER_ID = 8438505794
+OWNER_ID = 8493360284
 user_cooldowns = {}
 
 # ─── Authorization & Access for /mtchk ──────────────────────
@@ -3371,7 +3371,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 # ----------------- Telegram / Pyrogram Setup -----------------
 api_id = 17455551
 api_hash = "abde39d2fad230528b2695a14102b"
-session_string = "BQEKWb8ACc2FYhHSzyoYdunpOq7gFJtk3qYEGUUhcE3p8Ck9btBFstv_tna2p8fbYdFf3CpdZ984SyoZ6kgUoZ7zzhwzY1wyy3ZvmcXhweIiIPP-Q1YozoWXaKnHi6XXrd27SvQSz970qRUWikGjxe_yKzbGdbYsoeuClIrPNx_f6iMoinynAiIcOONnr70637TUojsQbFnbPGW2UUCGCDA6gLcYpFRiU1Epmuxq8AXELlX8jfTwkUdIfQQyMJ2TX28_sb4aDC9UhGmDphNiS6JTVDiYkbsh4YjxBLEVfp3uTOnS-gyv1-Zs4EEF8qSKKa_Dw0pypBGXkEqZaJ21x2UcRmCOXwAAAAH5DR9aAA"
+session_string = " AQEKWb8ALIRT21l166ckrq35t8deqYhhsi4NliqOgpKVINeOgzRxAK1hOIBvjBDddAQAWzWVkhIBoMAJvwGHk3Zjv3-ufHQdUGwRHYEk43-C88ZKlKaNNBc6DICCt8-SVWMZENIeS8hiWrh4svQtt18i9qCKsvOccqorXzBGaLXzGAACHNIu36V5s4On43OtabMbB7JziQ0BXZG4lVVedm7OV9_7fy7HE1WBmDnI8H2zTOjkC2N3FXxlidbBPf_TxKw033zAxBXwkaz2j1Xldzwdi6zJB_OOxMezvn5BLb-UmrcpvIephhQSvUt2ElMVEhnF6LY0xMf-y7plXGnifrJxHbeJUAAAAAHraX5JAA"
 
 pyro_client = Client(
     name="scraper_session",
@@ -3955,7 +3955,7 @@ import asyncpg
 from telegram import Update
 from telegram.ext import ContextTypes
 
-ADMIN_USER_ID = 8473354074  # Replace with your admin user ID
+ADMIN_USER_ID = 8493360284  # Replace with your admin user ID
 
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -4132,7 +4132,7 @@ from db import init_db
 
 # 🛡️ Security
 AUTHORIZED_CHATS = set()  # Groups you manually authorize
-OWNER_ID = 8473354074     # Replace with your Telegram user ID
+OWNER_ID = 8493360284    # Replace with your Telegram user ID
 
 # 🔑 Bot token
 BOT_TOKEN = "8482235621:AAGoRfV7pFVAcXJxmSd0P4W2oKljXbJDv9s"
