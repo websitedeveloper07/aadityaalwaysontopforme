@@ -20,7 +20,7 @@ from config import ADMIN_IDS
 
 # === CONFIGURATION ===
 # IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
-TOKEN = "7495157174:AAGGjnAegsJFuFbVp1i3neh6AiR360y3v6Y"
+TOKEN = "8482235621:AAGoRfV7pFVAcXJxmSd0P4W2oKljXbJDv9s"
 OWNER_ID = 8473354074
 
 
@@ -4135,7 +4135,7 @@ AUTHORIZED_CHATS = set()  # Groups you manually authorize
 OWNER_ID = 8473354074     # Replace with your Telegram user ID
 
 # 🔑 Bot token
-BOT_TOKEN = "7495157174:AAGGjnAegsJFuFbVp1i3neh6AiR360y3v6Y"
+BOT_TOKEN = "8482235621:AAGoRfV7pFVAcXJxmSd0P4W2oKljXbJDv9s"
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
