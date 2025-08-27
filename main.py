@@ -3363,7 +3363,7 @@ import asyncio
 import logging
 from datetime import datetime
 from pyrogram import Client
-from pyrogram.errors import UsernameInvalid, FloodWait, AuthKeyUnregistered, PeerIdInvalid
+from pyrogram.errors import UsernameInvalid, PeerIdInvalid, FloodWait, AuthKeyUnregistered
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
@@ -3371,7 +3371,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 # ----------------- Telegram / Pyrogram Setup -----------------
 api_id = 17455551
 api_hash = "abde39d2fad230528b2695a14102b"
-session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"  # replace with your valid user session string
+session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"
 
 pyro_client = Client(
     name="scraper_session",
@@ -3386,7 +3386,6 @@ MAX_SCRAP_LIMIT = 1000
 user_last_scr_time = {}
 
 CARD_REGEX = re.compile(r'\b(\d[ -]*?){13,16}\|(\d{2})\|(\d{2,4})\|(\d{3,4})\b', re.IGNORECASE)
-
 BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
 DEVELOPER_LINK = "[Developer](tg://resolve?domain=K4linuxxxx)"
 
@@ -3399,35 +3398,34 @@ def safe_md(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', str(text))
 
 async def consume_credit(user_id: int) -> bool:
-    # Placeholder: implement your DB credit check
+    # Implement your DB credit check here
     return True
 
-# ----------------- Scrap Command -----------------
 async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
     now = datetime.now()
 
-    # --- Cooldown check ---
+    # Cooldown check
     last_time = user_last_scr_time.get(user_id)
     if last_time and (now - last_time).total_seconds() < COOLDOWN_SECONDS:
         remaining = int(COOLDOWN_SECONDS - (now - last_time).total_seconds())
         await update.message.reply_text(f"⚠️ Please wait {remaining}s before using /scr again.")
         return
 
-    # --- Args check ---
+    # Args check
     if len(context.args) < 2:
-        await update.message.reply_text("⚠️ Usage: /scr [channel] [amount]")
+        await update.message.reply_text("⚠️ Usage: /scr [channel username] [amount]")
         return
 
-    # Normalize username (remove @ or https://t.me/)
+    # Normalize username
     channel_input = context.args[0]
     if channel_input.startswith("https://t.me/"):
         channel = channel_input.split("/")[-1]
     else:
-        channel = channel_input.lstrip("@")
+        channel = channel_input.lstrip("@").strip()
 
-    # Parse amount
+    # Amount parsing
     try:
         amount = int(context.args[1])
     except ValueError:
@@ -3447,16 +3445,13 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Initial progress message
     progress_msg = await update.message.reply_text(
-        text=f"⚡ Scraping {amount} cards from @{channel}, please wait…",
+        f"⚡ Scraping {amount} cards from @{channel}, please wait…",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-    # Start background task
-    asyncio.create_task(
-        scrap_cards_background(channel, amount, user_id, chat_id, context.bot, progress_msg, update.message.message_id)
-    )
+    # Start background scraping
+    asyncio.create_task(scrap_cards_background(channel, amount, user_id, chat_id, context.bot, progress_msg, update.message.message_id))
 
-# ----------------- Scrap Background -----------------
 async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg, reply_to_message_id):
     logging.info("Scrape started: channel=%s, amount=%s, user_id=%s", channel, amount, user_id)
     cards = []
@@ -3466,14 +3461,14 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         if not pyro_client.is_connected:
             await pyro_client.start()
 
-        # Verify channel
+        # Verify channel access
         try:
-            await pyro_client.get_chat(channel)
+            chat = await pyro_client.get_chat(channel)
         except (UsernameInvalid, PeerIdInvalid):
-            await bot.send_message(chat_id=chat_id, text=f"❌ Invalid channel @{channel}", reply_to_message_id=reply_to_message_id)
+            await bot.send_message(chat_id, f"❌ Invalid channel @{channel}", reply_to_message_id=reply_to_message_id)
             return
         except Exception:
-            await bot.send_message(chat_id=chat_id, text=f"❌ Cannot access @{channel}", reply_to_message_id=reply_to_message_id)
+            await bot.send_message(chat_id, f"❌ Cannot access @{channel}", reply_to_message_id=reply_to_message_id)
             return
 
         # Scrape messages
@@ -3527,15 +3522,12 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         )
 
     except FloodWait as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ FloodWait: {e.value}s", reply_to_message_id=reply_to_message_id)
+        await bot.send_message(chat_id, f"❌ FloodWait: {e.value}s", reply_to_message_id=reply_to_message_id)
     except AuthKeyUnregistered:
-        await bot.send_message(chat_id=chat_id, text="❌ Session string invalid. Get a new one.", reply_to_message_id=reply_to_message_id)
+        await bot.send_message(chat_id, "❌ Session string invalid. Get a new one.", reply_to_message_id=reply_to_message_id)
     except Exception as e:
-        await bot.send_message(chat_id=chat_id, text=f"❌ Unexpected error: {safe_md(str(e))}", parse_mode=ParseMode.MARKDOWN_V2, reply_to_message_id=reply_to_message_id)
+        await bot.send_message(chat_id, f"❌ Unexpected error: {safe_md(str(e))}", parse_mode=ParseMode.MARKDOWN_V2, reply_to_message_id=reply_to_message_id)
         logging.exception("Unexpected error")
-
-
-
 
 
 
