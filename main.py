@@ -26,7 +26,7 @@ OWNER_ID = 8493360284
 
 
 # --- New Configuration ---
-AUTHORIZATION_CONTACT = "@K4linuxxxx"
+AUTHORIZATION_CONTACT = "@Deadkiller72"
 OFFICIAL_GROUP_LINK = "https://t.me/+gtvJT4SoimBjYjQ1"
 DEFAULT_FREE_CREDITS = 200  # A non-expiring credit pool for free users
 
@@ -356,7 +356,7 @@ from db import get_user  # your db user fetch
 # Links
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
-DEV_LINK = "https://t.me/k4linuxxxx"
+DEV_LINK = "https://t.me/Deadkiller72"
 
 logger = logging.getLogger(__name__)
 
@@ -378,7 +378,7 @@ from db import get_user
 # Links for the inline keyboard buttons
 BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
-DEV_LINK = "https://t.me/k4linuxxxx"
+DEV_LINK = "https://t.me/Deadkiller72"
 
 # Set up logging for better error tracking
 logger = logging.getLogger(__name__)
@@ -1277,7 +1277,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{escaped_bank}`\n"
         f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
         f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
-        f"{bullet_link} *𝐁𝐨𝐭 𝐛𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+        f"{bullet_link} *𝐁𝐨𝐭 𝐛𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
     )
 
     final_message = f"{bin_info_box}"
@@ -1499,7 +1499,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                         f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
                         f"――――――――――――――――\n"
                         f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
-                        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=K4linuxx)\n"
+                        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
                         f"――――――――――――――――"
                 )
 
@@ -2576,7 +2576,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Developer info ---
         DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/K4linuxxxx"
+        DEVELOPER_LINK = "https://t.me/Deadkiller72"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         # --- Bullet + group link ---
@@ -2718,7 +2718,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # --- Format message ---
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/K4linuxxxx"
+        DEVELOPER_LINK = "https://t.me/Deadkiller72"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
@@ -2951,7 +2951,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         requester = f"@{user.username}" if user.username else str(user.id)
 
         DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/K4linuxxxx"
+        DEVELOPER_LINK = "https://t.me/Deadkiller72"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
@@ -3008,7 +3008,7 @@ from html import escape
 # Cooldown tracker
 last_site_usage = {}
 
-API_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?site={site_url}"
+API_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?site={site_url}/cc="
 
 # Credit system
 async def consume_credit(user_id: int) -> bool:
@@ -3097,7 +3097,7 @@ async def run_site_check(site_url: str, msg, user):
 
                 requester = f"@{user.username}" if user.username else str(user.id)
                 DEVELOPER_NAME = "kคli liຖนxx"
-                DEVELOPER_LINK = "https://t.me/K4linuxxxx"
+                DEVELOPER_LINK = "https://t.me/Deadkiller72"
                 developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
                 BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
                 bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
@@ -3201,7 +3201,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ua = escape_markdown_v2(fake.user_agent())
 
     output = (
-        "╭━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━━━━⬣\n"
+        "━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━\n"
         f"{bullet_link} 𝙉𝙖𝙢𝙚 ➳ `{name}`\n"
         f"{bullet_link} 𝘿𝙤𝘽 ➳ `{dob}`\n"
         f"{bullet_link} 𝙎𝙎𝙉 ➳ `{ssn}`\n"
@@ -3218,7 +3218,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} 𝘾𝙤𝙪𝙣𝙩𝙧𝙮 ➳ `{country}`\n"
         f"{bullet_link} 𝙄𝙋 ➳ `{ip}`\n"
         f"{bullet_link} 𝙐𝘼 ➳ `{ua}`\n"
-        "╰━━━━━━━━━━━━━━━━━━⬣"
+        "━━━━━━━━━━━━━━━━━━"
     )
 
     await update.effective_message.reply_text(
@@ -3387,7 +3387,7 @@ user_last_scr_time = {}
 
 CARD_REGEX = re.compile(r'\b(\d[ -]*?){13,16}\|(\d{2})\|(\d{2,4})\|(\d{3,4})\b', re.IGNORECASE)
 BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
-DEVELOPER_LINK = "[Developer](tg://resolve?domain=K4linuxxxx)"
+DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
@@ -3502,14 +3502,16 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         requester = f"@{user.username}" if user.username else str(user_id)
         requester_escaped = safe_md(requester)
         channel_escaped = safe_md(channel)
-
+        bullet_text = escape_all_markdown("[⌇]")
+        bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+  
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
-            f"[✗]({BULLET_GROUP_LINK}) 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
-            f"[✗]({BULLET_GROUP_LINK}) 𝐂𝐡𝐚ɴɴᴇʟ: @{channel_escaped}\n"
-            f"[✗]({BULLET_GROUP_LINK}) 𝐓ᴏᴛᴀʟ 𝐂ᴀʀᴅs: {len(cards[:amount])}\n"
-            f"[✗]({BULLET_GROUP_LINK}) 𝐑ᴇQᴜᴇsᴛᴇᴅ 𝐛ʏ: {requester_escaped}\n"
-            f"[✗]({BULLET_GROUP_LINK}) 𝐃ᴇᴠᴇʟᴏᴘᴇʀ: {DEVELOPER_LINK}\n"
+            f"{bullet_link} 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
+            f"{bullet_link} 𝐂𝐡𝐚ɴɴᴇʟ: @{channel_escaped}\n"
+            f"{bullet_link} 𝐓ᴏᴛᴀʟ 𝐂ᴀʀᴅs: {len(cards[:amount])}\n"
+            f"{bullet_link} 𝐑ᴇQᴜᴇsᴛᴇᴅ 𝐛ʏ: {requester_escaped}\n"
+            f"{bullet_link} 𝐃ᴇᴠᴇʟᴏᴘᴇʀ: {DEVELOPER_LINK}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
