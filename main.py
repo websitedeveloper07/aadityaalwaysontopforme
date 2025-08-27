@@ -1557,7 +1557,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not raw or "|" not in raw:
                 await update.effective_message.reply_text(
-                        "Usage: reply to a message containing number|mm|yy|cvv or use /chk number|mm|yy|cvv",
+                        "⚠️Usage: /chk number|mm|yy|cvv",
                         parse_mode=None
                 )
                 return
@@ -1565,7 +1565,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = raw.split("|")
         if len(parts) != 4:
                 await update.effective_message.reply_text(
-                        "Invalid format. Use number|mm|yy|cvv (or yyyy for year).",
+                        "⚠️Invalid format. Use number|mm|yy|cvv .",
                         parse_mode=None
                 )
                 return
