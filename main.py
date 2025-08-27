@@ -1472,78 +1472,64 @@ async def background_check(cc_raw, user, user_data, processing_msg):
 
         api_status = (data.get("status") or "Unknown").strip()
 
-        # Status formatting with safe try/except
-                try:
-                        status_text = api_status.upper()
-                        lower_status = api_status.lower()
+        # --- Status formatting ---
+        status_text = api_status.upper()
+        lower_status = api_status.lower()
 
-                        if "approved" in lower_status:
-                                status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-                        elif "declined" in lower_status:
-                                status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-                        elif "ccn live" in lower_status:
-                                status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
-                        elif "incorrect" in lower_status or "your number" in lower_status:
-                                status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘�𝗧 ❌"
-                        elif "3ds" in lower_status or "auth required" in lower_status:
-                                status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
-                        elif "insufficient funds" in lower_status:
-                                status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
-                        elif "expired" in lower_status:
-                                status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
-                        elif "stolen" in lower_status:
-                                status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
-                        elif "pickup card" in lower_status:
-                                status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
-                        elif "fraudulent" in lower_status:
-                                status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
-                        elif "generic decline" in lower_status:
-                                status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-                        else:
-                                status_text = api_status.upper()  # fallback
-                except Exception as e:
-                        status_text = "❌ ERROR ❌"
-                        print(f"Status formatting error: {e}")
+        if "approved" in lower_status:
+            status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+        elif "declined" in lower_status:
+            status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        elif "ccn live" in lower_status:
+            status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
+        elif "incorrect" in lower_status or "your number" in lower_status:
+            status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
+        elif "3ds" in lower_status or "auth required" in lower_status:
+            status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
+        elif "insufficient funds" in lower_status:
+            status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
+        elif "expired" in lower_status:
+            status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
+        elif "stolen" in lower_status:
+            status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
+        elif "pickup card" in lower_status:
+            status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
+        elif "fraudulent" in lower_status:
+            status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
+        elif "generic decline" in lower_status:
+            status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
 
-                # Prepare header and italic API status
-                header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
-                formatted_response = f"_{escape_markdown_v2(api_status)}_"
+        # --- Prepare final message ---
+        header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
+        formatted_response = f"_{escape_markdown_v2(api_status)}_"
 
-                # Build final message
-                final_text = (
-                        f"{header}\n"
-                        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
-                        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-                        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
-                        f"――――――――――――――――\n"
-                        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
-                        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
-                        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
-                        f"――――――――――――――――\n"
-                        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
-                        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
-                        f"――――――――――――――――"
-                )
+        final_text = (
+            f"{header}\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
+            f"――――――――――――――――"
+        )
 
-                # Send the message with MarkdownV2
-                try:
-                        await processing_msg.edit_text(
-                                final_text,
-                                parse_mode=ParseMode.MARKDOWN_V2,
-                                disable_web_page_preview=True
-                        )
-                except Exception as e:
-                        await processing_msg.edit_text(
-                                f"❌ API Error: {escape_markdown_v2(str(e))}",
-                                parse_mode=ParseMode.MARKDOWN_V2,
-                                disable_web_page_preview=True
-                        )
+        await processing_msg.edit_text(
+            final_text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True
+        )
 
-        except Exception as e:
-                await processing_msg.edit_text(
-                        f"❌ An error occurred during the check: {escape_markdown_v2(str(e))}",
-                        parse_mode=ParseMode.MARKDOWN_V2
-                )
+    except Exception as e:
+        await processing_msg.edit_text(
+            f"❌ An error occurred: {escape_markdown_v2(str(e))}",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
         
 # chk_command function
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
