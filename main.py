@@ -1427,10 +1427,16 @@ async def get_bin_details(bin_number: str) -> dict:
         return bin_data
 
 # ✅ Background check now uses live BIN data
+import aiohttp
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown as escape_markdown_v2
+
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+
     try:
+        # --- BIN lookup ---
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
         brand = (bin_details.get("scheme") or "N/A").upper()
@@ -1438,18 +1444,23 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         country_name = (bin_details.get("country_name") or "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
-        # Your main API call
-        api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+        # --- Main API call ---
+        api_url = (
+            f"https://darkboy-auto-stripe-y6qk.onrender.com/"
+            f"gateway=autostripe/key=darkboy/"
+            f"site=buildersdiscountwarehouse.com.au/"
+            f"cc={cc_normalized}"
+        )
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=45) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
+
         api_status = (data.get("status") or "Unknown").strip()
 
-        # Status formatting with safe try/except
+        # --- Status formatting ---
         try:
-            status_text = api_status.upper()
             lower_status = api_status.lower()
             if "approved" in lower_status:
                 status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
@@ -1471,19 +1482,16 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                 status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
             elif "fraudulent" in lower_status:
                 status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
-            elif "generic decline" in lower_status:
-                status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
             else:
-                status_text = api_status.upper()  # fallback
+                status_text = api_status.upper()
         except Exception as e:
             status_text = "❌ ERROR ❌"
             print(f"Status formatting error: {e}")
 
-        # Prepare header and italic API status
+        # --- Build message ---
         header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
         formatted_response = f"_{escape_markdown_v2(api_status)}_"
 
-        # Build final message with Brand, Bank, Country in a quote box
         final_text = (
             f"{header}\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ {escape_markdown_v2(cc_normalized)}\n"
@@ -1499,7 +1507,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"――――――――――――――――"
         )
 
-        # Send the message with MarkdownV2
+        # --- Send message ---
         try:
             await processing_msg.edit_text(
                 final_text,
@@ -1509,9 +1517,9 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         except Exception as e:
             await processing_msg.edit_text(
                 f"❌ API Error: {escape_markdown_v2(str(e))}",
-                parse_mode=ParseMode.MARKDOWN_V2,
-                disable_web_page_preview=True
+                parse_mode=ParseMode.MARKDOWN_V2
             )
+
     except Exception as e:
         await processing_msg.edit_text(
             f"❌ An error occurred during the check: {escape_markdown_v2(str(e))}",
@@ -1604,7 +1612,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         # Start background task
-        asyncio.create_task(background_check(cc_normalized, user, user_data, processing_msg))
+        asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
 
 
 
