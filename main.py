@@ -3371,7 +3371,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 # ----------------- Telegram / Pyrogram Setup -----------------
 api_id = 17455551
 api_hash = "abde39d2fad230528b2695a14102b"
-session_string = "BQEKWb8AQuVXjsXYFWqLLCWv_Kwp2-S5ZIFND0uc7XKXHOQL7ubVSzGVKLMxBgCsP5tIak1uD347FtQzgVVUMH1yeClvA0gNkFpKNojj57UixziKTrhSzZZkzb_dOL4VyH8foACOWPgkni8whIiIeoIh9Jayoq3xSiVGaJjGoVaBFfljzhqunmn8-Io57Si3Dykj9lFCMfEqDMp2ghnKPlIAaFCTWCtE_9rCVbMX0IDNYz-ROO-QsgfejhiI3TFdsOutbBon5X7WvGvP5EUfuTea_-B9sl3T62_YWHqmkzVrQVO0U5I1t3tOxt-yordZQsvozDH6ryYADRBRbldZwSyFwRHKhQAAAAG-vwW2AQ"
+session_string = "BQEKWb8ACc2FYhHSzyoYdunpOq7gFJtk3qYEGUUhcE3p8Ck9btBFstv_tna2p8fbYdFf3CpdZ984SyoZ6kgUoZ7zzhwzY1wyy3ZvmcXhweIiIPP-Q1YozoWXaKnHi6XXrd27SvQSz970qRUWikGjxe_yKzbGdbYsoeuClIrPNx_f6iMoinynAiIcOONnr70637TUojsQbFnbPGW2UUCGCDA6gLcYpFRiU1Epmuxq8AXELlX8jfTwkUdIfQQyMJ2TX28_sb4aDC9UhGmDphNiS6JTVDiYkbsh4YjxBLEVfp3uTOnS-gyv1-Zs4EEF8qSKKa_Dw0pypBGXkEqZaJ21x2UcRmCOXwAAAAH5DR9aAA"
 
 pyro_client = Client(
     name="scraper_session",
