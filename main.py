@@ -3358,9 +3358,9 @@ async def consume_credit(user_id: int) -> bool:
 
     return False
 # ----------------- Pyrogram Setup -----------------
-api_id = 22751574
-api_hash = "5cf63b5a7dcf40ff432c30e249b347dd"
-session_string = "BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"  # Replace with valid session
+api_id = 17455551
+api_hash = "abde39d2fad230528b2695a14102e76a"
+session_string = " BQFbKVYASwEhnBP_GQAE9kJt0klpJYmeyIxdld94qw-PDCumpdBDIv0XxB5k_hEFWMTMsCTn7hnopsnJF6Ow6i5SZsnB5x_vMcH4n_U9XDMZDrWAwDzjpofzeADiW9S2FRXeNRb8oqzni_MNDwa2l79EbVpPPRbnLXQ7dwx1tTvx88B566IuOGhPwiiwVg92k9hqhcE3EMNmZ4ZHO30XutUDEVrM1jsDUeahr_n-Ny2K0vATUB4gMa05tAxQ0WCg06aUKFe22kiz2gqmJEhUSW3ud1TrTbCETQkXIu2IMA3XdgNJ05oIKzz4_-cVNQcekFMqqqA_HnEpFjx_Q69EXhMg0xyAGAAAAAH1DOSSAA"  # Replace with valid session
 
 pyro_client = Client(
     name="scraper_session",
@@ -3372,7 +3372,7 @@ pyro_client = Client(
 # ----------------- Globals & Constants -----------------
 COOLDOWN_SECONDS = 10
 MAX_SCRAP_LIMIT = 1000
-TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
+TARGET_CHANNEL_URL = "https://t.me/CARDER33"
 user_last_scr_time = {}
 
 # Regex for card numbers
