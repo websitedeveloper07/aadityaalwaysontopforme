@@ -1614,7 +1614,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         # Start background task
-        asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+        asyncio.create_task(background_check(cc_normalized, user, user_data, processing_msg))
 
 
 
