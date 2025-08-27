@@ -1427,28 +1427,39 @@ async def get_bin_details(bin_number: str) -> dict:
         return bin_data
 
 # ✅ Background check now uses live BIN data
-async def background_check(cc_raw, user, user_data, processing_msg):
-    from telegram.constants import ParseMode
+import aiohttp
+from telegram.constants import ParseMode
 
+async def background_check(cc_raw, user, user_data, processing_msg):
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     try:
-        # --- Normalize card input ---
+        # --- Normalize separators ---
         cc_normalized = cc_raw.replace("/", "|").replace("\\", "|")
+        # Remove extra whitespace
+        cc_normalized = "|".join(p.strip() for p in cc_normalized.split("|"))
         parts = cc_normalized.split("|")
 
-        if len(parts) < 4:
+        if len(parts) != 4:
             await processing_msg.edit_text(
                 "❌ Invalid format. Use like:\n"
                 "`1234567812345678|12|2028|123`\n"
-                "or `/` or `\\` instead of `|`.",
+                "Separators | / \\ are all supported.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return
 
+        cc, mm, yy, cvv = parts
+
+        # --- Handle 2-digit year ---
+        if len(yy) == 2:
+            yy = "20" + yy  # converts 30 -> 2030
+
+        cc_normalized = f"{cc}|{mm}|{yy}|{cvv}"
+
         # --- BIN lookup ---
-        bin_number = parts[0][:6]
+        bin_number = cc[:6]
         bin_details = await get_bin_details(bin_number)
 
         brand = (bin_details.get("scheme") or "N/A").upper()
@@ -1473,9 +1484,7 @@ async def background_check(cc_raw, user, user_data, processing_msg):
         api_status = (data.get("status") or "Unknown").strip()
 
         # --- Status formatting ---
-        status_text = api_status.upper()
         lower_status = api_status.lower()
-
         if "approved" in lower_status:
             status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
         elif "declined" in lower_status:
@@ -1498,6 +1507,8 @@ async def background_check(cc_raw, user, user_data, processing_msg):
             status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
         elif "generic decline" in lower_status:
             status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        else:
+            status_text = api_status.upper()
 
         # --- Prepare final message ---
         header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
@@ -1529,6 +1540,7 @@ async def background_check(cc_raw, user, user_data, processing_msg):
             f"❌ An error occurred: {escape_markdown_v2(str(e))}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
         
 # chk_command function
