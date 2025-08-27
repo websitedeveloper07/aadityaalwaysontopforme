@@ -3372,7 +3372,7 @@ pyro_client = Client(
 # ----------------- Globals & Constants -----------------
 COOLDOWN_SECONDS = 10
 MAX_SCRAP_LIMIT = 1000
-TARGET_CHANNEL_URL = "https://t.me/CARDER33"
+TARGET_CHANNEL_URL = "https://t.me/+pu4_ZBdp1CxiMDE1"
 user_last_scr_time = {}
 
 # Regex for card numbers
