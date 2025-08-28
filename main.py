@@ -2877,6 +2877,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -2894,7 +2895,6 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     card_input = context.args[0].strip()
-    cc = card_input.split("|")[0]
 
     # Consume credit
     if not await consume_credit(user_id):
@@ -2916,6 +2916,13 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⏳ Checking card: <code>{escape(card_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
+
+    # Run the actual heavy work in the background
+    asyncio.create_task(process_card_check(user, card_input, custom_url, msg))
+
+
+async def process_card_check(user, card_input, custom_url, msg):
+    cc = card_input.split("|")[0]
 
     # BIN lookup
     bin_number = cc[:6]
@@ -2957,7 +2964,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Extract fields
         response_text = data.get("Response", "Unknown")
-        price = f"{data.get('Price', '1.0')}$"  # $ at the end
+        price = f"{data.get('Price', '1.0')}$"
         gateway = data.get("Gateway", "-")
         country = f"{country_flag} {country_name}"
         requester = f"@{user.username}" if user.username else str(user.id)
@@ -2971,28 +2978,26 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
         formatted_msg = (
-                "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
-                f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
-                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
-                f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price}💸\n"
-                f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response_text}\n\n"
-                "――――――――――――――――\n"
-                f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
-                f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
-                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{country}</code>\n\n"
-                "――――――――――――――――\n"
-                f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
-                f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
-                "――――――――――――――――"
+            "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
+            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price}💸\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response_text}\n\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{country}</code>\n\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+            "――――――――――――――――"
         )
 
         await msg.edit_text(
-                formatted_msg,
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True
+            formatted_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
         )
-
-
 
     except asyncio.TimeoutError:
         await msg.edit_text(
@@ -3000,11 +3005,12 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML
         )
     except Exception as e:
-        logging.exception("Error in /sp command")
+        logging.exception("Error in background card check")
         await msg.edit_text(
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 import time
