@@ -3677,10 +3677,26 @@ async def get_bin_details(bin_number: str) -> dict:
 
 
 # ===== BACKGROUND TASK =====
+import asyncio
+import time
+import re
+import html
+
+CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
+
+# Global cooldown tracking
+GLOBAL_COOLDOWN_SECONDS = 20
+last_b3_time = 0  # timestamp of last usage
+
+# You need to define these somewhere in your code
+bullet_link = "•"
+developer_clickable = "<a href='https://t.me/YourDeveloperUsername'>Developer</a>"
+
+
 async def process_b3(update, context, card_input, status_msg):
     try:
-        # Run checker
-        result_text = await multi_checking(card_input)
+        # Run your checker (must be async)
+        result_text = await multi_checking(card_input)  # user-defined function
 
         # Parse status + reason
         if "Approved" in result_text:
@@ -3703,24 +3719,32 @@ async def process_b3(update, context, card_input, status_msg):
         # BIN lookup
         cc = card_input.split("|")[0]
         bin_number = cc[:6]
-        bin_details = await get_bin_details(bin_number)
+        bin_details = await get_bin_details(bin_number)  # user-defined function
 
         brand = bin_details.get("scheme", "N/A").upper()
         issuer = bin_details.get("bank", "N/A").title()
         country = f"{bin_details.get('country_name', 'N/A')} {bin_details.get('country_emoji', '')}"
 
-        # Format message (compact, no gaps between lines)
+        # Escape text for HTML
+        safe_card = html.escape(card_input)
+        safe_reason = html.escape(reason)
+        safe_brand = html.escape(brand)
+        safe_issuer = html.escape(issuer)
+        safe_country = html.escape(country)
+        safe_user = html.escape(update.effective_user.first_name)
+
+        # Format message
         formatted_msg = (
             f"═══[ {status} ]═══\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{safe_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{reason}</i>\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{safe_reason}</i>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{country}</code>\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{safe_brand}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{safe_issuer}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{safe_country}</code>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.first_name}\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {safe_user}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
             "――――――――――――――――"
         )
@@ -3729,23 +3753,10 @@ async def process_b3(update, context, card_input, status_msg):
         await status_msg.edit_text(formatted_msg, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception as e:
-        await status_msg.edit_text(f"❌ Error while processing: {e}", parse_mode="HTML")
-
+        await status_msg.edit_text(f"❌ Error while processing: {html.escape(str(e))}", parse_mode="HTML")
 
 
 # ===== /b3 COMMAND =====
-import asyncio
-import time
-import re
-import html
-
-CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
-
-# Global cooldown tracking
-GLOBAL_COOLDOWN_SECONDS = 20
-last_b3_time = 0  # timestamp of last usage
-
-
 async def b3_command(update, context):
     global last_b3_time
     now = time.time()
@@ -3787,8 +3798,8 @@ async def b3_command(update, context):
         parse_mode="HTML"
     )
 
-    # Background processing
-    asyncio.create_task(process_b3(update, context, status_msg))
+    # Run background processing with all required args
+    asyncio.create_task(process_b3(update, context, card_input, status_msg))
 
 
 
