@@ -257,13 +257,11 @@ async def create_payment_method(fullz, session):
 async def multi_checking(x):
     cc, mes, ano, cvv = x.split("|")
     if not is_valid_credit_card_number(cc):
-        print(f"{x} - Credit card number is invalid")
-        return
+        return f"{x} - Credit card number is invalid"
 
     valid, err = validate_expiry_date(mes, ano)
     if not valid:
-        print(f"{x} - {err}")
-        return
+        return f"{x} - {err}"
 
     start = time.time()
 
@@ -299,7 +297,7 @@ async def multi_checking(x):
             error_message = ""
 
     if "Reason: " in error_message:
-        before, sep, after = error_message.partition("Reason: ")
+        _, _, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
     if "Payment method successfully added." in error_message:
@@ -309,15 +307,13 @@ async def multi_checking(x):
         response = "Approved"
 
     if error_message:
-        print(f"{x} - {error_message} - Taken {elapsed}s")
+        return f"{x} - {error_message} - Taken {elapsed}s"
     else:
         resp = f"{x} - {response} - Taken {elapsed}s"
-        print(resp)
         if "Approved" in response:
             with open("auth.txt", "a", encoding="utf-8") as file:
                 file.write(resp + "\n")
-
-
+        return resp
 
 
 async def main():
@@ -331,7 +327,7 @@ async def main():
             new_cc = f"{cc_num}|{month}|{year}|{cvv}"
             result = await multi_checking(new_cc)
             print(result)
-            await asyncio.sleep(20)
+            await asyncio.sleep(30)
 
 
 if __name__ == "__main__":
