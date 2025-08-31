@@ -1,4 +1,6 @@
 all_cookies = [
+
+    {
     
     '_ga': 'GA1.1.1991895596.1756633394',
     '_gcl_au': '1.1.795377134.1756633394',
@@ -98,5 +100,6 @@ all_cookies = [
     'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8988%7Cother%7Cread%7C2524318138da338fd6d718f72e831c5c91ae6739e5f6c7e6231a21ef28b2827e',
     '_ga_D1Q49TMJ2C': 'GS2.1.s1756633839$o1$g1$t1756635144$j1$l0$h0',
     'sbjs_session': 'pgs%3D38%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
+    }
   ]
     
