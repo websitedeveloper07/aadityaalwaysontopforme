@@ -327,7 +327,7 @@ async def main():
             new_cc = f"{cc_num}|{month}|{year}|{cvv}"
             result = await multi_checking(new_cc)
             print(result)
-            await asyncio.sleep(30)
+            await asyncio.sleep(20)
 
 
 if __name__ == "__main__":
