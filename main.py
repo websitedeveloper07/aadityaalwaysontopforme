@@ -3564,7 +3564,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from b3 import multi_checking
 from db import get_user, update_user, init_db  # replace with your actual module
-from your_bin_module import get_bin_details    # replace with your actual module
+
 
 # Store the last usage time for cooldown
 last_b3_usage = {}
