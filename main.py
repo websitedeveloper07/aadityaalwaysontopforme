@@ -3605,7 +3605,47 @@ async def get_bin_details(bin_number: str) -> dict:
     return bin_data
 
 
+import asyncio
+import aiohttp
+import logging
+import re
+from datetime import datetime
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
+
+from b3 import multi_checking
+from db import consume_credit  # Your credit-check module
+
+# Logging setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Store last usage for cooldown
+last_b3_usage = {}
+COOLDOWN_SECONDS = 5
+
+
+async def get_bin_details(bin_number: str) -> dict:
+    """Fetch BIN information."""
+    bin_data = {"scheme": "N/A", "bank": "N/A", "country_name": "N/A", "country_emoji": ""}
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=7) as resp:
+                if resp.status == 200:
+                    data = await resp.json(content_type=None)
+                    bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                    bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                    bin_data["country_name"] = data.get("country_name", "N/A")
+                    bin_data["country_emoji"] = data.get("country_flag", "")
+    except Exception as e:
+        logger.warning(f"BIN API call failed for {bin_number}: {e}")
+    return bin_data
+
+
 async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /b3 card command."""
     user_id = update.effective_user.id
     now = datetime.now()
 
@@ -3634,6 +3674,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     async def run_and_reply():
         try:
+            # Split input
             parts = cc_input.split("|")
             if len(parts) != 4:
                 await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
@@ -3655,27 +3696,24 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             country_name = bin_details.get("country_name", "N/A")
             country_flag = bin_details.get("country_emoji", "")
 
-            # Capture output from multi_checking
+            # Run multi_checking and capture output
             import io, sys
             buffer = io.StringIO()
             sys.stdout = buffer
-
             await multi_checking(formatted_cc)
-
             sys.stdout = sys.__stdout__
             output = buffer.getvalue().strip()
 
             # Clean output
-            output_clean = re.sub(r'[^\w\s.,|:-]', '', output)
-            output_clean = re.sub(r'Taken .*s', '', output_clean).strip()
+            output_clean = re.sub(r'[^\w\s.,|:-]', '', output).strip()
 
             # Determine status
-            if "Approved" in output_clean or "New payment method" in output_clean:
+            if "Payment method successfully added" in output_clean or "Approved" in output_clean:
                 status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
-                response_text = "<i>Payment Method added successfully</i>"
+                response_text = "<i>Payment method added successfully</i>"
             else:
                 status = "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
-                response_text = f"<i>{output_clean}</i>"
+                response_text = f"<i>{output_clean or 'Unknown error'}</i>"
 
             # Developer & bullet links
             DEVELOPER_NAME = "kคli liຖนxx"
@@ -3707,6 +3745,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"❌ An error occurred: {e}")
 
     asyncio.create_task(run_and_reply())
+
 
 
 
