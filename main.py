@@ -1563,8 +1563,8 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 # chk_command function
 import re
 
-# Strict regex: 12-19 digit card number | 1-2 digit month | 2-4 digit year | 3-4 digit cvv
-CARD_REGEX = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
+# Match 12-19 digit card | 1-2 digit month | 2-4 digit year | 3-4 digit CVV
+CARD_REGEX = re.compile(r"(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})")
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1573,23 +1573,19 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Get user data
     user_data = await get_user(user_id)
     if not user_data:
-        await update.effective_message.reply_text(
-            "❌ Could not fetch your user data. Try again later."
-        )
+        await update.effective_message.reply_text("❌ Could not fetch your user data. Try again later.")
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
-        await update.effective_message.reply_text(
-            "❌ You have no credits left. Please buy a plan to get more credits."
-        )
+        await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
         return
 
     # Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-    # 1️⃣ Get text to extract card from: reply or command argument
+    # Get text: reply or argument
     raw_text = ""
     if update.message.reply_to_message and update.message.reply_to_message.text:
         raw_text = update.message.reply_to_message.text.strip()
@@ -1602,7 +1598,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 2️⃣ Extract card using regex (ignore letters or extra text)
+    # Extract **full card** from message
     match = CARD_REGEX.search(raw_text)
     if not match:
         await update.effective_message.reply_text(
@@ -1622,7 +1618,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("❌ No credits left.")
         return
 
-    # Bullet for styling
+    # Bullet styling
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
@@ -1633,7 +1629,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
         f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
         "════════════════════\n"
-
+        f"{bullet_link} Status \\- Active ✅"
     )
 
     # Send processing message
@@ -1643,8 +1639,9 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-    # Start background processing
+    # Start background check
     asyncio.create_task(background_check(card_input, [cc, mm, yy, cvv], user, user_data, processing_msg))
+
 
 
 
