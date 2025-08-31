@@ -3628,9 +3628,8 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     last_b3_usage[user_id] = now
 
-    # Validate input
     if not context.args:
-        await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy|cvv")
+        await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
         return
 
     cc_input = " ".join(context.args).strip()
@@ -3639,7 +3638,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             parts = cc_input.split("|")
             if len(parts) != 4:
-                await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy|cvv")
+                await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
                 return
 
             cc, mes, ano, cvv = parts
@@ -3658,33 +3657,27 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             country_name = bin_details.get("country_name", "N/A")
             country_flag = bin_details.get("country_emoji", "")
 
-            # Capture printed output from multi_checking
+            # Capture multi_checking output
             buffer = io.StringIO()
             sys.stdout = buffer
             await multi_checking(formatted_cc)
             sys.stdout = sys.__stdout__
             output = buffer.getvalue().strip()
 
-            # Clean output
-            output_clean = re.sub(r'Taken .*s', '', output).strip()
-
-            # Determine status using your logic
-            if "Payment method successfully added." in output_clean:
-                status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
+            # === Use your B3 logic here ===
+            response_text = ""
+            if "Payment method successfully added." in output:
+                status = "Approved ✅"
                 response_text = "<i>Payment method added successfully</i>"
             else:
-                status = "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
-                # Show reason if available
-                reason_match = re.search(r'Reason:\s*(.*)', output_clean)
-                reason = reason_match.group(1).strip() if reason_match else output_clean
-                response_text = f"<i>{reason or 'Card declined'}</i>"
+                status = "Declined ❌"
+                if "Reason:" in output:
+                    _, _, reason = output.partition("Reason:")
+                    response_text = f"<i>{reason.strip()}</i>"
+                else:
+                    response_text = f"<i>{output}</i>"
 
-            # Developer info
-            DEVELOPER_NAME = "kคli liຖนxx"
-            DEVELOPER_LINK = "https://t.me/Deadkiller72"
-            developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
-
-            # Final reply
+            # Prepare final message
             reply_text = (
                 f"═══[ {status} ]═══\n"
                 f"[⌇] 𝐂𝐚𝐫𝐝 ➜ <code>{formatted_cc}</code>\n"
@@ -3696,7 +3689,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_flag} {country_name}</code>\n"
                 "――――――――――――――――\n"
                 f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
-                f"[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
                 "――――――――――――――――"
             )
 
@@ -3706,7 +3699,6 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"❌ An error occurred: {e}")
 
     asyncio.create_task(run_and_reply())
-
 
 
 
