@@ -3559,24 +3559,24 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
 
 import asyncio
-from datetime import datetime, timedelta
-from aiogram import types
+from datetime import datetime
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 from b3 import multi_checking
 
 # Store the last usage time for cooldown
 last_b3_usage = {}
 COOLDOWN_SECONDS = 5
 
-@dp.message_handler(commands=["b3"])
-async def b3_handler(message: types.Message):
-    user_id = message.from_user.id
+async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
     now = datetime.now()
 
     # Check cooldown
     if user_id in last_b3_usage:
         elapsed = (now - last_b3_usage[user_id]).total_seconds()
         if elapsed < COOLDOWN_SECONDS:
-            await message.reply(
+            await update.message.reply_text(
                 f"⚠️ Please wait {COOLDOWN_SECONDS - int(elapsed)} seconds before using /b3 again."
             )
             return
@@ -3585,19 +3585,17 @@ async def b3_handler(message: types.Message):
     last_b3_usage[user_id] = now
 
     # Extract CC info from command
-    args = message.get_args()
-    if not args:
-        await message.reply("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
+    if not context.args:
+        await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
         return
 
-    cc_input = args.strip()
+    cc_input = " ".join(context.args).strip()
 
-    # Run multi_checking in background
     async def run_and_reply():
         try:
             parts = cc_input.split("|")
             if len(parts) != 4:
-                await message.reply("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
+                await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
                 return
 
             cc, mes, ano, cvv = parts
@@ -3615,10 +3613,10 @@ async def b3_handler(message: types.Message):
             sys.stdout = sys.__stdout__
             output = buffer.getvalue().strip()
 
-            # Extract status
+            # Determine status
             status = "Approved ✅" if "Approved ✅" in output else "Declined ❌"
 
-            # Prepare response message
+            # Prepare response
             reply_text = (
                 f"═══[ status {status} ]═══\n"
                 f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
@@ -3629,17 +3627,16 @@ async def b3_handler(message: types.Message):
                 "[⌇] 𝐁𝐚𝐧𝐤 ➜ \n"
                 "[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ \n"
                 "――――――――――――――――\n"
-                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {message.from_user.full_name}\n"
+                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
                 "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
                 "――――――――――――――――"
             )
 
-            await message.reply(reply_text, parse_mode="Markdown")
+            await update.message.reply_text(reply_text, parse_mode="Markdown")
         except Exception as e:
-            await message.reply(f"❌ An error occurred: {e}")
+            await update.message.reply_text(f"❌ An error occurred: {e}")
 
     asyncio.create_task(run_and_reply())
-
 
 
 
