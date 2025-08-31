@@ -3558,12 +3558,14 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
 
 
+import io
+import sys
 import asyncio
-import aiohttp
-import logging
 import re
 from datetime import datetime
 from telegram import Update
+from telegram.ext import ContextTypes
+from b3 import multi_checking
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from b3 import multi_checking
