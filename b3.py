@@ -324,7 +324,14 @@ async def multi_checking(x):
     else:
         response_type = "Declined"
 
-    return resp
+    # Return full readable result
+    resp_text = f"═══[ {'✅ Approved' if response_type=='Approved' else '❌ ' + response_type} ]═══\n"
+    resp_text += f"[⌇] Card       ➜ {x}\n"
+    resp_text += f"[⌇] Response   ➜ {error_message}\n"
+    resp_text += f"[⌇] Time       ➜ {elapsed}s"
+
+    return resp_text
+
 
 
 
