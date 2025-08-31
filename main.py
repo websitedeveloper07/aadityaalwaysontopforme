@@ -3559,16 +3559,24 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
 
 import asyncio
+import aiohttp
+import logging
+import re
 from datetime import datetime
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+
 from b3 import multi_checking
-from db import get_user, update_user, init_db  # replace with your actual module
+from db import get_user, update_user, init_db  # Replace with your actual module functions
 
+# Logging setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Store the last usage time for cooldown
+# Store last usage for cooldown
 last_b3_usage = {}
 COOLDOWN_SECONDS = 5
+
 
 async def get_bin_details(bin_number: str) -> dict:
     bin_data = {
@@ -3584,14 +3592,11 @@ async def get_bin_details(bin_number: str) -> dict:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=7) as response:
                 if response.status == 200:
-                    try:
-                        data = await response.json(content_type=None)
-                        bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
-                        bin_data["bank"] = str(data.get("bank", "N/A")).title()
-                        bin_data["country_name"] = data.get("country_name", "N/A")
-                        bin_data["country_emoji"] = data.get("country_flag", "")
-                    except Exception as e:
-                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
+                    data = await response.json(content_type=None)
+                    bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                    bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                    bin_data["country_name"] = data.get("country_name", "N/A")
+                    bin_data["country_emoji"] = data.get("country_flag", "")
                 else:
                     logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
     except Exception as e:
@@ -3599,11 +3604,12 @@ async def get_bin_details(bin_number: str) -> dict:
 
     return bin_data
 
+
 async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = datetime.now()
 
-    # Check cooldown
+    # Cooldown check
     if user_id in last_b3_usage:
         elapsed = (now - last_b3_usage[user_id]).total_seconds()
         if elapsed < COOLDOWN_SECONDS:
@@ -3612,14 +3618,14 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # Check credits
+    # Credit check
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left to use this command.")
         return
 
     last_b3_usage[user_id] = now
 
-    # Extract CC info
+    # Validate input
     if not context.args:
         await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
         return
@@ -3638,7 +3644,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ano = ano[-2:]
             formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
 
-            # Send initial "processing" message
+            # Send processing message
             message = await update.message.reply_text("⏳ Processing your request...")
 
             # Get BIN details
@@ -3647,6 +3653,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             brand = bin_details.get("scheme", "N/A")
             issuer = bin_details.get("bank", "N/A")
             country_name = bin_details.get("country_name", "N/A")
+            country_flag = bin_details.get("country_emoji", "")
 
             # Capture output from multi_checking
             import io, sys
@@ -3658,18 +3665,16 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sys.stdout = sys.__stdout__
             output = buffer.getvalue().strip()
 
-            # Clean output: remove emojis & timing info
-            import re
+            # Clean output
             output_clean = re.sub(r'[^\w\s.,|:-]', '', output)
             output_clean = re.sub(r'Taken .*s', '', output_clean).strip()
 
-            # Determine status and final response
+            # Determine status
             if "Approved" in output_clean or "New payment method" in output_clean:
                 status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
                 response_text = "<i>Payment Method added successfully</i>"
             else:
                 status = "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
-                # Extract reason from multi_checking output
                 response_text = f"<i>{output_clean}</i>"
 
             # Developer & bullet links
@@ -3680,7 +3685,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
             bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-            # Prepare final reply
+            # Final reply
             reply_text = (
                 f"═══[ {status} ]═══\n"
                 f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{formatted_cc}</code>\n"
@@ -3696,14 +3701,13 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "――――――――――――――――"
             )
 
-            # Edit the original message with final result
             await message.edit_text(reply_text, parse_mode="HTML")
 
         except Exception as e:
             await update.message.reply_text(f"❌ An error occurred: {e}")
 
-    # Run in background
     asyncio.create_task(run_and_reply())
+
 
 
 
