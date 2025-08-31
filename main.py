@@ -3638,18 +3638,16 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ano = ano[-2:]
             formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
 
-            # Send initial "processing" message
-            message = await update.message.reply_text("⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...")
-
             # Get BIN details
             bin_number = cc[:6]
             bin_details = await get_bin_details(bin_number)
             brand = bin_details.get("scheme", "N/A")
             issuer = bin_details.get("bank", "N/A")
             country_name = bin_details.get("country_name", "N/A")
+            country_flag = bin_details.get("country_emoji", "")
 
             # Capture printed output from multi_checking
-            import io, sys, re
+            import io, sys
             buffer = io.StringIO()
             sys.stdout = buffer
 
@@ -3657,14 +3655,6 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             sys.stdout = sys.__stdout__
             output = buffer.getvalue().strip()
-
-            # Extract main response (removes repeated card info)
-            match = re.search(rf"{cc}\|\d{{2}}\|\d{{2}}\|\d{{3,4}} - (.+)", output)
-            if match:
-                response_message = match.group(1).strip()
-            else:
-                response_message = output.splitlines()[-1]
-
             # Determine status
             if "Approved" in response_message or "New payment method" in response_message:
                 status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
