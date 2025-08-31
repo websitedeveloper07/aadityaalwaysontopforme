@@ -91,6 +91,9 @@ namespace = {}
 exec(content, {}, namespace)   # executes the "all_cookies = [...]" in cookies.txt
 all_cookies = namespace.get("all_cookies", [])
 
+if not all_cookies:
+    raise ValueError("No cookies loaded from cookies.txt")
+
 # Cycle through cookies infinitely
 cookies_cycle = itertools.cycle(all_cookies)
 
@@ -100,8 +103,20 @@ async def create_payment_method(fullz, session):
     try:
         cc, mes, ano, cvv = fullz.split("|")
 
-        # Cookies
-        cookies = next(cookies_cycle)  # pick next account’s cookies
+        # Rotate cookie
+        cookies = next(cookies_cycle)
+
+        # Log which cookie is used
+        print(f"[COOKIE LOG] Using cookie: {cookies}")
+
+        # Example usage: pass cookies to your session request
+        # response = await session.post(url, data=payload, cookies=cookies)
+        # return response
+
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return None
+
 
 
         headers = {
@@ -325,7 +340,7 @@ async def main():
             new_cc = f"{cc_num}|{month}|{year}|{cvv}"
             result = await multi_checking(new_cc)
             print(result)
-            await asyncio.sleep(30)
+            await asyncio.sleep(20)
 
 
 if __name__ == "__main__":
