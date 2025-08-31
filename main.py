@@ -3523,12 +3523,25 @@ async def scrap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Start background scraping
     asyncio.create_task(scrap_cards_background(channel, amount, user_id, chat_id, context.bot, progress_msg, update.message.message_id))
 
+import asyncio
+import logging
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from telethon.errors import UsernameInvalid, PeerIdInvalid, FloodWait, AuthKeyUnregistered
+
+# Utility function to safely escape text for MarkdownV2
+def safe_md(text: str) -> str:
+    if not text:
+        return ""
+    return escape_markdown(str(text), version=2)
+
 async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progress_msg, reply_to_message_id):
     logging.info("Scrape started: channel=%s, amount=%s, user_id=%s", channel, amount, user_id)
     cards = []
     seen = set()
 
     try:
+        # Make sure client is connected
         if not pyro_client.is_connected:
             await pyro_client.start()
 
@@ -3547,7 +3560,7 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
         async for message in pyro_client.get_chat_history(channel, limit=amount*20):
             text = message.text or message.caption or ""
             for match in CARD_REGEX.finditer(text):
-                card_string = match.group(0).replace(" ", "").replace("-", "")
+                card_string = match.group(0)
                 if card_string not in seen:
                     seen.add(card_string)
                     cards.append(card_string)
@@ -3569,38 +3582,48 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
         await progress_msg.delete()
 
+        # Prepare caption safely
         user = await bot.get_chat(user_id)
         requester = f"@{user.username}" if user.username else str(user_id)
         requester_escaped = safe_md(requester)
         channel_escaped = safe_md(channel)
-        bullet_text = escape_all_markdown("[⌇]")
-        bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
-  
+        bullet_text = safe_md("[⌇]")
+        bullet_link = f"[{bullet_text}]({safe_md(BULLET_GROUP_LINK)})"
+        developer_link_escaped = safe_md(DEVELOPER_LINK)
+
         caption = (
             f"✦━━━━━━━━━━━━━━✦\n"
             f"{bullet_link} 𝗦ᴄʀᴀᴘᴘᴇᴅ 𝗖ᴀʀᴅs💎\n"
             f"{bullet_link} 𝐂𝐡𝐚ɴɴᴇʟ: @{channel_escaped}\n"
             f"{bullet_link} 𝐓ᴏᴛᴀʟ 𝐂ᴀʀᴅs: {len(cards[:amount])}\n"
             f"{bullet_link} 𝐑ᴇQᴜᴇsᴛᴇᴅ 𝐛ʏ: {requester_escaped}\n"
-            f"{bullet_link} 𝐃ᴇᴠᴇʟᴏᴘᴇʀ: {DEVELOPER_LINK}\n"
+            f"{bullet_link} 𝐃ᴇᴠᴇʟᴏᴘᴇʀ: {developer_link_escaped}\n"
             f"✦━━━━━━━━━━━━━━✦"
         )
 
-        await bot.send_document(
-            chat_id=chat_id,
-            document=open(filename, "rb"),
-            caption=caption,
-            parse_mode=ParseMode.MARKDOWN_V2,
-            reply_to_message_id=reply_to_message_id
-        )
+        # Send the document
+        with open(filename, "rb") as f:
+            await bot.send_document(
+                chat_id=chat_id,
+                document=f,
+                caption=caption,
+                parse_mode=ParseMode.MARKDOWN_V2,
+                reply_to_message_id=reply_to_message_id
+            )
 
     except FloodWait as e:
         await bot.send_message(chat_id, f"❌ FloodWait: {e.value}s", reply_to_message_id=reply_to_message_id)
     except AuthKeyUnregistered:
         await bot.send_message(chat_id, "❌ Session string invalid. Get a new one.", reply_to_message_id=reply_to_message_id)
     except Exception as e:
-        await bot.send_message(chat_id, f"❌ Unexpected error: {safe_md(str(e))}", parse_mode=ParseMode.MARKDOWN_V2, reply_to_message_id=reply_to_message_id)
+        await bot.send_message(
+            chat_id,
+            f"❌ Unexpected error: {safe_md(str(e))}",
+            parse_mode=ParseMode.MARKDOWN_V2,
+            reply_to_message_id=reply_to_message_id
+        )
         logging.exception("Unexpected error")
+
 
 
 
@@ -3712,29 +3735,35 @@ async def process_b3(update, context, card_input, status_msg):
 
 
 # ===== /b3 COMMAND =====
+import asyncio
+import time
 import re
 
 CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
+# Global cooldown tracking
+GLOBAL_COOLDOWN_SECONDS = 20
+last_b3_time = 0  # timestamp of last usage
+
 async def b3_command(update, context):
-    user_id = update.effective_user.id
+    global last_b3_time
     now = time.time()
 
-    # Cooldown check
-    if user_id in user_cooldowns and now - user_cooldowns[user_id] < COOLDOWN_SECONDS:
-        remaining = round(COOLDOWN_SECONDS - (now - user_cooldowns[user_id]), 1)
+    # 1️⃣ Global cooldown check
+    if now - last_b3_time < GLOBAL_COOLDOWN_SECONDS:
+        remaining = round(GLOBAL_COOLDOWN_SECONDS - (now - last_b3_time), 1)
         await update.message.reply_text(
-            f"⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 {remaining}𝗦 𝗯𝗲𝗳𝗼𝗿𝗲 𝘂𝘀𝗶𝗻𝗴 /𝗯3 𝗮𝗴𝗮𝗶𝗻.",
+            f"⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 {remaining}𝗦 before using /b3 again.",
             parse_mode="HTML"
         )
         return
 
     card_input = None
 
-    # 1️⃣ Check if command has args
+    # 2️⃣ Check if command has args
     if context.args and len(context.args) > 0:
         card_input = context.args[0]
-    # 2️⃣ Else check if replying to a message
+    # 3️⃣ Else check if replying to a message
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         match = CARD_PATTERN.search(update.message.reply_to_message.text)
         if match:
@@ -3747,8 +3776,8 @@ async def b3_command(update, context):
         )
         return
 
-    # Update cooldown
-    user_cooldowns[user_id] = now
+    # 4️⃣ Update global cooldown
+    last_b3_time = now
 
     # Send initial "Processing..." message
     status_msg = await update.message.reply_text(
