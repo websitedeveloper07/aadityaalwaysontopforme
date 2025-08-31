@@ -3579,35 +3579,6 @@ logger = logging.getLogger(__name__)
 last_b3_usage = {}
 COOLDOWN_SECONDS = 5
 
-
-async def get_bin_details(bin_number: str) -> dict:
-    bin_data = {
-        "scheme": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": ""
-    }
-    url = f"https://bins.antipublic.cc/bins/{bin_number}"
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=7) as response:
-                if response.status == 200:
-                    data = await response.json(content_type=None)
-                    bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
-                    bin_data["bank"] = str(data.get("bank", "N/A")).title()
-                    bin_data["country_name"] = data.get("country_name", "N/A")
-                    bin_data["country_emoji"] = data.get("country_flag", "")
-                else:
-                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
-    except Exception as e:
-        logger.warning(f"BIN API call failed for {bin_number}: {e}")
-
-    return bin_data
-
-
-
 async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = datetime.now()
@@ -3666,24 +3637,21 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             output = buffer.getvalue().strip()
 
             # Determine status
-            status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅" if "Approved ✅" in output else "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
-
-            bullet_text = escape_all_markdown("[⌇]")
-            bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+            status = "Approved ✅" if "Approved ✅" in output else "Declined ❌"
 
             # Prepare response
             reply_text = (
-                f"═══[ {status} ]═══\n"
-                f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
-                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
-                f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ *{output}*\n"
+                f"═══[ status {status} ]═══\n"
+                f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
+                f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
+                f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output}\n"
                 "――――――――――――――――\n"
-                f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
-                f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
-                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_flag} {country_name}`\n"
+                f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}\n"
+                f"[⌇] 𝐁𝐚𝐧𝐤 ➜ {issuer}\n"
+                f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country_flag} {country_name}\n"
                 "――――――――――――――――\n"
-                f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ `{update.effective_user.full_name}`\n"
-                "{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
+                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
+                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
                 "――――――――――――――――"
             )
 
@@ -3693,7 +3661,6 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run in background so it doesn’t block other commands
     asyncio.create_task(run_and_reply())
-
 
 
 
