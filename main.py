@@ -3638,16 +3638,18 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ano = ano[-2:]
             formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
 
+            # Send initial "processing" message
+            message = await update.message.reply_text("⏳ Processing your request...")
+
             # Get BIN details
             bin_number = cc[:6]
             bin_details = await get_bin_details(bin_number)
             brand = bin_details.get("scheme", "N/A")
             issuer = bin_details.get("bank", "N/A")
             country_name = bin_details.get("country_name", "N/A")
-            country_flag = bin_details.get("country_emoji", "")
 
-            # Capture printed output from multi_checking
-            import io, sys
+            # Capture output from multi_checking
+            import io, sys, re
             buffer = io.StringIO()
             sys.stdout = buffer
 
@@ -3655,14 +3657,19 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             sys.stdout = sys.__stdout__
             output = buffer.getvalue().strip()
+
+            # Clean output: remove emojis & timing info
+            output_clean = re.sub(r'[^\w\s.,|:-]', '', output)
+            output_clean = re.sub(r'Taken .*s', '', output_clean).strip()
+
             # Determine status
-            if "Approved" in response_message or "New payment method" in response_message:
+            if "Approved" in output_clean or "New payment method" in output_clean:
                 status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
             else:
                 status = "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
 
             # Italicize the response
-            output_text = f"<i>{response_message}</i>"
+            output_text = f"<i>{output_clean}</i>"
 
             # Developer & bullet links
             DEVELOPER_NAME = "kคli liຖนxx"
@@ -3672,7 +3679,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
             bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-            # Prepare final reply
+            # Prepare final reply with proper monospace formatting
             reply_text = (
                 f"═══[ {status} ]═══\n"
                 f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{formatted_cc}</code>\n"
@@ -3696,6 +3703,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run in background
     asyncio.create_task(run_and_reply())
+
 
 
 
