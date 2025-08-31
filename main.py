@@ -3688,11 +3688,6 @@ CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 GLOBAL_COOLDOWN_SECONDS = 20
 last_b3_time = 0  # timestamp of last usage
 
-# You need to define these somewhere in your code
-bullet_link = "•"
-developer_clickable = "<a href='https://t.me/YourDeveloperUsername'>Developer</a>"
-
-
 async def process_b3(update, context, card_input, status_msg):
     try:
         # Run your checker (must be async)
@@ -3709,7 +3704,7 @@ async def process_b3(update, context, card_input, status_msg):
             status = "❌ 𝘿𝙚𝙘𝙡𝙞𝙣𝙚𝙙"
             reason = "Invalid expiry date"
         else:
-            status = "❌ Declined"
+            status = "❌ 𝘿𝙚𝙘𝙡𝙞𝙣𝙚𝙙"
             if " - " in result_text:
                 parts = result_text.split(" - ")
                 reason = parts[1] if len(parts) > 1 else "Unknown error"
@@ -3765,7 +3760,7 @@ async def b3_command(update, context):
     if now - last_b3_time < GLOBAL_COOLDOWN_SECONDS:
         remaining = round(GLOBAL_COOLDOWN_SECONDS - (now - last_b3_time), 1)
         await update.message.reply_text(
-            html.escape(f"⏳ Please wait {remaining}𝗦 before using /b3 again."),
+            html.escape(f"⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 {remaining}𝗦 𝗯𝗲𝗳𝗼𝗿𝗲 𝘂𝘀𝗶𝗻𝗴 /𝗯3 𝗮𝗴𝗮𝗶𝗻."),
             parse_mode="HTML"
         )
         return
@@ -3785,7 +3780,7 @@ async def b3_command(update, context):
     # No card found
     if not card_input:
         await update.message.reply_text(
-            html.escape("🚫 Usage: /b3 <card|mm|yy|cvv> or reply to a message containing a card."),
+            html.escape("🚫 Usage: /b3 <code>card|mm|yy|cvv</code> or reply to a message containing a card."),
             parse_mode="HTML"
         )
         return
@@ -3794,7 +3789,7 @@ async def b3_command(update, context):
 
     # Initial processing message
     status_msg = await update.message.reply_text(
-        "⏳ Processing your request...",
+        "⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...",
         parse_mode="HTML"
     )
 
