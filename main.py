@@ -3563,10 +3563,41 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from b3 import multi_checking
+from db import get_user, update_user, init_db  # replace with your actual module
+from your_bin_module import get_bin_details    # replace with your actual module
 
 # Store the last usage time for cooldown
 last_b3_usage = {}
 COOLDOWN_SECONDS = 5
+
+async def get_bin_details(bin_number: str) -> dict:
+    bin_data = {
+        "scheme": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": ""
+    }
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=7) as response:
+                if response.status == 200:
+                    try:
+                        data = await response.json(content_type=None)
+                        bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                        bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                        bin_data["country_name"] = data.get("country_name", "N/A")
+                        bin_data["country_emoji"] = data.get("country_flag", "")
+                    except Exception as e:
+                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
+                else:
+                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
+    except Exception as e:
+        logger.warning(f"BIN API call failed for {bin_number}: {e}")
+
+    return bin_data
 
 async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -3581,10 +3612,14 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # Update last usage
+    # Check credits
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You have no credits left to use this command.")
+        return
+
     last_b3_usage[user_id] = now
 
-    # Extract CC info from command
+    # Extract CC info
     if not context.args:
         await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
         return
@@ -3602,6 +3637,14 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if len(ano) == 4:
                 ano = ano[-2:]
             formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
+
+            # Get BIN details
+            bin_number = cc[:6]
+            bin_details = await get_bin_details(bin_number)
+            brand = bin_details.get("scheme", "N/A")
+            issuer = bin_details.get("bank", "N/A")
+            country_name = bin_details.get("country_name", "N/A")
+            country_flag = bin_details.get("country_emoji", "")
 
             # Capture printed output from multi_checking
             import io, sys
@@ -3623,9 +3666,9 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
                 f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output}\n"
                 "――――――――――――――――\n"
-                "[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ \n"
-                "[⌇] 𝐁𝐚𝐧𝐤 ➜ \n"
-                "[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ \n"
+                f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
+                f"[⌇] 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
+                f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_flag}` {country_name}\n"
                 "――――――――――――――――\n"
                 f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
                 "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
@@ -3636,7 +3679,12 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await update.message.reply_text(f"❌ An error occurred: {e}")
 
+    # Run in background so it doesn’t block other commands
     asyncio.create_task(run_and_reply())
+
+
+# Register command handler in your main bot
+# application.add_handler(CommandHandler("b3", b3_command))
 
 
 
