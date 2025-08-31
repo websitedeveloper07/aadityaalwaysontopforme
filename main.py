@@ -1563,7 +1563,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 # chk_command function
 import re
 
-# Regex pattern: card number 12-19 digits | mm | yy or yyyy | cvv 3-4 digits
+# Strict regex: 12-19 digit card number | 1-2 digit month | 2-4 digit year | 3-4 digit cvv
 CARD_REGEX = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1589,12 +1589,12 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
 
-    # 1️⃣ Get text to extract card from
-    raw_text = None
+    # 1️⃣ Get text to extract card from: reply or command argument
+    raw_text = ""
     if update.message.reply_to_message and update.message.reply_to_message.text:
-        raw_text = update.message.reply_to_message.text
+        raw_text = update.message.reply_to_message.text.strip()
     elif context.args:
-        raw_text = ' '.join(context.args)
+        raw_text = ' '.join(context.args).strip()
 
     if not raw_text:
         await update.effective_message.reply_text(
@@ -1602,16 +1602,17 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 2️⃣ Extract card using regex
+    # 2️⃣ Extract card using regex (ignore letters or extra text)
     match = CARD_REGEX.search(raw_text)
     if not match:
         await update.effective_message.reply_text(
-            "⚠️ No valid card found. Use number|mm|yy|cvv or reply to a message containing a card."
+            "⚠️ No valid card found. Make sure the format is number|mm|yy(yy)|cvv and contains only numbers."
         )
         return
 
-    # 3️⃣ Normalize year to 2 digits
     cc, mm, yy, cvv = match.groups()
+
+    # Normalize 4-digit year to 2 digits
     if len(yy) == 4:
         yy = yy[-2:]
     card_input = f"{cc}|{mm}|{yy}|{cvv}"
@@ -1632,8 +1633,10 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
         f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
         "════════════════════\n"
+
     )
 
+    # Send processing message
     processing_msg = await update.effective_message.reply_text(
         processing_text,
         parse_mode=ParseMode.MARKDOWN_V2,
