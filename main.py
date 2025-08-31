@@ -3564,6 +3564,7 @@ import asyncio
 import time
 from b3 import multi_checking  # your checker
 
+
 # Developer + Branding
 DEVELOPER_NAME = "kคli liຖนxx"
 DEVELOPER_LINK = "https://t.me/Deadkiller72"
@@ -3574,7 +3575,7 @@ bullet_text = "[⌇]"
 bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
 # Cooldown dict
-user_cooldowns = {}  # user_id -> timestamp of last /b3 use
+user_cooldowns = {}
 COOLDOWN_SECONDS = 5
 
 
@@ -3607,9 +3608,28 @@ async def get_bin_details(bin_number: str) -> dict:
 # ===== BACKGROUND TASK =====
 async def process_b3(update, context, card_input):
     # Run checker
-    result = await multi_checking(card_input)
+    result_text = await multi_checking(card_input)
 
-    # Extract BIN
+    # Parse status + reason
+    if "Approved" in result_text:
+        status = "✅ Approved"
+        reason = "Payment method successfully added."
+    elif "invalid" in result_text.lower():
+        status = "❌ Declined"
+        reason = "Invalid credit card number"
+    elif "Expiration" in result_text or "expiry" in result_text.lower():
+        status = "❌ Declined"
+        reason = "Invalid expiry date"
+    else:
+        status = "❌ Declined"
+        # Try to extract reason after dash
+        if " - " in result_text:
+            parts = result_text.split(" - ")
+            reason = parts[1] if len(parts) > 1 else "Unknown error"
+        else:
+            reason = "Unknown error"
+
+    # BIN lookup
     cc = card_input.split("|")[0]
     bin_number = cc[:6]
     bin_details = await get_bin_details(bin_number)
@@ -3623,7 +3643,8 @@ async def process_b3(update, context, card_input):
         "═══[ 𝐁𝟑 𝐂𝐡𝐞𝐜𝐤𝐞𝐫 ]═══\n\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ braintree\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {result}\n\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬     ➜ {status}\n"
+        f"{bullet_link} 𝐑𝐞𝐚𝐬𝐨𝐧     ➜ {reason}\n\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
         f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
@@ -3657,8 +3678,10 @@ async def b3_command(update, context):
     # Update cooldown
     user_cooldowns[user_id] = now
 
-    # Run in background so bot stays responsive
+    # Run in background
     asyncio.create_task(process_b3(update, context, card_input))
+
+
 
 
 
