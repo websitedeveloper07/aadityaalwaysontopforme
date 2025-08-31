@@ -3705,6 +3705,10 @@ async def process_b3(update, context, card_input, status_msg):
 
 
 # ===== /b3 COMMAND =====
+import re
+
+CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
+
 async def b3_command(update, context):
     user_id = update.effective_user.id
     now = time.time()
@@ -3712,20 +3716,38 @@ async def b3_command(update, context):
     # Cooldown check
     if user_id in user_cooldowns and now - user_cooldowns[user_id] < COOLDOWN_SECONDS:
         remaining = round(COOLDOWN_SECONDS - (now - user_cooldowns[user_id]), 1)
-        await update.message.reply_text(f"⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 {remaining}𝗦 𝗯𝗲𝗳𝗼𝗿𝗲 𝘂𝘀𝗶𝗻𝗴 /𝗯3 𝗮𝗴𝗮𝗶𝗻.", parse_mode="HTML")
+        await update.message.reply_text(
+            f"⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 {remaining}𝗦 𝗯𝗲𝗳𝗼𝗿𝗲 𝘂𝘀𝗶𝗻𝗴 /𝗯3 𝗮𝗴𝗮𝗶𝗻.",
+            parse_mode="HTML"
+        )
         return
 
-    if len(context.args) < 1:
-        await update.message.reply_text("🚫Usage: /b3 <card|mm|yy|cvv>", parse_mode="HTML")
-        return
+    card_input = None
 
-    card_input = context.args[0]
+    # 1️⃣ Check if command has args
+    if context.args and len(context.args) > 0:
+        card_input = context.args[0]
+    # 2️⃣ Else check if replying to a message
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = CARD_PATTERN.search(update.message.reply_to_message.text)
+        if match:
+            card_input = match.group(0)
+
+    if not card_input:
+        await update.message.reply_text(
+            "🚫 Usage: /b3 <card|mm|yy|cvv> or reply to a message containing a card.",
+            parse_mode="HTML"
+        )
+        return
 
     # Update cooldown
     user_cooldowns[user_id] = now
 
     # Send initial "Processing..." message
-    status_msg = await update.message.reply_text("⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...", parse_mode="HTML")
+    status_msg = await update.message.reply_text(
+        "⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...",
+        parse_mode="HTML"
+    )
 
     # Run in background → edit same message later
     asyncio.create_task(process_b3(update, context, card_input, status_msg))
