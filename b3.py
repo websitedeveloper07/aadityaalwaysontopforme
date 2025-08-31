@@ -255,18 +255,15 @@ async def create_payment_method(fullz, session):
         return str(e)
 
 async def multi_checking(x):
-    import httpx, time, json
-    from bs4 import BeautifulSoup
-    from html import unescape
-
     cc, mes, ano, cvv = x.split("|")
-
     if not is_valid_credit_card_number(cc):
-        return f"{x} - Credit card number is invalid"
+        print(f"{x} - Credit card number is invalid")
+        return
 
     valid, err = validate_expiry_date(mes, ano)
     if not valid:
-        return f"{x} - {err}"
+        print(f"{x} - {err}")
+        return
 
     start = time.time()
 
@@ -276,8 +273,8 @@ async def multi_checking(x):
     elapsed = round(time.time() - start, 2)
 
     error_message = ""
+    response = ""
 
-    # Parse JSON response
     try:
         json_resp = json.loads(result)
         if "error" in json_resp and "message" in json_resp["error"]:
@@ -287,7 +284,6 @@ async def multi_checking(x):
             if div:
                 error_message = div.get_text(separator=" ", strip=True)
     except Exception:
-        # Fallback parse HTML
         try:
             soup = BeautifulSoup(unescape(result), "html.parser")
             ul = soup.find("ul", class_="woocommerce-error")
@@ -300,31 +296,27 @@ async def multi_checking(x):
                 if div:
                     error_message = div.get_text(separator=" ", strip=True)
         except Exception:
-            error_message = "Unknown response from gateway"
+            error_message = ""
 
-    # Clean message
     if "Reason: " in error_message:
-        _, _, after = error_message.partition("Reason: ")
+        before, sep, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
-    # Determine response type
-    response_type = ""
-    if "Payment method successfully added." in error_message or "success" in error_message.lower():
-        response_type = "Approved"
-        error_message = "Payment method successfully added."
-        # Save approved cards
-        with open("auth.txt", "a", encoding="utf-8") as file:
-            file.write(f"{x} - {response_type} - {error_message} - Taken {elapsed}s\n")
-    elif "Cannot Authorize" in error_message or "Do Not Honor" in error_message:
-        response_type = "Declined"
-    elif "Call Issuer" in error_message:
-        response_type = "Call Issuer"
-    elif "risk_threshold" in error_message or "Gateway Rejected" in error_message:
-        response_type = "Threshold"
+    if "Payment method successfully added." in error_message:
+        response = "Approved"
+        error_message = ""
     else:
-        response_type = "Declined"
+        response = "Approved"
 
-    return resp
+    if error_message:
+        print(f"{x} - {error_message} - Taken {elapsed}s")
+    else:
+        resp = f"{x} - {response} - Taken {elapsed}s"
+        print(resp)
+        if "Approved" in response:
+            with open("auth.txt", "a", encoding="utf-8") as file:
+                file.write(resp + "\n")
+
 
 
 
