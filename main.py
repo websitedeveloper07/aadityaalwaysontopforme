@@ -3647,10 +3647,9 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             brand = bin_details.get("scheme", "N/A")
             issuer = bin_details.get("bank", "N/A")
             country_name = bin_details.get("country_name", "N/A")
-            country_flag = bin_details.get("country_emoji", "")
 
             # Capture printed output from multi_checking
-            import io, sys
+            import io, sys, re
             buffer = io.StringIO()
             sys.stdout = buffer
 
@@ -3659,14 +3658,18 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sys.stdout = sys.__stdout__
             output = buffer.getvalue().strip()
 
+            # Clean output: remove emojis and timing info
+            output_clean = re.sub(r'[^\w\s.,|:-]', '', output)  # remove non-alphanumeric except | . , : -
+            output_clean = re.sub(r'Taken .*s', '', output_clean).strip()
+
             # Determine status
-            if "Approved" in output or "New payment method" in output:
+            if "Approved" in output_clean or "New payment method" in output_clean:
                 status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
             else:
                 status = "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
 
             # Italicize the output
-            output_text = f"<i>{output}</i>"
+            output_text = f"<i>{output_clean}</i>"
 
             # Developer & bullet links
             DEVELOPER_NAME = "kคli liຖนxx"
@@ -3679,13 +3682,13 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Prepare final reply
             reply_text = (
                 f"═══[ {status} ]═══\n"
-                f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
-                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
+                f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `<code>{formatted_cc}</code>`\n"
+                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ `Braintree Premium Auth`\n"
                 f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output_text}\n"
                 "――――――――――――――――\n"
-                f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
-                f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
-                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_flag}` {country_name}\n"
+                f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `<code>{brand}</code>`\n"
+                f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `<code>{issuer}</code>`\n"
+                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `<code>{country_name}</code>`\n"
                 "――――――――――――――――\n"
                 f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
                 f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
@@ -3700,6 +3703,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run in background
     asyncio.create_task(run_and_reply())
+
 
 
 
