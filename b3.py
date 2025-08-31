@@ -240,23 +240,37 @@ async def create_payment_method(fullz, session):
         return str(e)
 
 
-async def multi_checking(x):
-    cc, mes, ano, cvv = x.split("|")
+async def multi_checking(x: str):
+    """
+    Check a single credit card and print the result.
+    x: str in format "cc|month|year|cvv"
+    """
+    try:
+        cc, mes, ano, cvv = x.split("|")
+    except ValueError:
+        print(f"{x} - Invalid format (must be cc|month|year|cvv)")
+        return
+
+    # Validate expiry
     valid, err = validate_expiry_date(mes, ano)
     if not valid:
-        print(f"{x} - {err} ❌")
+        print(f"{x} - {err}")
+        return
+
+    if not cvv.isdigit() or len(cvv) not in (3, 4):
+        print(f"{x} - Invalid CVV")
         return
 
     start = time.time()
-
-    async with httpx.AsyncClient(timeout=40) as session:
-        result = await create_payment_method(x, session)
-
-    elapsed = round(time.time() - start, 2)
-
     error_message = ""
     response = ""
 
+    async with httpx.AsyncClient(timeout=40) as session:
+        result = await create_payment_method(x, session)  # your gateway function
+
+    elapsed = round(time.time() - start, 2)
+
+    # Try JSON response
     try:
         json_resp = json.loads(result)
         if "error" in json_resp and "message" in json_resp["error"]:
@@ -266,6 +280,7 @@ async def multi_checking(x):
             if div:
                 error_message = div.get_text(separator=" ", strip=True)
     except Exception:
+        # Try HTML response
         try:
             soup = BeautifulSoup(unescape(result), "html.parser")
             ul = soup.find("ul", class_="woocommerce-error")
@@ -280,35 +295,34 @@ async def multi_checking(x):
         except Exception:
             error_message = ""
 
+    # Clean up reason
     if "Reason: " in error_message:
-        before, sep, after = error_message.partition("Reason: ")
+        _, _, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
+    # Final response
     if "Payment method successfully added." in error_message:
-        response = "Approved ✅"
-        error_message = ""
+        response = "Approved"
+    elif error_message:
+        response = f"Declined - {error_message}"
     else:
-        response = "Approved ✅"
+        response = "Declined"
 
-    if error_message:
-        print(f"{x} - {error_message} ❌ - Taken {elapsed}s")
-    else:
-        resp = f"{x} - {response} - Taken {elapsed}s"
-        print(resp)
-        if "Approved ✅" in response:
-            with open("auth.txt", "a", encoding="utf-8") as file:
-                file.write(resp + "\n")
+    # Print result
+    resp = f"{x} - {response} - Taken {elapsed}s"
+    print(resp)
 
 
-import asyncio
-from b3 import multi_checking  # import your existing multi_checking function
-
+# ==========================
+# Run multiple CCs concurrently
+# ==========================
 async def run_ccs(cc_list):
     """
-    Run multi_checking for each CC in the list concurrently in the background.
+    Run multi_checking for each CC in the list concurrently.
     cc_list: list of strings in format "cc|month|year|cvv"
     """
     tasks = []
+
     for cc in cc_list:
         parts = cc.strip().split("|")
         if len(parts) == 4:
@@ -316,23 +330,29 @@ async def run_ccs(cc_list):
             if len(year) == 4:
                 year = year[-2:]
             new_cc = f"{cc_num}|{month}|{year}|{cvv}"
-            # schedule each CC check as a background task
             tasks.append(asyncio.create_task(multi_checking(new_cc)))
-            # optional: small delay between scheduling to avoid server issues
-            await asyncio.sleep(20)
-    # run all tasks concurrently
+            await asyncio.sleep(0.5)  # small delay to avoid overload
+        else:
+            print(f"{cc} - Invalid format")
+
     await asyncio.gather(*tasks)
 
+
+# ==========================
+# Helper to start in background from bot
+# ==========================
 def start_b3_bot_background(cc_list):
     """
     Call this function from your bot command with a list of CCs.
     """
     loop = asyncio.get_event_loop()
     loop.create_task(run_ccs(cc_list))
-    print("B3 background checking started ✅")
+    print("B3 background checking started")
 
-# For standalone execution (optional)
+
+# ==========================
+# Optional standalone execution
+# ==========================
 if __name__ == "__main__":
-    # Example: read CCs from ccs.txt for testing
     ccs = open("ccs.txt", "r", encoding="utf-8").read().splitlines()
     asyncio.run(run_ccs(ccs))
