@@ -319,7 +319,7 @@ async def run_ccs(cc_list):
             # schedule each CC check as a background task
             tasks.append(asyncio.create_task(multi_checking(new_cc)))
             # optional: small delay between scheduling to avoid server issues
-            await asyncio.sleep(1)
+            await asyncio.sleep(20)
     # run all tasks concurrently
     await asyncio.gather(*tasks)
 
