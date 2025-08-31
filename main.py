@@ -3746,27 +3746,6 @@ GLOBAL_COOLDOWN_SECONDS = 20
 last_b3_time = 0  # timestamp of last usage
 
 
-async def process_b3(update, context, card_input, status_msg):
-    """
-    Simulated background processing of a card.
-    Replace this with your real card-checking logic.
-    """
-    try:
-        # Simulate some processing delay
-        await asyncio.sleep(3)
-
-        # Escape card input for HTML
-        safe_card = html.escape(card_input)
-
-        # Update the status message with result
-        await status_msg.edit_text(
-            f"✅ Processed card: <b>{safe_card}</b>",
-            parse_mode="HTML"
-        )
-    except Exception as e:
-        await status_msg.edit_text(f"❌ Error processing card: {e}")
-
-
 async def b3_command(update, context):
     global last_b3_time
     now = time.time()
