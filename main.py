@@ -3640,11 +3640,10 @@ async def process_b3(update, context, card_input):
 
     # Format message
     formatted_msg = (
-        "═══[ 𝐁𝟑 𝐂𝐡𝐞𝐜𝐤𝐞𝐫 ]═══\n\n"
+        "═══[ {status} ]═══\n\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ braintree\n"
-        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬     ➜ {status}\n"
-        f"{bullet_link} 𝐑𝐞𝐚𝐬𝐨𝐧     ➜ {reason}\n\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞     ➜ <i>{reason}</i>\n\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
         f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
