@@ -3665,14 +3665,16 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 status = "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
 
-            # Wrap the output from the website in italic
-            output_text = f"_{output}_"
- 
-             DEVELOPER_NAME = "kคli liຖนxx"
-             DEVELOPER_LINK = "https://t.me/Deadkiller72"
-             developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
-             BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
-             bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+            # Italicize the output
+            output_text = f"<i>{output}</i>"
+
+            # Developer & bullet links
+            DEVELOPER_NAME = "kคli liຖนxx"
+            DEVELOPER_LINK = "https://t.me/Deadkiller72"
+            developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+
+            BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
+            bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
             # Prepare final reply
             reply_text = (
@@ -3686,12 +3688,12 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_flag}` {country_name}\n"
                 "――――――――――――――――\n"
                 f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
-                "{bullet_link}  𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+                f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
                 "――――――――――――――――"
             )
 
             # Edit the original message with final result
-            await message.edit_text(reply_text, parse_mode="Markdown")
+            await message.edit_text(reply_text, parse_mode="HTML")
 
         except Exception as e:
             await update.message.reply_text(f"❌ An error occurred: {e}")
@@ -3699,8 +3701,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Run in background
     asyncio.create_task(run_and_reply())
 
-# Register command handler in your main bot
-# application.add_handler(CommandHandler("b3", b3_command))
+
 
 
 
