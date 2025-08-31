@@ -3567,7 +3567,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from b3 import multi_checking
 from telegram.ext import Application, CommandHandler, ContextTypes
-
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
 from b3 import multi_checking
 from db import get_user, update_user, init_db  # Replace with your actual module functions
 
@@ -3612,7 +3612,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = datetime.now()
 
-    # Cooldown check
+    # Check cooldown
     if user_id in last_b3_usage:
         elapsed = (now - last_b3_usage[user_id]).total_seconds()
         if elapsed < COOLDOWN_SECONDS:
@@ -3628,6 +3628,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     last_b3_usage[user_id] = now
 
+    # Extract CC info
     if not context.args:
         await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
         return
@@ -3646,9 +3647,6 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ano = ano[-2:]
             formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
 
-            # Send processing message
-            message = await update.message.reply_text("⏳ Processing your request...")
-
             # Get BIN details
             bin_number = cc[:6]
             bin_details = await get_bin_details(bin_number)
@@ -3657,47 +3655,43 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             country_name = bin_details.get("country_name", "N/A")
             country_flag = bin_details.get("country_emoji", "")
 
-            # Capture multi_checking output
+            # Capture printed output from multi_checking
+            import io, sys
             buffer = io.StringIO()
             sys.stdout = buffer
+
             await multi_checking(formatted_cc)
+
             sys.stdout = sys.__stdout__
             output = buffer.getvalue().strip()
 
-            # === Use your B3 logic here ===
-            response_text = ""
-            if "Payment method successfully added." in output:
-                status = "Approved ✅"
-                response_text = "<i>Payment method added successfully</i>"
-            else:
-                status = "Declined ❌"
-                if "Reason:" in output:
-                    _, _, reason = output.partition("Reason:")
-                    response_text = f"<i>{reason.strip()}</i>"
-                else:
-                    response_text = f"<i>{output}</i>"
+            # Determine status
+            status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅" if "Approved ✅" in output else "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
 
-            # Prepare final message
+            bullet_text = escape_all_markdown("[⌇]")
+            bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+
+            # Prepare response
             reply_text = (
                 f"═══[ {status} ]═══\n"
-                f"[⌇] 𝐂𝐚𝐫𝐝 ➜ <code>{formatted_cc}</code>\n"
-                f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
-                f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response_text}\n"
+                f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
+                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
+                f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ *{output}*\n"
                 "――――――――――――――――\n"
-                f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
-                f"[⌇] 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
-                f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_flag} {country_name}</code>\n"
+                f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
+                f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
+                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_flag} {country_name}`\n"
                 "――――――――――――――――\n"
-                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
-                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+                f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ `{update.effective_user.full_name}`\n"
+                "{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
                 "――――――――――――――――"
             )
 
-            await message.edit_text(reply_text, parse_mode="HTML")
-
+            await update.message.reply_text(reply_text, parse_mode="Markdown")
         except Exception as e:
             await update.message.reply_text(f"❌ An error occurred: {e}")
 
+    # Run in background so it doesn’t block other commands
     asyncio.create_task(run_and_reply())
 
 
