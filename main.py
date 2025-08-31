@@ -1561,6 +1561,15 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         
 # chk_command function
+import re
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# Regex for card detection
+CARD_REGEX = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
+
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     chat = update.effective_chat
@@ -1570,16 +1579,14 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
     if not user_data:
         await update.effective_message.reply_text(
-            "❌ Could not fetch your user data. Try again later.",
-            parse_mode=None
+            "❌ Could not fetch your user data. Try again later."
         )
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
         await update.effective_message.reply_text(
-            "❌ You have no credits left. Please buy a plan to get more credits.",
-            parse_mode=None
+            "❌ You have no credits left. Please buy a plan to get more credits."
         )
         return
 
@@ -1587,52 +1594,42 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Get card: reply or argument
+    # Get text (reply or args)
     raw = None
     if update.message.reply_to_message and update.message.reply_to_message.text:
         raw = update.message.reply_to_message.text.strip()
     elif context.args:
-        raw = ' '.join(context.args).strip()
+        raw = " ".join(context.args).strip()
 
-    if not raw or "|" not in raw:
+    if not raw:
         await update.effective_message.reply_text(
-            "⚠️Usage: /chk number|mm|yy|cvv",
-            parse_mode=None
+            "⚠️Usage: /chk number|mm|yy|cvv"
         )
         return
 
-    parts = raw.split("|")
-
-    # Handle both 3-part and 4-part formats
-    if len(parts) == 3:
-        # Assume format: number|mm|yy(or yyyy)
-        card, mm, yy = parts
-        cvv = "000"   # placeholder, or ask user to reply with cvv
-        parts = [card, mm, yy, cvv]
-    elif len(parts) == 4:
-        card, mm, yy, cvv = parts
-    else:
+    # Extract card from text
+    match = CARD_REGEX.search(raw)
+    if not match:
         await update.effective_message.reply_text(
-            "⚠️Invalid format. Use number|mm|yy|cvv",
-            parse_mode=None
+            "⚠️No valid card found. Format: number|mm|yy|cvv"
         )
         return
+
+    card, mm, yy, cvv = match.groups()
 
     # Normalize year
-    if len(parts[2]) == 4:
-        parts[2] = parts[2][-2:]
+    if len(yy) == 4:
+        yy = yy[-2:]
 
+    parts = [card, mm, yy, cvv]
     cc_normalized = "|".join(parts)
 
     # Deduct credit
     if not await consume_credit(user_id):
-        await update.effective_message.reply_text(
-            "❌ No credits left.",
-            parse_mode=None
-        )
+        await update.effective_message.reply_text("❌ No credits left.")
         return
 
-    # Define bullet link
+    # Bullet link
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
@@ -1648,11 +1645,13 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_msg = await update.effective_message.reply_text(
         processing_text,
         parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True
+        disable_web_page_preview=True,
     )
 
-    # Start background task
-    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+    # Run background check
+    asyncio.create_task(
+        background_check(cc_normalized, parts, user, user_data, processing_msg)
+    )
 
 
 
