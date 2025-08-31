@@ -86,44 +86,44 @@ async def create_payment_method(fullz, session):
         #pwd = "Renaparael" + str(random.randint(9999, 574545))
 
         # Cookies
-        cookies = {
-            'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F',
-            'sbjs_migrations': '1418474375998%3D1',
-            'sbjs_current_add': 'fd%3D2025-08-28%2010%3A25%3A47%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29',
-            'sbjs_first_add': 'fd%3D2025-08-28%2010%3A25%3A47%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29',
-            'sbjs_current': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-            'sbjs_first': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-            '_gcl_au': '1.1.403858930.1756376751',
-            '_ga': 'GA1.1.1790710832.1756376751',
-            'mailchimp.cart.previous_email': 'zerotracehacked@gmail.com',
-            'Subscribe': 'true',
-            'wordpress_test_cookie': 'WP%20Cookie%20check',
-            'mailchimp.cart.current_email': 'senryjo@onionmail.org',
-            'mailchimp_user_previous_email': 'senryjo%40onionmail.org',
-            'mailchimp_user_email': 'senryjo%40onionmail.org',
-            'sbjs_udata': 'vst%3D7%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28X11%3B%20Linux%20x86_64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F138.0.0.0%20Safari%2F537.36',
-            'breeze_folder_name': '6bae3cd94ddbfe28435ae88815e64956a5198266',
-            'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'rehalesson%7C1756793502%7CUjEMqQWaNHUWMQwwFkTMM3zW5EOOMAv6OYQybasjPgK%7Cb17d37f5414fc65fe05da0632584a1fd6fd144967eb3237ba5aa098baf2a39e5',
-            'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8979%7Cother%7Cread%7C830d49951dadcaebacb5f5341a25b1a7bc585db9ca2f5ec1ca48a960d7cda91b',
-            '_ga_D1Q49TMJ2C': 'GS2.1.s1756620390$o7$g1$t1756620728$j35$l0$h0',
-            'sbjs_session': 'pgs%3D4%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
-        }
+cookies = {
+    '_ga': 'GA1.1.333862603.1756374247',
+    '_gcl_au': '1.1.1881747356.1756374247',
+    'mailchimp_user_email': 'zerotracehacked%40gmail.com',
+    'sbjs_migrations': '1418474375998%3D1',
+    'sbjs_first_add': 'fd%3D2025-08-31%2005%3A24%3A32%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOopYzTPOS7xH5nYM1WtqvxvNJJm-dp9XEOiXG7fHqYklIRiy7EgB%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
+    'sbjs_current': 'typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
+    'sbjs_first': 'typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
+    'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV',
+    'sbjs_current_add': 'fd%3D2025-08-31%2007%3A15%3A27%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
+    'sbjs_udata': 'vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Safari%2F537.36',
+    'Subscribe': 'true',
+    'mailchimp.cart.current_email': 'zerotracehacked@gmail.com',
+    'breeze_folder_name': '6bae3cd94ddbfe28435ae88815e64956a5198266',
+    'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'zerotracehacked%7C1756799157%7CnD7FW8DApW206UkwUXq1XATEYHjrDHTxQZ63YEPncx2%7Ca2e5f8502ab08d7c15b7381d6ecac1c3d5c4e3dd10a025c27e5a4856fd28948d',
+    'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8961%7Cother%7Cread%7C314e7ddb46839835096721fc54c20706a06c35f06c4594bd9475cb8d74eef37f',
+    'cfzs_google-analytics_v4': '%7B%22uoEf_pageviewCounter%22%3A%7B%22v%22%3A%226%22%7D%7D',
+    '_ga_D1Q49TMJ2C': 'GS2.1.s1756625842$o4$g1$t1756626377$j9$l0$h0',
+    'sbjs_session': 'pgs%3D5%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
+    'cfz_google-analytics_v4': '%7B%22uoEf_engagementDuration%22%3A%7B%22v%22%3A%220%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf_engagementStart%22%3A%7B%22v%22%3A1756626385286%2C%22e%22%3A1788162383639%7D%2C%22uoEf_counter%22%3A%7B%22v%22%3A%2267%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf_session_counter%22%3A%7B%22v%22%3A%224%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf_ga4%22%3A%7B%22v%22%3A%226d94b6c7-8ebe-4002-b4c6-d90aedcc23c4%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf__z_ga_audiences%22%3A%7B%22v%22%3A%226d94b6c7-8ebe-4002-b4c6-d90aedcc23c4%22%2C%22e%22%3A1787910244633%7D%2C%22uoEf_let%22%3A%7B%22v%22%3A%221756626376004%22%2C%22e%22%3A1788162376004%7D%2C%22uoEf_ga4sid%22%3A%7B%22v%22%3A%221103853429%22%2C%22e%22%3A1756628176004%7D%7D',
+}
 
-        headers = {
-            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'accept-language': 'en-US,en;q=0.9',
-            'priority': 'u=0, i',
-            'referer': 'https://apluscollectibles.com/my-account/payment-methods/',
-            'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Linux"',
-            'sec-fetch-dest': 'document',
-            'sec-fetch-mode': 'navigate',
-            'sec-fetch-site': 'same-origin',
-            'sec-fetch-user': '?1',
-            'upgrade-insecure-requests': '1',
-            'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
-        }
+headers = {
+    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'accept-language': 'en-US,en;q=0.9',
+    'priority': 'u=0, i',
+    'referer': 'https://apluscollectibles.com/my-account/payment-methods/',
+    'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
+    'sec-ch-ua-mobile': '?1',
+    'sec-ch-ua-platform': '"Android"',
+    'sec-fetch-dest': 'document',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-site': 'same-origin',
+    'sec-fetch-user': '?1',
+    'upgrade-insecure-requests': '1',
+    'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36',
+}
+
 
         response = await session.get('https://apluscollectibles.com/my-account/add-payment-method/', cookies=cookies, headers=headers)
 
