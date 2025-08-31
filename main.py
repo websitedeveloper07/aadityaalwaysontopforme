@@ -3606,7 +3606,6 @@ async def get_bin_details(bin_number: str) -> dict:
 
 
 # ===== BACKGROUND TASK =====
-# ===== PROCESS B3 =====
 async def process_b3(update, context, card_input, status_msg):
     try:
         # Run checker
@@ -3639,16 +3638,16 @@ async def process_b3(update, context, card_input, status_msg):
         issuer = bin_details.get("bank", "N/A").title()
         country = f"{bin_details.get('country_name', 'N/A')} {bin_details.get('country_emoji', '')}"
 
-        # Format message
+        # Format message (compact, no gaps between lines)
         formatted_msg = (
-            f"═══[ {status} ]═══\n\n"
+            f"═══[ {status} ]═══\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{reason}</i>\n\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{reason}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{country}</code>\n\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{country}</code>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ <code>{update.effective_user.first_name}</code>\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
@@ -3660,6 +3659,7 @@ async def process_b3(update, context, card_input, status_msg):
 
     except Exception as e:
         await status_msg.edit_text(f"❌ Error while processing: {e}", parse_mode="HTML")
+
 
 
 # ===== /b3 COMMAND =====
