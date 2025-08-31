@@ -1559,74 +1559,83 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
 
 
-        
+
 import re
-import asyncio
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
 
-# Strict regex: 13-19 digit card | 01-12 month | 2 or 4 digit year | 3-4 digit cvv
-CARD_REGEX = re.compile(
-    r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b"
-)
-
+CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
+     
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    chat = update.effective_chat
     user_id = user.id
 
     # Get user data
     user_data = await get_user(user_id)
     if not user_data:
-        await update.effective_message.reply_text("❌ Could not fetch your user data.")
+        await update.effective_message.reply_text(
+            "❌ Could not fetch your user data. Try again later.",
+            parse_mode=None
+        )
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
-        await update.effective_message.reply_text("❌ You have no credits left.")
+        await update.effective_message.reply_text(
+            "❌ You have no credits left. Please buy a plan to get more credits.",
+            parse_mode=None
+        )
         return
 
     # Cooldown check
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Get text (reply or args)
+    # 1️⃣ Check if command has args
+    if context.args and len(context.args) > 0:
+        card_input = context.args[0]
+    # 2️⃣ Else check if replying to a message
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = CARD_PATTERN.search(update.message.reply_to_message.text)
+        if match:
+            card_input = match.group(0)
+            
+
+    # Get card: reply or argument
     raw = None
     if update.message.reply_to_message and update.message.reply_to_message.text:
         raw = update.message.reply_to_message.text.strip()
     elif context.args:
-        raw = " ".join(context.args).strip()
+        raw = ' '.join(context.args).strip()
 
-    if not raw:
-        await update.effective_message.reply_text("⚠️Usage: /chk number|mm|yy|cvv")
-        return
-
-    # Extract card with regex
-    match = CARD_REGEX.search(raw)
-    if not match:
+    if not raw or "|" not in raw:
         await update.effective_message.reply_text(
-            "⚠️No valid card found. Format: number|mm|yy|cvv"
+            "⚠️Usage: /chk number|mm|yy|cvv",
+            parse_mode=None
         )
         return
 
-    card, mm, yy, cvv = match.groups()
-
-    # Normalize month
-    mm = mm.zfill(2)  # ensure "1" becomes "01"
+    parts = raw.split("|")
+    if len(parts) != 4:
+        await update.effective_message.reply_text(
+            "⚠️Invalid format. Use number|mm|yy|cvv .",
+            parse_mode=None
+        )
+        return
 
     # Normalize year
-    if len(yy) == 4:
-        yy = yy[-2:]
-
-    parts = [card, mm, yy, cvv]
+    if len(parts[2]) == 4:
+        parts[2] = parts[2][-2:]
     cc_normalized = "|".join(parts)
 
     # Deduct credit
     if not await consume_credit(user_id):
-        await update.effective_message.reply_text("❌ No credits left.")
+        await update.effective_message.reply_text(
+            "❌ No credits left.",
+            parse_mode=None
+        )
         return
 
-    # Bullet link
+    # Define bullet link
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
@@ -1639,16 +1648,16 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "════════════════════"
     )
 
+    # Send processing message
     processing_msg = await update.effective_message.reply_text(
         processing_text,
         parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True,
+        disable_web_page_preview=True
     )
 
-    # Background check
-    asyncio.create_task(
-        background_check(cc_normalized, parts, user, user_data, processing_msg)
-    )
+    # Start background task
+    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+
 
 
 
