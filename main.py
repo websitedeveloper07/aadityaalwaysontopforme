@@ -3527,7 +3527,6 @@ import asyncio
 import logging
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from telethon.errors import UsernameInvalid, PeerIdInvalid, FloodWait, AuthKeyUnregistered
 
 # Utility function to safely escape text for MarkdownV2
 def safe_md(text: str) -> str:
