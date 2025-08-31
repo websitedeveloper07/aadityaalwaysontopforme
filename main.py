@@ -3606,55 +3606,60 @@ async def get_bin_details(bin_number: str) -> dict:
 
 
 # ===== BACKGROUND TASK =====
-async def process_b3(update, context, card_input):
-    # Run checker
-    result_text = await multi_checking(card_input)
+# ===== PROCESS B3 =====
+async def process_b3(update, context, card_input, status_msg):
+    try:
+        # Run checker
+        result_text = await multi_checking(card_input)
 
-    # Parse status + reason
-    if "Approved" in result_text:
-        status = "✅ Approved"
-        reason = "Payment method successfully added."
-    elif "invalid" in result_text.lower():
-        status = "❌ Declined"
-        reason = "Invalid credit card number"
-    elif "Expiration" in result_text or "expiry" in result_text.lower():
-        status = "❌ Declined"
-        reason = "Invalid expiry date"
-    else:
-        status = "❌ Declined"
-        # Try to extract reason after dash
-        if " - " in result_text:
-            parts = result_text.split(" - ")
-            reason = parts[1] if len(parts) > 1 else "Unknown error"
+        # Parse status + reason
+        if "Approved" in result_text:
+            status = "✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱"
+            reason = "Payment method successfully added."
+        elif "invalid" in result_text.lower():
+            status = "❌ 𝘿𝙚𝙘𝙡𝙞𝙣𝙚𝙙"
+            reason = "Invalid credit card number"
+        elif "Expiration" in result_text or "expiry" in result_text.lower():
+            status = "❌ 𝘿𝙚𝙘𝙡𝙞𝙣𝙚𝙙"
+            reason = "Invalid expiry date"
         else:
-            reason = "Unknown error"
+            status = "❌ Declined"
+            if " - " in result_text:
+                parts = result_text.split(" - ")
+                reason = parts[1] if len(parts) > 1 else "Unknown error"
+            else:
+                reason = "Unknown error"
 
-    # BIN lookup
-    cc = card_input.split("|")[0]
-    bin_number = cc[:6]
-    bin_details = await get_bin_details(bin_number)
+        # BIN lookup
+        cc = card_input.split("|")[0]
+        bin_number = cc[:6]
+        bin_details = await get_bin_details(bin_number)
 
-    brand = bin_details.get("scheme", "N/A").upper()
-    issuer = bin_details.get("bank", "N/A").title()
-    country = f"{bin_details.get('country_name', 'N/A')} {bin_details.get('country_emoji', '')}"
+        brand = bin_details.get("scheme", "N/A").upper()
+        issuer = bin_details.get("bank", "N/A").title()
+        country = f"{bin_details.get('country_name', 'N/A')} {bin_details.get('country_emoji', '')}"
 
-    # Format message
-    formatted_msg = (
-        "═══[ {status} ]═══\n\n"
-        f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ braintree\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞     ➜ <i>{reason}</i>\n\n"
-        "――――――――――――――――\n"
-        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
-        f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
-        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{country}</code>\n\n"
-        "――――――――――――――――\n"
-        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ <code>{update.effective_user.first_name}</code>\n"
-        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
-        "――――――――――――――――"
-    )
+        # Format message
+        formatted_msg = (
+            f"═══[ {status} ]═══\n\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{reason}</i>\n\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{country}</code>\n\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ <code>{update.effective_user.first_name}</code>\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+            "――――――――――――――――"
+        )
 
-    await update.message.reply_text(formatted_msg, parse_mode="HTML", disable_web_page_preview=True)
+        # Edit the "Processing..." message
+        await status_msg.edit_text(formatted_msg, parse_mode="HTML", disable_web_page_preview=True)
+
+    except Exception as e:
+        await status_msg.edit_text(f"❌ Error while processing: {e}", parse_mode="HTML")
 
 
 # ===== /b3 COMMAND =====
@@ -3677,8 +3682,12 @@ async def b3_command(update, context):
     # Update cooldown
     user_cooldowns[user_id] = now
 
-    # Run in background
-    asyncio.create_task(process_b3(update, context, card_input))
+    # Send initial "Processing..." message
+    status_msg = await update.message.reply_text("⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...", parse_mode="HTML")
+
+    # Run in background → edit same message later
+    asyncio.create_task(process_b3(update, context, card_input, status_msg))
+
 
 
 
