@@ -3680,7 +3680,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_text = (
                 f"═══[ {status} ]═══\n"
                 f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
-                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
+                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
                 f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output_text}\n"
                 "――――――――――――――――\n"
                 f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
