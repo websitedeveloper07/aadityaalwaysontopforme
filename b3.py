@@ -283,22 +283,23 @@ async def multi_checking(x):
 
     elapsed = round(time.time() - start, 2)
 
+    # Ensure result is string
+    result_str = result or ""
     error_message = ""
-    response = "Declined ❌"
 
-    # Try to parse JSON response
+    # Try parsing JSON for errors
     try:
-        json_resp = json.loads(result)
-        if "error" in json_resp and "message" in json_resp["error"]:
+        json_resp = json.loads(result_str)
+        if json_resp and "error" in json_resp and "message" in json_resp["error"]:
             raw_html = unescape(json_resp["error"]["message"])
             soup = BeautifulSoup(raw_html, "html.parser")
             div = soup.find("div", class_="message-container")
             if div:
                 error_message = div.get_text(separator=" ", strip=True)
     except Exception:
-        # Fallback: parse HTML directly
+        # Fallback HTML parsing
         try:
-            soup = BeautifulSoup(unescape(result or ""), "html.parser")
+            soup = BeautifulSoup(unescape(result_str), "html.parser")
             ul = soup.find("ul", class_="woocommerce-error")
             if ul:
                 li = ul.find("li")
@@ -309,29 +310,27 @@ async def multi_checking(x):
                 if div:
                     error_message = div.get_text(separator=" ", strip=True)
         except Exception:
-            error_message = ""
+            pass
 
     # Extract reason if available
     if error_message and "Reason: " in error_message:
         _, _, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
-    # Check success message
-    if error_message and "Payment method successfully added." in error_message:
+    # Determine response
+    if "Payment method successfully added." in result_str or "Payment method successfully added." in error_message:
         response = "Approved ✅"
-        error_message = ""
-    elif "Payment method successfully added." in (result or ""):
-        response = "Approved ✅"
-
-    # Print results
-    if error_message:
-        print(f"{x} - {error_message} ❌ - Taken {elapsed}s")
+    elif error_message:
+        response = f"Declined ❌ ({error_message})"
     else:
-        resp = f"{x} - {response} - Taken {elapsed}s"
-        print(resp)
-        if response == "Approved ✅":
-            with open("auth.txt", "a", encoding="utf-8") as file:
-                file.write(resp + "\n")
+        response = "Declined ❌ (Unknown error)"
+
+    # Print and save
+    resp = f"{x} - {response} - Taken {elapsed}s"
+    print(resp)
+    if response.startswith("Approved"):
+        with open("auth.txt", "a", encoding="utf-8") as file:
+            file.write(resp + "\n")
 
 
 
