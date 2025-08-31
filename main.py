@@ -3558,6 +3558,81 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
 
 
+import asyncio
+from datetime import datetime, timedelta
+from aiogram import types
+from b3 import multi_checking
+
+# Store the last usage time for cooldown
+last_b3_usage = {}
+
+COOLDOWN_SECONDS = 5
+
+@dp.message_handler(commands=["b3"])
+async def b3_handler(message: types.Message):
+    user_id = message.from_user.id
+    now = datetime.now()
+
+    # Check cooldown
+    if user_id in last_b3_usage:
+        elapsed = (now - last_b3_usage[user_id]).total_seconds()
+        if elapsed < COOLDOWN_SECONDS:
+            await message.reply(f"⚠️ Please wait {COOLDOWN_SECONDS - int(elapsed)} seconds before using /b3 again.")
+            return
+
+    # Update last usage
+    last_b3_usage[user_id] = now
+
+    # Extract CC info from command
+    text = message.text.strip()
+    if len(text.split(maxsplit=1)) != 2:
+        await message.reply("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
+        return
+
+    cc_input = text.split(maxsplit=1)[1]
+
+    # Run multi_checking in background
+    async def run_and_reply():
+        start_time = datetime.now()
+        cc, mes, ano, cvv = cc_input.split("|")
+        if len(ano) == 4:
+            ano = ano[-2:]
+        formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
+
+        # Capture printed output from multi_checking
+        import io
+        import sys
+        buffer = io.StringIO()
+        sys.stdout = buffer
+
+        await multi_checking(formatted_cc)
+
+        sys.stdout = sys.__stdout__
+        output = buffer.getvalue().strip()
+
+        # Extract status
+        status = "Approved ✅" if "Approved ✅" in output else "Declined ❌"
+
+        # Prepare response message
+        reply_text = (
+            f"═══[ status {status} ]═══\n"
+            f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
+            f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
+            f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output}\n"
+            "――――――――――――――――\n"
+            "[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ \n"
+            "[⌇] 𝐁𝐚𝐧𝐤 ➜ \n"
+            "[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ \n"
+            "――――――――――――――――\n"
+            f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {message.from_user.full_name}\n"
+            "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+            "――――――――――――――――"
+        )
+
+        await message.reply(reply_text, parse_mode="Markdown")
+
+    asyncio.create_task(run_and_reply())
+
 
 
 import psutil
@@ -4212,6 +4287,7 @@ def main():
     application.add_handler(CommandHandler("bin", command_with_check(bin_lookup, "bin")) )
     application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
+    application.add_handler(CommandHandler("b3", command_with_check(b3_command, "b3")))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
     application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
