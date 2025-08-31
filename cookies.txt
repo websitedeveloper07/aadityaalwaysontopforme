@@ -1,4 +1,5 @@
-cookies = {
+all_cookies = [
+    {
     '_ga': 'GA1.1.1991895596.1756633394',
     '_gcl_au': '1.1.795377134.1756633394',
     'sbjs_migrations': '1418474375998%3D1',
@@ -16,13 +17,8 @@ cookies = {
     '_ga_D1Q49TMJ2C': 'GS2.1.s1756633393$o1$g1$t1756633732$j58$l0$h0',
     'sbjs_udata': 'vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%206.0%3B%20Nexus%205%20Build%2FMRA58N%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Mobile%20Safari%2F537.36',
     'sbjs_session': 'pgs%3D8%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
-}
-
-
-
-
-
-cookies = {
+    },
+    {
     'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOorEL5SOVdTRhJobGLSRx3vCA_gcVVQAZlnDodH7kY4n4Kikirh8',
     'sbjs_migrations': '1418474375998%3D1',
     'sbjs_current_add': 'fd%3D2025-08-31%2009%3A20%3A39%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOorEL5SOVdTRhJobGLSRx3vCA_gcVVQAZlnDodH7kY4n4Kikirh8%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
@@ -39,12 +35,8 @@ cookies = {
     'wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b': 'jadeni7020%7C1757843470%7CiCgqqP45s64A4iYEDsmGzYFLBIr06T0ULAIOk3rr7uT%7Ca6ed39f3e144238b716a2d706255d7cc2df110292ee091e697cf447fb74f27ae',
     'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8985%7Cother%7Cread%7Ce088baca0838c12a9f4cbbfe5ed5af5f84aab4648d0eee190a00154264c0a309',
     'sbjs_session': 'pgs%3D9%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
-}
-
-
-
-
-cookies = {
+    },
+    {
     'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOorEL5SOVdTRhJobGLSRx3vCA_gcVVQAZlnDodH7kY4n4Kikirh8',
     'sbjs_migrations': '1418474375998%3D1',
     'sbjs_current_add': 'fd%3D2025-08-31%2009%3A20%3A39%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOorEL5SOVdTRhJobGLSRx3vCA_gcVVQAZlnDodH7kY4n4Kikirh8%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
@@ -64,12 +56,8 @@ cookies = {
     'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8986%7Cother%7Cread%7Ce14d693fc5915d9b274541784f1b89e77a77e1e6b4bbf86268e064f22e912261',
     '_ga_D1Q49TMJ2C': 'GS2.1.s1756633839$o1$g1$t1756634459$j58$l0$h0',
     'sbjs_session': 'pgs%3D20%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
-}
-
-
-
-
-cookies = {
+    },
+    {
     'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOorEL5SOVdTRhJobGLSRx3vCA_gcVVQAZlnDodH7kY4n4Kikirh8',
     'sbjs_migrations': '1418474375998%3D1',
     'sbjs_current_add': 'fd%3D2025-08-31%2009%3A20%3A39%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOorEL5SOVdTRhJobGLSRx3vCA_gcVVQAZlnDodH7kY4n4Kikirh8%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
@@ -89,10 +77,8 @@ cookies = {
     'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8987%7Cother%7Cread%7Cb41f820480ea4f6f8ea6af0b30c9f1463a6d91f1e46b2b61a78ca2b797e42d00',
     '_ga_D1Q49TMJ2C': 'GS2.1.s1756633839$o1$g1$t1756634767$j38$l0$h0',
     'sbjs_session': 'pgs%3D29%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
-}
-
-
-cookies = {
+    },
+    {
     'mailchimp_landing_site': 'https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOorEL5SOVdTRhJobGLSRx3vCA_gcVVQAZlnDodH7kY4n4Kikirh8',
     'sbjs_migrations': '1418474375998%3D1',
     'sbjs_current_add': 'fd%3D2025-08-31%2009%3A20%3A39%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOorEL5SOVdTRhJobGLSRx3vCA_gcVVQAZlnDodH7kY4n4Kikirh8%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F',
@@ -112,5 +98,5 @@ cookies = {
     'wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f': '8988%7Cother%7Cread%7C2524318138da338fd6d718f72e831c5c91ae6739e5f6c7e6231a21ef28b2827e',
     '_ga_D1Q49TMJ2C': 'GS2.1.s1756633839$o1$g1$t1756635144$j1$l0$h0',
     'sbjs_session': 'pgs%3D38%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fpayment-methods%2F',
-  }
+  ]
     
