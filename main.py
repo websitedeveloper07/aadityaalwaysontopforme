@@ -1561,86 +1561,99 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         
 # chk_command function
-import re
-
-# Match 12-19 digit card | 1-2 digit month | 2-4 digit year | 3-4 digit CVV
-CARD_REGEX = re.compile(r"(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})")
-
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    chat = update.effective_chat
     user_id = user.id
 
     # Get user data
     user_data = await get_user(user_id)
     if not user_data:
-        await update.effective_message.reply_text("❌ Could not fetch your user data. Try again later.")
+        await update.effective_message.reply_text(
+            "❌ Could not fetch your user data. Try again later.",
+            parse_mode=None
+        )
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
-        await update.effective_message.reply_text("❌ You have no credits left. Please buy a plan to get more credits.")
+        await update.effective_message.reply_text(
+            "❌ You have no credits left. Please buy a plan to get more credits.",
+            parse_mode=None
+        )
         return
 
-    # Cooldown
+    # Cooldown check
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Get text: reply or argument
-    raw_text = ""
+    # Get card: reply or argument
+    raw = None
     if update.message.reply_to_message and update.message.reply_to_message.text:
-        raw_text = update.message.reply_to_message.text.strip()
+        raw = update.message.reply_to_message.text.strip()
     elif context.args:
-        raw_text = ' '.join(context.args).strip()
+        raw = ' '.join(context.args).strip()
 
-    if not raw_text:
+    if not raw or "|" not in raw:
         await update.effective_message.reply_text(
-            "⚠️ Usage: /chk <card|mm|yy|cvv> or reply to a message containing a card."
+            "⚠️Usage: /chk number|mm|yy|cvv",
+            parse_mode=None
         )
         return
 
-    # Extract **full card** from message
-    match = CARD_REGEX.search(raw_text)
-    if not match:
+    parts = raw.split("|")
+
+    # Handle both 3-part and 4-part formats
+    if len(parts) == 3:
+        # Assume format: number|mm|yy(or yyyy)
+        card, mm, yy = parts
+        cvv = "000"   # placeholder, or ask user to reply with cvv
+        parts = [card, mm, yy, cvv]
+    elif len(parts) == 4:
+        card, mm, yy, cvv = parts
+    else:
         await update.effective_message.reply_text(
-            "⚠️ No valid card found. Make sure the format is number|mm|yy(yy)|cvv and contains only numbers."
+            "⚠️Invalid format. Use number|mm|yy|cvv",
+            parse_mode=None
         )
         return
 
-    cc, mm, yy, cvv = match.groups()
+    # Normalize year
+    if len(parts[2]) == 4:
+        parts[2] = parts[2][-2:]
 
-    # Normalize 4-digit year to 2 digits
-    if len(yy) == 4:
-        yy = yy[-2:]
-    card_input = f"{cc}|{mm}|{yy}|{cvv}"
+    cc_normalized = "|".join(parts)
 
     # Deduct credit
     if not await consume_credit(user_id):
-        await update.effective_message.reply_text("❌ No credits left.")
+        await update.effective_message.reply_text(
+            "❌ No credits left.",
+            parse_mode=None
+        )
         return
 
-    # Bullet styling
+    # Define bullet link
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Processing message
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"{bullet_link} Card ➜ `{escape_markdown_v2(card_input)}`\n"
+        f"{bullet_link} Card ➜ {escape_markdown_v2(cc_normalized)}\n"
         f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
         f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
-        "════════════════════\n"
-        f"{bullet_link} Status \\- Active ✅"
+        "════════════════════"
     )
 
-    # Send processing message
     processing_msg = await update.effective_message.reply_text(
         processing_text,
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
 
-    # Start background check
-    asyncio.create_task(background_check(card_input, [cc, mm, yy, cvv], user, user_data, processing_msg))
+    # Start background task
+    asyncio.create_task(background_check(cc_normalized, parts, user, user_data, processing_msg))
+
 
 
 
