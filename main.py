@@ -3558,104 +3558,108 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
 
 
+from telegram.ext import CommandHandler
+import aiohttp
 import asyncio
-from datetime import datetime
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
-from b3 import multi_checking
-from db import init_db, get_user, update_user  # replace with your actual module
-   # replace with your actual module
+import time
+from b3 import multi_checking  # your checker
 
-# Store the last usage time for cooldown
-last_b3_usage = {}
+# Developer + Branding
+DEVELOPER_NAME = "kคli liຖนxx"
+DEVELOPER_LINK = "https://t.me/Deadkiller72"
+developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+
+BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+bullet_text = "[⌇]"
+bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
+
+# Cooldown dict
+user_cooldowns = {}  # user_id -> timestamp of last /b3 use
 COOLDOWN_SECONDS = 5
 
-async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+# ===== BIN LOOKUP FUNCTION =====
+async def get_bin_details(bin_number: str) -> dict:
+    bin_data = {
+        "scheme": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": ""
+    }
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=7) as response:
+                if response.status == 200:
+                    data = await response.json(content_type=None)
+                    bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                    bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                    bin_data["country_name"] = data.get("country_name", "N/A")
+                    bin_data["country_emoji"] = data.get("country_flag", "")
+    except Exception:
+        pass
+
+    return bin_data
+
+
+# ===== BACKGROUND TASK =====
+async def process_b3(update, context, card_input):
+    # Run checker
+    result = await multi_checking(card_input)
+
+    # Extract BIN
+    cc = card_input.split("|")[0]
+    bin_number = cc[:6]
+    bin_details = await get_bin_details(bin_number)
+
+    brand = bin_details.get("scheme", "N/A").upper()
+    issuer = bin_details.get("bank", "N/A").title()
+    country = f"{bin_details.get('country_name', 'N/A')} {bin_details.get('country_emoji', '')}"
+
+    # Format message
+    formatted_msg = (
+        "═══[ 𝐁𝟑 𝐂𝐡𝐞𝐜𝐤𝐞𝐫 ]═══\n\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ braintree\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {result}\n\n"
+        "――――――――――――――――\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{country}</code>\n\n"
+        "――――――――――――――――\n"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ <code>{update.effective_user.first_name}</code>\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+        "――――――――――――――――"
+    )
+
+    await update.message.reply_text(formatted_msg, parse_mode="HTML", disable_web_page_preview=True)
+
+
+# ===== /b3 COMMAND =====
+async def b3_command(update, context):
     user_id = update.effective_user.id
-    now = datetime.now()
+    now = time.time()
 
-    # Check cooldown
-    if user_id in last_b3_usage:
-        elapsed = (now - last_b3_usage[user_id]).total_seconds()
-        if elapsed < COOLDOWN_SECONDS:
-            await update.message.reply_text(
-                f"⚠️ Please wait {COOLDOWN_SECONDS - int(elapsed)} seconds before using /b3 again."
-            )
-            return
-
-    # Check credits
-    if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You have no credits left to use this command.")
+    # Cooldown check
+    if user_id in user_cooldowns and now - user_cooldowns[user_id] < COOLDOWN_SECONDS:
+        remaining = round(COOLDOWN_SECONDS - (now - user_cooldowns[user_id]), 1)
+        await update.message.reply_text(f"⏳ Please wait {remaining}s before using /b3 again.", parse_mode="HTML")
         return
 
-    last_b3_usage[user_id] = now
-
-    # Extract CC info
-    if not context.args:
-        await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
+    if len(context.args) < 1:
+        await update.message.reply_text("Usage: /b3 <card|mm|yy|cvv>", parse_mode="HTML")
         return
 
-    cc_input = " ".join(context.args).strip()
+    card_input = context.args[0]
 
-    async def run_and_reply():
-        try:
-            parts = cc_input.split("|")
-            if len(parts) != 4:
-                await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
-                return
+    # Update cooldown
+    user_cooldowns[user_id] = now
 
-            cc, mes, ano, cvv = parts
-            if len(ano) == 4:
-                ano = ano[-2:]
-            formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
+    # Run in background so bot stays responsive
+    asyncio.create_task(process_b3(update, context, card_input))
 
-            # Get BIN details
-            bin_number = cc[:6]
-            bin_details = await get_bin_details(bin_number)
-            brand = bin_details.get("scheme", "N/A")
-            issuer = bin_details.get("bank", "N/A")
-            country_name = bin_details.get("country_name", "N/A")
-            country_flag = bin_details.get("country_emoji", "")
-
-            # Capture printed output from multi_checking
-            import io, sys
-            buffer = io.StringIO()
-            sys.stdout = buffer
-
-            await multi_checking(formatted_cc)
-
-            sys.stdout = sys.__stdout__
-            output = buffer.getvalue().strip()
-
-            # Determine status
-            status = "Approved ✅" if "Approved ✅" in output else "Declined ❌"
-
-            # Prepare response
-            reply_text = (
-                f"═══[ status {status} ]═══\n"
-                f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
-                f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
-                f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output}\n"
-                "――――――――――――――――\n"
-                f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}\n"
-                f"[⌇] 𝐁𝐚𝐧𝐤 ➜ {issuer}\n"
-                f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country_flag} {country_name}\n"
-                "――――――――――――――――\n"
-                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
-                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
-                "――――――――――――――――"
-            )
-
-            await update.message.reply_text(reply_text, parse_mode="Markdown")
-        except Exception as e:
-            await update.message.reply_text(f"❌ An error occurred: {e}")
-
-    # Run in background so it doesn’t block other commands
-    asyncio.create_task(run_and_reply())
-
-
-# Register command handler in your main bot
-# application.add_handler(CommandHandler("b3", b3_command))
 
 
 
