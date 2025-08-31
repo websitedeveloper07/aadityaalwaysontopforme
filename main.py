@@ -26,8 +26,8 @@ OWNER_ID = 8493360284
 
 
 # --- New Configuration ---
-AUTHORIZATION_CONTACT = "@Deadkiller72"
-OFFICIAL_GROUP_LINK = "https://t.me/+gtvJT4SoimBjYjQ1"
+AUTHORIZATION_CONTACT = "@Kalinuxxx"
+OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
 DEFAULT_FREE_CREDITS = 200  # A non-expiring credit pool for free users
 
 # === PERSISTENCE WARNING ===
@@ -228,7 +228,7 @@ AUTHORIZED_GROUP_ID = -1002554243871
 BOT_COMMANDS = [
     "/start", "/cmds", "/gen", "/bin", "/chk", "/mchk", "/mass",
     "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
-    "/scr", "/sh", "/seturl", "/sp", "scr", "/remove", 
+    "/scr", "/sh", "/seturl", "/sp", "scr", "/remove", "/b3" "/site"
 ]
 
 from telegram.ext import ApplicationHandlerStop
@@ -260,7 +260,7 @@ AUTHORIZED_CHATS = set((-1002554243871,))  # Add your authorized group IDs here
 BOT_COMMANDS = [
     "start", "cmds", "gen", "bin", "chk", "mchk", "mass",
     "mtchk", "fk", "fl", "open", "status", "credits", "info"
-    "scr", "sh", "seturl", "sp", "scr", "remove"
+    "scr", "sh", "seturl", "sp", "scr", "remove", "b3", "site"
 ]
 
 from telegram.ext import ApplicationHandlerStop, filters
@@ -354,9 +354,9 @@ from telegram.ext import ContextTypes
 from db import get_user  # your db user fetch
 
 # Links
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
-DEV_LINK = "https://t.me/Deadkiller72"
+DEV_LINK = "https://t.me/Kalinuxxx"
 
 logger = logging.getLogger(__name__)
 
@@ -376,9 +376,9 @@ from db import get_user
 # Configuration
 # --------------------
 # Links for the inline keyboard buttons
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
-DEV_LINK = "https://t.me/Deadkiller72"
+DEV_LINK = "https://t.me/Kalinuxxx"
 
 # Set up logging for better error tracking
 logger = logging.getLogger(__name__)
@@ -528,10 +528,11 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} `/cmds` – Shows all commands\n"
         f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` – Generate cards\n"
         f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
+        f"{bullet_link} `/b3` `cc\\|mm\\|yy\\|cvv` – Braintree Premium Auth\n"
         f"{bullet_link} `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
-        f"{bullet_link} `/mchk` – x10 Multi Stripe\n"
-        f"{bullet_link} `/mass` – x30 Mass Stripe Auth 2\n"
-        f"{bullet_link} `/mtchk` `txt file` – x200 Stripe Auth 3\n"
+        f"{bullet_link} `/mchk` –  Multi Stripe\n"
+        f"{bullet_link} `/mass` –  Mass Stripe Auth 2\n"
+        f"{bullet_link} `/mtchk` `txt file` Mass stripe Auth 3\n"
         f"{bullet_link} `/sh` Shopify 5\\$\n"
         f"{bullet_link} `/seturl` `<site url>` – Set a Shopify site\n"
         f"{bullet_link} `/remove` – Remove your added site\n"
@@ -588,7 +589,8 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     )
     keyboard = [
         [InlineKeyboardButton("💳 𝗦𝗧𝗥𝗜𝗣𝗘 𝗔𝗨𝗧𝗛", callback_data="stripe_examples")],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
+        [InlineKeyboardButton("💎 𝗕𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲 𝗣𝗿𝗲𝗺𝗶𝘂𝗺", callback_data="braintree_examples")],
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
     ]
     await q.edit_message_caption(
         text,
@@ -596,6 +598,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
+# === Stripe Examples Handler ===
 async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Stripe Auth' button."""
     q = update.callback_query
@@ -612,10 +615,11 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         "  `/mchk 1234567890123456\\|\\.\\.\\.`  \\# up to 10 cards\n\n"
         "• `/mass` \\- *Check up to 30 cards at once*\n"
         "  Example:\n"
-        "  `/mass <cards>`"
+        "  `/mass <cards>`\n\n"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗚𝗔𝗧𝗘 𝗠𝗘𝗡𝗨", callback_data="auth_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗔𝗨𝗧𝗛 𝗠𝗘𝗡𝗨", callback_data="auth_sub_menu")],
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
@@ -623,6 +627,32 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
+
+# === Braintree Premium Examples Handler ===
+async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for 'Braintree Premium'."""
+    q = update.callback_query
+    await q.answer()
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      💎 𝐁𝐫𝐚𝐢𝐧𝐭𝐫𝐞𝐞 𝐏𝐫𝐞𝐦𝐢𝐮𝗺\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "• `/b3` \\- *Check a single Braintree card*\n"
+        "  Example:\n"
+        "  `/b3 1234567890123456\\|12\\|24\\|123`\n\n"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+    )
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗔𝗨𝗧𝗛 𝗠𝗘𝗡𝗨", callback_data="auth_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+    await q.edit_message_caption(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
 
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Charge' button."""
@@ -656,7 +686,8 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "• <code>/sh</code> - <i>Check a single card on Shopify $5</i>\n"
         "  Example:\n"
         "  <code>/sh 1234567890123456|12|2026|123</code>\n\n"
-        "⚡ Use carefully, each check deducts credits."
+        "⚡ Use carefully, each check deducts credits.\n\n"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\– 𝑶𝒇𝒇 ❌"
     )
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
@@ -667,6 +698,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
 
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Auto Shopify' button."""
@@ -687,7 +719,8 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         "  `/remove`\n\n"
         "✨ First set your preferred Shopify site using `/seturl`\\.\n"
         "Then run `/sp` to automatically check cards on that site 🚀\n"
-        "If you no longer want to use a custom site, run `/remove`\\."
+        "If you no longer want to𝗦𝘁𝗮𝘁𝘂𝘀 use a custom site, run `/remove`\\.\n\n"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑶𝒇𝒇 ❌"
     )
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
@@ -711,10 +744,11 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "  Example:\n"
         "  `/scr @examplechannel 50`\n\n"
         "👉 Scrapes cards from the given channel\\.\n"
-        "⚠️ Maximum amount allowed: *1000 cards*\\."
+        "⚠️ Maximum amount allowed: *1000 cards*\\.\n\n"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗰k 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
         text,
@@ -760,7 +794,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 def md_escape(text: str) -> str:
     """Escape text for Markdown V2."""
@@ -776,13 +810,16 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cmds_message = (
         "━━━[ 👇 *𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂* ]━━━⬣\n\n"
 
-        "🔹 *𝙎𝙩𝙧𝙞𝙥𝙚 𝙏𝙤𝙤𝙡𝙨*\n"
+        "🔹 *𝙎𝙩𝙧𝙞𝙥𝙚*\n"
         f"{bullet_link} `/chk cc\\|mm\\|yy\\|cvv` – Single Stripe Auth\n"
         f"{bullet_link} `/mchk` – Multi x10 Stripe Auth\n"
         f"{bullet_link} `/mass` – Mass x30 Stripe Auth 2\n"
         f"{bullet_link} `/mtchk txt file` – Mass x200 Stripe Auth 3\n\n"
 
-        "🔹 *𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙏𝙤𝙤𝙡𝙨*\n"
+       "🔹 *𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲*\n"
+        f"{bullet_link} `/b3 cc\\|mm\\|yy\\|cvv` – Braintree Premium Auth\n"
+
+        "🔹 *𝙎𝙝𝙤𝙥𝙞𝙛𝙮*\n"
         f"{bullet_link} `/sh` – Shopify Charge \\$5\n"
         f"{bullet_link} `/seturl \\<site url\\>` – Set your Shopify site\n"
         f"{bullet_link} `/remove` – Remove your saved Shopify site\n"
@@ -818,7 +855,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 # Replace with your *legit* group/channel link
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
@@ -1189,7 +1226,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 # Replace with your *legit* group/channel link
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
@@ -1277,7 +1314,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{escaped_bank}`\n"
         f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
         f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
-        f"{bullet_link} *𝐁𝐨𝐭 𝐛𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
+        f"{bullet_link} *𝐁𝐨𝐭 𝐛𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
     )
 
     final_message = f"{bin_info_box}"
@@ -1295,7 +1332,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 # Replace with your *legit* group/channel link
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
@@ -1381,7 +1418,7 @@ async def consume_credit(user_id: int) -> bool:
         return False
 
 # Replace with your *legit* group/channel link
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 def escape_markdown_v2(text: str) -> str:
         """Escapes special characters for Telegram MarkdownV2."""
@@ -1495,7 +1532,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_markdown_v2(country_name)} {country_flag}`\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Deadkiller72)\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
             f"――――――――――――――――"
         )
 
@@ -2576,11 +2613,11 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Developer info ---
         DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/Deadkiller72"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         # --- Bullet + group link ---
-        BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
+        BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         # --- Final formatted message ---
@@ -2730,10 +2767,10 @@ async def process_seturl(user, user_id, site_input, processing_msg):
         # --- Format response ---
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/Deadkiller72"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
+        BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_text = "[⌇]"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
@@ -2970,10 +3007,10 @@ async def process_card_check(user, card_input, custom_url, msg):
         requester = f"@{user.username}" if user.username else str(user.id)
 
         DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/Deadkiller72"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+        BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_text = "[⌇]"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
@@ -3123,9 +3160,9 @@ async def run_site_check(site_url: str, msg, user):
         # Format info
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/Deadkiller72"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
-        BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
+        BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         formatted_msg = (
@@ -3167,7 +3204,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 # Replace with your *legit* group/channel link
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
@@ -3411,8 +3448,8 @@ MAX_SCRAP_LIMIT = 1000
 user_last_scr_time = {}
 
 CARD_REGEX = re.compile(r'\b(\d[ -]*?){13,16}\|(\d{2})\|(\d{2,4})\|(\d{3,4})\b', re.IGNORECASE)
-BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
-DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=K4linuxxxx)"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+DEVELOPER_LINK = "[kคli liຖนxx](tg://resolve?domain=Kalinuxxx)"
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
@@ -3570,10 +3607,10 @@ from b3 import multi_checking  # your checker
 
 # Developer + Branding
 DEVELOPER_NAME = "kคli liຖนxx"
-DEVELOPER_LINK = "https://t.me/Deadkiller72"
+DEVELOPER_LINK = "https://t.me/Kalinuxxx"
 developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-BULLET_GROUP_LINK = "https://t.me/+9IxcXQ2wO_c0OWQ1"
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 bullet_text = "[⌇]"
 bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
@@ -3673,11 +3710,11 @@ async def b3_command(update, context):
     # Cooldown check
     if user_id in user_cooldowns and now - user_cooldowns[user_id] < COOLDOWN_SECONDS:
         remaining = round(COOLDOWN_SECONDS - (now - user_cooldowns[user_id]), 1)
-        await update.message.reply_text(f"⏳ Please wait {remaining}s before using /b3 again.", parse_mode="HTML")
+        await update.message.reply_text(f"⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 {remaining}𝗦 𝗯𝗲𝗳𝗼𝗿𝗲 𝘂𝘀𝗶𝗻𝗴 /𝗯3 𝗮𝗴𝗮𝗶𝗻.", parse_mode="HTML")
         return
 
     if len(context.args) < 1:
-        await update.message.reply_text("Usage: /b3 <card|mm|yy|cvv>", parse_mode="HTML")
+        await update.message.reply_text("🚫Usage: /b3 <card|mm|yy|cvv>", parse_mode="HTML")
         return
 
     card_input = context.args[0]
