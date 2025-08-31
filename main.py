@@ -3565,7 +3565,6 @@ from b3 import multi_checking
 
 # Store the last usage time for cooldown
 last_b3_usage = {}
-
 COOLDOWN_SECONDS = 5
 
 @dp.message_handler(commands=["b3"])
@@ -3577,61 +3576,70 @@ async def b3_handler(message: types.Message):
     if user_id in last_b3_usage:
         elapsed = (now - last_b3_usage[user_id]).total_seconds()
         if elapsed < COOLDOWN_SECONDS:
-            await message.reply(f"⚠️ Please wait {COOLDOWN_SECONDS - int(elapsed)} seconds before using /b3 again.")
+            await message.reply(
+                f"⚠️ Please wait {COOLDOWN_SECONDS - int(elapsed)} seconds before using /b3 again."
+            )
             return
 
     # Update last usage
     last_b3_usage[user_id] = now
 
     # Extract CC info from command
-    text = message.text.strip()
-    if len(text.split(maxsplit=1)) != 2:
+    args = message.get_args()
+    if not args:
         await message.reply("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
         return
 
-    cc_input = text.split(maxsplit=1)[1]
+    cc_input = args.strip()
 
     # Run multi_checking in background
     async def run_and_reply():
-        start_time = datetime.now()
-        cc, mes, ano, cvv = cc_input.split("|")
-        if len(ano) == 4:
-            ano = ano[-2:]
-        formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
+        try:
+            parts = cc_input.split("|")
+            if len(parts) != 4:
+                await message.reply("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
+                return
 
-        # Capture printed output from multi_checking
-        import io
-        import sys
-        buffer = io.StringIO()
-        sys.stdout = buffer
+            cc, mes, ano, cvv = parts
+            if len(ano) == 4:
+                ano = ano[-2:]
+            formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
 
-        await multi_checking(formatted_cc)
+            # Capture printed output from multi_checking
+            import io, sys
+            buffer = io.StringIO()
+            sys.stdout = buffer
 
-        sys.stdout = sys.__stdout__
-        output = buffer.getvalue().strip()
+            await multi_checking(formatted_cc)
 
-        # Extract status
-        status = "Approved ✅" if "Approved ✅" in output else "Declined ❌"
+            sys.stdout = sys.__stdout__
+            output = buffer.getvalue().strip()
 
-        # Prepare response message
-        reply_text = (
-            f"═══[ status {status} ]═══\n"
-            f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
-            f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
-            f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output}\n"
-            "――――――――――――――――\n"
-            "[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ \n"
-            "[⌇] 𝐁𝐚𝐧𝐤 ➜ \n"
-            "[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ \n"
-            "――――――――――――――――\n"
-            f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {message.from_user.full_name}\n"
-            "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
-            "――――――――――――――――"
-        )
+            # Extract status
+            status = "Approved ✅" if "Approved ✅" in output else "Declined ❌"
 
-        await message.reply(reply_text, parse_mode="Markdown")
+            # Prepare response message
+            reply_text = (
+                f"═══[ status {status} ]═══\n"
+                f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
+                f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
+                f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output}\n"
+                "――――――――――――――――\n"
+                "[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ \n"
+                "[⌇] 𝐁𝐚𝐧𝐤 ➜ \n"
+                "[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ \n"
+                "――――――――――――――――\n"
+                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {message.from_user.full_name}\n"
+                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+                "――――――――――――――――"
+            )
+
+            await message.reply(reply_text, parse_mode="Markdown")
+        except Exception as e:
+            await message.reply(f"❌ An error occurred: {e}")
 
     asyncio.create_task(run_and_reply())
+
 
 
 
