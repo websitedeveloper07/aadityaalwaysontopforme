@@ -3638,6 +3638,9 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ano = ano[-2:]
             formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
 
+            # Send initial "processing" message
+            message = await update.message.reply_text("⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...")
+
             # Get BIN details
             bin_number = cc[:6]
             bin_details = await get_bin_details(bin_number)
@@ -3657,31 +3660,44 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             output = buffer.getvalue().strip()
 
             # Determine status
-            status = "Approved ✅" if "Approved ✅" in output else "Declined ❌"
+            if "Approved" in output or "New payment method" in output:
+                status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
+            else:
+                status = "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
 
-            # Prepare response
+            # Wrap the output from the website in italic
+            output_text = f"_{output}_"
+ 
+             DEVELOPER_NAME = "kคli liຖนxx"
+             DEVELOPER_LINK = "https://t.me/Deadkiller72"
+             developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+             BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
+             bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+            # Prepare final reply
             reply_text = (
-                f"═══[ status {status} ]═══\n"
-                f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
-                f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
-                f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output}\n"
+                f"═══[ {status} ]═══\n"
+                f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
+                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
+                f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output_text}\n"
                 "――――――――――――――――\n"
-                f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
-                f"[⌇] 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
-                f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_flag}` {country_name}\n"
+                f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
+                f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
+                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_flag}` {country_name}\n"
                 "――――――――――――――――\n"
-                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
-                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+                f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
+                "{bullet_link}  𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
                 "――――――――――――――――"
             )
 
-            await update.message.reply_text(reply_text, parse_mode="Markdown")
+            # Edit the original message with final result
+            await message.edit_text(reply_text, parse_mode="Markdown")
+
         except Exception as e:
             await update.message.reply_text(f"❌ An error occurred: {e}")
 
-    # Run in background so it doesn’t block other commands
+    # Run in background
     asyncio.create_task(run_and_reply())
-
 
 # Register command handler in your main bot
 # application.add_handler(CommandHandler("b3", b3_command))
