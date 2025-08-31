@@ -3649,7 +3649,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             country_name = bin_details.get("country_name", "N/A")
 
             # Capture output from multi_checking
-            import io, sys, re
+            import io, sys
             buffer = io.StringIO()
             sys.stdout = buffer
 
@@ -3659,17 +3659,18 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             output = buffer.getvalue().strip()
 
             # Clean output: remove emojis & timing info
+            import re
             output_clean = re.sub(r'[^\w\s.,|:-]', '', output)
             output_clean = re.sub(r'Taken .*s', '', output_clean).strip()
 
-            # Determine status
+            # Determine status and final response
             if "Approved" in output_clean or "New payment method" in output_clean:
                 status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
+                response_text = "<i>Payment Method added successfully</i>"
             else:
                 status = "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
-
-            # Italicize the response
-            output_text = f"<i>{output_clean}</i>"
+                # Extract reason from multi_checking output
+                response_text = f"<i>{output_clean}</i>"
 
             # Developer & bullet links
             DEVELOPER_NAME = "kคli liຖนxx"
@@ -3679,16 +3680,16 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             BULLET_GROUP_LINK = "https://t.me/+pu4_ZBdp1CxiMDE1"
             bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-            # Prepare final reply with proper monospace formatting
+            # Prepare final reply
             reply_text = (
                 f"═══[ {status} ]═══\n"
                 f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{formatted_cc}</code>\n"
-                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ <code>Braintree Premium Auth</code>\n"
-                f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output_text}\n"
+                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
+                f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {response_text}\n"
                 "――――――――――――――――\n"
                 f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
                 f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
-                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name}</code>\n"
+                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name} {country_flag}</code>\n"
                 "――――――――――――――――\n"
                 f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
                 f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
