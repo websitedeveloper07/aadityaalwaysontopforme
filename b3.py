@@ -273,15 +273,18 @@ async def multi_checking(x):
     error_message = ""
     response = ""
 
+    # Try parsing JSON first
     try:
         json_resp = json.loads(result)
-        if "error" in json_resp and "message" in json_resp["error"]:
-            raw_html = unescape(json_resp["error"]["message"])
-            soup = BeautifulSoup(raw_html, "html.parser")
-            div = soup.find("div", class_="message-container")
-            if div:
-                error_message = div.get_text(separator=" ", strip=True)
+        if "error" in json_resp:
+            error_content = json_resp["error"]
+            if isinstance(error_content, dict) and "message" in error_content:
+                error_message = error_content["message"]
+            elif isinstance(error_content, list):
+                # Multiple errors
+                error_message = " | ".join([str(e.get("message", "")) for e in error_content])
     except Exception:
+        # Fallback to HTML parsing
         try:
             soup = BeautifulSoup(unescape(result), "html.parser")
             ul = soup.find("ul", class_="woocommerce-error")
@@ -300,35 +303,50 @@ async def multi_checking(x):
         _, _, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
-    # Map common Braintree decline/error codes/messages
-    braintree_errors = {
+    # Deep mapping of Braintree errors/declines
+    braintree_error_map = {
+        # Card errors
         "Credit card number is invalid": "Declined - Invalid card number",
         "CVV is incorrect": "Declined - Wrong CVV",
         "Expiration date is invalid": "Declined - Expired card",
+        "Invalid expiration date": "Declined - Expired card",
+        "Cardholder authentication failed": "Declined - Authentication failed",
         "Processor network declined the transaction": "Declined - Network declined",
         "Processor declined": "Declined - Processor declined",
         "Gateway rejected": "Declined - Gateway rejected",
-        "Risk threshold exceeded": "Declined - Risk threshold exceeded",
-        "Transaction refused": "Declined - Transaction refused",
-        "Cardholder authentication failed": "Declined - Authentication failed",
         "Do not honor": "Declined - Do not honor",
         "Insufficient funds": "Declined - Insufficient funds",
-        "Card is blocked": "Declined - Card blocked"
+        "Card is blocked": "Declined - Card blocked",
+        "Card type is not accepted": "Declined - Card type not accepted",
+        "Transaction refused": "Declined - Transaction refused",
+        "Risk threshold exceeded": "Declined - Risk threshold exceeded",
+        "Fraud suspected": "Declined - Fraud suspected",
+        "Payment method already exists": "Declined - Duplicate payment method",
+        "Token is invalid": "Declined - Invalid token",
+        "Transaction amount is invalid": "Declined - Invalid transaction amount",
+        # General errors
+        "Service unavailable": "Declined - Service unavailable",
+        "Internal server error": "Declined - Server error",
+        "Timeout": "Declined - Timeout",
+        "Unauthorized": "Declined - Unauthorized request",
+        "Invalid merchant account": "Declined - Invalid merchant account"
     }
 
-    # Check if any known Braintree decline is in the message
-    for key, value in braintree_errors.items():
+    # Map errors properly
+    for key, value in braintree_error_map.items():
         if key.lower() in error_message.lower():
             error_message = value
             response = ""
             break
 
-    if "Payment method successfully added." in error_message:
+    # Successful payment detection
+    if "Payment method successfully added." in error_message or "Approved" in error_message:
         response = "Approved"
         error_message = ""
     elif not response:
         response = "Declined" if error_message else "Approved"
 
+    # Return response and log approved
     if error_message:
         return f"{x} - {error_message} - Taken {elapsed}s"
     else:
