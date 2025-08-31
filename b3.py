@@ -81,12 +81,17 @@ def is_valid_credit_card_number(number: str) -> bool:
     return total % 10 == 0
 
 
+import itertools
+
 # ================== Load cookies.txt ==================
 with open("cookies.txt", "r", encoding="utf-8") as f:
-    raw_cookies = [line.strip() for line in f if line.strip()]
+    content = f.read().strip()
 
-# Parse each line into dict (must be Python dict format in file)
-all_cookies = [ast.literal_eval(line) for line in raw_cookies]
+namespace = {}
+exec(content, {}, namespace)   # executes the "all_cookies = [...]" in cookies.txt
+all_cookies = namespace.get("all_cookies", [])
+
+# Cycle through cookies infinitely
 cookies_cycle = itertools.cycle(all_cookies)
 
 
@@ -97,6 +102,7 @@ async def create_payment_method(fullz, session):
 
         # Cookies
         cookies = next(cookies_cycle)  # pick next account’s cookies
+
 
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
