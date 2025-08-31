@@ -285,6 +285,12 @@ async def multi_checking(x):
 
     elapsed = round(time.time() - start, 2)
 
+    # Ensure result is a string
+    if result is None:
+        result = ""
+    elif not isinstance(result, str):
+        result = str(result)
+
     # Initialize response
     error_message = ""
     response = "Declined"  # default as Declined
@@ -336,6 +342,7 @@ async def multi_checking(x):
             with open("auth.txt", "a", encoding="utf-8") as file:
                 file.write(resp + "\n")
         return resp
+
 
 
 
