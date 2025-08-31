@@ -3780,7 +3780,7 @@ async def b3_command(update, context):
     # No card found
     if not card_input:
         await update.message.reply_text(
-            html.escape("🚫 Usage: /b3 <code>card|mm|yy|cvv</code> or reply to a message containing a card."),
+            html.escape("🚫 Usage: /b3 card|mm|yy|cvv or reply to a message containing a card."),
             parse_mode="HTML"
         )
         return
