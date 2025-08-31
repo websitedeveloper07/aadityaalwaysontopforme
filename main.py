@@ -3558,48 +3558,41 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
 
 
-import io
-import sys
 import asyncio
-import logging
 from datetime import datetime
 from telegram import Update
-from telegram.ext import ContextTypes
+from telegram.ext import Application, CommandHandler, ContextTypes
 from b3 import multi_checking
-from db import get_user, update_user, init_db  # Replace with your actual db module
+from db import init_db, get_user, update_user  # replace with your actual module
+   # replace with your actual module
 
-# Logging setup
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Store last usage for cooldown
+# Store the last usage time for cooldown
 last_b3_usage = {}
 COOLDOWN_SECONDS = 5
-
 
 async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = datetime.now()
 
-    # Cooldown check
+    # Check cooldown
     if user_id in last_b3_usage:
         elapsed = (now - last_b3_usage[user_id]).total_seconds()
         if elapsed < COOLDOWN_SECONDS:
             await update.message.reply_text(
-                f"Please wait {COOLDOWN_SECONDS - int(elapsed)} seconds before using /b3 again."
+                f"⚠️ Please wait {COOLDOWN_SECONDS - int(elapsed)} seconds before using /b3 again."
             )
             return
 
-    # Credit check
+    # Check credits
     if not await consume_credit(user_id):
-        await update.message.reply_text("You have no credits left to use this command.")
+        await update.message.reply_text("❌ You have no credits left to use this command.")
         return
 
     last_b3_usage[user_id] = now
 
-    # Input validation
+    # Extract CC info
     if not context.args:
-        await update.message.reply_text("Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
+        await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
         return
 
     cc_input = " ".join(context.args).strip()
@@ -3608,33 +3601,15 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             parts = cc_input.split("|")
             if len(parts) != 4:
-                await update.message.reply_text("Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
+                await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
                 return
 
             cc, mes, ano, cvv = parts
-            if len(ano) == 4:  # convert YYYY -> YY
+            if len(ano) == 4:
                 ano = ano[-2:]
             formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
 
-            # Capture output of multi_checking
-            buffer = io.StringIO()
-            sys_stdout = sys.stdout
-            sys.stdout = buffer
-
-            await multi_checking(formatted_cc)
-
-            sys.stdout = sys_stdout
-            output = buffer.getvalue().strip()
-
-            # Parse status
-            if "Approved" in output:
-                status = "Approved"
-            elif "Declined" in output:
-                status = output.split(" - ", 1)[-1]  # capture reason if exists
-            else:
-                status = "Declined"
-
-            # BIN lookup
+            # Get BIN details
             bin_number = cc[:6]
             bin_details = await get_bin_details(bin_number)
             brand = bin_details.get("scheme", "N/A")
@@ -3642,27 +3617,46 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             country_name = bin_details.get("country_name", "N/A")
             country_flag = bin_details.get("country_emoji", "")
 
-            # Response formatting (plain, no emoji, italic style)
+            # Capture printed output from multi_checking
+            import io, sys
+            buffer = io.StringIO()
+            sys.stdout = buffer
+
+            await multi_checking(formatted_cc)
+
+            sys.stdout = sys.__stdout__
+            output = buffer.getvalue().strip()
+
+            # Determine status
+            status = "Approved ✅" if "Approved ✅" in output else "Declined ❌"
+
+            # Prepare response
             reply_text = (
-                f"═══[ Status: *{status}* ]═══\n"
-                f"[•] Card ➜ _{formatted_cc}_\n"
-                f"[•] Gateway ➜ _Braintree_\n"
-                f"[•] Response ➜ _{output}_\n"
+                f"═══[ status {status} ]═══\n"
+                f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
+                f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
+                f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output}\n"
                 "――――――――――――――――\n"
-                f"[•] Brand ➜ _{brand}_\n"
-                f"[•] Bank ➜ _{issuer}_\n"
-                f"[•] Country ➜ _{country_flag} {country_name}_\n"
+                f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}\n"
+                f"[⌇] 𝐁𝐚𝐧𝐤 ➜ {issuer}\n"
+                f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country_flag} {country_name}\n"
                 "――――――――――――――――\n"
-                f"[•] Request By ➜ _{update.effective_user.full_name}_\n"
-                "[•] Developer ➜ _kคli liຖนxx_\n"
+                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
+                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
                 "――――――――――――――――"
             )
 
             await update.message.reply_text(reply_text, parse_mode="Markdown")
         except Exception as e:
-            await update.message.reply_text(f"Error occurred: {e}")
+            await update.message.reply_text(f"❌ An error occurred: {e}")
 
+    # Run in background so it doesn’t block other commands
     asyncio.create_task(run_and_reply())
+
+
+# Register command handler in your main bot
+# application.add_handler(CommandHandler("b3", b3_command))
+
 
 
 
