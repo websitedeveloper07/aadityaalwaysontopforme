@@ -3621,7 +3621,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # Check credits
+    # Credit check
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left to use this command.")
         return
@@ -3647,7 +3647,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ano = ano[-2:]
             formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
 
-            # Send processing message
+            # Send initial processing message
             message = await update.message.reply_text("⏳ Processing your request...")
 
             # Get BIN details
@@ -3658,7 +3658,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             country_name = bin_details.get("country_name", "N/A")
             country_flag = bin_details.get("country_emoji", "")
 
-            # Capture printed output from multi_checking
+            # Capture output from multi_checking
             buffer = io.StringIO()
             sys.stdout = buffer
             await multi_checking(formatted_cc)
@@ -3669,7 +3669,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             output_clean = re.sub(r'Taken .*s', '', output).strip()
 
             # Determine status
-            success_phrases = ["Payment method successfully added", "New payment method added"]
+            success_phrases = ["Payment method successfully added", "New payment method added", "Approved"]
             if any(phrase.lower() in output_clean.lower() for phrase in success_phrases):
                 status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
                 response_text = "<i>Payment method added successfully</i>"
@@ -3707,7 +3707,6 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"❌ An error occurred: {e}")
 
     asyncio.create_task(run_and_reply())
-
 
 
 
