@@ -778,6 +778,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await autoshopify_gate_handler(update, context)
     elif data == "stripe_examples":
         await stripe_examples_handler(update, context)
+    elif data == "braintree_examples":
+        await braintree_examples_handler(update, context)
     elif data == "scrapper_menu":
         await scrapper_menu_handler(update, context)
     elif data == "back_to_start":
