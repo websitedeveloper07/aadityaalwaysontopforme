@@ -3607,7 +3607,6 @@ async def get_bin_details(bin_number: str) -> dict:
 
 
 async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /b3 card command."""
     user_id = update.effective_user.id
     now = datetime.now()
 
@@ -3620,7 +3619,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # Credit check
+    # Check credits
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left to use this command.")
         return
@@ -3636,7 +3635,6 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     async def run_and_reply():
         try:
-            # Split input
             parts = cc_input.split("|")
             if len(parts) != 4:
                 await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
@@ -3658,8 +3656,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             country_name = bin_details.get("country_name", "N/A")
             country_flag = bin_details.get("country_emoji", "")
 
-            # Run multi_checking and capture output
-            import io, sys
+            # Capture printed output from multi_checking
             buffer = io.StringIO()
             sys.stdout = buffer
             await multi_checking(formatted_cc)
@@ -3667,17 +3664,18 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             output = buffer.getvalue().strip()
 
             # Clean output
-            output_clean = re.sub(r'[^\w\s.,|:-]', '', output).strip()
+            output_clean = re.sub(r'Taken .*s', '', output).strip()
 
             # Determine status
-            if "Payment method successfully added" in output_clean or "Approved" in output_clean:
+            success_phrases = ["Payment method successfully added", "New payment method added"]
+            if any(phrase.lower() in output_clean.lower() for phrase in success_phrases):
                 status = "𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ✅"
                 response_text = "<i>Payment method added successfully</i>"
             else:
                 status = "𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ❌"
-                response_text = f"<i>{output_clean or 'Unknown error'}</i>"
+                response_text = f"<i>{output_clean or 'Card declined'}</i>"
 
-            # Developer & bullet links
+            # Developer info
             DEVELOPER_NAME = "kคli liຖนxx"
             DEVELOPER_LINK = "https://t.me/Deadkiller72"
             developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
@@ -3694,7 +3692,7 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "――――――――――――――――\n"
                 f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
                 f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
-                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name} {country_flag}</code>\n"
+                f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_flag} {country_name}</code>\n"
                 "――――――――――――――――\n"
                 f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
                 f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
@@ -3707,9 +3705,6 @@ async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"❌ An error occurred: {e}")
 
     asyncio.create_task(run_and_reply())
-
-
-
 
 
 
