@@ -3750,45 +3750,45 @@ async def b3_command(update, context):
     global last_b3_time
     now = time.time()
 
-    # 1️⃣ Global cooldown check
+    # Cooldown check
     if now - last_b3_time < GLOBAL_COOLDOWN_SECONDS:
         remaining = round(GLOBAL_COOLDOWN_SECONDS - (now - last_b3_time), 1)
         await update.message.reply_text(
-            f"⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 {remaining}𝗦 before using /b3 again.",
+            html.escape(f"⏳ Please wait {remaining}𝗦 before using /b3 again."),
             parse_mode="HTML"
         )
         return
 
     card_input = None
 
-    # 2️⃣ Check if command has args
+    # Command argument
     if context.args and len(context.args) > 0:
         card_input = context.args[0]
-    # 3️⃣ Else check if replying to a message
+
+    # Reply to message
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         match = CARD_PATTERN.search(update.message.reply_to_message.text)
         if match:
             card_input = match.group(0)
 
+    # No card found
     if not card_input:
         await update.message.reply_text(
-            "🚫 Usage: /b3 <card|mm|yy|cvv> or reply to a message containing a card.",
+            html.escape("🚫 Usage: /b3 <card|mm|yy|cvv> or reply to a message containing a card."),
             parse_mode="HTML"
         )
         return
 
-    # 4️⃣ Update global cooldown
     last_b3_time = now
 
-    # 5️⃣ Send initial "Processing..." message
+    # Initial processing message
     status_msg = await update.message.reply_text(
-        "⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...",
+        "⏳ Processing your request...",
         parse_mode="HTML"
     )
 
-    # 6️⃣ Run processing in background
-    asyncio.create_task(process_b3(update, context, card_input, status_msg))
-
+    # Background processing
+    asyncio.create_task(process_b3(update, context, status_msg))
 
 
 
