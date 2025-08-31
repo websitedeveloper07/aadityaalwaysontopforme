@@ -3737,12 +3737,35 @@ async def process_b3(update, context, card_input, status_msg):
 import asyncio
 import time
 import re
+import html
 
 CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
 # Global cooldown tracking
 GLOBAL_COOLDOWN_SECONDS = 20
 last_b3_time = 0  # timestamp of last usage
+
+
+async def process_b3(update, context, card_input, status_msg):
+    """
+    Simulated background processing of a card.
+    Replace this with your real card-checking logic.
+    """
+    try:
+        # Simulate some processing delay
+        await asyncio.sleep(3)
+
+        # Escape card input for HTML
+        safe_card = html.escape(card_input)
+
+        # Update the status message with result
+        await status_msg.edit_text(
+            f"✅ Processed card: <b>{safe_card}</b>",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await status_msg.edit_text(f"❌ Error processing card: {e}")
+
 
 async def b3_command(update, context):
     global last_b3_time
@@ -3778,15 +3801,14 @@ async def b3_command(update, context):
     # 4️⃣ Update global cooldown
     last_b3_time = now
 
-    # Send initial "Processing..." message
+    # 5️⃣ Send initial "Processing..." message
     status_msg = await update.message.reply_text(
         "⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...",
         parse_mode="HTML"
     )
 
-    # Run in background → edit same message later
+    # 6️⃣ Run processing in background
     asyncio.create_task(process_b3(update, context, card_input, status_msg))
-
 
 
 
