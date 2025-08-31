@@ -3605,44 +3605,6 @@ async def get_bin_details(bin_number: str) -> dict:
     return bin_data
 
 
-import asyncio
-import aiohttp
-import logging
-import re
-from datetime import datetime
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
-
-from b3 import multi_checking
-from db import consume_credit  # Your credit-check module
-
-# Logging setup
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Store last usage for cooldown
-last_b3_usage = {}
-COOLDOWN_SECONDS = 5
-
-
-async def get_bin_details(bin_number: str) -> dict:
-    """Fetch BIN information."""
-    bin_data = {"scheme": "N/A", "bank": "N/A", "country_name": "N/A", "country_emoji": ""}
-    url = f"https://bins.antipublic.cc/bins/{bin_number}"
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=7) as resp:
-                if resp.status == 200:
-                    data = await resp.json(content_type=None)
-                    bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
-                    bin_data["bank"] = str(data.get("bank", "N/A")).title()
-                    bin_data["country_name"] = data.get("country_name", "N/A")
-                    bin_data["country_emoji"] = data.get("country_flag", "")
-    except Exception as e:
-        logger.warning(f"BIN API call failed for {bin_number}: {e}")
-    return bin_data
-
 
 async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /b3 card command."""
