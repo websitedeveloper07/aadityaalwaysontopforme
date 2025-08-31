@@ -1560,34 +1560,30 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
 
         
-# chk_command function
 import re
 import asyncio
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-# Regex for card detection
-CARD_REGEX = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
+# Strict regex: 13-19 digit card | 01-12 month | 2 or 4 digit year | 3-4 digit cvv
+CARD_REGEX = re.compile(
+    r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b"
+)
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    chat = update.effective_chat
     user_id = user.id
 
     # Get user data
     user_data = await get_user(user_id)
     if not user_data:
-        await update.effective_message.reply_text(
-            "❌ Could not fetch your user data. Try again later."
-        )
+        await update.effective_message.reply_text("❌ Could not fetch your user data.")
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
-        await update.effective_message.reply_text(
-            "❌ You have no credits left. Please buy a plan to get more credits."
-        )
+        await update.effective_message.reply_text("❌ You have no credits left.")
         return
 
     # Cooldown check
@@ -1602,12 +1598,10 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw = " ".join(context.args).strip()
 
     if not raw:
-        await update.effective_message.reply_text(
-            "⚠️Usage: /chk number|mm|yy|cvv"
-        )
+        await update.effective_message.reply_text("⚠️Usage: /chk number|mm|yy|cvv")
         return
 
-    # Extract card from text
+    # Extract card with regex
     match = CARD_REGEX.search(raw)
     if not match:
         await update.effective_message.reply_text(
@@ -1616,6 +1610,9 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     card, mm, yy, cvv = match.groups()
+
+    # Normalize month
+    mm = mm.zfill(2)  # ensure "1" becomes "01"
 
     # Normalize year
     if len(yy) == 4:
@@ -1648,10 +1645,11 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True,
     )
 
-    # Run background check
+    # Background check
     asyncio.create_task(
         background_check(cc_normalized, parts, user, user_data, processing_msg)
     )
+
 
 
 
