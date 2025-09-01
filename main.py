@@ -3833,12 +3833,24 @@ async def consume_credit(user_id: int) -> bool:
 async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
+    # Current UTC time (timezone-aware)
+    now = datetime.now(timezone.utc)
+
     # Check cooldown
     last_time = user_cooldowns.get(user_id)
-    if last_time and datetime.utcnow() - last_time < timedelta(seconds=COOLDOWN_SECONDS):
-        remaining = COOLDOWN_SECONDS - (datetime.utcnow() - last_time).seconds
-        await update.message.reply_text(f"⏳ Please wait {remaining}s before using /vbv again.")
-        return
+    if last_time:
+        # Convert float timestamp to datetime if needed
+        if isinstance(last_time, float):
+            last_time_dt = datetime.fromtimestamp(last_time, tz=timezone.utc)
+        else:
+            last_time_dt = last_time
+
+        if now - last_time_dt < timedelta(seconds=COOLDOWN_SECONDS):
+            remaining = COOLDOWN_SECONDS - int((now - last_time_dt).total_seconds())
+            await update.message.reply_text(
+                f"⏳ Please wait {remaining}s before using /vbv again."
+            )
+            return
 
     # Check credits
     if not await consume_credit(user_id):
@@ -3865,14 +3877,14 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Send processing message
     msg = await update.message.reply_text("<b>⏳ Processing your request...</b>", parse_mode="HTML")
 
-    # Update cooldown
-    user_cooldowns[user_id] = datetime.utcnow()
+    # Update cooldown (store as timestamp)
+    user_cooldowns[user_id] = now.timestamp()
 
-    # Run background task
+    # Run background VBV check
     asyncio.create_task(run_vbv_check(msg, update, card_data))
-
 # --- Background worker ---
 import aiohttp
 import asyncio
