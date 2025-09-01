@@ -2680,7 +2680,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         gateway = data.get("Gateway", "Shopify")
 
         # --- BIN lookup ---
-    try:
+    
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
 
@@ -3060,7 +3060,7 @@ async def process_card_check(user, card_input, custom_url, msg):
     cc = card_input.split("|")[0]
 
     # BIN lookup
-    try:
+    
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
 
@@ -3826,7 +3826,7 @@ async def process_b3(update, context, card_input, status_msg):
 
         # BIN lookup
         cc = card_input.split("|")[0]
-    try:
+    
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
 
@@ -4044,7 +4044,7 @@ async def run_vbv_check(msg, update, card_data: str):
         return
 
     # BIN lookup
-    try:
+    
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
 
