@@ -3867,7 +3867,7 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
-# --- BIN Lookup ---
+
 # --- BIN Lookup ---
 async def get_bin_details(bin_number: str) -> dict:
     bin_data = {
@@ -3876,7 +3876,6 @@ async def get_bin_details(bin_number: str) -> dict:
         "country_name": "N/A",
         "country_emoji": ""
     }
-    # ✅ Only use first 6 digits
     url = f"https://bins.antipublic.cc/bins/{bin_number[:6]}"
     headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
@@ -3901,13 +3900,7 @@ async def get_bin_details(bin_number: str) -> dict:
     return bin_data
 
 
-# --- /vbv command handler ---
-import aiohttp
-import asyncio
-from telegram import Update
-from telegram.ext import ContextTypes
-
-# VBV command
+# --- /vbv command ---
 async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -3920,14 +3913,13 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Usage: /vbv <card|mm|yyyy|cvv>")
         return
 
-    card_data = context.args[0]  # full card input
-    msg = await update.message.reply_text("⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...", parse_mode="HTML")
+    card_data = context.args[0]
+    msg = await update.message.reply_text("<b>⏳ Processing your request...</b>", parse_mode="HTML")
 
-    # Run the heavy task in background
     asyncio.create_task(run_vbv_check(msg, update, card_data))
 
 
-# Background VBV check
+# --- Background worker ---
 async def run_vbv_check(msg, update, card_data: str):
     try:
         cc, mes, ano, cvv = card_data.split("|")
