@@ -4120,19 +4120,24 @@ async def run_vbv_check(msg, update, card_data: str):
     # Nicely formatted response
     text = (
         "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
-        f"▫️ 𝐂𝐚𝐫𝐝 ➜ <code>{cc}|{mes}|{ano}|{cvv}</code>\n"
-        f"▫️ 𝐁𝐈𝐍 ➜ <code>{bin_number}</code>\n"
-        f"▫️ 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{response_text} {check_mark}</i>\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{cc}|{mes}|{ano}|{cvv}</code>\n"
+        f"{bullet_link} 𝐁𝐈𝐍 ➜ <code>{bin_number}</code>\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{response_text} {check_mark}</i>\n"
         "――――――――――――――――\n"
-        f"▫️ 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
-        f"▫️ 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
-        f"▫️ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name} {country_flag}</code>\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name} {country_flag}</code>\n"
         "――――――――――――――――\n"
-        f"▫️ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
-        f"▫️ 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
     )
 
-    await msg.edit_text(text, parse_mode="HTML")
+    await msg.edit_text(
+      text,
+      parse_mode="HTML",
+      disable_web_page_preview=True
+   )
+
 
 
 
