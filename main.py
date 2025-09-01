@@ -1327,75 +1327,45 @@ def get_level_emoji(level: str) -> str:
 async def get_bin_details(bin_number: str) -> dict:
     """
     Fetch BIN details from binlist.net API.
-    Response example:
-    {
-        "scheme": "visa",
-        "type": "debit",
-        "brand": "Visa Classic",
-        "country": {
-            "name": "United States of America (the)",
-            "emoji": "🇺🇸",
-            "currency": "USD"
-        },
-        "bank": {
-            "name": "Jpmorgan Chase Bank N.A. - Debit"
-        }
-    }
+    Returns all available fields.
     """
-    bin_data = {
-        "scheme": "N/A",
-        "type": "N/A",
-        "brand": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": "",
-        "currency": "N/A"
-    }
-
     url = f"https://lookup.binlist.net/{bin_number}"
     headers = {"Accept-Version": "3"}
-    
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=10) as response:
                 if response.status == 200:
                     data = await response.json()
-                    bin_data["scheme"] = (data.get("scheme") or "N/A").title()
-                    bin_data["type"] = (data.get("type") or "N/A").title()
-                    bin_data["brand"] = data.get("brand") or "N/A"
-                    bin_data["bank"] = data.get("bank", {}).get("name") or "N/A"
-                    bin_data["country_name"] = data.get("country", {}).get("name") or "N/A"
-                    bin_data["country_emoji"] = data.get("country", {}).get("emoji") or ""
-                    bin_data["currency"] = data.get("country", {}).get("currency") or "N/A"
-                    return bin_data
+                    # Build a dictionary with all relevant fields
+                    return {
+                        "scheme": data.get("scheme", "N/A").title(),
+                        "type": data.get("type", "N/A").title(),
+                        "brand": data.get("brand", "N/A"),
+                        "bank_name": data.get("bank", {}).get("name", "N/A"),
+                        "country_name": data.get("country", {}).get("name", "N/A"),
+                        "country_emoji": data.get("country", {}).get("emoji", ""),
+                        "country_alpha2": data.get("country", {}).get("alpha2", "N/A"),
+                        "country_numeric": data.get("country", {}).get("numeric", "N/A"),
+                        "currency": data.get("country", {}).get("currency", "N/A"),
+                        "latitude": str(data.get("country", {}).get("latitude", "N/A")),
+                        "longitude": str(data.get("country", {}).get("longitude", "N/A")),
+                        "number_length": str(data.get("number", {}).get("length", "N/A")),
+                        "number_luhn": str(data.get("number", {}).get("luhn", "N/A"))
+                    }
     except Exception as e:
         print(f"⚠️ BIN lookup error for {bin_number}: {e}")
 
-    return bin_data
+    return {}
 
 # ===== /bin Command =====
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Performs a BIN lookup and deducts 1 credit."""
+    """Performs a BIN lookup and shows full info."""
     user = update.effective_user
 
     # Bullet hyperlink
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
-
-    # Check user credits
-    user_data = await get_user(user.id)
-    if user_data['credits'] <= 0:
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    # Deduct 1 credit
-    if not await consume_credit(user.id):
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
 
     # Parse BIN input
     bin_input = None
@@ -1424,30 +1394,23 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # Escape all values
-    escaped_bin = escape_markdown_v2(bin_input)
-    escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
-    escaped_type = escape_markdown_v2(bin_details.get("type", "N/A"))
-    escaped_brand = escape_markdown_v2(bin_details.get("brand", "N/A"))
-    escaped_bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
-    escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
-    escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
-    escaped_currency = escape_markdown_v2(bin_details.get("currency", "N/A"))
-    escaped_user = escape_markdown_v2(user.full_name)
+    def esc(field):
+        return escape_markdown_v2(field or "N/A")
 
+    escaped_user = esc(user.full_name)
     level_emoji = get_level_emoji(bin_details.get("brand", "N/A"))
 
     # Build BIN info box
     bin_info_box = (
         f"✦━━━[  *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ]━━━✦\n"
-        f"{bullet_link} *𝐁𝐈𝐍* ➳ `{escaped_bin}`\n"
-        f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ `{escaped_scheme}`\n"
-        f"{bullet_link} *𝐓𝐲𝐩𝐞* ➳ `{escaped_type}`\n"
-        f"{bullet_link} *𝐂𝐚𝐭𝐞𝐠𝐨𝐫𝐲* ➳ `{level_emoji} {escaped_brand}`\n"
-        f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{escaped_bank}`\n"
-        f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
-        f"{bullet_link} *𝐂𝐮𝐫𝐫𝐞𝐧𝐜𝐲* ➳ `{escaped_currency}`\n"
-        f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
-        f"{bullet_link} *𝐁𝐨𝐭 𝐛𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
+        f"{bullet_link} *𝐁𝐈𝐍* ➳ `{esc(bin_input)}`\n"
+        f"{bullet_link} *𝐒𝐜𝐡𝐞𝐦𝐞* ➳ `{esc(bin_details.get('scheme'))}`\n"
+        f"{bullet_link} *𝐓𝐲𝐩𝐞* ➳ `{esc(bin_details.get('type'))}`\n"
+        f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ `{level_emoji} {esc(bin_details.get('brand'))}`\n"
+        f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{esc(bin_details.get('bank_name'))}`\n"
+        f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{esc(bin_details.get('country_name'))} {esc(bin_details.get('country_emoji'))}`\n"
+        f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲* ➳ {escaped_user}\n"
+        f"{bullet_link} *𝐁𝐨𝐭 𝐁𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
     )
 
     await update.effective_message.reply_text(
@@ -1455,6 +1418,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
