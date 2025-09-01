@@ -3875,6 +3875,14 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(run_vbv_check(msg, update, card_data))
 
 # --- Background worker ---
+import aiohttp
+import asyncio
+import html
+import logging
+
+# Assuming bullet_link, developer_clickable, get_bin_info are already defined
+logger = logging.getLogger(__name__)
+
 async def run_vbv_check(msg, update, card_data: str):
     try:
         cc, mes, ano, cvv = card_data.split("|")
@@ -3911,7 +3919,7 @@ async def run_vbv_check(msg, update, card_data: str):
         bin_details = await get_bin_info(bin_number)
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = bin_details.get("bank") or "N/A"
-        country_name = bin_details.get("country") or "N/A"
+        country_name = bin_details.get("country_name") or "Unknown"
         country_flag = bin_details.get("country_emoji", "")
         card_type = bin_details.get("type", "N/A")
         card_level = bin_details.get("brand", "N/A")
@@ -3921,18 +3929,20 @@ async def run_vbv_check(msg, update, card_data: str):
         bank_url = bin_details.get("bank_url", "N/A")
     except Exception as e:
         logger.warning(f"BIN lookup failed for {bin_number}: {e}")
-        brand = issuer = country_name = country_flag = card_type = card_level = "N/A"
-        # Escape for HTML
-        safe_card = html.escape(card_input)
-        safe_reason = html.escape(reason)
-        safe_brand = html.escape(brand)
-        safe_issuer = html.escape(issuer)
-        safe_country = html.escape(f"{country_name} {country_flag}".strip())
-        safe_user = html.escape(update.effective_user.first_name)
+        brand = issuer = card_type = card_level = card_length = luhn_check = bank_phone = bank_url = "N/A"
+        country_name = "Unknown"
+        country_flag = ""
 
     # Response formatting
     response_text = vbv_data.get("response", "N/A")
     check_mark = "✅" if response_text.lower().find("successful") != -1 else "❌"
+
+    # Escape HTML to prevent formatting issues
+    safe_card = html.escape(card_data)
+    safe_reason = html.escape(response_text)
+    safe_brand = html.escape(brand)
+    safe_issuer = html.escape(issuer)
+    safe_country = html.escape(f"{country_name} {country_flag}".strip())
 
     text = (
         "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
@@ -3942,13 +3952,14 @@ async def run_vbv_check(msg, update, card_data: str):
         "――――――――――――――――\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{safe_brand}</code>\n"
         f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{safe_issuer}</code>\n"
-        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{safe_country} {country_flag}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{safe_country}</code>\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
         f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
     )
 
     await msg.edit_text(text, parse_mode="HTML", disable_web_page_preview=True)
+
 
 
 
