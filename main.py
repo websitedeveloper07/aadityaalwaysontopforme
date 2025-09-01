@@ -909,7 +909,7 @@ from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown as escape_markdown_v2
 import random, io
 from datetime import datetime
-from bin import get_bin_details  # <-- Import your bin.py function
+from bin import get_bin_info  # <-- Import your bin.py function
 # Assuming luhn_checksum, enforce_cooldown, get_user, consume_credit are already defined elsewhere
 
 # ===== /gen Command =====
