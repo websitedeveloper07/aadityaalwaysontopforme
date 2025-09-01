@@ -1384,7 +1384,7 @@ def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 def get_level_emoji(level: str) -> str:
-    """Return a matching emoji for card level/category."""
+    """Return a matching emoji for card level/category (brand/category field)."""
     mapping = {
         "classic": "💳",
         "gold": "🥇",
@@ -1400,14 +1400,29 @@ def get_level_emoji(level: str) -> str:
 async def get_bin_details(bin_number: str) -> dict:
     """
     Fetch BIN details from binlist.net API.
+    Response example:
+    {
+        "scheme": "visa",
+        "type": "debit",
+        "brand": "Visa Classic",
+        "country": {
+            "name": "United States of America (the)",
+            "emoji": "🇺🇸",
+            "currency": "USD"
+        },
+        "bank": {
+            "name": "Jpmorgan Chase Bank N.A. - Debit"
+        }
+    }
     """
     bin_data = {
         "scheme": "N/A",
         "type": "N/A",
-        "level": "N/A",
+        "brand": "N/A",
         "bank": "N/A",
         "country_name": "N/A",
-        "country_emoji": ""
+        "country_emoji": "",
+        "currency": "N/A"
     }
 
     url = f"https://lookup.binlist.net/{bin_number}"
@@ -1420,10 +1435,11 @@ async def get_bin_details(bin_number: str) -> dict:
                     data = await response.json()
                     bin_data["scheme"] = (data.get("scheme") or "N/A").title()
                     bin_data["type"] = (data.get("type") or "N/A").title()
-                    bin_data["level"] = data.get("brand") or "N/A"
+                    bin_data["brand"] = data.get("brand") or "N/A"
                     bin_data["bank"] = data.get("bank", {}).get("name") or "N/A"
                     bin_data["country_name"] = data.get("country", {}).get("name") or "N/A"
                     bin_data["country_emoji"] = data.get("country", {}).get("emoji") or ""
+                    bin_data["currency"] = data.get("country", {}).get("currency") or "N/A"
                     return bin_data
     except Exception as e:
         print(f"⚠️ BIN lookup error for {bin_number}: {e}")
@@ -1483,24 +1499,26 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Escape all values
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
-    escaped_card_type = escape_markdown_v2(bin_details.get("type", "N/A"))
-    escaped_level = escape_markdown_v2(bin_details.get("level", "N/A"))
+    escaped_type = escape_markdown_v2(bin_details.get("type", "N/A"))
+    escaped_brand = escape_markdown_v2(bin_details.get("brand", "N/A"))
     escaped_bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
     escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
     escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
+    escaped_currency = escape_markdown_v2(bin_details.get("currency", "N/A"))
     escaped_user = escape_markdown_v2(user.full_name)
 
-    level_emoji = get_level_emoji(bin_details.get("level", "N/A"))
+    level_emoji = get_level_emoji(bin_details.get("brand", "N/A"))
 
     # Build BIN info box
     bin_info_box = (
         f"✦━━━[  *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ]━━━✦\n"
         f"{bullet_link} *𝐁𝐈𝐍* ➳ `{escaped_bin}`\n"
         f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ `{escaped_scheme}`\n"
-        f"{bullet_link} *𝐓𝐲𝐩𝐞* ➳ `{escaped_card_type}`\n"
-        f"{bullet_link} *𝐋𝐞𝐯𝐞𝐥* ➳ `{level_emoji} {escaped_level}`\n"
+        f"{bullet_link} *𝐓𝐲𝐩𝐞* ➳ `{escaped_type}`\n"
+        f"{bullet_link} *𝐂𝐚𝐭𝐞𝐠𝐨𝐫𝐲* ➳ `{level_emoji} {escaped_brand}`\n"
         f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{escaped_bank}`\n"
         f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{escaped_country_name}{escaped_country_emoji}`\n"
+        f"{bullet_link} *𝐂𝐮𝐫𝐫𝐞𝐧𝐜𝐲* ➳ `{escaped_currency}`\n"
         f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐛𝐲* ➳ {escaped_user}\n"
         f"{bullet_link} *𝐁𝐨𝐭 𝐛𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
     )
@@ -1510,6 +1528,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
