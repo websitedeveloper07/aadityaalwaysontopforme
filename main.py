@@ -1246,12 +1246,15 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from telegram import Update
 from telegram.ext import ContextTypes
-from bin import get_bin_info  # Import from bin.py
+from bin import get_bin_info  # Import your BIN fetching logic
+import html
 
-# Replace with your legit group/channel link
-bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+# ===== Config =====
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+DEVELOPER_NAME = "kคli liຖนxx"
+DEVELOPER_LINK = "https://t.me/Kalinuxxx"
 
-
+# ===== Utilities =====
 def get_level_emoji(level: str) -> str:
     """Return a matching emoji for card level/category."""
     mapping = {
@@ -1273,11 +1276,12 @@ def safe(field):
 
 # ===== /bin Command =====
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Performs a BIN lookup using bin.py and shows full info."""
+    """Performs a BIN lookup and shows full info using clickable bullets."""
     user = update.effective_user
 
-    # Bullet hyperlink
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">⌇</a>'
+    # Clickable bullet
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+    developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
     # Parse BIN input
     bin_input = None
@@ -1290,14 +1294,14 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not bin_input or not bin_input.isdigit() or len(bin_input) < 6:
         return await update.effective_message.reply_text(
-            "❌ Please provide a 6-digit BIN. Usage: /bin [bin]",
+            "❌ Please provide a valid 6-digit BIN. Usage: /bin [bin]",
             parse_mode="HTML"
         )
 
     bin_number = bin_input[:6]
 
     try:
-        # BIN lookup
+        # Fetch BIN info
         bin_details = await get_bin_info(bin_number)
 
         brand = (bin_details.get("scheme") or "N/A").title()
@@ -1313,19 +1317,20 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         level_emoji = get_level_emoji(card_level)
 
-        # Build BIN info box
+        # Build BIN info message
         bin_info_box = (
-            f"✦━━━[  <b>𝐁𝐈𝐍 𝐈𝐍𝐅𝐎</b> ]━━━✦\n"
+            f"✦━━━[ <b>𝐁𝐈𝐍 𝐈𝐍𝐅𝐎</b> ]━━━✦\n"
             f"{bullet_link} <b>BIN</b> ➳ <code>{bin_number}</code>\n"
-            f"{bullet_link} <b>Scheme</b> ➳ <code>{brand}</code>\n"
-            f"{bullet_link} <b>Type</b> ➳ <code>{card_type}</code>\n"
-            f"{bullet_link} <b>Brand</b> ➳ {level_emoji} <code>{card_level}</code>\n"
-            f"{bullet_link} <b>Issuer/Bank</b> ➳ <code>{issuer}</code>\n"
-            f"{bullet_link} <b>Country</b> ➳ <code>{country_name} {country_flag}</code>\n"
+            f"{bullet_link} <b>Scheme</b> ➳ <code>{html.escape(brand)}</code>\n"
+            f"{bullet_link} <b>Type</b> ➳ <code>{html.escape(card_type)}</code>\n"
+            f"{bullet_link} <b>Brand</b> ➳ {level_emoji} <code>{html.escape(card_level)}</code>\n"
+            f"{bullet_link} <b>Issuer/Bank</b> ➳ <code>{html.escape(issuer)}</code>\n"
+            f"{bullet_link} <b>Country</b> ➳ <code>{html.escape(country_name)} {country_flag}</code>\n"
             f"{bullet_link} <b>Requested By</b> ➳ {user.mention_html()}\n"
-            f"{bullet_link} <b>Bot By</b> ➳ <a href='tg://resolve?domain=Kalinuxxx'>kคli liຖนxx</a>\n"
+            f"{bullet_link} <b>Bot By</b> ➳ {developer_clickable}\n"
         )
 
+        # Send BIN info
         await update.effective_message.reply_text(
             bin_info_box,
             parse_mode="HTML",
@@ -1334,9 +1339,10 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await update.effective_message.reply_text(
-            f"❌ Error fetching BIN info: {str(e)}",
+            f"❌ Error fetching BIN info: {html.escape(str(e))}",
             parse_mode="HTML"
         )
+
 
 
 
