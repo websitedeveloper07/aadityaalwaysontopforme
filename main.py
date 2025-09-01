@@ -3060,14 +3060,14 @@ async def process_card_check(user, card_input, custom_url, msg):
     cc = card_input.split("|")[0]
 
     # BIN lookup
-    
-        bin_number = parts[0][:6]
-        bin_details = await get_bin_details(bin_number)
+    parts = card_input.split("|")
+    bin_number = parts[0][:6]
+    bin_details = await get_bin_details(bin_number)
 
-        brand = (bin_details.get("scheme") or "N/A").title()
-        issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A")
-        country_flag = bin_details.get("country_emoji", "")
+    brand = (bin_details.get("scheme") or "N/A").title()
+    issuer = (bin_details.get("bank") or "N/A").title()
+    country_name = (bin_details.get("country_name") or "N/A")
+    country_flag = bin_details.get("country_emoji", "")
 
     # API call
     api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
@@ -3098,6 +3098,7 @@ async def process_card_check(user, card_input, custom_url, msg):
                 parse_mode=ParseMode.HTML
             )
             return
+
 
         # Extract fields
         response_text = data.get("Response", "Unknown")
