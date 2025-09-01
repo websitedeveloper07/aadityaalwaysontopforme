@@ -3843,17 +3843,18 @@ last_b3_time = 0  # timestamp of last usage
 
 async def process_b3(update, context, card_input, status_msg):
     try:
-        # Run your checker (must be async)
-        result_text = await multi_checking(card_input)  # user-defined function
+        # Run your checker (async)
+        result_text = await multi_checking(card_input)
 
         # Parse status + reason
-        if "Approved" in result_text:
+        result_lower = result_text.lower()
+        if "approved" in result_lower:
             status = "✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱"
             reason = "Payment method successfully added."
-        elif "invalid" in result_text.lower():
+        elif "invalid" in result_lower:
             status = "❌ 𝘿𝙚𝙘𝙡𝙞𝙣𝙚𝙙"
             reason = "Invalid credit card number"
-        elif "Expiration" in result_text or "expiry" in result_text.lower():
+        elif "expiration" in result_lower or "expiry" in result_lower:
             status = "❌ 𝘿𝙚𝙘𝙡𝙞𝙣𝙚𝙙"
             reason = "Invalid expiry date"
         else:
@@ -3864,22 +3865,23 @@ async def process_b3(update, context, card_input, status_msg):
             else:
                 reason = "Unknown error"
 
-        # BIN lookup
+        # Extract BIN (first 6 digits of card number)
         cc = card_input.split("|")[0]
-    
-        bin_number = parts[0][:6]
+        bin_number = cc[:6]  # safe, always exists
         bin_details = await get_bin_details(bin_number)
 
+        # Extract details safely
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = (bin_details.get("bank") or "N/A").title()
         country_name = (bin_details.get("country_name") or "N/A").title()
         country_flag = bin_details.get("country_emoji", "")
-        # Escape text for HTML
+
+        # Escape for HTML
         safe_card = html.escape(card_input)
         safe_reason = html.escape(reason)
         safe_brand = html.escape(brand)
         safe_issuer = html.escape(issuer)
-        safe_country = html.escape(country_name)
+        safe_country = html.escape(f"{country_name} {country_flag}".strip())
         safe_user = html.escape(update.effective_user.first_name)
 
         # Format message
@@ -3902,7 +3904,10 @@ async def process_b3(update, context, card_input, status_msg):
         await status_msg.edit_text(formatted_msg, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception as e:
-        await status_msg.edit_text(f"❌ Error while processing: {html.escape(str(e))}", parse_mode="HTML")
+        await status_msg.edit_text(
+            f"❌ Error while processing: {html.escape(str(e))}", 
+            parse_mode="HTML"
+        )
 
 
 # ===== /b3 COMMAND =====
