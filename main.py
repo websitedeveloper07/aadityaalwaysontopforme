@@ -4088,15 +4088,14 @@ async def run_vbv_check(msg, update, card_data: str):
         await msg.edit_text(f"❌ API request failed: {type(e).__name__} → {e}")
         return
 
-    # BIN lookup
-    
-        bin_number = parts[0][:6]
-        bin_details = await get_bin_details(bin_number)
+    # BIN lookup (fixed)
+    bin_number = cc[:6]  # always safe
+    bin_details = await get_bin_details(bin_number)
 
-        brand = (bin_details.get("scheme") or "N/A").title()
-        issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A").title()
-        country_flag = bin_details.get("country_emoji", "")
+    brand = (bin_details.get("scheme") or "N/A").title()
+    issuer = (bin_details.get("bank") or "N/A").title()
+    country_name = (bin_details.get("country_name") or "N/A").title()
+    country_flag = bin_details.get("country_emoji", "")
 
     # Response formatting
     response_text = vbv_data.get("response", "N/A")
@@ -4120,6 +4119,7 @@ async def run_vbv_check(msg, update, card_data: str):
     )
 
     await msg.edit_text(text, parse_mode="HTML")
+
 
 
 
