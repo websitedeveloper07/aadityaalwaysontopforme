@@ -1157,13 +1157,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file.name = f"generated_cards_{card_base}.txt"
         await update.effective_message.reply_document(
             document=file,
-            caption=f"`Generated {len(cards)} cards`\n\n{escaped_bin_info}",
+            caption=f"```\nGenerated {len(cards)} cards\n```\n\n{escaped_bin_info}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     else:
         cards_list = "\n".join(f"`{c}`" for c in cards)
         final_message = (
-            f"`Generated {len(cards)} cards`\n\n"
+            f"```\nGenerated {len(cards)} cards\n```\n\n"
             f"{cards_list}\n\n"
             f"{escaped_bin_info}"
         )
