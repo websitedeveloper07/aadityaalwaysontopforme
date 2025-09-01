@@ -1309,8 +1309,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ {level_emoji} `{esc(bin_details.get('brand'))}`\n"
         f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{esc(bin_details.get('bank'))}`\n"
         f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{esc(bin_details.get('country'))} {esc(bin_details.get('country_emoji'))}`\n"
-        f"{bullet_link} *𝐂𝐮𝐫𝐫𝐞𝐧𝐜𝐲* ➳ `{esc(bin_details.get('currency'))}`\n"
-        f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲* ➳ {escaped_user}\n"
+        f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲* ➳ {update.effective_user.mention_html()}\n"
         f"{bullet_link} *𝐁𝐨𝐭 𝐁𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
     )
 
@@ -1499,7 +1498,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_markdown_v2(issuer)}`\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_markdown_v2(country_name)} {country_flag}`\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_markdown_v2(user.first_name)}](tg://user?id={user.id}) [{escape_markdown_v2(user_data.get('plan', 'Free'))}]\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
             f"――――――――――――――――"
         )
@@ -3724,7 +3723,7 @@ async def process_b3(update, context, card_input, status_msg):
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{safe_issuer}</code>\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{safe_country}</code>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {safe_user}\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ <a href='tg://user?id={update.effective_user.id}'>{html.escape(update.effective_user.first_name)}</a>\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
             "――――――――――――――――"
         )
