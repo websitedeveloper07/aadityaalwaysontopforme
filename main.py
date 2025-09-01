@@ -3919,7 +3919,7 @@ async def run_vbv_check(msg, update, card_data: str):
         bin_details = await get_bin_info(bin_number)
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = bin_details.get("bank") or "N/A"
-        country_name = bin_details.get("country_name") or "Unknown"
+        country_name = bin_details.get("country") or "Unknown"
         country_flag = bin_details.get("country_emoji", "")
         card_type = bin_details.get("type", "N/A")
         card_level = bin_details.get("brand", "N/A")
