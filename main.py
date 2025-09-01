@@ -1232,7 +1232,7 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from bin import get_bin_details  # Import from bin.py
+from bin import get_bin_info  # Import from bin.py
 import re
 
 # Replace with your legit group/channel link
@@ -1245,7 +1245,7 @@ def escape_markdown_v2(text: str) -> str:
 
 
 def get_level_emoji(level: str) -> str:
-    """Return a matching emoji for card level/category (brand/category field)."""
+    """Return a matching emoji for card level/category (brand field)."""
     mapping = {
         "classic": "💳",
         "gold": "🥇",
@@ -1285,7 +1285,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_input = bin_input[:6]
 
     # Lookup BIN using bin.py
-    bin_details = await get_bin_details(bin_input)
+    bin_details = await get_bin_info(bin_input)
 
     if not bin_details or "error" in bin_details:
         return await update.effective_message.reply_text(
@@ -1308,7 +1308,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} *𝐓𝐲𝐩𝐞* ➳ `{esc(bin_details.get('type'))}`\n"
         f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ {level_emoji} `{esc(bin_details.get('brand'))}`\n"
         f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{esc(bin_details.get('bank'))}`\n"
-        f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{esc(bin_details.get('country_name'))} {esc(bin_details.get('country_emoji'))}`\n"
+        f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{esc(bin_details.get('country'))} {esc(bin_details.get('country_emoji'))}`\n"
         f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲* ➳ {escaped_user}\n"
         f"{bullet_link} *𝐁𝐨𝐭 𝐁𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
     )
@@ -1318,6 +1318,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
