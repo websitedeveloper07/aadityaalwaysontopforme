@@ -3991,6 +3991,15 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # --- BIN Lookup ---
+import aiohttp
+import asyncio
+import logging
+from telegram import Update
+from telegram.ext import ContextTypes
+
+logger = logging.getLogger(__name__)
+
+# --- BIN Lookup ---
 async def get_bin_details(bin_number: str) -> dict:
     """
     Fetch BIN details from bintable API.
@@ -4012,6 +4021,7 @@ async def get_bin_details(bin_number: str) -> dict:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=7) as response:
+                text = await response.text()
                 if response.status == 200:
                     try:
                         data = await response.json(content_type=None)
@@ -4028,10 +4038,12 @@ async def get_bin_details(bin_number: str) -> dict:
                             bin_data["country_name"] = country.get("name", "N/A")
                             bin_data["country_emoji"] = country.get("flag", "")
                             return bin_data
+                        else:
+                            logger.warning(f"BIN API returned unexpected JSON for {bin_number}: {data}")
                     except Exception as e:
-                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
+                        logger.warning(f"JSON parse error for BIN {bin_number}: {e} → {text}")
                 else:
-                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
+                    logger.warning(f"BIN API returned {response.status} for {bin_number} → {text}")
     except Exception as e:
         logger.warning(f"BIN API call failed for {bin_number}: {e}")
 
@@ -4088,7 +4100,7 @@ async def run_vbv_check(msg, update, card_data: str):
         await msg.edit_text(f"❌ API request failed: {type(e).__name__} → {e}")
         return
 
-    # BIN lookup (fixed)
+    # BIN lookup
     bin_number = cc[:6]  # always safe
     bin_details = await get_bin_details(bin_number)
 
@@ -4097,25 +4109,26 @@ async def run_vbv_check(msg, update, card_data: str):
     country_name = (bin_details.get("country_name") or "N/A").title()
     country_flag = bin_details.get("country_emoji", "")
 
-    # Response formatting
+    # VBV Response
     response_text = vbv_data.get("response", "N/A")
     check_mark = "✅" if response_text in [
         "Authenticate Attempt Successful",
         "Authenticate Successful"
     ] else "❌"
 
+    # Nicely formatted response
     text = (
         "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
-        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{cc}|{mes}|{ano}|{cvv}</code>\n"
-        f"{bullet_link} BIN ➜ <code>{bin_number}</code>\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{response_text} {check_mark}</i>\n"
+        f"▫️ 𝐂𝐚𝐫𝐝 ➜ <code>{cc}|{mes}|{ano}|{cvv}</code>\n"
+        f"▫️ 𝐁𝐈𝐍 ➜ <code>{bin_number}</code>\n"
+        f"▫️ 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{response_text} {check_mark}</i>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
-        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
-        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name} {country_flag}</code>\n"
+        f"▫️ 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
+        f"▫️ 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
+        f"▫️ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name} {country_flag}</code>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
-        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
+        f"▫️ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
+        f"▫️ 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
     )
 
     await msg.edit_text(text, parse_mode="HTML")
