@@ -773,7 +773,7 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         "• `/vbv` `<card|mm|yy|cvv>`\n"
         "  Example:\n"
         "  `/vbv 4111111111111111|12|2026|123`\n\n"
-        "👉 Checks whether the card is *VBV (Verified by Visa)* or *NON-VBV*\\.\n"
+        "👉 Checks whether the card is *VBV \\(Verified by Visa\\)* or *NON\\-VBV*\\.\n"
         "⚠️ Ensure you enter the card details in the correct format\\.\n\n"
         "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
@@ -785,6 +785,7 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
 
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
