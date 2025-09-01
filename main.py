@@ -978,7 +978,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = bin_details.get("bank") or "N/A"
-        country_name = bin_details.get("country_name") or "N/A"
+        country_name = bin_details.get("country") or "N/A"
         country_flag = bin_details.get("country_emoji", "")
         card_type = bin_details.get("type", "N/A")
         card_level = bin_details.get("level", "N/A")
@@ -1277,7 +1277,8 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
     # Bullet hyperlink
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">⌇</a>'
+    bullet_text = "[⌇]"
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Parse BIN input
     bin_input = None
