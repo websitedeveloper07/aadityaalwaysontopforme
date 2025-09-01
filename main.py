@@ -3911,7 +3911,7 @@ async def run_vbv_check(msg, update, card_data: str):
         bin_details = await get_bin_info(bin_number)
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = bin_details.get("bank") or "N/A"
-        country_name = bin_details.get("country_name") or "N/A"
+        country_name = bin_details.get("country") or "N/A"
         country_flag = bin_details.get("country_emoji", "")
         card_type = bin_details.get("type", "N/A")
         card_level = bin_details.get("brand", "N/A")
@@ -3922,6 +3922,13 @@ async def run_vbv_check(msg, update, card_data: str):
     except Exception as e:
         logger.warning(f"BIN lookup failed for {bin_number}: {e}")
         brand = issuer = country_name = country_flag = card_type = card_level = "N/A"
+        # Escape for HTML
+        safe_card = html.escape(card_input)
+        safe_reason = html.escape(reason)
+        safe_brand = html.escape(brand)
+        safe_issuer = html.escape(issuer)
+        safe_country = html.escape(f"{country_name} {country_flag}".strip())
+        safe_user = html.escape(update.effective_user.first_name)
 
     # Response formatting
     response_text = vbv_data.get("response", "N/A")
@@ -3929,13 +3936,13 @@ async def run_vbv_check(msg, update, card_data: str):
 
     text = (
         "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
-        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{cc}|{mes}|{ano}|{cvv}</code>\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{safe_card}</code>\n"
         f"{bullet_link} BIN ➜ <code>{bin_number}</code>\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{response_text} {check_mark}</i>\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{safe_reason} {check_mark}</i>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
-        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
-        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name} {country_flag}</code>\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{safe_brand}</code>\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{safe_issuer}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{safe_country} {country_flag}</code>\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
         f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
