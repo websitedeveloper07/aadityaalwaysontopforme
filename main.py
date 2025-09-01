@@ -4011,42 +4011,73 @@ async def run_vbv_check(msg, update, card_data: str):
 
 
 import psutil
-from telegram.constants import ParseMode
+import platform
+import socket
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+
+# Bullet link for clickable bullets
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+bullet_link = f'<a href="{BULLET_GROUP_LINK}">⌇</a>'
 
 async def get_total_users():
     from db import get_all_users
     users = await get_all_users()
-    return len(users)  # Return only the count
+    return len(users)
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # System stats
+    user = update.effective_user
+
+    # CPU info
     cpu_usage = psutil.cpu_percent(interval=1)
-    memory_info = psutil.virtual_memory()
-    total_memory = memory_info.total / (1024 ** 2)  # MB
-    memory_percent = memory_info.percent
+    cpu_count = psutil.cpu_count(logical=True)
+    cpu_model = platform.processor() or "N/A"
+
+    # RAM info
+    memory = psutil.virtual_memory()
+    total_memory = memory.total / (1024 ** 2)  # MB
+    used_memory = memory.used / (1024 ** 2)
+    available_memory = memory.available / (1024 ** 2)
+    memory_percent = memory.percent
+
+    # Disk info
+    disk = psutil.disk_usage("/")
+    total_disk = disk.total / (1024 ** 3)  # GB
+    used_disk = disk.used / (1024 ** 3)
+    free_disk = disk.free / (1024 ** 3)
+    disk_percent = disk.percent
+
+    # Host/VPS info
+    hostname = socket.gethostname()
+    os_name = platform.system()
+    os_version = platform.version()
+    architecture = platform.machine()
+
+    # Total users
     total_users = await get_total_users()
 
-    # Wrap all values in monospace using backticks
-    cpu_str = f"`{cpu_usage}%`"
-    mem_str = f"`{memory_percent}%`"
-    total_mem_str = f"`{total_memory:.2f} MB`"
-    users_str = f"`{total_users}`"
-
-    # Status message
+    # Build stylish message
     status_message = (
-        "╭━━━ 𝐁𝐨𝐭 𝐒𝐭𝐚𝐭𝐮𝖘 ━━━━⬣\n"
-        f"┣ ❏ 𝖢𝖯𝖴 𝖴𝗌𝖺𝗀𝖾 ➳ {cpu_str}\n"
-        f"┣ ❏ 𝖱𝖠𝖬 𝖴𝗌𝖺𝗀𝖾 ➳ {mem_str}\n"
-        f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖱𝖠𝖬 ➳ {total_mem_str}\n"
-        f"┣ ❏ 𝖳𝗈𝗍𝖺𝗅 𝖴𝗌𝖾𝗋𝗌 ➳ {users_str}\n"
-        "╰━━━━━━━━━━━━━━━━━━━⬣"
+        f"✦━━━[ <b>𝐁𝐨𝐭 & 𝐕𝐏𝐒 𝐒𝐭𝐚𝐭𝐮𝐬</b> ]━━━✦\n"
+        f"{bullet_link} <b>CPU Usage</b> ➳ {cpu_usage}% ({cpu_count} cores)\n"
+        f"{bullet_link} <b>CPU Model</b> ➳ {cpu_model}\n"
+        f"{bullet_link} <b>RAM Usage</b> ➳ {used_memory:.2f}MB / {total_memory:.2f}MB ({memory_percent}%)\n"
+        f"{bullet_link} <b>RAM Available</b> ➳ {available_memory:.2f}MB\n"
+        f"{bullet_link} <b>Disk Usage</b> ➳ {used_disk:.2f}GB / {total_disk:.2f}GB ({disk_percent}%)\n"
+        f"{bullet_link} <b>Disk Available</b> ➳ {free_disk:.2f}GB\n"
+        f"{bullet_link} <b>OS</b> ➳ {os_name} {os_version} ({architecture})\n"
+        f"{bullet_link} <b>Hostname</b> ➳ {hostname}\n"
+        f"{bullet_link} <b>Total Users</b> ➳ {total_users}\n"
+        f"{bullet_link} <b>Requested By</b> ➳ {user.mention_html()}\n"
+        f"{bullet_link} <b>Bot By</b> ➳ <a href='tg://resolve?domain=Kalinuxxx'>kคli liຖนxx</a>\n"
+        "――――――――――――――――"
     )
 
     await update.effective_message.reply_text(
         status_message,
-        parse_mode=ParseMode.MARKDOWN_V2
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
     )
 
 
