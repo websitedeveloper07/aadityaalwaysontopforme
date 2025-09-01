@@ -1245,22 +1245,15 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from bin import get_bin_info  # Import from bin.py
-import re
 
 # Replace with your legit group/channel link
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 
-def escape_markdown_v2(text: str) -> str:
-    """Escapes special characters for Telegram MarkdownV2."""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-
-
 def get_level_emoji(level: str) -> str:
-    """Return a matching emoji for card level/category (brand field)."""
+    """Return a matching emoji for card level/category."""
     mapping = {
         "classic": "💳",
         "gold": "🥇",
@@ -1273,14 +1266,18 @@ def get_level_emoji(level: str) -> str:
     return mapping.get(level.lower(), "💳")
 
 
+def safe(field):
+    """Return field or 'N/A' if None."""
+    return field or "N/A"
+
+
 # ===== /bin Command =====
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup using bin.py and shows full info."""
     user = update.effective_user
 
     # Bullet hyperlink
-    bullet_text = escape_markdown_v2("[⌇]")
-    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">⌇</a>'
 
     # Parse BIN input
     bin_input = None
@@ -1293,46 +1290,54 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not bin_input or not bin_input.isdigit() or len(bin_input) < 6:
         return await update.effective_message.reply_text(
-            "❌ Please provide a 6\\-digit BIN\\. Usage: /bin [bin]",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "❌ Please provide a 6-digit BIN. Usage: /bin [bin]",
+            parse_mode="HTML"
         )
 
-    bin_input = bin_input[:6]
+    bin_number = bin_input[:6]
 
-    # Lookup BIN using bin.py
-    bin_details = await get_bin_info(bin_input)
+    try:
+        # BIN lookup
+        bin_details = await get_bin_info(bin_number)
 
-    if not bin_details or "error" in bin_details:
-        return await update.effective_message.reply_text(
-            f"❌ {escape_markdown_v2(bin_details.get('error', 'BIN not found or invalid.'))}",
-            parse_mode=ParseMode.MARKDOWN_V2
+        brand = (bin_details.get("scheme") or "N/A").title()
+        issuer = safe(bin_details.get("bank"))
+        country_name = safe(bin_details.get("country"))
+        country_flag = bin_details.get("country_emoji", "")
+        card_type = safe(bin_details.get("type"))
+        card_level = safe(bin_details.get("brand"))
+        card_length = safe(bin_details.get("length"))
+        luhn_check = safe(bin_details.get("luhn"))
+        bank_phone = safe(bin_details.get("bank_phone"))
+        bank_url = safe(bin_details.get("bank_url"))
+
+        level_emoji = get_level_emoji(card_level)
+
+        # Build BIN info box
+        bin_info_box = (
+            f"✦━━━[  <b>𝐁𝐈𝐍 𝐈𝐍𝐅𝐎</b> ]━━━✦\n"
+            f"{bullet_link} <b>BIN</b> ➳ <code>{bin_number}</code>\n"
+            f"{bullet_link} <b>Scheme</b> ➳ <code>{brand}</code>\n"
+            f"{bullet_link} <b>Type</b> ➳ <code>{card_type}</code>\n"
+            f"{bullet_link} <b>Brand</b> ➳ {level_emoji} <code>{card_level}</code>\n"
+            f"{bullet_link} <b>Issuer/Bank</b> ➳ <code>{issuer}</code>\n"
+            f"{bullet_link} <b>Country</b> ➳ <code>{country_name} {country_flag}</code>\n"
+            f"{bullet_link} <b>Requested By</b> ➳ {user.mention_html()}\n"
+            f"{bullet_link} <b>Bot By</b> ➳ <a href='tg://resolve?domain=Kalinuxxx'>kคli liຖนxx</a>\n"
         )
 
-    # Escape all values
-    def esc(field):
-        return escape_markdown_v2(field or "N/A")
+        await update.effective_message.reply_text(
+            bin_info_box,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
 
-    escaped_user = esc(user.full_name)
-    level_emoji = get_level_emoji(bin_details.get("brand", "N/A"))
+    except Exception as e:
+        await update.effective_message.reply_text(
+            f"❌ Error fetching BIN info: {str(e)}",
+            parse_mode="HTML"
+        )
 
-    # Build BIN info box
-    bin_info_box = (
-        f"✦━━━[  *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ]━━━✦\n"
-        f"{bullet_link} *𝐁𝐈𝐍* ➳ `{esc(bin_details.get('bin'))}`\n"
-        f"{bullet_link} *𝐒𝐜𝐡𝐞𝐦𝐞* ➳ `{esc(bin_details.get('scheme'))}`\n"
-        f"{bullet_link} *𝐓𝐲𝐩𝐞* ➳ `{esc(bin_details.get('type'))}`\n"
-        f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ {level_emoji} `{esc(bin_details.get('brand'))}`\n"
-        f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{esc(bin_details.get('bank'))}`\n"
-        f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{esc(bin_details.get('country'))} {esc(bin_details.get('country_emoji'))}`\n"
-        f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲* ➳ {update.effective_user.mention_html()}\n"
-        f"{bullet_link} *𝐁𝐨𝐭 𝐁𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
-    )
-
-    await update.effective_message.reply_text(
-        bin_info_box,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True
-    )
 
 
 
