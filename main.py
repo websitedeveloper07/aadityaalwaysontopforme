@@ -3633,10 +3633,17 @@ from telegram.ext import CommandHandler
 import aiohttp
 import asyncio
 import time
+import re
+import html
+import logging
+
 from b3 import multi_checking  # your checker
+from bin import get_bin_details  # moved BIN logic to bin.py
 
+# Logger
+logger = logging.getLogger(__name__)
 
-# Developer + Branding
+# ===== Developer + Branding =====
 DEVELOPER_NAME = "kคli liຖนxx"
 DEVELOPER_LINK = "https://t.me/Kalinuxxx"
 developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
@@ -3645,73 +3652,21 @@ BULLET_GROUP_LINK = "https://t.me/CARDER33"
 bullet_text = "[⌇]"
 bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
-# Cooldown dict
+# ===== Cooldown dict =====
 user_cooldowns = {}
 COOLDOWN_SECONDS = 20
 
-
-# ===== BIN LOOKUP FUNCTION =====
-async def get_bin_details(bin_number: str) -> dict:
-    """
-    Fetch BIN details from new BIN API.
-    """
-    bin_data = {
-        "scheme": "N/A",
-        "type": "N/A",
-        "level": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": "",
-        "vbv_status": None,
-        "card_type": "N/A"
-    }
-
-    url = f"https://lookup.binlist.net/{bin_number}"
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=7) as response:
-                if response.status == 200:
-                    try:
-                        data = await response.json(content_type=None)
-
-                        bin_data["scheme"] = str(data.get("scheme", "N/A")).title()
-                        bin_data["type"] = str(data.get("type", "N/A")).title()
-                        bin_data["card_type"] = str(data.get("brand", "N/A")).title()
-                        bin_data["level"] = str(data.get("brand", "N/A")).title()
-
-                        bank = data.get("bank", {})
-                        country = data.get("country", {})
-
-                        bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                        bin_data["country_name"] = str(country.get("name", "N/A")).title()
-                        bin_data["country_emoji"] = country.get("emoji", "")
-
-                        return bin_data
-                    except Exception as e:
-                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
-                else:
-                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
-    except Exception as e:
-        logger.warning(f"BIN API call failed for {bin_number}: {e}")
-
-    return bin_data
-
-
-# ===== BACKGROUND TASK =====
-import asyncio
-import time
-import re
-import html
-
+# ===== Regex for Card Pattern =====
 CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
-# Global cooldown tracking
+# ===== Global cooldown tracking =====
 GLOBAL_COOLDOWN_SECONDS = 20
 last_b3_time = 0  # timestamp of last usage
 
+
+# ===== Process B3 Function =====
 async def process_b3(update, context, card_input, status_msg):
+    global last_b3_time
     try:
         # Run your checker (async)
         result_text = await multi_checking(card_input)
@@ -3757,13 +3712,13 @@ async def process_b3(update, context, card_input, status_msg):
         # Format message
         formatted_msg = (
             f"═══[ {status} ]═══\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{safe_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{safe_reason}</i>\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{safe_card}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{safe_reason}</i>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{safe_brand}</code>\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{safe_issuer}</code>\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{safe_country}</code>\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{safe_brand}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{safe_issuer}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{safe_country}</code>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {safe_user}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
@@ -3772,16 +3727,13 @@ async def process_b3(update, context, card_input, status_msg):
 
         # Edit the "Processing..." message
         await status_msg.edit_text(
-            formatted_msg,
-            parse_mode="HTML",
-            disable_web_page_preview=True
+            formatted_msg, parse_mode="HTML", disable_web_page_preview=True
         )
-
     except Exception as e:
         await status_msg.edit_text(
             f"❌ Error while processing: {html.escape(str(e))}",
             parse_mode="HTML",
-            disable_web_page_preview=True
+            disable_web_page_preview=True,
         )
 
 
