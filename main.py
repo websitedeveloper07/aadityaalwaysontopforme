@@ -1249,9 +1249,7 @@ from telegram.ext import ContextTypes
 from bin import get_bin_info  # Import from bin.py
 
 # Replace with your legit group/channel link
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
-bullet_text = "[⌇]"
-bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
+bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
 
 def get_level_emoji(level: str) -> str:
