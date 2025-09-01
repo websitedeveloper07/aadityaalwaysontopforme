@@ -3846,11 +3846,26 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ You don’t have enough credits to use /vbv.")
         return
 
-    if not context.args:
-        await update.message.reply_text("⚠️ Usage: /vbv <card|mm|yyyy|cvv>")
+    card_data = None
+
+    # 1️⃣ Check if card is provided as argument
+    if context.args:
+        card_data = context.args[0].strip()
+
+    # 2️⃣ Check if this is a reply to a message
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        # Extract card-like pattern from reply
+        match = re.search(r"(\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4})", update.message.reply_to_message.text)
+        if match:
+            card_data = match.group(1).strip()
+
+    if not card_data:
+        await update.message.reply_text(
+            "⚠️ Usage: /vbv <card|mm|yyyy|cvv>\n"
+            "Or reply to a message containing a card in `number|mm|yy(yy)|cvv` format."
+        )
         return
 
-    card_data = context.args[0]
     msg = await update.message.reply_text("<b>⏳ Processing your request...</b>", parse_mode="HTML")
 
     # Update cooldown
@@ -3926,7 +3941,7 @@ async def run_vbv_check(msg, update, card_data: str):
         f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
     )
 
-    await msg.edit_text(text, parse_mode="HTML")
+    await msg.edit_text(text, parse_mode="HTML", disable_web_page_preview=True)
 
 
 
