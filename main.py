@@ -3632,13 +3632,12 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 from telegram.ext import CommandHandler
 import aiohttp
 import asyncio
-import time
 import re
 import html
 import logging
 
 from b3 import multi_checking  # your checker
-from bin import get_bin_info  # moved BIN logic to bin.py
+from bin import get_bin_info   # BIN logic
 
 # Logger
 logger = logging.getLogger(__name__)
@@ -3663,12 +3662,11 @@ CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 GLOBAL_COOLDOWN_SECONDS = 20
 last_b3_time = 0  # timestamp of last usage
 
-
 # ===== Process B3 Function =====
 async def process_b3(update, context, card_input, status_msg):
     global last_b3_time
     try:
-        # Run your checker (async)
+        # Run the async card checker
         result_text = await multi_checking(card_input)
 
         # Parse status + reason
@@ -3690,16 +3688,12 @@ async def process_b3(update, context, card_input, status_msg):
             else:
                 reason = "Unknown error"
 
-        # Extract BIN (first 6 digits of card number)
+        # Extract BIN (first 6 digits)
         cc = card_input.split("|")[0]
-        bin_number = cc[:6]  # safe, always exists
-        bin_details = await get_bin_details(bin_number)
+        bin_number = cc[:6]
 
-    try:
-        # BIN lookup (✅ using bin.py)
-        bin_number = parts[0][:6]
+        # Fetch BIN info
         bin_details = await get_bin_info(bin_number)
-
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = bin_details.get("bank") or "N/A"
         country_name = bin_details.get("country") or "N/A"
@@ -3710,7 +3704,6 @@ async def process_b3(update, context, card_input, status_msg):
         luhn_check = bin_details.get("luhn", "N/A")
         bank_phone = bin_details.get("bank_phone", "N/A")
         bank_url = bin_details.get("bank_url", "N/A")
-
 
         # Escape for HTML
         safe_card = html.escape(card_input)
@@ -3740,7 +3733,9 @@ async def process_b3(update, context, card_input, status_msg):
         await status_msg.edit_text(
             formatted_msg, parse_mode="HTML", disable_web_page_preview=True
         )
+
     except Exception as e:
+        logger.error(f"B3 processing error: {e}")
         await status_msg.edit_text(
             f"❌ Error while processing: {html.escape(str(e))}",
             parse_mode="HTML",
