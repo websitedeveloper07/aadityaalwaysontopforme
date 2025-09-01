@@ -3791,6 +3791,145 @@ async def b3_command(update, context):
 
 
 
+# --- Imports ---
+import aiohttp
+import asyncio
+import logging
+from datetime import datetime, timedelta
+from telegram import Update
+from telegram.ext import ContextTypes
+from bin import get_bin_info
+
+# --- Local Imports ---
+from db import get_user, update_user  # assuming you have these functions
+
+# --- Constants ---
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+bullet_text = "[⌇]"
+bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
+
+DEVELOPER_NAME = "kคli liຖนxx"
+DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+
+logger = logging.getLogger(__name__)
+
+# --- Cooldown tracking ---
+user_cooldowns = {}  # user_id: datetime of last command
+COOLDOWN_SECONDS = 5
+
+# --- Credit System ---
+async def consume_credit(user_id: int) -> bool:
+    try:
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("credits", 0) > 0:
+            new_credits = user_data["credits"] - 1
+            await update_user(user_id, credits=new_credits)
+            return True
+    except Exception as e:
+        logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
+    return False
+
+# --- /vbv command ---
+async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    # Check cooldown
+    last_time = user_cooldowns.get(user_id)
+    if last_time and datetime.utcnow() - last_time < timedelta(seconds=COOLDOWN_SECONDS):
+        remaining = COOLDOWN_SECONDS - (datetime.utcnow() - last_time).seconds
+        await update.message.reply_text(f"⏳ Please wait {remaining}s before using /vbv again.")
+        return
+
+    # Check credits
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You don’t have enough credits to use /vbv.")
+        return
+
+    if not context.args:
+        await update.message.reply_text("⚠️ Usage: /vbv <card|mm|yyyy|cvv>")
+        return
+
+    card_data = context.args[0]
+    msg = await update.message.reply_text("<b>⏳ Processing your request...</b>", parse_mode="HTML")
+
+    # Update cooldown
+    user_cooldowns[user_id] = datetime.utcnow()
+
+    # Run background task
+    asyncio.create_task(run_vbv_check(msg, update, card_data))
+
+# --- Background worker ---
+async def run_vbv_check(msg, update, card_data: str):
+    try:
+        cc, mes, ano, cvv = card_data.split("|")
+    except ValueError:
+        await msg.edit_text("❌ Invalid format. Use: /vbv 4111111111111111|07|2027|123")
+        return
+
+    bin_number = cc[:6]
+    api_url = f"https://rocky-815m.onrender.com/gateway=bin?key=Payal&card={card_data}"
+
+    # Fetch VBV data
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=50) as resp:
+                if resp.status != 200:
+                    await msg.edit_text(f"❌ API Error (Status {resp.status}). Try again later.")
+                    return
+                vbv_data = await resp.json(content_type=None)
+    except asyncio.TimeoutError:
+        await msg.edit_text("❌ API request failed: Timed out ⏳")
+        return
+    except aiohttp.ClientConnectorError:
+        await msg.edit_text("❌ API request failed: Cannot connect to host 🌐")
+        return
+    except aiohttp.ContentTypeError:
+        await msg.edit_text("❌ API request failed: Invalid JSON response 📄")
+        return
+    except Exception as e:
+        await msg.edit_text(f"❌ API request failed: {type(e).__name__} → {e}")
+        return
+
+    # BIN lookup
+    try:
+        bin_details = await get_bin_info(bin_number)
+        brand = (bin_details.get("scheme") or "N/A").title()
+        issuer = bin_details.get("bank") or "N/A"
+        country_name = bin_details.get("country_name") or "N/A"
+        country_flag = bin_details.get("country_emoji", "")
+        card_type = bin_details.get("type", "N/A")
+        card_level = bin_details.get("brand", "N/A")
+        card_length = bin_details.get("length", "N/A")
+        luhn_check = bin_details.get("luhn", "N/A")
+        bank_phone = bin_details.get("bank_phone", "N/A")
+        bank_url = bin_details.get("bank_url", "N/A")
+    except Exception as e:
+        logger.warning(f"BIN lookup failed for {bin_number}: {e}")
+        brand = issuer = country_name = country_flag = card_type = card_level = "N/A"
+
+    # Response formatting
+    response_text = vbv_data.get("response", "N/A")
+    check_mark = "✅" if response_text.lower().find("successful") != -1 else "❌"
+
+    text = (
+        "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{cc}|{mes}|{ano}|{cvv}</code>\n"
+        f"{bullet_link} BIN ➜ <code>{bin_number}</code>\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{response_text} {check_mark}</i>\n"
+        "――――――――――――――――\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name} {country_flag}</code>\n"
+        "――――――――――――――――\n"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
+    )
+
+    await msg.edit_text(text, parse_mode="HTML")
+
+
+
 import psutil
 from telegram.constants import ParseMode
 from telegram import Update
