@@ -4013,22 +4013,29 @@ async def run_vbv_check(msg, update, card_data: str):
 import psutil
 import platform
 import socket
+import datetime
+import time
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-# Bullet link for clickable bullets
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
-bullet_link = f'<a href="{BULLET_GROUP_LINK}">⌇</a>'
+# Clickable bullet
+BULLET_LINK = '<a href="https://t.me/CARDER33">[⌇]</a>'
 
 async def get_total_users():
     from db import get_all_users
     users = await get_all_users()
     return len(users)
 
-async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
+def get_uptime() -> str:
+    boot_time = psutil.boot_time()
+    uptime_seconds = int(time.time() - boot_time)
+    days, remainder = divmod(uptime_seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{days}d {hours:02}:{minutes:02}:{seconds:02}"
 
+async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # CPU info
     cpu_usage = psutil.cpu_percent(interval=1)
     cpu_count = psutil.cpu_count(logical=True)
@@ -4036,9 +4043,9 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # RAM info
     memory = psutil.virtual_memory()
-    total_memory = memory.total / (1024 ** 2)  # MB
-    used_memory = memory.used / (1024 ** 2)
-    available_memory = memory.available / (1024 ** 2)
+    total_memory = memory.total / (1024 ** 3)  # GB
+    used_memory = memory.used / (1024 ** 3)
+    available_memory = memory.available / (1024 ** 3)
     memory_percent = memory.percent
 
     # Disk info
@@ -4054,23 +4061,31 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     os_version = platform.version()
     architecture = platform.machine()
 
+    # Uptime
+    uptime_str = get_uptime()
+
+    # Current time
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     # Total users
     total_users = await get_total_users()
 
-    # Build stylish message
     status_message = (
-        f"✦━━━[ <b>𝐁𝐨𝐭 & 𝐕𝐏𝐒 𝐒𝐭𝐚𝐭𝐮𝐬</b> ]━━━✦\n"
-        f"{bullet_link} <b>CPU Usage</b> ➳ {cpu_usage}% ({cpu_count} cores)\n"
-        f"{bullet_link} <b>CPU Model</b> ➳ {cpu_model}\n"
-        f"{bullet_link} <b>RAM Usage</b> ➳ {used_memory:.2f}MB / {total_memory:.2f}MB ({memory_percent}%)\n"
-        f"{bullet_link} <b>RAM Available</b> ➳ {available_memory:.2f}MB\n"
-        f"{bullet_link} <b>Disk Usage</b> ➳ {used_disk:.2f}GB / {total_disk:.2f}GB ({disk_percent}%)\n"
-        f"{bullet_link} <b>Disk Available</b> ➳ {free_disk:.2f}GB\n"
-        f"{bullet_link} <b>OS</b> ➳ {os_name} {os_version} ({architecture})\n"
-        f"{bullet_link} <b>Hostname</b> ➳ {hostname}\n"
-        f"{bullet_link} <b>Total Users</b> ➳ {total_users}\n"
-        f"{bullet_link} <b>Requested By</b> ➳ {user.mention_html()}\n"
-        f"{bullet_link} <b>Bot By</b> ➳ <a href='tg://resolve?domain=Kalinuxxx'>kคli liຖนxx</a>\n"
+        f"✦━━━[ 𝐁𝐨𝐭 & 𝐕𝐏𝐒 𝐒𝐭𝐚𝐭𝐮𝐬 ]━━━✦\n"
+        f"{BULLET_LINK} 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <code>Active✅</code>\n"
+        f"{BULLET_LINK} 𝐒𝐲𝐬𝐭𝐞𝐦 ➳ <code>{os_name} {os_version}</code>\n"
+        f"{BULLET_LINK} 𝐀𝐫𝐜𝐡𝐢𝐭𝐞𝐜𝐭𝐮𝐫𝐞 ➳ <code>{architecture}</code>\n"
+        "――――――――――――――――\n"
+        f"{BULLET_LINK} 𝐂𝐏𝐔 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{cpu_usage:.1f}% ({cpu_count} cores)</code>\n"
+        f"{BULLET_LINK} 𝐑𝐀𝐌 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{used_memory:.2f}GB / {total_memory:.2f}GB ({memory_percent:.1f}%)</code>\n"
+        f"{BULLET_LINK} 𝐑𝐀𝐌 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 ➳ <code>{available_memory:.2f}GB</code>\n"
+        f"{BULLET_LINK} 𝐃𝐢𝐬𝐤 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{used_disk:.2f}GB / {total_disk:.2f}GB ({disk_percent:.1f}%)</code>\n"
+        f"{BULLET_LINK} 𝐃𝐢𝐬𝐤 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 ➳ <code>{free_disk:.2f}GB</code>\n"
+        "――――――――――――――――\n"
+        f"{BULLET_LINK} 𝐔𝐩𝐭𝐢𝐦𝐞 ➳ <code>{uptime_str}</code>\n"
+        f"{BULLET_LINK} 𝐓𝐢𝐦𝐞 ➳ <code>{current_time}</code>\n"
+        f"{BULLET_LINK} 𝐓𝐨𝐭𝐚𝐥 𝐔𝐬𝐞𝐫𝐬 ➳ <code>{total_users}</code>\n"
+        f"{BULLET_LINK} 𝐁𝐨𝐭 𝐁𝐲 ➳ <a href='tg://resolve?domain=Kalinuxxx'>kคli liຖนxx</a>\n"
         "――――――――――――――――"
     )
 
@@ -4079,7 +4094,6 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
-
 
 
 
