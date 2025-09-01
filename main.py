@@ -980,12 +980,81 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown as escape_markdown_v2
-import random, io
+import random, io, aiohttp
 from datetime import datetime
 
+# ===== BIN LOOKUP (Updated to New API) =====
+async def get_bin_details(bin_number: str) -> dict:
+    """
+    Fetch BIN details from bintable API with fallback defaults.
+    """
+    bin_data = {
+        "scheme": "N/A",
+        "type": "N/A",
+        "level": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": "",
+        "vbv_status": None,
+        "card_type": "N/A"
+    }
+
+    url = f"https://api.bintable.com/v1/{bin_number}?api_key=a48d5b84128681e7b724ed6cb4b6420582847c69"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:117.0) Gecko/20100101 Firefox/117.0",
+        "Accept": "application/json, text/plain, */*",
+        "Origin": "https://bintable.com",
+        "Referer": "https://bintable.com/",
+        "Connection": "keep-alive"
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=10) as response:
+                if response.status == 200:
+                    try:
+                        data = await response.json(content_type=None)
+                        if data.get("result") == 200 and "data" in data:
+                            card = data["data"].get("card", {})
+                            country = data["data"].get("country", {})
+                            bank = data["data"].get("bank", {})
+
+                            bin_data["scheme"] = str(card.get("scheme", "N/A")).title()
+                            bin_data["type"] = str(card.get("type", "N/A")).title()
+                            bin_data["card_type"] = str(card.get("type", "N/A")).title()
+                            bin_data["level"] = str(card.get("category", "N/A")).title()
+                            bin_data["bank"] = str(bank.get("name", "N/A")).title()
+                            bin_data["country_name"] = str(country.get("name", "N/A")).title()
+                            bin_data["country_emoji"] = country.get("flag", "")
+                            return bin_data
+                    except Exception as e:
+                        print(f"⚠️ JSON parse error for BIN {bin_number}: {e}")
+                else:
+                    print(f"⚠️ BIN API returned {response.status} for BIN {bin_number}")
+    except Exception as e:
+        print(f"⚠️ BIN API call failed for {bin_number}: {e}")
+
+    return bin_data
+
+
+# ===== Luhn Algorithm Check =====
+def luhn_checksum(card_number: str) -> bool:
+    """Validate card number with Luhn algorithm."""
+    def digits_of(n):
+        return [int(d) for d in str(n)]
+    digits = digits_of(card_number)
+    odd_digits = digits[-1::-2]
+    even_digits = digits[-2::-2]
+    checksum = sum(odd_digits)
+    for d in even_digits:
+        checksum += sum(digits_of(d*2))
+    return checksum % 10 == 0
+
+
+# ===== /gen Command =====
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN/sequence."""
-    
+
     user = update.effective_user
     if not await enforce_cooldown(user.id, update):
         return
@@ -1040,7 +1109,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Fetch BIN details
+    # Fetch BIN details from new API
     bin_details = await get_bin_details(card_base[:6])
 
     brand = bin_details.get("scheme", "N/A")
@@ -1073,12 +1142,12 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # BIN info block
     escaped_bin_info = (
-        f"╭━━━[ 💳 *𝐆𝐞𝐧 𝐈𝐧𝐟𝐨* ]━━━⬣\n"
+        f"━[ 💳 *𝐆𝐞𝐧 𝐈𝐧𝐟𝐨* ]━━\n"
         f"┣ ❏ 𝐁𝐈𝐍 ➳ `{escape_markdown_v2(card_base)}`\n"
         f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝 ➳ `{escape_markdown_v2(brand)}`\n"
         f"┣ ❏ 𝐁𝐚𝐧𝐤 ➳ `{escape_markdown_v2(bank)}`\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ `{escape_markdown_v2(country_name)}`{escape_markdown_v2(country_emoji)}\n"
-        f"╰━━━━━━━━━━━━━━━━━━⬣"
+        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ `{escape_markdown_v2(country_name)}` {escape_markdown_v2(country_emoji)}\n"
+        f"╰━━━━━━━━━━━"
     )
 
     # Send output
@@ -1098,6 +1167,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
 
 
