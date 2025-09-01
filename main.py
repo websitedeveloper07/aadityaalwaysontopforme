@@ -3868,6 +3868,7 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # --- BIN Lookup ---
+# --- BIN Lookup ---
 async def get_bin_details(bin_number: str) -> dict:
     bin_data = {
         "scheme": "N/A",
@@ -3875,7 +3876,8 @@ async def get_bin_details(bin_number: str) -> dict:
         "country_name": "N/A",
         "country_emoji": ""
     }
-    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    # ✅ Only use first 6 digits
+    url = f"https://bins.antipublic.cc/bins/{bin_number[:6]}"
     headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
     try:
