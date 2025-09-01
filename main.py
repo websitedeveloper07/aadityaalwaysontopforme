@@ -3919,7 +3919,7 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     card_data = context.args[0]  # full card input
-    msg = await update.message.reply_text("⏳ <b>Processing...</b>", parse_mode="HTML")
+    msg = await update.message.reply_text("⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...", parse_mode="HTML")
 
     # Run the heavy task in background
     asyncio.create_task(run_vbv_check(msg, update, card_data))
@@ -3937,7 +3937,7 @@ async def run_vbv_check(msg, update, card_data: str):
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=15) as resp:
+            async with session.get(api_url, timeout=50) as resp:
                 if resp.status != 200:
                     await msg.edit_text(f"❌ API Error (Status {resp.status}). Try again later.")
                     return
