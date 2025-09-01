@@ -1300,7 +1300,7 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-import aiohttp
+from bin import get_bin_details  # Import the full bin.py logic
 import re
 
 # Replace with your legit group/channel link
@@ -1323,44 +1323,9 @@ def get_level_emoji(level: str) -> str:
     }
     return mapping.get(level.lower(), "💳")
 
-# ===== BIN LOOKUP FUNCTION =====
-async def get_bin_details(bin_number: str) -> dict:
-    """
-    Fetch BIN details from binlist.net API.
-    Returns all available fields.
-    """
-    url = f"https://lookup.binlist.net/{bin_number}"
-    headers = {"Accept-Version": "3"}
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=10) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    # Build a dictionary with all relevant fields
-                    return {
-                        "scheme": data.get("scheme", "N/A").title(),
-                        "type": data.get("type", "N/A").title(),
-                        "brand": data.get("brand", "N/A"),
-                        "bank_name": data.get("bank", {}).get("name", "N/A"),
-                        "country_name": data.get("country", {}).get("name", "N/A"),
-                        "country_emoji": data.get("country", {}).get("emoji", ""),
-                        "country_alpha2": data.get("country", {}).get("alpha2", "N/A"),
-                        "country_numeric": data.get("country", {}).get("numeric", "N/A"),
-                        "currency": data.get("country", {}).get("currency", "N/A"),
-                        "latitude": str(data.get("country", {}).get("latitude", "N/A")),
-                        "longitude": str(data.get("country", {}).get("longitude", "N/A")),
-                        "number_length": str(data.get("number", {}).get("length", "N/A")),
-                        "number_luhn": str(data.get("number", {}).get("luhn", "N/A"))
-                    }
-    except Exception as e:
-        print(f"⚠️ BIN lookup error for {bin_number}: {e}")
-
-    return {}
-
 # ===== /bin Command =====
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Performs a BIN lookup and shows full info."""
+    """Performs a BIN lookup using bin.py and shows full info."""
     user = update.effective_user
 
     # Bullet hyperlink
@@ -1384,7 +1349,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     bin_input = bin_input[:6]
 
-    # Lookup BIN using binlist.net
+    # Lookup BIN using your bin.py logic (with cache & rate limiting)
     bin_details = await get_bin_details(bin_input)
 
     if not bin_details or bin_details.get("scheme") == "N/A":
@@ -1407,8 +1372,11 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} *𝐒𝐜𝐡𝐞𝐦𝐞* ➳ `{esc(bin_details.get('scheme'))}`\n"
         f"{bullet_link} *𝐓𝐲𝐩𝐞* ➳ `{esc(bin_details.get('type'))}`\n"
         f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ `{level_emoji} {esc(bin_details.get('brand'))}`\n"
-        f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{esc(bin_details.get('bank_name'))}`\n"
+        f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{esc(bin_details.get('bank'))}`\n"
         f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{esc(bin_details.get('country_name'))} {esc(bin_details.get('country_emoji'))}`\n"
+        f"{bullet_link} *𝐂𝐮𝐫𝐫𝐞𝐧𝐜𝐲* ➳ `{esc(bin_details.get('currency'))}`\n"
+        f"{bullet_link} *𝐍𝐮𝐦𝐛𝐞𝐫 𝐋𝐞𝐧𝐠𝐭𝐡* ➳ `{esc(bin_details.get('number_length'))}`\n"
+        f"{bullet_link} *𝐋𝐮𝐡𝐧 𝐂𝐡𝐞𝐜𝐤* ➳ `{esc(bin_details.get('number_luhn'))}`\n"
         f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲* ➳ {escaped_user}\n"
         f"{bullet_link} *𝐁𝐨𝐭 𝐁𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
     )
@@ -1418,7 +1386,6 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
-
 
 
 
