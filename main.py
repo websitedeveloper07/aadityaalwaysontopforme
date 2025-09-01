@@ -907,76 +907,10 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown as escape_markdown_v2
-import random, io, aiohttp
+import random, io
 from datetime import datetime
-
-# ===== BIN LOOKUP (Updated to New API) =====
-async def get_bin_details(bin_number: str) -> dict:
-    """
-    Fetch BIN details from bintable API with fallback defaults.
-    """
-    bin_data = {
-        "scheme": "N/A",
-        "type": "N/A",
-        "level": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": "",
-        "vbv_status": None,
-        "card_type": "N/A"
-    }
-
-    url = f"https://api.bintable.com/v1/{bin_number}?api_key=a48d5b84128681e7b724ed6cb4b6420582847c69"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:117.0) Gecko/20100101 Firefox/117.0",
-        "Accept": "application/json, text/plain, */*",
-        "Origin": "https://bintable.com",
-        "Referer": "https://bintable.com/",
-        "Connection": "keep-alive"
-    }
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=10) as response:
-                if response.status == 200:
-                    try:
-                        data = await response.json(content_type=None)
-                        if data.get("result") == 200 and "data" in data:
-                            card = data["data"].get("card", {})
-                            country = data["data"].get("country", {})
-                            bank = data["data"].get("bank", {})
-
-                            bin_data["scheme"] = str(card.get("scheme", "N/A")).title()
-                            bin_data["type"] = str(card.get("type", "N/A")).title()
-                            bin_data["card_type"] = str(card.get("type", "N/A")).title()
-                            bin_data["level"] = str(card.get("category", "N/A")).title()
-                            bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                            bin_data["country_name"] = str(country.get("name", "N/A")).title()
-                            bin_data["country_emoji"] = country.get("flag", "")
-                            return bin_data
-                    except Exception as e:
-                        print(f"⚠️ JSON parse error for BIN {bin_number}: {e}")
-                else:
-                    print(f"⚠️ BIN API returned {response.status} for BIN {bin_number}")
-    except Exception as e:
-        print(f"⚠️ BIN API call failed for {bin_number}: {e}")
-
-    return bin_data
-
-
-# ===== Luhn Algorithm Check =====
-def luhn_checksum(card_number: str) -> bool:
-    """Validate card number with Luhn algorithm."""
-    def digits_of(n):
-        return [int(d) for d in str(n)]
-    digits = digits_of(card_number)
-    odd_digits = digits[-1::-2]
-    even_digits = digits[-2::-2]
-    checksum = sum(odd_digits)
-    for d in even_digits:
-        checksum += sum(digits_of(d*2))
-    return checksum % 10 == 0
-
+from bin import get_bin_details  # <-- Import your bin.py function
+# Assuming luhn_checksum, enforce_cooldown, get_user, consume_credit are already defined elsewhere
 
 # ===== /gen Command =====
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1024,10 +958,9 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Determine number of cards
     num_cards = 10  # default
     send_as_file = False
-
     if len(context.args) > 1 and context.args[1].isdigit():
         num_cards = int(context.args[1])
-        send_as_file = True  # send as file only if user specifies number
+        send_as_file = True
 
     # Consume 1 credit
     if not await consume_credit(user.id):
@@ -1036,9 +969,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Fetch BIN details from new API
+    # ==== USE bin.py FUNCTION ====
     bin_details = await get_bin_details(card_base[:6])
-
     brand = bin_details.get("scheme", "N/A")
     bank = bin_details.get("bank", "N/A")
     country_name = bin_details.get("country_name", "N/A")
@@ -1067,7 +999,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cards.append(f"{card_number}|{mm}|{yyyy[-2:]}|{cvv}")
 
-    # BIN info block (code block style)
+    # BIN info block
     escaped_bin_info = (
         "```\n"
         f"BIN     ➳ {escape_markdown_v2(card_base)}\n"
@@ -1084,13 +1016,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file.name = f"generated_cards_{card_base}.txt"
         await update.effective_message.reply_document(
             document=file,
-            caption=f"```\nGenerated {len(cards)} cards\n```\n\n{escaped_bin_info}",
+            caption=f"```\nGenerated {len(cards)} cards💳\n```\n\n{escaped_bin_info}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     else:
         cards_list = "\n".join(f"`{c}`" for c in cards)
         final_message = (
-            f"```\nGenerated {len(cards)} cards\n```\n\n"
+            f"```\nGenerated {len(cards)} cards💳\n```\n\n"
             f"{cards_list}\n\n"
             f"{escaped_bin_info}"
         )
