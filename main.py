@@ -4013,7 +4013,7 @@ async def run_vbv_check(msg, update, card_data: str):
 import psutil
 import platform
 import socket
-import datetime
+from datetime import datetime
 import time
 from telegram import Update
 from telegram.constants import ParseMode
@@ -4065,16 +4065,18 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uptime_str = get_uptime()
 
     # Current time
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Total users
     total_users = await get_total_users()
 
+    # Final message
     status_message = (
         f"✦━━━[ 𝐁𝐨𝐭 & 𝐕𝐏𝐒 𝐒𝐭𝐚𝐭𝐮𝐬 ]━━━✦\n"
-        f"{BULLET_LINK} 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <code>Active✅</code>\n"
+        f"{BULLET_LINK} 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <code>Active ✅</code>\n"
         f"{BULLET_LINK} 𝐒𝐲𝐬𝐭𝐞𝐦 ➳ <code>{os_name} {os_version}</code>\n"
         f"{BULLET_LINK} 𝐀𝐫𝐜𝐡𝐢𝐭𝐞𝐜𝐭𝐮𝐫𝐞 ➳ <code>{architecture}</code>\n"
+        f"{BULLET_LINK} 𝐇𝐨𝐬𝐭𝐧𝐚𝐦𝐞 ➳ <code>{hostname}</code>\n"
         "――――――――――――――――\n"
         f"{BULLET_LINK} 𝐂𝐏𝐔 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{cpu_usage:.1f}% ({cpu_count} cores)</code>\n"
         f"{BULLET_LINK} 𝐑𝐀𝐌 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{used_memory:.2f}GB / {total_memory:.2f}GB ({memory_percent:.1f}%)</code>\n"
@@ -4094,6 +4096,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
+
 
 
 
