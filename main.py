@@ -1498,7 +1498,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_markdown_v2(issuer)}`\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_markdown_v2(country_name)} {country_flag}`\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_markdown_v2(user.first_name)}](tg://user?id={user.id}) [{escape_markdown_v2(user_data.get('plan', 'Free'))}]\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_markdown_v2(user.first_name)}](tg://user?id={user.id})]\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
             f"――――――――――――――――"
         )
