@@ -4076,7 +4076,6 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{BULLET_LINK} 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <code>Active ✅</code>\n"
         f"{BULLET_LINK} 𝐒𝐲𝐬𝐭𝐞𝐦 ➳ <code>{os_name} {os_version}</code>\n"
         f"{BULLET_LINK} 𝐀𝐫𝐜𝐡𝐢𝐭𝐞𝐜𝐭𝐮𝐫𝐞 ➳ <code>{architecture}</code>\n"
-        f"{BULLET_LINK} 𝐇𝐨𝐬𝐭𝐧𝐚𝐦𝐞 ➳ <code>{hostname}</code>\n"
         "――――――――――――――――\n"
         f"{BULLET_LINK} 𝐂𝐏𝐔 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{cpu_usage:.1f}% ({cpu_count} cores)</code>\n"
         f"{BULLET_LINK} 𝐑𝐀𝐌 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{used_memory:.2f}GB / {total_memory:.2f}GB ({memory_percent:.1f}%)</code>\n"
@@ -4086,7 +4085,6 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "――――――――――――――――\n"
         f"{BULLET_LINK} 𝐔𝐩𝐭𝐢𝐦𝐞 ➳ <code>{uptime_str}</code>\n"
         f"{BULLET_LINK} 𝐓𝐢𝐦𝐞 ➳ <code>{current_time}</code>\n"
-        f"{BULLET_LINK} 𝐓𝐨𝐭𝐚𝐥 𝐔𝐬𝐞𝐫𝐬 ➳ <code>{total_users}</code>\n"
         f"{BULLET_LINK} 𝐁𝐨𝐭 𝐁𝐲 ➳ <a href='tg://resolve?domain=Kalinuxxx'>kคli liຖนxx</a>\n"
         "――――――――――――――――"
     )
