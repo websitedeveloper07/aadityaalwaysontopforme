@@ -1,15 +1,17 @@
 import aiohttp
 import asyncio
 import logging
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------
 # BIN Cache & Rate Limiting
 # ---------------------------
-bin_cache = {}  # cache BIN details
+bin_cache = {}  # {bin_number: {"data": bin_data, "timestamp": datetime}}
 BIN_LOCK = asyncio.Lock()
 LAST_BIN_CALL = 0
+CACHE_EXPIRY = timedelta(hours=24)  # Cache expiry time
 
 # ---------------------------
 # Fetch BIN Details
@@ -18,11 +20,19 @@ async def get_bin_details(bin_number: str, retries: int = 3) -> dict:
     """
     Fetch BIN details from binlist.net API.
     Returns a dictionary with all relevant fields.
+    Uses cache to avoid excessive API calls.
     """
-    # Use cache if available
-    if bin_number in bin_cache:
-        return bin_cache[bin_number]
+    now_time = datetime.utcnow()
 
+    # ---------------------------
+    # Use cache if available and not expired
+    # ---------------------------
+    if bin_number in bin_cache:
+        cached = bin_cache[bin_number]
+        if now_time - cached["timestamp"] < CACHE_EXPIRY:
+            return cached["data"]
+
+    # Default BIN data structure
     bin_data = {
         "scheme": "N/A",
         "type": "N/A",
@@ -45,7 +55,9 @@ async def get_bin_details(bin_number: str, retries: int = 3) -> dict:
         "Accept": "application/json"
     }
 
-    # Ensure rate limiting: 1 request/sec
+    # ---------------------------
+    # Rate limiting: 1 request/sec
+    # ---------------------------
     global LAST_BIN_CALL
     async with BIN_LOCK:
         now = asyncio.get_event_loop().time()
@@ -61,7 +73,9 @@ async def get_bin_details(bin_number: str, retries: int = 3) -> dict:
                     if resp.status == 200:
                         data = await resp.json(content_type=None)
 
-                        # Fill the bin_data dictionary
+                        # ---------------------------
+                        # Fill bin_data dictionary
+                        # ---------------------------
                         bin_data["scheme"] = str(data.get("scheme", "N/A")).title()
                         bin_data["type"] = str(data.get("type", "N/A")).title()
                         bin_data["brand"] = str(data.get("brand", "N/A")).title()
@@ -82,13 +96,19 @@ async def get_bin_details(bin_number: str, retries: int = 3) -> dict:
                         bin_data["number_length"] = str(number.get("length", "N/A"))
                         bin_data["number_luhn"] = str(number.get("luhn", "N/A"))
 
+                        # ---------------------------
                         # Save to cache
-                        bin_cache[bin_number] = bin_data
+                        # ---------------------------
+                        bin_cache[bin_number] = {"data": bin_data, "timestamp": now_time}
                         return bin_data
 
                     elif resp.status == 429:
                         logger.warning(f"BIN API rate limited for {bin_number} → {text}")
-                        if retries > 0:
+                        if bin_number in bin_cache:
+                            # Return cached value if available
+                            logger.info(f"Returning cached BIN info for {bin_number} due to 429")
+                            return bin_cache[bin_number]["data"]
+                        elif retries > 0:
                             await asyncio.sleep(3)
                             return await get_bin_details(bin_number, retries=retries-1)
                         else:
@@ -99,5 +119,7 @@ async def get_bin_details(bin_number: str, retries: int = 3) -> dict:
 
         except Exception as e:
             logger.warning(f"BIN API call failed for {bin_number}: {type(e).__name__} → {e}")
+            if bin_number in bin_cache:
+                return bin_cache[bin_number]["data"]
 
     return bin_data
