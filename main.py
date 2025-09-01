@@ -1368,6 +1368,7 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+import aiohttp
 
 # Replace with your *legit* group/channel link
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
@@ -1393,11 +1394,57 @@ def get_level_emoji(level: str) -> str:
     return mapping.get(level, "💳")
 
 
+# ===== BIN LOOKUP FUNCTION =====
+async def get_bin_details(bin_number: str) -> dict:
+    """
+    Fetch BIN details from bintable API with normalized keys.
+    """
+    bin_data = {
+        "scheme": "N/A",
+        "type": "N/A",
+        "level": "N/A",
+        "bank": "N/A",
+        "country_name": "N/A",
+        "country_emoji": ""
+    }
+
+    url = f"https://api.bintable.com/v1/{bin_number}?api_key=a48d5b84128681e7b724ed6cb4b6420582847c69"
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json",
+        "Origin": "https://bintable.com",
+        "Referer": "https://bintable.com/"
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=10) as response:
+                if response.status == 200:
+                    data = await response.json(content_type=None)
+                    if data.get("result") == 200 and "data" in data:
+                        card = data["data"].get("card", {})
+                        country = data["data"].get("country", {})
+                        bank = data["data"].get("bank", {})
+
+                        bin_data["scheme"] = str(card.get("scheme", "N/A")).title()
+                        bin_data["type"] = str(card.get("type", "N/A")).title()
+                        bin_data["level"] = str(card.get("category", "N/A")).title()
+                        bin_data["bank"] = str(bank.get("name", "N/A")).title()
+                        bin_data["country_name"] = str(country.get("name", "N/A")).title()
+                        bin_data["country_emoji"] = country.get("flag", "")
+                        return bin_data
+    except Exception as e:
+        print(f"⚠️ BIN API error for {bin_number}: {e}")
+
+    return bin_data
+
+
+# ===== /bin Command =====
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup and deducts 1 credit."""
     user = update.effective_user
 
-    # Define the bullet point with the hyperlink
+    # Define bullet with hyperlink
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
@@ -1434,13 +1481,13 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_input = bin_input[:6]
     bin_details = await get_bin_details(bin_input)
 
-    if not bin_details:
+    if not bin_details or bin_details.get("scheme") == "N/A":
         return await update.effective_message.reply_text(
             "❌ BIN not found or invalid\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Extract details (normalized from get_bin_details)
+    # Extract details (escaped for MarkdownV2)
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
     escaped_card_type = escape_markdown_v2(bin_details.get("type", "N/A"))
