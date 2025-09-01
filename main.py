@@ -1018,7 +1018,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Brand     ➳ {escape_markdown_v2(brand)}\n"
         f"Type      ➳ {escape_markdown_v2(card_type)} | {escape_markdown_v2(card_level)}\n"
         f"Bank      ➳ {escape_markdown_v2(issuer)}\n"
-        f"Country   ➳ {escape_markdown_v2(country_name)} {escape_markdown_v2(country_flag)}\n"
+        f"Country   ➳ {escape_markdown_v2(country_name)}\n"
         "```"
     )
     
@@ -1250,6 +1250,8 @@ from bin import get_bin_info  # Import from bin.py
 
 # Replace with your legit group/channel link
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
+bullet_text = "[⌇]"
+bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
 
 def get_level_emoji(level: str) -> str:
@@ -1277,8 +1279,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
     # Bullet hyperlink
-    bullet_text = "[⌇]"
-    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">⌇</a>'
 
     # Parse BIN input
     bin_input = None
@@ -1338,6 +1339,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error fetching BIN info: {str(e)}",
             parse_mode="HTML"
         )
+
 
 
 
