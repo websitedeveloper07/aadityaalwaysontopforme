@@ -3638,7 +3638,7 @@ import html
 import logging
 
 from b3 import multi_checking  # your checker
-from bin import get_bin_details  # moved BIN logic to bin.py
+from bin import get_bin_info  # moved BIN logic to bin.py
 
 # Logger
 logger = logging.getLogger(__name__)
