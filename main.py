@@ -3900,6 +3900,12 @@ async def get_bin_details(bin_number: str) -> dict:
 
 
 # --- /vbv command handler ---
+import aiohttp
+import asyncio
+from telegram import Update
+from telegram.ext import ContextTypes
+
+# VBV command
 async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -3915,10 +3921,11 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     card_data = context.args[0]  # full card input
     msg = await update.message.reply_text("⏳ <b>Processing...</b>", parse_mode="HTML")
 
-    # Run the actual check in background so bot stays free
+    # Run the heavy task in background
     asyncio.create_task(run_vbv_check(msg, update, card_data))
 
 
+# Background VBV check
 async def run_vbv_check(msg, update, card_data: str):
     try:
         cc, mes, ano, cvv = card_data.split("|")
@@ -3926,18 +3933,28 @@ async def run_vbv_check(msg, update, card_data: str):
         await msg.edit_text("❌ Invalid format. Use: /vbv 4111111111111111|07|2027|123")
         return
 
-    # Call VBV API
     api_url = f"https://rocky-815m.onrender.com/gateway=bin?key=Payal&card={card_data}"
-    async with aiohttp.ClientSession() as session:
-        try:
+
+    try:
+        async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=15) as resp:
                 if resp.status != 200:
-                    await msg.edit_text("❌ API Error. Try again later.")
+                    await msg.edit_text(f"❌ API Error (Status {resp.status}). Try again later.")
                     return
                 vbv_data = await resp.json(content_type=None)
-        except Exception as e:
-            await msg.edit_text(f"❌ API request failed: {e}")
-            return
+
+    except asyncio.TimeoutError:
+        await msg.edit_text("❌ API request failed: Timed out ⏳")
+        return
+    except aiohttp.ClientConnectorError:
+        await msg.edit_text("❌ API request failed: Cannot connect to host 🌐")
+        return
+    except aiohttp.ContentTypeError:
+        await msg.edit_text("❌ API request failed: Invalid JSON response 📄")
+        return
+    except Exception as e:
+        await msg.edit_text(f"❌ API request failed: {type(e).__name__} → {e}")
+        return
 
     # BIN lookup
     bin_number = cc[:6]
@@ -3949,7 +3966,10 @@ async def run_vbv_check(msg, update, card_data: str):
 
     # Response formatting
     response_text = vbv_data.get("response", "N/A")
-    check_mark = "✅" if response_text in ["Authenticate Attempt Successful", "Authenticate Successful"] else "❌"
+    check_mark = "✅" if response_text in [
+        "Authenticate Attempt Successful",
+        "Authenticate Successful"
+    ] else "❌"
 
     text = (
         "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
