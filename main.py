@@ -1425,12 +1425,15 @@ def escape_markdown_v2(text: str) -> str:
 
 
 # ===== BACKGROUND CHECK =====
+import aiohttp
+from telegram.constants import ParseMode
+
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    bullet_text = escape_markdown_v2("[⌇]")
+    bullet_text = "[⌇]"
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     try:
-        # BIN lookup (✅ using bin.py)
+        # BIN lookup
         bin_number = parts[0][:6]
         bin_details = await get_bin_info(bin_number)
 
@@ -1445,7 +1448,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         bank_phone = bin_details.get("bank_phone", "N/A")
         bank_url = bin_details.get("bank_url", "N/A")
 
-        # Call your main API
+        # Call main API
         api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=45) as resp:
@@ -1482,23 +1485,23 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         else:
             status_text = api_status.upper()
 
-        # Header + response formatting
-        header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
-        formatted_response = f"_{escape_markdown_v2(api_status)}_"
+        # Header + response
+        header = f"═══ [ *{status_text}* ] ═══"
+        formatted_response = f"_{api_status}_"
 
         # Build final message
         final_text = (
             f"{header}\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{cc_normalized}`\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_markdown_v2(brand)}`\n"
-            f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{escape_markdown_v2(card_type)} \\| {escape_markdown_v2(card_level)}`\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_markdown_v2(issuer)}`\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_markdown_v2(country_name)} {country_flag}`\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
+            f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{card_type} | {card_level}`\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_name} {country_flag}`\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_markdown_v2(user.first_name)}](tg://user?id={user.id})]\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{user.first_name}](tg://user?id={user.id})\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
             f"――――――――――――――――"
         )
@@ -1512,7 +1515,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
     except Exception as e:
         await processing_msg.edit_text(
-            f"❌ An error occurred: {escape_markdown_v2(str(e))}",
+            f"❌ An error occurred: {str(e)}",
             parse_mode=ParseMode.MARKDOWN_V2,
             disable_web_page_preview=True
         )
@@ -3830,6 +3833,12 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # --- /vbv command ---
+import re
+import asyncio
+from datetime import datetime, timedelta, timezone
+from telegram import Update
+from telegram.ext import ContextTypes
+
 async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
