@@ -4053,10 +4053,16 @@ from telegram.ext import ContextTypes
 logger = logging.getLogger(__name__)
 
 # --- BIN Lookup ---
+bin_cache = {}  # cache results for reuse in same runtime
+
 async def get_bin_details(bin_number: str) -> dict:
     """
-    Fetch BIN details from new BIN API (binlist).
+    Fetch BIN details directly from binlist API.
     """
+    # Check cache first
+    if bin_number in bin_cache:
+        return bin_cache[bin_number]
+
     bin_data = {
         "scheme": "N/A",
         "type": "N/A",
@@ -4064,7 +4070,6 @@ async def get_bin_details(bin_number: str) -> dict:
         "bank": "N/A",
         "country_name": "N/A",
         "country_emoji": "",
-        "vbv_status": None,
         "card_type": "N/A"
     }
 
@@ -4079,7 +4084,7 @@ async def get_bin_details(bin_number: str) -> dict:
                     try:
                         data = await response.json(content_type=None)
 
-                        # Parse new BIN response format
+                        # Parse BIN response
                         bin_data["scheme"] = str(data.get("scheme", "N/A")).title()
                         bin_data["type"] = str(data.get("type", "N/A")).title()
                         bin_data["card_type"] = str(data.get("type", "N/A")).title()
@@ -4092,10 +4097,17 @@ async def get_bin_details(bin_number: str) -> dict:
                         bank = data.get("bank", {})
                         bin_data["bank"] = str(bank.get("name", "N/A")).title()
 
+                        bin_cache[bin_number] = bin_data  # save in cache
                         return bin_data
 
                     except Exception as e:
                         logger.warning(f"JSON parse error for BIN {bin_number}: {e} → {text}")
+
+                elif response.status == 429:
+                    logger.warning(f"BIN API rate limited for {bin_number} → {text}")
+                    await asyncio.sleep(2)  # wait and retry once
+                    return await get_bin_details(bin_number)
+
                 else:
                     logger.warning(f"BIN API returned {response.status} for {bin_number} → {text}")
     except Exception as e:
@@ -4154,13 +4166,13 @@ async def run_vbv_check(msg, update, card_data: str):
         await msg.edit_text(f"❌ API request failed: {type(e).__name__} → {e}")
         return
 
-    # BIN lookup
-    bin_number = cc[:6]  # always safe
+    # BIN lookup (local direct call, no dependency on external gateway)
+    bin_number = cc[:6]
     bin_details = await get_bin_details(bin_number)
 
-    brand = (bin_details.get("scheme") or "N/A").title()
-    issuer = (bin_details.get("bank") or "N/A").title()
-    country_name = (bin_details.get("country_name") or "N/A").title()
+    brand = bin_details.get("scheme", "N/A")
+    issuer = bin_details.get("bank", "N/A")
+    country_name = bin_details.get("country_name", "N/A")
     country_flag = bin_details.get("country_emoji", "")
 
     # VBV Response
