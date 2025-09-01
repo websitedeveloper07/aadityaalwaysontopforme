@@ -174,7 +174,13 @@ logger = logging.getLogger(__name__)
 BINTABLE_API_KEY = "a48d5b84128681e7b724ed6cb4b6420582847c69"
 BINTABLE_API_URL = "https://api.bintable.com/v1"
 
+
 async def get_bin_details(bin_number: str):
+    """
+    Lookup BIN details from Bintable API.
+    Returns a dict with card scheme, type, level, bank, and country info.
+    """
+
     bin_data = {
         "scheme": "N/A",         # Card brand (e.g., VISA, Mastercard)
         "type": "N/A",           # Credit/Debit
@@ -188,39 +194,47 @@ async def get_bin_details(bin_number: str):
 
     url = f"{BINTABLE_API_URL}/{bin_number}?api_key={BINTABLE_API_KEY}"
     headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
+        "User-Agent": "Mozilla/5.0 (compatible; Bot/1.0; +https://example.com)",
+        "Accept": "application/json",
+        "Connection": "keep-alive"
     }
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=7) as response:
+            async with session.get(url, headers=headers, timeout=10) as response:
+                text = await response.text()
+
                 if response.status == 200:
-                    data = await response.json()
+                    try:
+                        data = await response.json()
+                    except Exception:
+                        logger.warning(f"BIN API returned invalid JSON for {bin_number}: {text}")
+                        return bin_data
+
                     if data.get("result") == 200 and "data" in data:
                         card = data["data"].get("card", {})
                         country = data["data"].get("country", {})
                         bank = data["data"].get("bank", {})
 
-                        bin_data["scheme"] = card.get("scheme", "N/A").title()
-                        bin_data["type"] = card.get("type", "N/A").title()
-                        bin_data["card_type"] = card.get("type", "N/A").title()
-                        bin_data["level"] = card.get("category", "N/A").title()
+                        bin_data["scheme"] = (card.get("scheme") or "N/A").title()
+                        bin_data["type"] = (card.get("type") or "N/A").title()
+                        bin_data["card_type"] = (card.get("type") or "N/A").title()
+                        bin_data["level"] = (card.get("category") or "N/A").title()
 
-                        bin_data["bank"] = bank.get("name", "N/A").title()
-
-                        bin_data["country_name"] = country.get("name", "N/A")
-                        bin_data["country_emoji"] = country.get("flag", "")
+                        bin_data["bank"] = (bank.get("name") or "N/A")
+                        bin_data["country_name"] = (country.get("name") or "N/A")
+                        bin_data["country_emoji"] = (country.get("flag") or "")
 
                         return bin_data
                     else:
-                        logger.warning(f"Bintable API returned no data for BIN {bin_number}: {data}")
+                        logger.warning(f"BIN API returned no data for {bin_number}: {data}")
                 else:
-                    logger.warning(f"Bintable API returned status {response.status} for BIN {bin_number}")
+                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}: {text}")
+
     except aiohttp.ClientError as e:
-        logger.warning(f"Bintable API call failed for {bin_number}: {e}")
+        logger.warning(f"BIN API call failed for {bin_number}: {e}")
     except Exception as e:
-        logger.warning(f"Error processing Bintable response for {bin_number}: {e}")
+        logger.warning(f"Error processing BIN API response for {bin_number}: {e}")
 
     return bin_data
 
@@ -1026,6 +1040,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # Fetch BIN details
     bin_details = await get_bin_details(card_base[:6])
 
     brand = bin_details.get("scheme", "N/A")
@@ -1066,6 +1081,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"╰━━━━━━━━━━━━━━━━━━⬣"
     )
 
+    # Send output
     if send_as_file:
         file_content = "\n".join(cards)
         file = io.BytesIO(file_content.encode('utf-8'))
@@ -1082,6 +1098,7 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
 
 
@@ -1285,15 +1302,31 @@ from telegram.ext import ContextTypes
 # Replace with your *legit* group/channel link
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
+
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     import re
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
+
+def get_level_emoji(level: str) -> str:
+    """Return a matching emoji for card level/category."""
+    mapping = {
+        "Classic": "💳",
+        "Gold": "🥇",
+        "Platinum": "💠",
+        "Business": "🏢",
+        "World": "🌍",
+        "Signature": "✍️",
+        "Infinite": "♾️"
+    }
+    return mapping.get(level, "💳")
+
+
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup and deducts 1 credit."""
     user = update.effective_user
-    
+
     # Define the bullet point with the hyperlink
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
@@ -1331,28 +1364,24 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bin_input = bin_input[:6]
     bin_details = await get_bin_details(bin_input)
 
-    if not bin_details or "data" not in bin_details:
+    if not bin_details:
         return await update.effective_message.reply_text(
             "❌ BIN not found or invalid\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Extract details
-    card = bin_details["data"].get("card", {})
-    country = bin_details["data"].get("country", {})
-    bank = bin_details["data"].get("bank", {})
-
+    # Extract details (normalized from get_bin_details)
     escaped_bin = escape_markdown_v2(bin_input)
-    escaped_scheme = escape_markdown_v2(card.get("scheme", "N/A"))
-    escaped_card_type = escape_markdown_v2(card.get("type", "N/A"))
-    escaped_level = escape_markdown_v2(card.get("category", "N/A"))
-    escaped_bank = escape_markdown_v2(bank.get("name", "N/A"))
-    escaped_country_name = escape_markdown_v2(country.get("name", "N/A"))
-    escaped_country_emoji = escape_markdown_v2(country.get("flag", ""))
+    escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
+    escaped_card_type = escape_markdown_v2(bin_details.get("type", "N/A"))
+    escaped_level = escape_markdown_v2(bin_details.get("level", "N/A"))
+    escaped_bank = escape_markdown_v2(bin_details.get("bank", "N/A"))
+    escaped_country_name = escape_markdown_v2(bin_details.get("country_name", "N/A"))
+    escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
     escaped_user = escape_markdown_v2(user.full_name)
 
     # Custom emojis/status
-    level_emoji = get_level_emoji(escaped_level)
+    level_emoji = get_level_emoji(bin_details.get("level", "N/A"))
 
     # BIN info box
     bin_info_box = (
@@ -1475,7 +1504,7 @@ def escape_markdown_v2(text: str) -> str:
 # ✅ Async BIN Lookup (antipublic.cc)
 async def get_bin_details(bin_number: str) -> dict:
     """
-    Fetch BIN details from bintable API.
+    Fetch BIN details from bintable API with fallback defaults.
     """
     bin_data = {
         "scheme": "N/A",
@@ -1489,11 +1518,17 @@ async def get_bin_details(bin_number: str) -> dict:
     }
 
     url = f"https://api.bintable.com/v1/{bin_number}?api_key=a48d5b84128681e7b724ed6cb4b6420582847c69"
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/117.0",
+        "Accept": "application/json, text/plain, */*",
+        "Origin": "https://bintable.com",
+        "Referer": "https://bintable.com/",
+        "Connection": "keep-alive"
+    }
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=7) as response:
+            async with session.get(url, headers=headers, timeout=10) as response:
                 if response.status == 200:
                     try:
                         data = await response.json(content_type=None)
@@ -1510,6 +1545,8 @@ async def get_bin_details(bin_number: str) -> dict:
                             bin_data["country_name"] = country.get("name", "N/A")
                             bin_data["country_emoji"] = country.get("flag", "")
                             return bin_data
+                        else:
+                            logger.warning(f"BIN API JSON missing data for BIN {bin_number}: {data}")
                     except Exception as e:
                         logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
                 else:
@@ -1518,6 +1555,7 @@ async def get_bin_details(bin_number: str) -> dict:
         logger.warning(f"BIN API call failed for {bin_number}: {e}")
 
     return bin_data
+
 
 # ✅ Background check now uses live BIN data
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
@@ -2564,6 +2602,19 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # --- BIN Lookup ---
+# --- BIN lookup helper ---
+import aiohttp
+import json
+import asyncio
+import logging
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from html import escape
+
+logger = logging.getLogger(__name__)
+
+
 async def get_bin_details(bin_number: str) -> dict:
     """
     Fetch BIN details from bintable API.
@@ -2598,7 +2649,7 @@ async def get_bin_details(bin_number: str) -> dict:
                             bin_data["card_type"] = str(card.get("type", "N/A")).title()
                             bin_data["level"] = str(card.get("category", "N/A")).title()
                             bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                            bin_data["country_name"] = country.get("name", "N/A")
+                            bin_data["country_name"] = str(country.get("name", "N/A")).title()
                             bin_data["country_emoji"] = country.get("flag", "")
                             return bin_data
                     except Exception as e:
@@ -2610,19 +2661,8 @@ async def get_bin_details(bin_number: str) -> dict:
 
     return bin_data
 
+
 # --- Background /sh processing ---
-import aiohttp
-import json
-import asyncio
-import logging
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-from html import escape
-
-logger = logging.getLogger(__name__)
-
-
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     try:
         user = update.effective_user
@@ -2680,13 +2720,12 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         gateway = data.get("Gateway", "Shopify")
 
         # --- BIN lookup ---
-    
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
 
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A")
+        country_name = (bin_details.get("country_name") or "N/A").title()
         country_flag = bin_details.get("country_emoji", "")
 
         # --- User info ---
@@ -3777,7 +3816,7 @@ async def get_bin_details(bin_number: str) -> dict:
                             bin_data["card_type"] = str(card.get("type", "N/A")).title()
                             bin_data["level"] = str(card.get("category", "N/A")).title()
                             bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                            bin_data["country_name"] = country.get("name", "N/A")
+                            bin_data["country_name"] = str(country.get("name", "N/A")).title()
                             bin_data["country_emoji"] = country.get("flag", "")
                             return bin_data
                     except Exception as e:
@@ -3833,14 +3872,14 @@ async def process_b3(update, context, card_input, status_msg):
 
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A")
+        country_name = (bin_details.get("country_name") or "N/A").title()
         country_flag = bin_details.get("country_emoji", "")
         # Escape text for HTML
         safe_card = html.escape(card_input)
         safe_reason = html.escape(reason)
         safe_brand = html.escape(brand)
         safe_issuer = html.escape(issuer)
-        safe_country = html.escape(country)
+        safe_country = html.escape(country_name)
         safe_user = html.escape(update.effective_user.first_name)
 
         # Format message
@@ -4051,7 +4090,7 @@ async def run_vbv_check(msg, update, card_data: str):
 
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A")
+        country_name = (bin_details.get("country_name") or "N/A").title()
         country_flag = bin_details.get("country_emoji", "")
 
     # Response formatting
