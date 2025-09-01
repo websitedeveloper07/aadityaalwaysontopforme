@@ -1232,15 +1232,17 @@ async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from bin import get_bin_details  # Import the full bin.py logic
+from bin import get_bin_details  # Import from bin.py
 import re
 
 # Replace with your legit group/channel link
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
+
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+
 
 def get_level_emoji(level: str) -> str:
     """Return a matching emoji for card level/category (brand/category field)."""
@@ -1254,6 +1256,7 @@ def get_level_emoji(level: str) -> str:
         "infinite": "♾️"
     }
     return mapping.get(level.lower(), "💳")
+
 
 # ===== /bin Command =====
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1281,12 +1284,12 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     bin_input = bin_input[:6]
 
-    # Lookup BIN using your bin.py logic (with cache & rate limiting)
+    # Lookup BIN using bin.py
     bin_details = await get_bin_details(bin_input)
 
-    if not bin_details or bin_details.get("scheme") == "N/A":
+    if not bin_details or "error" in bin_details:
         return await update.effective_message.reply_text(
-            "❌ BIN not found or invalid\\.",
+            f"❌ {escape_markdown_v2(bin_details.get('error', 'BIN not found or invalid.'))}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -1300,15 +1303,12 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Build BIN info box
     bin_info_box = (
         f"✦━━━[  *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ]━━━✦\n"
-        f"{bullet_link} *𝐁𝐈𝐍* ➳ `{esc(bin_input)}`\n"
+        f"{bullet_link} *𝐁𝐈𝐍* ➳ `{esc(bin_details.get('bin'))}`\n"
         f"{bullet_link} *𝐒𝐜𝐡𝐞𝐦𝐞* ➳ `{esc(bin_details.get('scheme'))}`\n"
         f"{bullet_link} *𝐓𝐲𝐩𝐞* ➳ `{esc(bin_details.get('type'))}`\n"
-        f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ `{level_emoji} {esc(bin_details.get('brand'))}`\n"
+        f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝* ➳ {level_emoji} `{esc(bin_details.get('brand'))}`\n"
         f"{bullet_link} *𝐁𝐚𝐧𝐤* ➳ `{esc(bin_details.get('bank'))}`\n"
         f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲* ➳ `{esc(bin_details.get('country_name'))} {esc(bin_details.get('country_emoji'))}`\n"
-        f"{bullet_link} *𝐂𝐮𝐫𝐫𝐞𝐧𝐜𝐲* ➳ `{esc(bin_details.get('currency'))}`\n"
-        f"{bullet_link} *𝐍𝐮𝐦𝐛𝐞𝐫 𝐋𝐞𝐧𝐠𝐭𝐡* ➳ `{esc(bin_details.get('number_length'))}`\n"
-        f"{bullet_link} *𝐋𝐮𝐡𝐧 𝐂𝐡𝐞𝐜𝐤* ➳ `{esc(bin_details.get('number_luhn'))}`\n"
         f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲* ➳ {escaped_user}\n"
         f"{bullet_link} *𝐁𝐨𝐭 𝐁𝐲* ➳ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
     )
