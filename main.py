@@ -1140,14 +1140,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         cards.append(f"{card_number}|{mm}|{yyyy[-2:]}|{cvv}")
 
-    # BIN info block
+    # BIN info block (code block style)
     escaped_bin_info = (
-        f"━[ 💳 *𝐆𝐞𝐧 𝐈𝐧𝐟𝐨* ]━━\n"
-        f"┣ ❏ 𝐁𝐈𝐍 ➳ `{escape_markdown_v2(card_base)}`\n"
-        f"┣ ❏ 𝐁𝐫𝐚𝐧𝐝 ➳ `{escape_markdown_v2(brand)}`\n"
-        f"┣ ❏ 𝐁𝐚𝐧𝐤 ➳ `{escape_markdown_v2(bank)}`\n"
-        f"┣ ❏ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ `{escape_markdown_v2(country_name)}` {escape_markdown_v2(country_emoji)}\n"
-        f"╰━━━━━━━━━━━"
+        "```\n"
+        f"BIN     ➳ {escape_markdown_v2(card_base)}\n"
+        f"Brand   ➳ {escape_markdown_v2(brand)}\n"
+        f"Bank    ➳ {escape_markdown_v2(bank)}\n"
+        f"Country ➳ {escape_markdown_v2(country_name)} {escape_markdown_v2(country_emoji)}\n"
+        "```"
     )
 
     # Send output
@@ -1157,16 +1157,21 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file.name = f"generated_cards_{card_base}.txt"
         await update.effective_message.reply_document(
             document=file,
-            caption=f"*Generated {len(cards)} Cards 💳*\n\n{escaped_bin_info}",
+            caption=f"`Generated {len(cards)} cards`\n\n{escaped_bin_info}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     else:
         cards_list = "\n".join(f"`{c}`" for c in cards)
-        final_message = f"*Generated {len(cards)} Cards 💳*\n\n{cards_list}\n\n{escaped_bin_info}"
+        final_message = (
+            f"`Generated {len(cards)} cards`\n\n"
+            f"{cards_list}\n\n"
+            f"{escaped_bin_info}"
+        )
         await update.effective_message.reply_text(
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
 
 
 
@@ -1369,35 +1374,32 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 import aiohttp
+import re
 
-# Replace with your *legit* group/channel link
+# Replace with your legit group/channel link
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
-
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
-    import re
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
-
 
 def get_level_emoji(level: str) -> str:
     """Return a matching emoji for card level/category."""
     mapping = {
-        "Classic": "💳",
-        "Gold": "🥇",
-        "Platinum": "💠",
-        "Business": "🏢",
-        "World": "🌍",
-        "Signature": "✍️",
-        "Infinite": "♾️"
+        "classic": "💳",
+        "gold": "🥇",
+        "platinum": "💠",
+        "business": "🏢",
+        "world": "🌍",
+        "signature": "✍️",
+        "infinite": "♾️"
     }
-    return mapping.get(level, "💳")
-
+    return mapping.get(level.lower(), "💳")
 
 # ===== BIN LOOKUP FUNCTION =====
 async def get_bin_details(bin_number: str) -> dict:
     """
-    Fetch BIN details from bintable API with normalized keys.
+    Fetch BIN details from binlist.net API.
     """
     bin_data = {
         "scheme": "N/A",
@@ -1408,47 +1410,36 @@ async def get_bin_details(bin_number: str) -> dict:
         "country_emoji": ""
     }
 
-    url = f"https://api.bintable.com/v1/{bin_number}?api_key=a48d5b84128681e7b724ed6cb4b6420582847c69"
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json",
-        "Origin": "https://bintable.com",
-        "Referer": "https://bintable.com/"
-    }
-
+    url = f"https://lookup.binlist.net/{bin_number}"
+    headers = {"Accept-Version": "3"}
+    
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=10) as response:
                 if response.status == 200:
-                    data = await response.json(content_type=None)
-                    if data.get("result") == 200 and "data" in data:
-                        card = data["data"].get("card", {})
-                        country = data["data"].get("country", {})
-                        bank = data["data"].get("bank", {})
-
-                        bin_data["scheme"] = str(card.get("scheme", "N/A")).title()
-                        bin_data["type"] = str(card.get("type", "N/A")).title()
-                        bin_data["level"] = str(card.get("category", "N/A")).title()
-                        bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                        bin_data["country_name"] = str(country.get("name", "N/A")).title()
-                        bin_data["country_emoji"] = country.get("flag", "")
-                        return bin_data
+                    data = await response.json()
+                    bin_data["scheme"] = (data.get("scheme") or "N/A").title()
+                    bin_data["type"] = (data.get("type") or "N/A").title()
+                    bin_data["level"] = data.get("brand") or "N/A"
+                    bin_data["bank"] = data.get("bank", {}).get("name") or "N/A"
+                    bin_data["country_name"] = data.get("country", {}).get("name") or "N/A"
+                    bin_data["country_emoji"] = data.get("country", {}).get("emoji") or ""
+                    return bin_data
     except Exception as e:
-        print(f"⚠️ BIN API error for {bin_number}: {e}")
+        print(f"⚠️ BIN lookup error for {bin_number}: {e}")
 
     return bin_data
-
 
 # ===== /bin Command =====
 async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Performs a BIN lookup and deducts 1 credit."""
     user = update.effective_user
 
-    # Define bullet with hyperlink
+    # Bullet hyperlink
     bullet_text = escape_markdown_v2("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
-    # Get user data
+    # Check user credits
     user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
@@ -1456,7 +1447,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Consume 1 credit
+    # Deduct 1 credit
     if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
@@ -1468,17 +1459,19 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         bin_input = context.args[0]
     elif update.effective_message and update.effective_message.text:
-        command_text = update.effective_message.text.split(maxsplit=1)
-        if len(command_text) > 1:
-            bin_input = command_text[1]
+        parts = update.effective_message.text.split(maxsplit=1)
+        if len(parts) > 1:
+            bin_input = parts[1]
 
     if not bin_input or not bin_input.isdigit() or len(bin_input) < 6:
         return await update.effective_message.reply_text(
-            "❌ Please provide a 6\\-digit BIN\\. Usage: /bin [bin] or \\.bin [bin]\\.",
+            "❌ Please provide a 6\\-digit BIN\\. Usage: /bin [bin]",
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     bin_input = bin_input[:6]
+
+    # Lookup BIN using binlist.net
     bin_details = await get_bin_details(bin_input)
 
     if not bin_details or bin_details.get("scheme") == "N/A":
@@ -1487,7 +1480,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Extract details (escaped for MarkdownV2)
+    # Escape all values
     escaped_bin = escape_markdown_v2(bin_input)
     escaped_scheme = escape_markdown_v2(bin_details.get("scheme", "N/A"))
     escaped_card_type = escape_markdown_v2(bin_details.get("type", "N/A"))
@@ -1497,10 +1490,9 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_country_emoji = escape_markdown_v2(bin_details.get("country_emoji", ""))
     escaped_user = escape_markdown_v2(user.full_name)
 
-    # Custom emojis/status
     level_emoji = get_level_emoji(bin_details.get("level", "N/A"))
 
-    # BIN info box
+    # Build BIN info box
     bin_info_box = (
         f"✦━━━[  *𝐁𝐈𝐍 𝐈𝐍𝐅𝐎* ]━━━✦\n"
         f"{bullet_link} *𝐁𝐈𝐍* ➳ `{escaped_bin}`\n"
@@ -1518,6 +1510,7 @@ async def bin_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
