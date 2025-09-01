@@ -3695,11 +3695,22 @@ async def process_b3(update, context, card_input, status_msg):
         bin_number = cc[:6]  # safe, always exists
         bin_details = await get_bin_details(bin_number)
 
-        # Extract details safely
+    try:
+        # BIN lookup (✅ using bin.py)
+        bin_number = parts[0][:6]
+        bin_details = await get_bin_info(bin_number)
+
         brand = (bin_details.get("scheme") or "N/A").title()
-        issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A").title()
+        issuer = bin_details.get("bank") or "N/A"
+        country_name = bin_details.get("country") or "N/A"
         country_flag = bin_details.get("country_emoji", "")
+        card_type = bin_details.get("type", "N/A")
+        card_level = bin_details.get("brand", "N/A")
+        card_length = bin_details.get("length", "N/A")
+        luhn_check = bin_details.get("luhn", "N/A")
+        bank_phone = bin_details.get("bank_phone", "N/A")
+        bank_url = bin_details.get("bank_url", "N/A")
+
 
         # Escape for HTML
         safe_card = html.escape(card_input)
