@@ -909,30 +909,32 @@ from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown as escape_markdown_v2
 import random, io
 from datetime import datetime
-from bin import get_bin_info  # <-- Import your bin.py function
-# Assuming luhn_checksum, enforce_cooldown, get_user, consume_credit are already defined elsewhere
+from bin import get_bin_info  # Your BIN lookup function
 
 # ===== /gen Command =====
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates cards from a given BIN/sequence."""
-
+    
     user = update.effective_user
+    
+    # Enforce cooldown (assuming function defined)
     if not await enforce_cooldown(user.id, update):
         return
-
+    
+    # Get user data and check credits
     user_data = await get_user(user.id)
     if user_data['credits'] <= 0:
         return await update.effective_message.reply_text(
             escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
+    
     # Get input
     if context.args:
         raw_input = context.args[0]
     else:
         raw_input = None
-
+    
     if not raw_input:
         return await update.effective_message.reply_text(
             escape_markdown_v2(
@@ -941,45 +943,55 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ),
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
-    # Split possible parts
+    
+    # Split input parts
     parts = raw_input.split("|")
     card_base = parts[0].strip()
     extra_mm = parts[1].zfill(2) if len(parts) > 1 and parts[1].isdigit() else None
     extra_yyyy = parts[2] if len(parts) > 2 and parts[2].isdigit() else None
     extra_cvv = parts[3] if len(parts) > 3 and parts[3].isdigit() else None
-
+    
     if not card_base.isdigit() or len(card_base) < 6:
         return await update.effective_message.reply_text(
             escape_markdown_v2("❌ BIN/sequence must be at least 6 digits."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
+    
     # Determine number of cards
     num_cards = 10  # default
     send_as_file = False
     if len(context.args) > 1 and context.args[1].isdigit():
         num_cards = int(context.args[1])
         send_as_file = True
-
+    
     # Consume 1 credit
     if not await consume_credit(user.id):
         return await update.effective_message.reply_text(
             escape_markdown_v2("❌ You have no credits left. Please get a subscription to use this command."),
             parse_mode=ParseMode.MARKDOWN_V2
         )
+    
+    # ==== Fetch BIN info ====
+    try:
+        bin_number = card_base[:6]
+        bin_details = await get_bin_info(bin_number)
 
-    # ==== USE bin.py FUNCTION ====
-    bin_details = await get_bin_details(card_base[:6])
-    brand = bin_details.get("scheme", "N/A")
-    bank = bin_details.get("bank", "N/A")
-    country_name = bin_details.get("country_name", "N/A")
-    country_emoji = bin_details.get("country_emoji", "")
-
-    # Determine card length
-    card_length = 15 if "american express" in brand.lower() or "amex" in brand.lower() else 16
-
-    # Generate cards
+        brand = (bin_details.get("scheme") or "N/A").title()
+        issuer = bin_details.get("bank") or "N/A"
+        country_name = bin_details.get("country_name") or "N/A"
+        country_flag = bin_details.get("country_emoji", "")
+        card_type = bin_details.get("type", "N/A")
+        card_level = bin_details.get("level", "N/A")
+        card_length = bin_details.get("length") or (15 if "amex" in brand.lower() else 16)
+        luhn_check = "✅" if bin_details.get("luhn", True) else "❌"
+        bank_phone = bin_details.get("bank_phone", "N/A")
+        bank_url = bin_details.get("bank_url", "N/A")
+    except Exception:
+        brand = issuer = country_name = country_flag = card_type = card_level = bank_phone = bank_url = "N/A"
+        card_length = 16
+        luhn_check = "N/A"
+    
+    # ==== Generate cards ====
     cards = []
     attempts = 0
     max_attempts = num_cards * 100
@@ -988,41 +1000,42 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         suffix_len = card_length - len(card_base)
         if suffix_len < 0:
             break
-
+        
         card_number = card_base + ''.join(str(random.randint(0, 9)) for _ in range(suffix_len))
         if not luhn_checksum(card_number):
             continue
-
+        
         mm = extra_mm or str(random.randint(1, 12)).zfill(2)
         yyyy = extra_yyyy or str(datetime.now().year + random.randint(1, 5))
         cvv = extra_cvv or (str(random.randint(0, 9999)).zfill(4) if card_length == 15 else str(random.randint(0, 999)).zfill(3))
-
+        
         cards.append(f"{card_number}|{mm}|{yyyy[-2:]}|{cvv}")
-
-    # BIN info block
+    
+    # ==== BIN info block in grey ====
     escaped_bin_info = (
         "```\n"
-        f"BIN     ➳ {escape_markdown_v2(card_base)}\n"
-        f"Brand   ➳ {escape_markdown_v2(brand)}\n"
-        f"Bank    ➳ {escape_markdown_v2(bank)}\n"
-        f"Country ➳ {escape_markdown_v2(country_name)} {escape_markdown_v2(country_emoji)}\n"
+        f"BIN       ➳ {escape_markdown_v2(card_base)}\n"
+        f"Brand     ➳ {escape_markdown_v2(brand)}\n"
+        f"Type      ➳ {escape_markdown_v2(card_type)} | {escape_markdown_v2(card_level)}\n"
+        f"Bank      ➳ {escape_markdown_v2(issuer)}\n"
+        f"Country   ➳ {escape_markdown_v2(country_name)} {escape_markdown_v2(country_flag)}\n"
         "```"
     )
-
-    # Send output
+    
+    # ==== Send output ====
     if send_as_file:
         file_content = "\n".join(cards)
         file = io.BytesIO(file_content.encode('utf-8'))
         file.name = f"generated_cards_{card_base}.txt"
         await update.effective_message.reply_document(
             document=file,
-            caption=f"```\nGenerated {len(cards)} cards💳\n```\n\n{escaped_bin_info}",
+            caption=f"```\nGenerated {len(cards)} cards 💳\n```\n\n{escaped_bin_info}",
             parse_mode=ParseMode.MARKDOWN_V2
         )
     else:
         cards_list = "\n".join(f"`{c}`" for c in cards)
         final_message = (
-            f"```\nGenerated {len(cards)} cards💳\n```\n\n"
+            f"```\nGenerated {len(cards)} cards 💳\n```\n\n"
             f"{cards_list}\n\n"
             f"{escaped_bin_info}"
         )
@@ -1030,6 +1043,8 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_message,
             parse_mode=ParseMode.MARKDOWN_V2
         )
+
+
 
 
 
