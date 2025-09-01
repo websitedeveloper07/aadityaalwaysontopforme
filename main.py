@@ -4583,6 +4583,7 @@ def main():
     application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
     application.add_handler(CommandHandler("b3", b3_command))
+    application.add_handler(CommandHandler("vbv", vbv))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
     application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
