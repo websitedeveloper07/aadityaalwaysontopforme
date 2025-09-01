@@ -3784,7 +3784,7 @@ COOLDOWN_SECONDS = 20
 # ===== BIN LOOKUP FUNCTION =====
 async def get_bin_details(bin_number: str) -> dict:
     """
-    Fetch BIN details from bintable API.
+    Fetch BIN details from new BIN API.
     """
     bin_data = {
         "scheme": "N/A",
@@ -3797,7 +3797,7 @@ async def get_bin_details(bin_number: str) -> dict:
         "card_type": "N/A"
     }
 
-    url = f"https://api.bintable.com/v1/{bin_number}?api_key=a48d5b84128681e7b724ed6cb4b6420582847c69"
+    url = f"https://lookup.binlist.net/{bin_number}"
     headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
     try:
@@ -3806,19 +3806,20 @@ async def get_bin_details(bin_number: str) -> dict:
                 if response.status == 200:
                     try:
                         data = await response.json(content_type=None)
-                        if data.get("result") == 200 and "data" in data:
-                            card = data["data"].get("card", {})
-                            country = data["data"].get("country", {})
-                            bank = data["data"].get("bank", {})
 
-                            bin_data["scheme"] = str(card.get("scheme", "N/A")).title()
-                            bin_data["type"] = str(card.get("type", "N/A")).title()
-                            bin_data["card_type"] = str(card.get("type", "N/A")).title()
-                            bin_data["level"] = str(card.get("category", "N/A")).title()
-                            bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                            bin_data["country_name"] = str(country.get("name", "N/A")).title()
-                            bin_data["country_emoji"] = country.get("flag", "")
-                            return bin_data
+                        bin_data["scheme"] = str(data.get("scheme", "N/A")).title()
+                        bin_data["type"] = str(data.get("type", "N/A")).title()
+                        bin_data["card_type"] = str(data.get("brand", "N/A")).title()
+                        bin_data["level"] = str(data.get("brand", "N/A")).title()
+
+                        bank = data.get("bank", {})
+                        country = data.get("country", {})
+
+                        bin_data["bank"] = str(bank.get("name", "N/A")).title()
+                        bin_data["country_name"] = str(country.get("name", "N/A")).title()
+                        bin_data["country_emoji"] = country.get("emoji", "")
+
+                        return bin_data
                     except Exception as e:
                         logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
                 else:
@@ -3901,13 +3902,19 @@ async def process_b3(update, context, card_input, status_msg):
         )
 
         # Edit the "Processing..." message
-        await status_msg.edit_text(formatted_msg, parse_mode="HTML", disable_web_page_preview=True)
+        await status_msg.edit_text(
+            formatted_msg,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
 
     except Exception as e:
         await status_msg.edit_text(
-            f"❌ Error while processing: {html.escape(str(e))}", 
-            parse_mode="HTML"
+            f"❌ Error while processing: {html.escape(str(e))}",
+            parse_mode="HTML",
+            disable_web_page_preview=True
         )
+
 
 
 # ===== /b3 COMMAND =====
