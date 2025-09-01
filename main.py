@@ -4136,6 +4136,7 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # --- Background worker ---
+# --- Background worker ---
 async def run_vbv_check(msg, update, card_data: str):
     try:
         cc, mes, ano, cvv = card_data.split("|")
@@ -4143,6 +4144,7 @@ async def run_vbv_check(msg, update, card_data: str):
         await msg.edit_text("❌ Invalid format. Use: /vbv 4111111111111111|07|2027|123")
         return
 
+    # --- Rocky API: VBV Response only ---
     api_url = f"https://rocky-815m.onrender.com/gateway=bin?key=Payal&card={card_data}"
 
     try:
@@ -4152,7 +4154,6 @@ async def run_vbv_check(msg, update, card_data: str):
                     await msg.edit_text(f"❌ API Error (Status {resp.status}). Try again later.")
                     return
                 vbv_data = await resp.json(content_type=None)
-
     except asyncio.TimeoutError:
         await msg.edit_text("❌ API request failed: Timed out ⏳")
         return
@@ -4166,23 +4167,26 @@ async def run_vbv_check(msg, update, card_data: str):
         await msg.edit_text(f"❌ API request failed: {type(e).__name__} → {e}")
         return
 
-    # BIN lookup (local direct call, no dependency on external gateway)
+    # --- Binlist API: BIN Lookup ---
     bin_number = cc[:6]
     bin_details = await get_bin_details(bin_number)
 
-    brand = bin_details.get("scheme", "N/A")
+    scheme = bin_details.get("scheme", "N/A")
+    card_type = bin_details.get("type", "N/A")
+    level = bin_details.get("level", "N/A")
+    brand = bin_details.get("scheme", "N/A")  # fallback to scheme
     issuer = bin_details.get("bank", "N/A")
     country_name = bin_details.get("country_name", "N/A")
     country_flag = bin_details.get("country_emoji", "")
 
-    # VBV Response
+    # --- VBV Response ---
     response_text = vbv_data.get("response", "N/A")
     check_mark = "✅" if response_text in [
         "Authenticate Attempt Successful",
         "Authenticate Successful"
     ] else "❌"
 
-    # Nicely formatted response
+    # --- Final Message ---
     text = (
         "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{cc}|{mes}|{ano}|{cvv}</code>\n"
