@@ -16,11 +16,12 @@ CACHE_EXPIRY = timedelta(hours=24)  # Cache expiry time
 # ---------------------------
 # Fetch BIN Details
 # ---------------------------
-async def get_bin_details(bin_number: str, retries: int = 3) -> dict:
+async def get_bin_details(bin_number: str) -> dict:
     """
     Fetch BIN details from binlist.net API.
     Returns a dictionary with all relevant fields.
     Uses cache to avoid excessive API calls.
+    Waits 5 seconds between each API request.
     """
     now_time = datetime.utcnow()
 
@@ -56,13 +57,13 @@ async def get_bin_details(bin_number: str, retries: int = 3) -> dict:
     }
 
     # ---------------------------
-    # Rate limiting: 1 request/sec
+    # Rate limiting: 5 seconds per request
     # ---------------------------
     global LAST_BIN_CALL
     async with BIN_LOCK:
         now = asyncio.get_event_loop().time()
-        if now - LAST_BIN_CALL < 1.0:
-            await asyncio.sleep(1.0 - (now - LAST_BIN_CALL))
+        if now - LAST_BIN_CALL < 5.0:
+            await asyncio.sleep(5.0 - (now - LAST_BIN_CALL))
         LAST_BIN_CALL = asyncio.get_event_loop().time()
 
         try:
@@ -105,17 +106,12 @@ async def get_bin_details(bin_number: str, retries: int = 3) -> dict:
                     elif resp.status == 429:
                         logger.warning(f"BIN API rate limited for {bin_number} → {text}")
                         if bin_number in bin_cache:
-                            # Return cached value if available
                             logger.info(f"Returning cached BIN info for {bin_number} due to 429")
                             return bin_cache[bin_number]["data"]
-                        elif retries > 0:
-                            await asyncio.sleep(3)
-                            return await get_bin_details(bin_number, retries=retries-1)
-                        else:
-                            logger.warning(f"Max retries reached for {bin_number}")
-                            return bin_data
+                        return bin_data
                     else:
                         logger.warning(f"BIN API returned {resp.status} for {bin_number} → {text}")
+                        return bin_data
 
         except Exception as e:
             logger.warning(f"BIN API call failed for {bin_number}: {type(e).__name__} → {e}")
