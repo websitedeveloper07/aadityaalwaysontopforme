@@ -4009,6 +4009,141 @@ async def run_vbv_check(msg, update, card_data: str):
 
 
 
+import asyncio
+import aiohttp
+import re
+import time
+import html
+from datetime import datetime
+from telegram import Update
+from telegram.ext import ContextTypes
+from db import get_user, update_user  # your async DB functions
+
+# --- Settings ---
+MVBV_CONCURRENCY = 3  # parallel API requests
+MVBV_UPDATE_INTERVAL = 1  # seconds between message edits
+MVBV_RATE_LIMIT_SECONDS = 5
+user_last_mvbv = {}
+
+API_URL_TEMPLATE = "https://rocky-815m.onrender.com/gateway=bin?key=Payal&card="
+
+# --- Credit consumption ---
+async def consume_credit(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        await update_user(user_id, credits=user_data["credits"] - 1)
+        return True
+    return False
+
+# --- /mvbv command ---
+async def mvbv_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    now = time.time()
+
+    # Rate limit per user
+    if user_id in user_last_mvbv:
+        elapsed = now - user_last_mvbv[user_id]
+        if elapsed < MVBV_RATE_LIMIT_SECONDS:
+            remaining = round(MVBV_RATE_LIMIT_SECONDS - elapsed, 1)
+            await update.message.reply_text(f"⏳ Please wait {remaining}s before using /mvbv again.")
+            return
+
+    # Extract cards (args or reply), max 10
+    cards = []
+    if context.args:
+        cards = [arg.strip() for arg in context.args if re.match(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}", arg)]
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        cards = re.findall(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}", update.message.reply_to_message.text)
+
+    if not cards:
+        await update.message.reply_text(
+            "⚠️ Usage: /mvbv <card1> <card2> ... <card10>\nOr reply to a message containing cards."
+        )
+        return
+
+    cards = cards[:10]
+
+    # Deduct credits upfront
+    for card in cards:
+        if not await consume_credit(user_id):
+            await update.message.reply_text("❌ You don’t have enough credits to check all cards.")
+            return
+
+    # Send initial message
+    msg = await update.message.reply_text(
+        f"✘ Total ↣ {len(cards)}\n✘ Checked ↣ 0\n✘ Time ↣ 0s\n\n𝗠𝗮𝘀𝐬 VBV 𝗖𝗵𝗲𝗰𝗸",
+        parse_mode="HTML"
+    )
+
+    user_last_mvbv[user_id] = now
+
+    # Run background worker
+    asyncio.create_task(run_mass_vbv(msg, cards))
+
+
+# --- Background worker ---
+async def run_mass_vbv(msg, cards):
+    total = len(cards)
+    checked = 0
+    start_time = time.time()
+    results = []
+    separator = "──────── ⸙ ─────────"
+    header_title = "𝗠𝗮𝘀𝐬 VBV 𝗖𝗵𝗲𝗰𝗸"
+
+    semaphore = asyncio.Semaphore(MVBV_CONCURRENCY)
+    queue = asyncio.Queue()
+
+    async def worker(card):
+        async with semaphore:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(API_URL_TEMPLATE + card, timeout=50) as resp:
+                        if resp.status != 200:
+                            response_text = "Unknown 🚫"
+                            check_mark = "❌"
+                        else:
+                            vbv_data = await resp.json(content_type=None)
+                            response_text = vbv_data.get("response", "Unknown 🚫")
+                            check_mark = "✅" if "successful" in response_text.lower() else "❌"
+
+                safe_card = html.escape(card)
+                safe_response = html.escape(response_text)
+                line = f"<code>{safe_card}</code>\nStatus ➳ <i>{safe_response} {check_mark}</i>"
+            except Exception:
+                line = f"<code>{html.escape(card)}</code>\nStatus ➳ <i>Error ❌</i>"
+
+            await queue.put(line)
+
+    tasks = [asyncio.create_task(worker(c)) for c in cards]
+
+    # Consumer to progressively edit message
+    while True:
+        try:
+            line = await asyncio.wait_for(queue.get(), timeout=50)
+        except asyncio.TimeoutError:
+            if all(t.done() for t in tasks):
+                break
+            continue
+
+        results.append(line)
+        checked += 1
+        elapsed = round(time.time() - start_time, 2)
+        header = f"✘ Total ↣ {total}\n✘ Checked ↣ {checked}\n✘ Time ↣ {elapsed}s"
+        content = f"{header}\n\n{header_title}\n{separator}\n" + f"\n{separator}\n".join(results)
+        try:
+            await msg.edit_text(content, parse_mode="HTML")
+        except:
+            pass
+        await asyncio.sleep(MVBV_UPDATE_INTERVAL)
+
+    # Final update
+    elapsed = round(time.time() - start_time, 2)
+    header = f"✘ Total ↣ {total}\n✘ Checked ↣ {checked}\n✘ Time ↣ {elapsed}s"
+    content = f"{header}\n\n{header_title}\n{separator}\n" + f"\n{separator}\n".join(results)
+    await msg.edit_text(content, parse_mode="HTML")
+
+
+
 
 import psutil
 import platform
@@ -4710,6 +4845,7 @@ def main():
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
     application.add_handler(CommandHandler("b3", b3_command))
     application.add_handler(CommandHandler("vbv", vbv))
+    application.add_handler(CommandHandler("mvbv", mvbv_command))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
     application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
