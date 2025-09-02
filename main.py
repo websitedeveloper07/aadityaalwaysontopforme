@@ -604,7 +604,7 @@ async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAU
         "• `/b3` \\- *Check a single Braintree card*\n"
         "  Example:\n"
         "  `/b3 1234567890123456\\|12\\|24\\|123`\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑶𝒇𝒇 ❌"
     )
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗔𝗨𝗧𝗛 𝗠𝗘𝗡𝗨", callback_data="auth_sub_menu")],
