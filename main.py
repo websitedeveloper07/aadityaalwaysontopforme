@@ -1459,8 +1459,8 @@ def escape_md(text: str) -> str:
     return re.sub(r'([_\*\[\]\(\)\~\>\#\+\-\=\|\{\}\.\!])', r'\\\1', text)
 
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    # Prepare clickable bullet
-    bullet_text = "⌇"
+    # Prepare clickable bullet with square brackets visible
+    bullet_text = "[⌇]"
     bullet_link_url = "https://t.me/CARDER33"  # replace with your actual link
     bullet_link = f"[{escape_md(bullet_text)}]({bullet_link_url})"
 
@@ -1521,7 +1521,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         header = f"═══ [ *{escape_md(status_text)}* ] ═══"
         formatted_response = f"_{escape_md(api_status)}_"
 
-        # Build final message
+        # Build final message with [⌇] bullets
         final_text = (
             f"{header}\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_md(cc_normalized)}`\n"
@@ -1551,6 +1551,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             parse_mode=ParseMode.MARKDOWN_V2,
             disable_web_page_preview=True
         )
+
 
 
 
