@@ -4012,7 +4012,6 @@ async def run_vbv_check(msg, update, card_data: str):
 
 import asyncio
 import aiohttp
-import html
 import re
 import time
 from datetime import datetime, timezone
@@ -4073,50 +4072,37 @@ def extract_cards_from_text(text: str) -> list[str]:
 
 # --- VBV API check ---
 async def check_vbv_card(session: aiohttp.ClientSession, card: str):
-    """Check a single card using VBV API and return status string."""
+    """Check a single card using VBV API and return formatted result and status type."""
     try:
         cc, mes, ano, cvv = card.split("|")
     except ValueError:
-        return f"{card}\nStatus ➳ ❌ Invalid format", "error"
+        return f"<code>{card}</code>\nStatus ➳ <i>Invalid format ❌</i>", "error"
 
     try:
         async with session.get(API_URL_TEMPLATE + card, timeout=50) as resp:
             if resp.status != 200:
-                return f"{card}\nStatus ➳ ❌ API Error ({resp.status})", "error"
+                return f"<code>{card}</code>\nStatus ➳ <i>API Error ({resp.status}) ❌</i>", "error"
             data = await resp.json(content_type=None)
     except Exception:
-        return f"{card}\nStatus ➳ ❌ API Error", "error"
+        return f"<code>{card}</code>\nStatus ➳ <i>API Error ❌</i>", "error"
 
     response_text = data.get("response", "N/A")
     check_mark = "✅" if "successful" in response_text.lower() else "❌"
-    return f"{card}\nStatus ➳ {response_text} {check_mark}", "approved" if check_mark=="✅" else "declined"
+    return f"<code>{card}</code>\nStatus ➳ <i>{response_text} {check_mark}</i>", "approved" if check_mark=="✅" else "declined"
 
 # --- Mass VBV check ---
 async def run_mass_vbv(msg, cards, user_id):
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
-    results = ["──────── ⸙ ─────────"] * total  # placeholders
+    results = []
     start_time = time.time()
 
-    queue = asyncio.Queue()
-    semaphore = asyncio.Semaphore(3)
-
     async with aiohttp.ClientSession() as session:
-        async def worker(idx, card):
-            async with semaphore:
-                result_text, status = await check_vbv_card(session, card)
-                counters["checked"] += 1
-                counters[status] = counters.get(status, 0) + 1
-                results[idx] = f"──────── ⸙ ─────────\n{result_text}"
-                await queue.put(True)
-
-        tasks = [asyncio.create_task(worker(i, c)) for i, c in enumerate(cards)]
-
-        while True:
-            try:
-                await asyncio.wait_for(queue.get(), timeout=UPDATE_INTERVAL)
-            except asyncio.TimeoutError:
-                pass  # just update every interval
+        for card in cards:
+            text, status = await check_vbv_card(session, card)
+            counters["checked"] += 1
+            counters[status] = counters.get(status, 0) + 1
+            results.append("──────── ⸙ ─────────\n" + text)
 
             elapsed = round(time.time() - start_time, 2)
             header = (
@@ -4126,25 +4112,14 @@ async def run_mass_vbv(msg, cards, user_id):
                 f"𝗠𝗮𝘀𝐬 VBV 𝗖𝗵𝗲𝗰𝗸"
             )
 
-            content = header + "\n" + "\n".join(results[:total])
+            # Update message progressively
+            content = header + "\n" + "\n".join(results)
             try:
                 await msg.edit_text(content, parse_mode="HTML")
             except Exception:
                 pass
 
-            if all(t.done() for t in tasks):
-                break
-
-        # Final update
-        elapsed = round(time.time() - start_time, 2)
-        header = (
-            f"✘ Total ↣ {total}\n"
-            f"✘ Checked ↣ {counters['checked']}\n"
-            f"\n✘ Time ↣ {elapsed}s\n\n"
-            f"𝗠𝗮𝘀𝐬 VBV 𝗖𝗵𝗲𝗰𝗸"
-        )
-        content = header + "\n" + "\n".join(results[:total])
-        await msg.edit_text(content, parse_mode="HTML")
+            await asyncio.sleep(UPDATE_INTERVAL)  # 2 seconds between cards
 
 # --- /mvbv command ---
 async def mvbv_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
