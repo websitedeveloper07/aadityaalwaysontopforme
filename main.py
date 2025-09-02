@@ -1443,8 +1443,6 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# Replace with your *legit* group/channel link
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
@@ -1453,11 +1451,18 @@ def escape_markdown_v2(text: str) -> str:
 
 # ===== BACKGROUND CHECK =====
 import aiohttp
+import re
 from telegram.constants import ParseMode
 
+# Function to escape special characters for MarkdownV2
+def escape_md(text: str) -> str:
+    return re.sub(r'([_\*\[\]\(\)\~\>\#\+\-\=\|\{\}\.\!])', r'\\\1', text)
+
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    bullet_text = "[⌇]"
-    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+    # Prepare clickable bullet
+    bullet_text = "⌇"
+    bullet_link_url = "https://t.me/CARDER33"  # replace with your actual link
+    bullet_link = f"[{escape_md(bullet_text)}]({bullet_link_url})"
 
     try:
         # BIN lookup
@@ -1513,22 +1518,22 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             status_text = api_status.upper()
 
         # Header + response
-        header = f"═══ [ *{status_text}* ] ═══"
-        formatted_response = f"_{api_status}_"
+        header = f"═══ [ *{escape_md(status_text)}* ] ═══"
+        formatted_response = f"_{escape_md(api_status)}_"
 
         # Build final message
         final_text = (
             f"{header}\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{cc_normalized}`\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_md(cc_normalized)}`\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
-            f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{card_type} | {card_level}`\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_name} {country_flag}`\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_md(brand)}`\n"
+            f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{escape_md(card_type)} | {escape_md(card_level)}`\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_md(issuer)}`\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_md(country_name)} {escape_md(country_flag)}`\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{user.first_name}](tg://user?id={user.id})\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_md(user.first_name)}](tg://user?id={user.id})\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
             f"――――――――――――――――"
         )
@@ -1542,7 +1547,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
     except Exception as e:
         await processing_msg.edit_text(
-            f"❌ An error occurred: {str(e)}",
+            f"❌ An error occurred: {escape_md(str(e))}",
             parse_mode=ParseMode.MARKDOWN_V2,
             disable_web_page_preview=True
         )
