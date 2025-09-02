@@ -3700,83 +3700,67 @@ last_b3_time = 0  # timestamp of last usage
 # ===== Process B3 Function =====
 async def process_b3(update, context, card_input, status_msg):
     global last_b3_time
-    try:
-        # Run the async card checker
-        result_text = await multi_checking(card_input)
 
-        # Parse status + reason
-        result_lower = result_text.lower()
-        if "approved" in result_lower:
-            status = "✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱"
-            reason = "Payment method successfully added."
-        elif "invalid" in result_lower:
-            status = "❌ 𝘿𝙚𝙘𝙡𝙞𝙣𝙚𝙙"
-            reason = "Invalid credit card number"
-        elif "expiration" in result_lower or "expiry" in result_lower:
-            status = "❌ 𝘿𝙚𝙘𝙡𝙞𝙣𝙚𝙙"
-            reason = "Invalid expiry date"
-        else:
-            status = "❌ 𝘿𝙚𝙘𝙡𝙞𝙣𝙚𝙙"
-            if " - " in result_text:
-                parts = result_text.split(" - ")
-                reason = parts[1] if len(parts) > 1 else "Unknown error"
+    async def run_and_reply():
+        try:
+            parts = cc_input.split("|")
+            if len(parts) != 4:
+                await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
+                return
+
+            cc, mes, ano, cvv = parts
+            if len(ano) == 4:
+                ano = ano[-2:]
+            formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
+
+            # Get BIN details
+            bin_number = cc[:6]
+            bin_details = await get_bin_details(bin_number)
+            brand = bin_details.get("scheme", "N/A")
+            issuer = bin_details.get("bank", "N/A")
+            country_name = bin_details.get("country_name", "N/A")
+            country_flag = bin_details.get("country_emoji", "")
+
+            # Capture printed output from multi_checking
+            import io, sys
+            buffer = io.StringIO()
+            sys.stdout = buffer
+
+            await multi_checking(formatted_cc)
+
+            sys.stdout = sys.__stdout__
+            output = buffer.getvalue().strip()
+
+            # Determine status
+            if "Approved" in output or "New payment method" in output:
+                status = "Approved ✅"
+                output_text = "New payment method added"
             else:
-                reason = "Unknown error"
+                status = "Declined ❌"
+                output_text = output  # show full website response
 
-        # Extract BIN (first 6 digits)
-        cc = card_input.split("|")[0]
-        bin_number = cc[:6]
+            # Prepare reply
+            reply_text = (
+                f"═══[ status {status} ]═══\n"
+                f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
+                f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
+                f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output_text}\n"
+                "――――――――――――――――\n"
+                f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
+                f"[⌇] 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
+                f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_flag}` {country_name}\n"
+                "――――――――――――――――\n"
+                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
+                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+                "――――――――――――――――"
+            )
 
-        # Fetch BIN info
-        bin_details = await get_bin_info(bin_number)
-        brand = (bin_details.get("scheme") or "N/A").title()
-        issuer = bin_details.get("bank") or "N/A"
-        country_name = bin_details.get("country") or "N/A"
-        country_flag = bin_details.get("country_emoji", "")
-        card_type = bin_details.get("type", "N/A")
-        card_level = bin_details.get("brand", "N/A")
-        card_length = bin_details.get("length", "N/A")
-        luhn_check = bin_details.get("luhn", "N/A")
-        bank_phone = bin_details.get("bank_phone", "N/A")
-        bank_url = bin_details.get("bank_url", "N/A")
+            await update.message.reply_text(reply_text, parse_mode="Markdown")
+        except Exception as e:
+            await update.message.reply_text(f"❌ An error occurred: {e}")
 
-        # Escape for HTML
-        safe_card = html.escape(card_input)
-        safe_reason = html.escape(reason)
-        safe_brand = html.escape(brand)
-        safe_issuer = html.escape(issuer)
-        safe_country = html.escape(f"{country_name} {country_flag}".strip())
-        safe_user = html.escape(update.effective_user.first_name)
-
-        # Format message
-        formatted_msg = (
-            f"═══[ {status} ]═══\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{safe_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{safe_reason}</i>\n"
-            "――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{safe_brand}</code>\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{safe_issuer}</code>\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{safe_country}</code>\n"
-            "――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ <a href='tg://user?id={update.effective_user.id}'>{html.escape(update.effective_user.first_name)}</a>\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
-            "――――――――――――――――"
-        )
-
-        # Edit the "Processing..." message
-        await status_msg.edit_text(
-            formatted_msg, parse_mode="HTML", disable_web_page_preview=True
-        )
-
-    except Exception as e:
-        logger.error(f"B3 processing error: {e}")
-        await status_msg.edit_text(
-            f"❌ Error while processing: {html.escape(str(e))}",
-            parse_mode="HTML",
-            disable_web_page_preview=True,
-        )
-
+    # Run in background
+    asyncio.create_task(run_and_reply())
 
 
 # ===== /b3 COMMAND =====
