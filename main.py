@@ -3667,9 +3667,11 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 from telegram.ext import CommandHandler
 import aiohttp
 import asyncio
+import time
 import re
 import html
 import logging
+import io, sys
 
 from b3 import multi_checking  # your checker
 from bin import get_bin_info   # BIN logic
@@ -3686,10 +3688,6 @@ BULLET_GROUP_LINK = "https://t.me/CARDER33"
 bullet_text = "[⌇]"
 bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
-# ===== Cooldown dict =====
-user_cooldowns = {}
-COOLDOWN_SECONDS = 20
-
 # ===== Regex for Card Pattern =====
 CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
@@ -3697,70 +3695,88 @@ CARD_PATTERN = re.compile(r"\b(\d{12,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 GLOBAL_COOLDOWN_SECONDS = 20
 last_b3_time = 0  # timestamp of last usage
 
-# ===== Process B3 Function =====
+
+# ===== BIN DETAILS WRAPPER =====
+async def get_bin_details(bin_number: str) -> dict:
+    try:
+        return await get_bin_info(bin_number)
+    except Exception:
+        return {
+            "scheme": "N/A",
+            "bank": "N/A",
+            "country_name": "N/A",
+            "country_emoji": ""
+        }
+
+
+# ===== PROCESS B3 FUNCTION =====
 async def process_b3(update, context, card_input, status_msg):
-    global last_b3_time
+    try:
+        parts = card_input.split("|")
+        if len(parts) != 4:
+            await status_msg.edit_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
+            return
 
-    async def run_and_reply():
-        try:
-            parts = cc_input.split("|")
-            if len(parts) != 4:
-                await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
-                return
+        cc, mes, ano, cvv = parts
 
-            cc, mes, ano, cvv = parts
-            if len(ano) == 4:
-                ano = ano[-2:]
-            formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
+        # Validate month
+        if not mes.isdigit() or int(mes) < 1 or int(mes) > 12:
+            await status_msg.edit_text("❌ Invalid month.")
+            return
 
-            # Get BIN details
-            bin_number = cc[:6]
-            bin_details = await get_bin_details(bin_number)
-            brand = bin_details.get("scheme", "N/A")
-            issuer = bin_details.get("bank", "N/A")
-            country_name = bin_details.get("country_name", "N/A")
-            country_flag = bin_details.get("country_emoji", "")
+        # Normalize year
+        if len(ano) == 4:
+            ano = ano[-2:]
+        if not ano.isdigit():
+            await status_msg.edit_text("❌ Invalid year.")
+            return
 
-            # Capture printed output from multi_checking
-            import io, sys
-            buffer = io.StringIO()
-            sys.stdout = buffer
+        formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
 
-            await multi_checking(formatted_cc)
+        # Get BIN details
+        bin_number = cc[:6]
+        bin_details = await get_bin_details(bin_number)
+        brand = bin_details.get("scheme", "N/A")
+        issuer = bin_details.get("bank", "N/A")
+        country_name = bin_details.get("country_name", "N/A")
+        country_flag = bin_details.get("country_emoji", "")
 
-            sys.stdout = sys.__stdout__
-            output = buffer.getvalue().strip()
+        # Capture printed output from multi_checking
+        buffer = io.StringIO()
+        sys_stdout = sys.stdout
+        sys.stdout = buffer
 
-            # Determine status
-            if "Approved" in output or "New payment method" in output:
-                status = "Approved ✅"
-                output_text = "New payment method added"
-            else:
-                status = "Declined ❌"
-                output_text = output  # show full website response
+        await multi_checking(formatted_cc)
 
-            # Prepare reply
-            reply_text = (
-                f"═══[ status {status} ]═══\n"
-                f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
-                f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
-                f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output_text}\n"
-                "――――――――――――――――\n"
-                f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ `{brand}`\n"
-                f"[⌇] 𝐁𝐚𝐧𝐤 ➜ `{issuer}`\n"
-                f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{country_flag}` {country_name}\n"
-                "――――――――――――――――\n"
-                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
-                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
-                "――――――――――――――――"
-            )
+        sys.stdout = sys_stdout
+        output = buffer.getvalue().strip()
 
-            await update.message.reply_text(reply_text, parse_mode="Markdown")
-        except Exception as e:
-            await update.message.reply_text(f"❌ An error occurred: {e}")
+        # Determine status
+        if "Approved" in output or "New payment method" in output:
+            status = "Approved"
+            response_text = "New payment method added"
+        else:
+            status = "Declined"
+            response_text = output if output else "Declined"
 
-    # Run in background
-    asyncio.create_task(run_and_reply())
+        # Prepare reply
+        reply_text = (
+            f"═══[ Status: *{status}* ]═══\n"
+            f"{bullet_text} Card → `{formatted_cc}`\n"
+            f"{bullet_text} Gateway → Braintree\n"
+            f"{bullet_text} Response → _{response_text}_\n"
+            "――――――――――――――――\n"
+            f"{bullet_text} Brand → `{brand}`\n"
+            f"{bullet_text} Bank → `{issuer}`\n"
+            f"{bullet_text} Country → `{country_flag}` {country_name}\n"
+            "――――――――――――――――\n"
+            f"{bullet_text} Request By → {update.effective_user.full_name}\n"
+            f"{bullet_text} Developer → {DEVELOPER_NAME}"
+        )
+
+        await status_msg.edit_text(reply_text, parse_mode="Markdown")
+    except Exception as e:
+        await status_msg.edit_text(f"❌ An error occurred: {e}")
 
 
 # ===== /b3 COMMAND =====
@@ -3772,18 +3788,18 @@ async def b3_command(update, context):
     if now - last_b3_time < GLOBAL_COOLDOWN_SECONDS:
         remaining = round(GLOBAL_COOLDOWN_SECONDS - (now - last_b3_time), 1)
         await update.message.reply_text(
-            html.escape(f"⏳ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 {remaining}𝗦 𝗯𝗲𝗳𝗼𝗿𝗲 𝘂𝘀𝗶𝗻𝗴 /𝗯3 𝗮𝗴𝗮𝗶𝗻."),
-            parse_mode="HTML"
+            f"⏳ Please wait {remaining}s before using /b3 again.",
+            parse_mode="Markdown"
         )
         return
 
     card_input = None
 
-    # Command argument
+    # From command argument
     if context.args and len(context.args) > 0:
         card_input = context.args[0]
 
-    # Reply to message
+    # From reply message
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         match = CARD_PATTERN.search(update.message.reply_to_message.text)
         if match:
@@ -3792,8 +3808,8 @@ async def b3_command(update, context):
     # No card found
     if not card_input:
         await update.message.reply_text(
-            html.escape("🚫 Usage: /b3 card|mm|yy|cvv or reply to a message containing a card."),
-            parse_mode="HTML"
+            "🚫 Usage: /b3 card|mm|yy|cvv or reply to a message containing a card.",
+            parse_mode="Markdown"
         )
         return
 
@@ -3801,11 +3817,11 @@ async def b3_command(update, context):
 
     # Initial processing message
     status_msg = await update.message.reply_text(
-        "⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁...",
-        parse_mode="HTML"
+        "⏳ Processing your request...",
+        parse_mode="Markdown"
     )
 
-    # Run background processing with all required args
+    # Run background processing
     asyncio.create_task(process_b3(update, context, card_input, status_msg))
 
 
