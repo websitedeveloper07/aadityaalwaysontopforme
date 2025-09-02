@@ -3664,85 +3664,38 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
 
 
-import asyncio
-from datetime import datetime
+# bot.py
+from telegram.ext import CommandHandler
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
-from b3 import multi_checking
+from telegram.ext import ContextTypes
+import logging
 
-# Store the last usage time for cooldown
-last_b3_usage = {}
-COOLDOWN_SECONDS = 5
+from b3 import multi_checking  # your checker
+
+logger = logging.getLogger(__name__)
 
 async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    now = datetime.now()
-
-    # Check cooldown
-    if user_id in last_b3_usage:
-        elapsed = (now - last_b3_usage[user_id]).total_seconds()
-        if elapsed < COOLDOWN_SECONDS:
-            await update.message.reply_text(
-                f"⚠️ Please wait {COOLDOWN_SECONDS - int(elapsed)} seconds before using /b3 again."
-            )
+    try:
+        if not context.args:
+            await update.message.reply_text("❌ Usage: /b3 <cc|mm|yyyy|cvv>")
             return
 
-    # Update last usage
-    last_b3_usage[user_id] = now
+        card_data = " ".join(context.args)
 
-    # Extract CC info from command
-    if not context.args:
-        await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
-        return
+        # Show processing message
+        processing_msg = await update.message.reply_text("⏳ Checking...")
 
-    cc_input = " ".join(context.args).strip()
+        # Run your b3.py checker
+        result = await multi_checking(card_data)
 
-    async def run_and_reply():
-        try:
-            parts = cc_input.split("|")
-            if len(parts) != 4:
-                await update.message.reply_text("❌ Usage: /b3 cardnumber|mm|yy or yyyy|cvv")
-                return
+        # Edit with raw result from site
+        await processing_msg.edit_text(str(result))
 
-            cc, mes, ano, cvv = parts
-            if len(ano) == 4:
-                ano = ano[-2:]
-            formatted_cc = f"{cc}|{mes}|{ano}|{cvv}"
+    except Exception as e:
+        logger.error(f"/b3 error: {e}", exc_info=True)
+        await update.message.reply_text("⚠️ Error while processing.")
 
-            # Capture printed output from multi_checking
-            import io, sys
-            buffer = io.StringIO()
-            sys.stdout = buffer
 
-            await multi_checking(formatted_cc)
-
-            sys.stdout = sys.__stdout__
-            output = buffer.getvalue().strip()
-
-            # Determine status
-            status = "Approved ✅" if "Approved ✅" in output else "Declined ❌"
-
-            # Prepare response
-            reply_text = (
-                f"═══[ status {status} ]═══\n"
-                f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{formatted_cc}`\n"
-                f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ Braintree\n"
-                f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {output}\n"
-                "――――――――――――――――\n"
-                "[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ \n"
-                "[⌇] 𝐁𝐚𝐧𝐤 ➜ \n"
-                "[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ \n"
-                "――――――――――――――――\n"
-                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.full_name}\n"
-                "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
-                "――――――――――――――――"
-            )
-
-            await update.message.reply_text(reply_text, parse_mode="Markdown")
-        except Exception as e:
-            await update.message.reply_text(f"❌ An error occurred: {e}")
-
-    asyncio.create_task(run_and_reply())
 
 
 
