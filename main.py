@@ -3661,44 +3661,6 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
 
 
-
-
-
-# bot.py
-from telegram.ext import CommandHandler
-from telegram import Update
-from telegram.ext import ContextTypes
-import logging
-
-from b3 import multi_checking  # your checker
-
-logger = logging.getLogger(__name__)
-
-async def b3_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        if not context.args:
-            await update.message.reply_text("❌ Usage: /b3 <cc|mm|yyyy|cvv>")
-            return
-
-        card_data = " ".join(context.args)
-
-        # Show processing message
-        processing_msg = await update.message.reply_text("⏳ Checking...")
-
-        # Run your b3.py checker
-        result = await multi_checking(card_data)
-
-        # Edit with raw result from site
-        await processing_msg.edit_text(str(result))
-
-    except Exception as e:
-        logger.error(f"/b3 error: {e}", exc_info=True)
-        await update.message.reply_text("⚠️ Error while processing.")
-
-
-
-
-
 # --- Imports ---
 import aiohttp
 import asyncio
@@ -4588,7 +4550,6 @@ def main():
     application.add_handler(CommandHandler("bin", command_with_check(bin_lookup, "bin")) )
     application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
-    application.add_handler(CommandHandler("b3", b3_command))
     application.add_handler(CommandHandler("vbv", vbv))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
