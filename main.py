@@ -4010,6 +4010,186 @@ async def run_vbv_check(msg, update, card_data: str):
 
 
 
+import asyncio
+import aiohttp
+import html
+import re
+import time
+from datetime import datetime, timezone
+from telegram import Update
+from telegram.ext import ContextTypes
+from db import get_user, update_user
+
+# --- Constants ---
+COOLDOWN_SECONDS = 5
+MAX_CARDS = 10
+UPDATE_INTERVAL = 2
+user_last_command_time = {}  # cooldown tracking
+
+API_URL_TEMPLATE = "https://rocky-815m.onrender.com/gateway=bin?key=Payal&card="
+
+# --- Helper Functions ---
+async def has_active_paid_plan(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if not user_data:
+        return False
+    plan = str(user_data.get("plan", "Free"))
+    expiry = user_data.get("plan_expiry", "N/A")
+    if plan.lower() == "free":
+        return False
+    if expiry != "N/A":
+        try:
+            expiry_date = datetime.strptime(expiry, "%d-%m-%Y")
+            if expiry_date < datetime.now():
+                return False
+        except Exception:
+            return False
+    return True
+
+async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    user_id = update.effective_user.id
+    if user_id == OWNER_ID:
+        return True
+    if not await has_active_paid_plan(user_id):
+        await update.effective_message.reply_text(
+            "🚫 You need an *active paid plan* to use this command.\n💳 Or use for free in our group."
+        )
+        return False
+    return True
+
+async def consume_credit(user_id: int, amount: int = 1) -> bool:
+    try:
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("credits", 0) >= amount:
+            await update_user(user_id, credits=user_data["credits"] - amount)
+            return True
+    except Exception:
+        return False
+    return False
+
+def extract_cards_from_text(text: str) -> list[str]:
+    """Extract card-like strings from text: number|mm|yy(yy)|cvv"""
+    return re.findall(r'\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}', text)
+
+# --- VBV API check ---
+async def check_vbv_card(session: aiohttp.ClientSession, card: str):
+    """Check a single card using VBV API and return status string."""
+    try:
+        cc, mes, ano, cvv = card.split("|")
+    except ValueError:
+        return f"{card}\nStatus ➳ ❌ Invalid format", "error"
+
+    try:
+        async with session.get(API_URL_TEMPLATE + card, timeout=50) as resp:
+            if resp.status != 200:
+                return f"{card}\nStatus ➳ ❌ API Error ({resp.status})", "error"
+            data = await resp.json(content_type=None)
+    except Exception:
+        return f"{card}\nStatus ➳ ❌ API Error", "error"
+
+    response_text = data.get("response", "N/A")
+    check_mark = "✅" if "successful" in response_text.lower() else "❌"
+    return f"{card}\nStatus ➳ {response_text} {check_mark}", "approved" if check_mark=="✅" else "declined"
+
+# --- Mass VBV check ---
+async def run_mass_vbv(msg, cards, user_id):
+    total = len(cards)
+    counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
+    results = ["──────── ⸙ ─────────"] * total  # placeholders
+    start_time = time.time()
+
+    queue = asyncio.Queue()
+    semaphore = asyncio.Semaphore(3)
+
+    async with aiohttp.ClientSession() as session:
+        async def worker(idx, card):
+            async with semaphore:
+                result_text, status = await check_vbv_card(session, card)
+                counters["checked"] += 1
+                counters[status] = counters.get(status, 0) + 1
+                results[idx] = f"──────── ⸙ ─────────\n{result_text}"
+                await queue.put(True)
+
+        tasks = [asyncio.create_task(worker(i, c)) for i, c in enumerate(cards)]
+
+        while True:
+            try:
+                await asyncio.wait_for(queue.get(), timeout=UPDATE_INTERVAL)
+            except asyncio.TimeoutError:
+                pass  # just update every interval
+
+            elapsed = round(time.time() - start_time, 2)
+            header = (
+                f"✘ Total ↣ {total}\n"
+                f"✘ Checked ↣ {counters['checked']}\n"
+                f"\n✘ Time ↣ {elapsed}s\n\n"
+                f"𝗠𝗮𝘀𝐬 VBV 𝗖𝗵𝗲𝗰𝗸"
+            )
+
+            content = header + "\n" + "\n".join(results[:total])
+            try:
+                await msg.edit_text(content, parse_mode="HTML")
+            except Exception:
+                pass
+
+            if all(t.done() for t in tasks):
+                break
+
+        # Final update
+        elapsed = round(time.time() - start_time, 2)
+        header = (
+            f"✘ Total ↣ {total}\n"
+            f"✘ Checked ↣ {counters['checked']}\n"
+            f"\n✘ Time ↣ {elapsed}s\n\n"
+            f"𝗠𝗮𝘀𝐬 VBV 𝗖𝗵𝗲𝗰𝗸"
+        )
+        content = header + "\n" + "\n".join(results[:total])
+        await msg.edit_text(content, parse_mode="HTML")
+
+# --- /mvbv command ---
+async def mvbv_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    current_time = time.time()
+
+    if not await check_authorization(update, context):
+        return
+
+    # Cooldown
+    last_time = user_last_command_time.get(user_id, 0)
+    if current_time - last_time < COOLDOWN_SECONDS:
+        await update.message.reply_text(
+            f"⚠️ Wait {COOLDOWN_SECONDS - int(current_time - last_time)}s before using /mvbv again."
+        )
+        return
+    user_last_command_time[user_id] = current_time
+
+    # Consume credit
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You don’t have enough credits to use /mvbv.")
+        return
+
+    # Extract cards (from args or reply)
+    cards = []
+    if context.args:
+        cards = context.args[:MAX_CARDS]
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        cards = extract_cards_from_text(update.message.reply_to_message.text)[:MAX_CARDS]
+
+    if not cards:
+        await update.message.reply_text(
+            "❌ No cards found.\nUsage: <code>/mvbv card1|mm|yy|cvv ...</code>\nOr reply to a message containing cards.",
+            parse_mode="HTML"
+        )
+        return
+
+    # Send initial message
+    msg = await update.message.reply_text("⏳ <b>Processing your cards...</b>", parse_mode="HTML")
+
+    # Run mass VBV
+    asyncio.create_task(run_mass_vbv(msg, cards, user_id))
+
+
+
 import psutil
 import platform
 import socket
@@ -4710,6 +4890,7 @@ def main():
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
     application.add_handler(CommandHandler("b3", b3_command))
     application.add_handler(CommandHandler("vbv", vbv))
+    application.add_handler(CommandHandler("mvbv", mvbv))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
     application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
