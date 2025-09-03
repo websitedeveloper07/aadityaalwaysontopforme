@@ -4485,18 +4485,18 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 import os
 import logging
 from telegram.ext import (
-  ApplicationBuilder,
-  CommandHandler,
-  CallbackQueryHandler,
-  ContextTypes,
-  MessageHandler,
-  filters
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    MessageHandler,
+    filters
 )
 from db import init_db
 
 # 🛡️ Security
 AUTHORIZED_CHATS = set()  # Groups you manually authorize
-OWNER_ID = 8493360284    # Replace with your Telegram user ID
+OWNER_ID = 8493360284     # Replace with your Telegram user ID
 
 # 🔑 Bot token
 BOT_TOKEN = "8482235621:AAGoRfV7pFVAcXJxmSd0P4W2oKljXbJDv9s"
@@ -4508,69 +4508,72 @@ logger = logging.getLogger(__name__)
 
 # 🚫 Unauthorized firewall handler
 async def block_unauthorized(update, context: ContextTypes.DEFAULT_TYPE):
-  await update.message.reply_text(
-    "🚫 This group is not authorized to use this bot.\n\n"
-    "📩 Contact @K4linuxx to get access.\n"
-    "🔗 Official group: https://t.me/CARDER33"
-  )
+    await update.message.reply_text(
+        "🚫 This group is not authorized to use this bot.\n\n"
+        "📩 Contact @K4linuxx to get access.\n"
+        "🔗 Official group: https://t.me/CARDER33"
+    )
 
 
 # 🧠 Database init
 async def post_init(application):
-  await init_db()
-  logger.info("Database initialized")
+    await init_db()
+    logger.info("Database initialized")
 
 
-# 📌 Helper to register commands with dual prefix
-  application.add_handler(CommandHandler("close", command_with_check(close_command, "close")))
-  application.add_handler(CommandHandler("restart", command_with_check(restart_command, "restart")))
-  application.add_handler(CommandHandler("start", command_with_check(start, "start")))
-  application.add_handler(CommandHandler("cmds", command_with_check(cmds_command, "cmds")))
-  application.add_handler(CommandHandler("info", command_with_check(info, "info")))
-  application.add_handler(CommandHandler("credits", command_with_check(credits_command, "credits")))
-  application.add_handler(CommandHandler("chk", command_with_check(chk_command, "chk")))
-  application.add_handler(CommandHandler("mchk", command_with_check(mchk_command, "mchk")))
-  application.add_handler(CommandHandler("mass", command_with_check(mass_command, "mass")))
-  application.add_handler(CommandHandler("mtchk", command_with_check(mtchk, "mtchk")))
-  application.add_handler(CommandHandler("sh", command_with_check(sh_command, "sh")))
-  application.add_handler(CommandHandler("seturl", command_with_check(seturl, "seturl")))
-  application.add_handler(CommandHandler("remove", command_with_check(remove, "remove")))
-  application.add_handler(CommandHandler("sp", command_with_check(sp, "sp")))
-  application.add_handler(CommandHandler("site", command_with_check(site, "site")))
-  application.add_handler(CommandHandler("gen", command_with_check(gen, "gen")))
-  application.add_handler(CommandHandler("open", command_with_check(open_command, "open")))
-  application.add_handler(CommandHandler("adcr", command_with_check(adcr_command, "adcr")))
-  application.add_handler(CommandHandler("bin", command_with_check(bin_lookup, "bin")))
-  application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
-  application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
-  application.add_handler(CommandHandler("vbv", vbv))
-  application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
-  application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
-  application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
+# 🎯 MAIN ENTRY POINT
+def main():
+    # Build app
+    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
+    # 📌 Register Commands
+    application.add_handler(CommandHandler("close", command_with_check(close_command, "close")))
+    application.add_handler(CommandHandler("restart", command_with_check(restart_command, "restart")))
+    application.add_handler(CommandHandler("start", command_with_check(start, "start")))
+    application.add_handler(CommandHandler("cmds", command_with_check(cmds_command, "cmds")))
+    application.add_handler(CommandHandler("info", command_with_check(info, "info")))
+    application.add_handler(CommandHandler("credits", command_with_check(credits_command, "credits")))
+    application.add_handler(CommandHandler("chk", command_with_check(chk_command, "chk")))
+    application.add_handler(CommandHandler("mchk", command_with_check(mchk_command, "mchk")))
+    application.add_handler(CommandHandler("mass", command_with_check(mass_command, "mass")))
+    application.add_handler(CommandHandler("mtchk", command_with_check(mtchk, "mtchk")))
+    application.add_handler(CommandHandler("sh", command_with_check(sh_command, "sh")))
+    application.add_handler(CommandHandler("seturl", command_with_check(seturl, "seturl")))
+    application.add_handler(CommandHandler("remove", command_with_check(remove, "remove")))
+    application.add_handler(CommandHandler("sp", command_with_check(sp, "sp")))
+    application.add_handler(CommandHandler("site", command_with_check(site, "site")))
+    application.add_handler(CommandHandler("gen", command_with_check(gen, "gen")))
+    application.add_handler(CommandHandler("open", command_with_check(open_command, "open")))
+    application.add_handler(CommandHandler("adcr", command_with_check(adcr_command, "adcr")))
+    application.add_handler(CommandHandler("bin", command_with_check(bin_lookup, "bin")))
+    application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
+    application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
+    application.add_handler(CommandHandler("vbv", vbv))
+    application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
+    application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
+    application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
 
-  # 🔐 Admin Commands
-  owner_filter = filters.User(OWNER_ID)
-  application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
-  application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
-  application.add_handler(CommandHandler("give_premium", give_premium, filters=owner_filter))
-  application.add_handler(CommandHandler("give_plus", give_plus, filters=owner_filter))
-  application.add_handler(CommandHandler("give_custom", give_custom, filters=owner_filter))
-  application.add_handler(CommandHandler("take_plan", take_plan, filters=owner_filter))
-  application.add_handler(CommandHandler("au", auth_group, filters=owner_filter))
-  application.add_handler(CommandHandler("reset", reset_command))
-  application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
-  application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
+    # 🔐 Admin Commands
+    owner_filter = filters.User(OWNER_ID)
+    application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
+    application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
+    application.add_handler(CommandHandler("give_premium", give_premium, filters=owner_filter))
+    application.add_handler(CommandHandler("give_plus", give_plus, filters=owner_filter))
+    application.add_handler(CommandHandler("give_custom", give_custom, filters=owner_filter))
+    application.add_handler(CommandHandler("take_plan", take_plan, filters=owner_filter))
+    application.add_handler(CommandHandler("au", auth_group, filters=owner_filter))
+    application.add_handler(CommandHandler("reset", reset_command))
+    application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
+    application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-  # Callback & Error
-  application.add_handler(CallbackQueryHandler(handle_callback))
-  application.add_error_handler(error_handler)
+    # 📲 Callback & Error Handlers
+    application.add_handler(CallbackQueryHandler(handle_callback))
+    application.add_error_handler(error_handler)
 
-  # 🔁 Start polling
-  logger.info("Bot started and is polling for updates...")
-  application.run_polling()
+    # 🔁 Start polling
+    logger.info("Bot started and is polling for updates...")
+    application.run_polling()
 
 
 if __name__ == '__main__':
-  main()
-
+    main()
