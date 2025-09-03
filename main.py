@@ -4522,95 +4522,32 @@ async def post_init(application):
 
 
 # 📌 Helper to register commands with dual prefix
-def dual_command(command, handler):
-  return [
-    CommandHandler(command, handler),                           # /command
-    MessageHandler(filters.Regex(rf"^\.{command}\b"), handler)  # .command
-  ]
+  application.add_handler(CommandHandler("close", command_with_check(close_command, "close")))
+  application.add_handler(CommandHandler("restart", command_with_check(restart_command, "restart")))
+  application.add_handler(CommandHandler("start", command_with_check(start, "start")))
+  application.add_handler(CommandHandler("cmds", command_with_check(cmds_command, "cmds")))
+  application.add_handler(CommandHandler("info", command_with_check(info, "info")))
+  application.add_handler(CommandHandler("credits", command_with_check(credits_command, "credits")))
+  application.add_handler(CommandHandler("chk", command_with_check(chk_command, "chk")))
+  application.add_handler(CommandHandler("mchk", command_with_check(mchk_command, "mchk")))
+  application.add_handler(CommandHandler("mass", command_with_check(mass_command, "mass")))
+  application.add_handler(CommandHandler("mtchk", command_with_check(mtchk, "mtchk")))
+  application.add_handler(CommandHandler("sh", command_with_check(sh_command, "sh")))
+  application.add_handler(CommandHandler("seturl", command_with_check(seturl, "seturl")))
+  application.add_handler(CommandHandler("remove", command_with_check(remove, "remove")))
+  application.add_handler(CommandHandler("sp", command_with_check(sp, "sp")))
+  application.add_handler(CommandHandler("site", command_with_check(site, "site")))
+  application.add_handler(CommandHandler("gen", command_with_check(gen, "gen")))
+  application.add_handler(CommandHandler("open", command_with_check(open_command, "open")))
+  application.add_handler(CommandHandler("adcr", command_with_check(adcr_command, "adcr")))
+  application.add_handler(CommandHandler("bin", command_with_check(bin_lookup, "bin")))
+  application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
+  application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
+  application.add_handler(CommandHandler("vbv", vbv))
+  application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
+  application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
+  application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
 
-
-def main():
-  application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
-
-  # Group filter must align with other handlers (no extra space!)
-  application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=-1)
-
-  # ✨ Public Commands
-  for h in dual_command("close", command_with_check(close_command, "close")):
-    application.add_handler(h)
-
-  for h in dual_command("restart", command_with_check(restart_command, "restart")):
-    application.add_handler(h)
-
-  for h in dual_command("start", command_with_check(start, "start")):
-    application.add_handler(h)
-
-  for h in dual_command("cmds", command_with_check(cmds_command, "cmds")):
-    application.add_handler(h)
-
-  for h in dual_command("info", command_with_check(info, "info")):
-    application.add_handler(h)
-
-  for h in dual_command("credits", command_with_check(credits_command, "credits")):
-    application.add_handler(h)
-
-  for h in dual_command("chk", command_with_check(chk_command, "chk")):
-    application.add_handler(h)
-
-  for h in dual_command("mchk", command_with_check(mchk_command, "mchk")):
-    application.add_handler(h)
-
-  for h in dual_command("mass", command_with_check(mass_command, "mass")):
-    application.add_handler(h)
-
-  for h in dual_command("mtchk", command_with_check(mtchk, "mtchk")):
-    application.add_handler(h)
-
-  for h in dual_command("sh", command_with_check(sh_command, "sh")):
-    application.add_handler(h)
-
-  for h in dual_command("seturl", command_with_check(seturl, "seturl")):
-    application.add_handler(h)
-
-  for h in dual_command("remove", command_with_check(remove, "remove")):
-    application.add_handler(h)
-
-  for h in dual_command("sp", command_with_check(sp, "sp")):
-    application.add_handler(h)
-
-  for h in dual_command("site", command_with_check(site, "site")):
-    application.add_handler(h)
-
-  for h in dual_command("gen", command_with_check(gen, "gen")):
-    application.add_handler(h)
-
-  for h in dual_command("open", command_with_check(open_command, "open")):
-    application.add_handler(h)
-
-  for h in dual_command("adcr", command_with_check(adcr_command, "adcr")):
-    application.add_handler(h)
-
-  for h in dual_command("bin", command_with_check(bin_lookup, "bin")):
-    application.add_handler(h)
-
-  for h in dual_command("fk", command_with_check(fk_command, "fk")):
-    application.add_handler(h)
-
-  for h in dual_command("scr", command_with_check(scrap_command, "scr")):
-    application.add_handler(h)
-
-  # vbv was direct, so handle both /vbv and .vbv
-  for h in dual_command("vbv", vbv):
-    application.add_handler(h)
-
-  for h in dual_command("fl", command_with_check(fl_command, "fl")):
-    application.add_handler(h)
-
-  for h in dual_command("status", command_with_check(status_command, "status")):
-    application.add_handler(h)
-
-  for h in dual_command("redeem", command_with_check(redeem_command, "redeem")):
-    application.add_handler(h)
 
   # 🔐 Admin Commands
   owner_filter = filters.User(OWNER_ID)
