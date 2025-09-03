@@ -4529,7 +4529,7 @@ def main():
     application.add_handler(MessageHandler(filters.COMMAND, group_filter), group=-1)
 
     # ✨ Public Commands
- def dual_command(command, handler):
+def dual_command(command, handler):
     return CommandHandler([command, f".{command}"], handler)
 
     application.add_handler(dual_command("close", command_with_check(close_command, "close")))
