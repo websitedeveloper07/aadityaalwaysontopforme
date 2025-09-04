@@ -3089,7 +3089,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from html import escape
-from db import get_user, update_user   # make sure these are imported
+from db import get_user, update_user   # DB functions
 
 # Cooldown tracker
 last_site_usage = {}
@@ -3124,8 +3124,7 @@ async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
     last_site_usage[user_id] = now
 
     # === Credit check ===
-    has_credit = await consume_credit(user_id)
-    if not has_credit:
+    if not await consume_credit(user_id):
         await update.message.reply_text("❌ You don’t have enough credits to use this command.")
         return
 
@@ -3160,10 +3159,10 @@ async def run_site_check(site_url: str, msg, user):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=120) as resp:
-                api_text = await resp.text()
+                raw_text = await resp.text()
 
-        # --- Clean and parse API response ---
-        clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
+        # --- Extract JSON part if wrapped in HTML ---
+        clean_text = re.sub(r'<[^>]+>', '', raw_text).strip()
         json_start = clean_text.find('{')
         if json_start != -1:
             clean_text = clean_text[json_start:]
@@ -3172,22 +3171,23 @@ async def run_site_check(site_url: str, msg, user):
             data = json.loads(clean_text)
         except json.JSONDecodeError:
             await msg.edit_text(
-                f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
+                f"❌ Invalid API response:\n<pre>{escape(raw_text[:500])}</pre>",
                 parse_mode=ParseMode.HTML
             )
             return
 
-        # Extract fields
+        # --- Extract fields ---
+        response = data.get("Response", "Unknown")
+        gateway = data.get("Gateway", "Shopify")
         try:
             price_float = float(data.get("Price", 0))
         except (ValueError, TypeError):
             price_float = 0.0
 
         price = f"{price_float}$" if price_float else "0$"
-        gateway = data.get("Gateway") or "shopify_payments"
         status = "𝙒𝙤𝙧𝙠𝙞𝙣𝙜 ✅" if price_float > 0 else "𝘿𝙚𝙖𝙙 ❌"
 
-        # Format info
+        # --- Format info ---
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
@@ -3199,7 +3199,8 @@ async def run_site_check(site_url: str, msg, user):
             f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
             f"{bullet_link} 𝐒𝐢𝐭𝐞       ➜ <code>{escape(site_url)}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➜ {escape(gateway)}\n"
-            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➜ {price}💸\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{escape(response)}</i>\n"
+            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➜ {price} 💵\n"
             f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬      ➜ <b>{status}</b>\n\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
