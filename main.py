@@ -2750,13 +2750,17 @@ async def process_seturl(user, user_id, site_input, processing_msg):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
-                if resp.status != 200:
-                    await processing_msg.edit_text(
-                        f"❌ API error: HTTP {resp.status}",
-                        parse_mode=ParseMode.HTML
-                    )
-                    return
-                data = await resp.json()
+                raw_text = await resp.text()
+
+        # --- Parse JSON safely ---
+        try:
+            data = json.loads(raw_text)
+        except json.JSONDecodeError:
+            await processing_msg.edit_text(
+                f"❌ Invalid API response:\n<code>{escape(raw_text[:500])}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
 
         # --- Extract fields ---
         response = data.get("Response", "Unknown")
@@ -2809,6 +2813,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
