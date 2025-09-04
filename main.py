@@ -650,7 +650,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "  Example:\n"
         "  <code>/sh 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits.\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\– 𝑶𝒇𝒇 ❌"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\– 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
@@ -683,7 +683,7 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         "✨ First set your preferred Shopify site using `/seturl`\\.\n"
         "Then run `/sp` to automatically check cards on that site 🚀\n"
         "If you no longer want to𝗦𝘁𝗮𝘁𝘂𝘀 use a custom site, run `/remove`\\.\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑶𝒇𝒇 ❌"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
@@ -2788,7 +2788,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
             f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
             f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙉𝙤𝙧𝙢𝙖𝙡\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
-            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➜ {escape(price)} 💸\n"
+            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➜ {escape(price)}$ 💸\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
