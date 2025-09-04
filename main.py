@@ -2505,7 +2505,6 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# --- BIN Lookup ---
 # --- Background /sh processing ---
 import json
 import logging
@@ -2516,6 +2515,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from bin import get_bin_info  # <-- your custom BIN module
+from db import get_user, update_user  # credits system
 
 logger = logging.getLogger(__name__)
 
@@ -2567,13 +2567,13 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
             return
 
-        # --- Extract fields ---
+        # --- Extract fields from API ---
         response = data.get("Response", "Unknown")
         status = data.get("Status", "Unknown")
         price = data.get("Price", "N/A")
         gateway = data.get("Gateway", "Shopify")
 
-        # --- BIN lookup ---
+        # --- BIN lookup (your exact logic) ---
         try:
             bin_number = cc[:6]
             bin_details = await get_bin_info(bin_number)
@@ -2588,7 +2588,8 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             luhn_check = "✅" if bin_details.get("luhn", True) else "❌"
             bank_phone = bin_details.get("bank_phone", "N/A")
             bank_url = bin_details.get("bank_url", "N/A")
-        except Exception:
+        except Exception as e:
+            logger.warning(f"BIN lookup failed for {bin_number}: {e}")
             brand = issuer = country_name = country_flag = card_type = card_level = bank_phone = bank_url = "N/A"
             card_length = 16
             luhn_check = "N/A"
@@ -2615,7 +2616,6 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} <b>Card</b> ➜ <code>{escape(full_card)}</code>\n"
             f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway)}\n"
             f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
-            f"{bullet_link} <b>Status</b> ➜ {escape(status)}\n"
             f"{bullet_link} <b>Price</b> ➜ {escape(price)} 💵\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Brand</b> ➜ <code>{escape(brand)}</code>\n"
@@ -2623,7 +2623,6 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} <b>Country</b> ➜ <code>{escape(country_name)} {country_flag}</code>\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
-            f"{bullet_link} <b>Credits Left</b> ➜ {credits_left}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
@@ -2643,6 +2642,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
+
 
 
 
