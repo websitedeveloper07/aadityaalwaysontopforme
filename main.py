@@ -2563,7 +2563,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
-        processing_msg = await update.message.reply_text("⏳ Processing your request…")
+        processing_msg = await update.message.reply_text("⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁…")
 
         # --- Make API request ---
         async with aiohttp.ClientSession() as session:
@@ -2628,9 +2628,9 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         formatted_msg = (
             f"═══[ <b>SHOPIFY</b> ]═══\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{escape(full_card)}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway)}\n"
+            f"{bullet_link} <b>Gateway</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝟭𝟭$\n"
             f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
-            f"{bullet_link} <b>Price</b> ➜ {escape(price)} 💵\n"
+            f"{bullet_link} <b>Price</b> ➜ {escape(price)} 💸\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Brand</b> ➜ <code>{escape(brand)}</code>\n"
             f"{bullet_link} <b>Bank</b> ➜ <code>{escape(issuer)}</code>\n"
@@ -2786,9 +2786,9 @@ async def process_seturl(user, user_id, site_input, processing_msg):
         formatted_msg = (
             f"═══[ <b>{site_status}</b> ]═══\n"
             f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ {escape(gateway)}\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙉𝙤𝙧𝙢𝙖𝙡\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
-            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➜ {escape(price)} 💵\n"
+            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➜ {escape(price)} 💸\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
@@ -2935,7 +2935,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Send initial "Checking..." message
     msg = await update.message.reply_text(
-        f"⏳ Checking card: <code>{escape(card_input)}</code>...",
+        f"⏳ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 𝗰𝗮𝗿𝗱: <code>{escape(card_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
@@ -3013,15 +3013,15 @@ async def process_card_check(user, card_input, custom_url, msg):
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         formatted_msg = (
-            "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
+            "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ {escape(gateway)}\n"
             f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price} 💸\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {escape(response_text)}\n\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{escape(response_text)}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➜ <code>{country_flag} {country_name}</code>\n\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➜ <code>{country_flag} {country_name}</code>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
@@ -3042,6 +3042,7 @@ async def process_card_check(user, card_input, custom_url, msg):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
@@ -3166,7 +3167,7 @@ async def run_site_check(site_url: str, msg, user):
             f"{bullet_link} 𝐒𝐢𝐭𝐞       ➜ <code>{escape(site_url)}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➜ {escape(gateway)}\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{escape(response)}</i>\n"
-            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➜ {price} 💵\n"
+            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➜ {price} 💸\n"
             f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬      ➜ <b>{status}</b>\n\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
