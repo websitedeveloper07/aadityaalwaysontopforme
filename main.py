@@ -2520,6 +2520,20 @@ from db import get_user, update_user  # credits system
 logger = logging.getLogger(__name__)
 
 
+# --- Credit system helper ---
+async def consume_credit(user_id: int) -> bool:
+    try:
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("credits", 0) > 0:
+            new_credits = user_data["credits"] - 1
+            await update_user(user_id, credits=new_credits)
+            return True
+    except Exception as e:
+        logger.warning(f"[consume_credit] Error for {user_id}: {e}")
+    return False
+
+
+# --- Shopify Processor ---
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     try:
         user = update.effective_user
@@ -2573,26 +2587,26 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         price = data.get("Price", "N/A")
         gateway = data.get("Gateway", "Shopify")
 
-        # --- BIN lookup (your exact logic) ---
+        # --- BIN lookup (your exact logic, unchanged) ---
         try:
             bin_number = cc[:6]
             bin_details = await get_bin_info(bin_number)
 
             brand = (bin_details.get("scheme") or "N/A").title()
             issuer = bin_details.get("bank") or "N/A"
-            country_name = bin_details.get("country") or "N/A"
+            country_name = bin_details.get("country") or "Unknown"
             country_flag = bin_details.get("country_emoji", "")
             card_type = bin_details.get("type", "N/A")
-            card_level = bin_details.get("level", "N/A")
-            card_length = bin_details.get("length") or (15 if "amex" in brand.lower() else 16)
-            luhn_check = "✅" if bin_details.get("luhn", True) else "❌"
+            card_level = bin_details.get("brand", "N/A")
+            card_length = bin_details.get("length", "N/A")
+            luhn_check = bin_details.get("luhn", "N/A")
             bank_phone = bin_details.get("bank_phone", "N/A")
             bank_url = bin_details.get("bank_url", "N/A")
         except Exception as e:
             logger.warning(f"BIN lookup failed for {bin_number}: {e}")
-            brand = issuer = country_name = country_flag = card_type = card_level = bank_phone = bank_url = "N/A"
-            card_length = 16
-            luhn_check = "N/A"
+            brand = issuer = card_type = card_level = card_length = luhn_check = bank_phone = bank_url = "N/A"
+            country_name = "Unknown"
+            country_flag = ""
 
         # --- Fetch updated user credits ---
         updated_user = await get_user(user.id)
