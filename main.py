@@ -3211,7 +3211,7 @@ API_TEMPLATE = (
     "?site={site_url}&cc=5547300001996183|11|2028|197"
 )
 
-MSITE_CONCURRENCY = 3
+MSITE_CONCURRENCY = 5
 MSITE_COOLDOWN = 5
 last_msite_usage = {}
 
@@ -3384,10 +3384,10 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if len(sites) > 20:
         await update.message.reply_text(
-            f"⚠️ You can check a maximum of 20 sites at once.\nYou provided {len(sites)}.",
+            f"⚠️ You can check a maximum of 50 sites at once.\nYou provided {len(sites)}.",
             parse_mode=ParseMode.HTML,
         )
-        sites = sites[:20]
+        sites = sites[:50]
 
     # Initial message
     msg = await update.message.reply_text(
