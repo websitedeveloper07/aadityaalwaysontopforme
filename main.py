@@ -3444,7 +3444,8 @@ from db import get_user, update_user
 last_msp_usage = {}
 
 # Regex for full card format (captures full CC|MM|YY|CVV)
-CARD_REGEX = re.compile(r"(\d{13,19}\|\d{2}\|\d{2,4}\|\d{3,4})")
+CARD_REGEX = re.compile(r"\d{13,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+
 
 
 # Consume credit once
@@ -3495,7 +3496,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     # Extract cards
-    cards = CARD_REGEX.findall(raw_input)
+    cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
     if len(cards) > 50:
