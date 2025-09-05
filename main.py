@@ -4957,7 +4957,7 @@ def main():
     application.add_handler(CommandHandler("sh", command_with_check(sh_command, "sh")))
     application.add_handler(CommandHandler("seturl", command_with_check(seturl, "seturl")))
     application.add_handler(CommandHandler("mysites", command_with_check(mysites, "mysites")))
-    application.add_handler(CommandHandler("msp", msp))
+    application.add_handler(CommandHandler("msp", msp_start))
     application.add_handler(CommandHandler("sp", command_with_check(sp, "sp")))
     application.add_handler(CommandHandler("site", command_with_check(site, "site")))
     application.add_handler(CommandHandler("msite", command_with_check(msite_command, "msite")))
