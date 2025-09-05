@@ -2820,47 +2820,39 @@ async def process_seturl(user, user_id, site_input, processing_msg):
 
 
 
-
 from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from html import escape
 from db import get_user
 
 async def mysites(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler for /mysites command to show user's added sites."""
+    """Handler for /mysites - shows all sites added by the user."""
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
 
-    # --- Get list of sites ---
-    sites = user_data.get("custom_urls")  # list of URLs
-    # If using single custom_url, convert to list
+    sites = user_data.get("custom_url")
     if not sites:
-        single_site = user_data.get("custom_url")
-        sites = [single_site] if single_site else []
-
-    if not sites:
-        await update.message.reply_text(
-            "❌ 𝗬𝗼𝘂 𝗵𝗮𝘃𝗲 𝗻𝗼 𝗮𝗱𝗱𝗲𝗱 𝘀𝗶𝘁𝗲𝘀 yet.",
-            parse_mode=ParseMode.HTML
-        )
+        await update.message.reply_text("❌ You have not added any sites yet.\nUse /seturl <site_url> to add one.")
         return
 
-    # --- Format message ---
-    formatted_sites = ""
+    # If you later allow multiple sites, you can store them as a list
+    # For now, 'custom_url' is a single URL, so wrap in list
+    if isinstance(sites, str):
+        sites = [sites]
+
+    # Format message
+    formatted_sites = "📄 <b>Your Added Sites</b>\n"
+    formatted_sites += "━━━━━━━━━━━━━━━━━━\n"
     for i, site in enumerate(sites, start=1):
         formatted_sites += f"🔹 <b>Site {i}</b>: <code>{escape(site)}</code>\n"
-
-    message_text = (
-        "📌 𝗬𝗼𝘂𝗿 𝗔𝗱𝗱𝗲𝗱 𝗦𝗶𝘁𝗲𝘀:\n\n"
-        f"{formatted_sites}"
-        "\nℹ️ Use /seturl <url> to add a new site."
-    )
+    formatted_sites += "━━━━━━━━━━━━━━━━━━"
 
     await update.message.reply_text(
-        message_text,
-        parse_mode=ParseMode.HTML
+        formatted_sites,
+        parse_mode="HTML",
+        disable_web_page_preview=True
     )
+
 
 
 
