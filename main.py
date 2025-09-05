@@ -4010,6 +4010,54 @@ async def run_vbv_check(msg, update, card_data: str):
     await msg.edit_text(text, parse_mode="HTML", disable_web_page_preview=True)
 
 
+from telegram import Update
+from telegram.ext import ContextTypes
+import aiohttp
+import json
+
+NUM_API = "https://e1e63696f2d5.ngrok-free.app/index.cpp?key=dark&number={number}"
+
+async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Validate input
+    if len(context.args) != 1 or not context.args[0].isdigit() or len(context.args[0]) != 10:
+        await update.message.reply_text("❌ Usage: /num [10-digit number]")
+        return
+
+    number = context.args[0]
+    await update.message.reply_text(f"🔎 Checking number: <code>{number}</code>", parse_mode="HTML")
+
+    try:
+        # Fetch data from API
+        async with aiohttp.ClientSession() as session:
+            async with session.get(NUM_API.format(number=number), timeout=30) as resp:
+                text = await resp.text()
+                data = json.loads(text)
+
+        entries = data.get("data", [])
+        if not entries:
+            await update.message.reply_text("❌ No data found for this number.")
+            return
+
+        # Format each entry with all values in monospace
+        msg_lines = []
+        for idx, item in enumerate(entries, 1):
+            msg_lines.append(
+                f"📌 Entry {idx}:\n"
+                f"   👤 Name    : <code>{item.get('name', 'N/A')}</code>\n"
+                f"   🏷️ FName   : <code>{item.get('fname', 'N/A')}</code>\n"
+                f"   📍 Address : <code>{item.get('address', 'N/A')}</code>\n"
+                f"   🌐 Circle  : <code>{item.get('circle', 'N/A')}</code>\n"
+                f"   📱 Mobile  : <code>{item.get('mobile', 'N/A')}</code>\n"
+                f"   🆔 ID      : <code>{item.get('id', 'N/A')}</code>\n"
+            )
+
+        msg_content = "\n".join(msg_lines)
+
+        # Send result in monospace block
+        await update.message.reply_text(f"<pre>{msg_content}</pre>", parse_mode="HTML")
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error fetching data: {str(e)}")
 
 
 
@@ -4712,6 +4760,7 @@ def main():
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
     application.add_handler(CommandHandler("vbv", vbv))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
+    application.add_handler(CommandHandler("num", num_command))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
     application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
 
