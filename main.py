@@ -4032,7 +4032,7 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Validate input
     if len(context.args) != 1 or not context.args[0].isdigit() or len(context.args[0]) != 10:
-        await update.message.reply_text("❌ Usage: /num <code>[10-digit number]</code>")
+        await update.message.reply_text("❌ Usage: /num <code>10-digit number</code>")
         return
 
     number = context.args[0]
@@ -4043,10 +4043,14 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ You need at least 5 credits to use this command.")
         return
 
-    await update.message.reply_text(f"🔎 𝑪𝒉𝒆𝒄𝒌𝒊𝒏𝒈 𝒏𝒖𝒎𝒃𝒆𝒓: <code>{number}</code>", parse_mode="HTML")
+    # Send initial "Checking number" message
+    msg = await update.message.reply_text(
+        f"🔎 𝐂𝐡𝐞𝐜𝐤𝐢𝐧𝐠 𝐧𝐮𝐦𝐛𝐞𝐫: <code>{number}</code>",
+        parse_mode="HTML"
+    )
 
     try:
-        # Fetch data from API in background
+        # Fetch data from API
         async with aiohttp.ClientSession() as session:
             async with session.get(NUM_API.format(number=number), timeout=30) as resp:
                 text = await resp.text()
@@ -4054,16 +4058,16 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         entries = data.get("data", [])
         if not entries:
-            await update.message.reply_text("❌ No data found for this number.")
+            await msg.edit_text("❌ No data found for this number.")
             return
 
-        # Consume 5 credits after successful result
+        # Consume 5 credits after successful fetch
         await consume_credit(user_id, amount=5)
 
-        # Header
+        # Build message content
         msg_lines = [
             "✦━━━━━━━━━━━━━━✦",
-            "     ⚡ 𝑪𝑨𝑹𝑫 ✘ 𝑪𝑯𝑲",
+            "     ⚡ 𝑪𝑨𝑹𝐃 ✘ 𝑪𝑯𝑲",
             "✦━━━━━━━━━━━━━━✦\n"
         ]
 
@@ -4077,15 +4081,12 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg_lines.append(f"   📱 𝐌𝐨𝐛𝐢𝐥𝐞  : <code>{item.get('mobile', 'N/A')}</code>")
             msg_lines.append(f"   🆔 𝐈𝐃      : <code>{item.get('id', 'N/A')}</code>\n")
 
+        # Edit the original "Checking" message with full data
         msg_content = "\n".join(msg_lines)
-        await update.message.reply_text(msg_content, parse_mode="HTML", disable_web_page_preview=True)
+        await msg.edit_text(msg_content, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception as e:
-        await update.message.reply_text(f"❌ Error fetching data: {str(e)}")
-
-
-
-
+        await msg.edit_text(f"❌ Error fetching data: {str(e)}")
 
 
 
