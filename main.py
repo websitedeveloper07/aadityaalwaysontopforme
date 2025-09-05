@@ -3226,12 +3226,14 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
+# --- API worker ---
 async def fetch_site(session, site_url: str):
     api_url = API_TEMPLATE.format(site_url=site_url)
     try:
         async with session.get(api_url, timeout=60) as resp:
             raw_text = await resp.text()
 
+        # Clean HTML junk
         clean_text = re.sub(r"<[^>]+>", "", raw_text).strip()
         json_start = clean_text.find("{")
         if json_start != -1:
@@ -3264,18 +3266,19 @@ async def fetch_site(session, site_url: str):
         }
 
 
+# --- Mass Site Checker ---
 async def run_msite_check(sites: list[str], msg):
     total = len(sites)
-    results = []
+    results = [None] * total
     counters = {"checked": 0, "working": 0, "dead": 0, "amt": 0.0}
 
     semaphore = asyncio.Semaphore(MSITE_CONCURRENCY)
 
     async with aiohttp.ClientSession() as session:
-        async def worker(site):
+        async def worker(idx, site):
             async with semaphore:
                 res = await fetch_site(session, site)
-                results.append(res)
+                results[idx] = res
                 counters["checked"] += 1
                 if res["status"] == "working":
                     counters["working"] += 1
@@ -3283,29 +3286,35 @@ async def run_msite_check(sites: list[str], msg):
                 else:
                     counters["dead"] += 1
 
-                # Format summary block
+                # --- Format summary (inside <pre><code>) ---
                 summary = (
-                    "```"
-                    f"📊 Mass Site Checker Report\n"
+                    "<pre><code>"
+                    f"📊 𝑴𝒂𝒔𝒔 𝑺𝒊𝒕𝒆 𝑪𝒉𝒆𝒄𝒌𝒆𝒓 \n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 Total Sites : {total}\n"
-                    f"✅ Working     : {counters['working']}\n"
-                    f"❌ Dead        : {counters['dead']}\n"
-                    f"🔄 Checked     : {counters['checked']} / {total}\n"
-                    f"💲 Total Amt   : ${counters['amt']:.1f}\n"
+                    f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑺𝒊𝒕𝒆𝒔 : {total}\n"
+                    f"✅ 𝑾𝒐𝒓𝒌𝒊𝒏𝒈     : {counters['working']}\n"
+                    f"❌ 𝑫𝒆𝒂𝒅        : {counters['dead']}\n"
+                    f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {counters['checked']} / {total}\n"
+                    f"💲 𝑻𝒐𝒕𝒂𝒍 𝑨𝒎𝒕   : ${counters['amt']:.1f}\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    "```"
+                    "</code></pre>"
                 )
 
-                # Format site details
+                # --- Format site details ---
                 site_lines = []
                 for r in results:
+                    if not r:
+                        continue
                     site_lines.append(
                         f"<code>{escape(r['site'])}</code>\n   ↳ ${r['price']:.1f}"
                     )
                 details = "\n".join(site_lines)
 
-                content = f"{summary}\n\n📝 <b>Site Details</b>\n────────────────\n{details}\n────────────────"
+                content = (
+                    f"{summary}\n\n"
+                    f"📝 <b>𝑺𝒊𝒕𝒆 𝑫𝒆𝒕𝒂𝒊𝒍𝒔</b>\n"
+                    f"────────────────\n{details}\n────────────────"
+                )
 
                 try:
                     await msg.edit_text(
@@ -3316,9 +3325,9 @@ async def run_msite_check(sites: list[str], msg):
                 except TelegramError:
                     pass
 
-        tasks = [asyncio.create_task(worker(s)) for s in sites]
+        # Launch workers
+        tasks = [asyncio.create_task(worker(i, s)) for i, s in enumerate(sites)]
         await asyncio.gather(*tasks)
-
 
 
 # --- /msite command handler ---
@@ -3363,13 +3372,14 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Initial message
     msg = await update.message.reply_text(
-        f"⏳ Checking {len(sites)} sites...",
+        f"⏳ 𝐂𝐡𝐞𝐜𝐤𝐢𝐧𝐠 {len(sites)} 𝐒𝐢𝐭𝐞𝐬...",
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True,
     )
 
     # Run in background
     asyncio.create_task(run_msite_check(sites, msg))
+
 
 
 
