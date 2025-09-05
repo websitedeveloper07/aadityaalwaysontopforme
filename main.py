@@ -3382,12 +3382,12 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    if len(sites) > 50:
+    if len(sites) > 100:
         await update.message.reply_text(
-            f"⚠️ You can check a maximum of 50 sites at once.\nYou provided {len(sites)}.",
+            f"⚠️ You can check a maximum of 100 sites at once.\nYou provided {len(sites)}.",
             parse_mode=ParseMode.HTML,
         )
-        sites = sites[:50]
+        sites = sites[:100]
 
     # Initial message
     msg = await update.message.reply_text(
