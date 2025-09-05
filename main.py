@@ -4038,7 +4038,7 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ No data found for this number.")
             return
 
-        # Format each entry with all values in monospace
+        # Format each entry with values in monospace
         msg_lines = []
         for idx, item in enumerate(entries, 1):
             msg_lines.append(
@@ -4053,11 +4053,12 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         msg_content = "\n".join(msg_lines)
 
-        # Send result in monospace block
-        await update.message.reply_text(f"<pre>{msg_content}</pre>", parse_mode="HTML")
+        # Send result without wrapping the whole thing in a code block
+        await update.message.reply_text(msg_content, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching data: {str(e)}")
+
 
 
 
