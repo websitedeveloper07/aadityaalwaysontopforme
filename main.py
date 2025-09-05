@@ -3227,8 +3227,18 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # --- API worker ---
+def normalize_site(site: str) -> str:
+    site = site.strip()
+    if not site.startswith("http://") and not site.startswith("https://"):
+        site = "https://" + site
+    return site
+
+
 async def fetch_site(session, site_url: str):
-    api_url = API_TEMPLATE.format(site_url=site_url)
+    # normalize before calling API
+    normalized_url = normalize_site(site_url)
+    api_url = API_TEMPLATE.format(site_url=normalized_url)
+
     try:
         async with session.get(api_url, timeout=60) as resp:
             raw_text = await resp.text()
@@ -3249,7 +3259,7 @@ async def fetch_site(session, site_url: str):
             price_float = 0.0
 
         return {
-            "site": site_url,
+            "site": normalized_url,   # show normalized version
             "price": price_float,
             "status": "working" if price_float > 0 else "dead",
             "response": response,
@@ -3258,7 +3268,7 @@ async def fetch_site(session, site_url: str):
 
     except Exception as e:
         return {
-            "site": site_url,
+            "site": site_url,  # keep original here for debugging
             "price": 0.0,
             "status": "dead",
             "response": f"Error: {str(e)}",
@@ -3306,7 +3316,7 @@ async def run_msite_check(sites: list[str], msg):
                     if not r:
                         continue
                     site_lines.append(
-                        f"<code>{escape(r['site'])}</code>\n   ↳ ${r['price']:.1f}"
+                        f"<code>{escape(r['site'])}</code>\n   ↳ 💲{r['price']:.1f}"
                     )
                 details = "\n".join(site_lines)
 
