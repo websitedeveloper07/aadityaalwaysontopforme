@@ -3435,7 +3435,7 @@ import asyncio
 import time
 import httpx
 from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes
+from telegram.ext import ContextTypes
 from html import escape
 from db import get_user, update_user
 
@@ -3450,6 +3450,7 @@ async def consume_credit(user_id: int) -> bool:
         await update_user(user_id, credits=new_credits)
         return True
     return False
+
 
 # Shopify check request
 async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card: str):
@@ -3466,6 +3467,22 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         return resp, status, price, gateway
     except Exception as e:
         return f"Error: {e}", "false", "0", "N/A"
+
+
+# Response classification
+def classify_response(resp: str, status: str):
+    resp_upper = resp.upper().strip()
+
+    if resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED", "EXPIRED_CARD", "EXPIRE_CARD"]:
+        return "❌", "declined"
+    elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS", "INSUFFICIENT_FUNDS"]:
+        return "✅", "approved"
+    elif "ERROR" in resp_upper:
+        return "⚠️", "error"
+    elif status.lower() == "true":
+        return "✅", "approved"
+    else:
+        return "⚠️", "error"
 
 
 # /msp command
@@ -3489,9 +3506,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
     if not user_data:
         return await update.message.reply_text("❌ No user data found in DB.")
-
-    if not await consume_credit(user_id):
-        return await update.message.reply_text("❌ You have no credits left.")
 
     base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
     site = user_data.get("custom_url")
@@ -3520,8 +3534,16 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 nonlocal approved, declined, errors, checked, total_price, gateway_used, results
 
                 async with sem:
+                    # Consume credit before each card
+                    if not await consume_credit(user_id):
+                        line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>No credits left</i>"
+                        results.append(line)
+                        errors += 1
+                        return
+
                     resp, status, price, gateway = await check_card(session, base_url, site, card)
 
+                    # Price & gateway tracking
                     try:
                         total_price += float(price)
                     except:
@@ -3529,30 +3551,20 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if gateway and gateway != "N/A":
                         gateway_used = gateway
 
-                    resp_upper = resp.upper().strip()
-
-                    # Classification
-                    if resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED"]:
+                    symbol, category = classify_response(resp, status)
+                    if category == "approved":
+                        approved += 1
+                    elif category == "declined":
                         declined += 1
-                        line = f"❌ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
-                    elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS"]:
-                        approved += 1
-                        line = f"✅ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
-                    elif status.lower() == "true" and resp_upper not in ["CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
-                        approved += 1
-                        line = f"✅ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
-                    elif "ERROR" in resp_upper:
-                        errors += 1
-                        line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
                     else:
                         errors += 1
-                        line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
 
+                    line = f"{symbol} <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
                     results.append(line)
                     checked += 1
 
                     # Progressive update
-                    text = (
+                    summary = (
                         "<pre><code>"
                         f"📊 Mass Shopify Checker\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -3561,13 +3573,11 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"❌ Declined    : {declined}\n"
                         f"⚠️ Error       : {errors}\n"
                         f"🔄 Checked     : {checked} / {len(cards)}\n"
-                        f"💲 Site Price  : ${price}\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"📝 Results\n"
-                        f"────────────────\n"
-                        + "\n".join(results) +
-                        "</code></pre>"
+                        f"💲 Total Amt   : ${total_price:.2f}\n"
+                        f"🏬 Gateway     : {gateway_used}\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━</code></pre>"
                     )
+                    text = summary + "\n\n📝 Results\n────────────────\n" + "\n".join(results)
                     try:
                         await msg.edit_text(text, parse_mode="HTML")
                     except:
@@ -3575,7 +3585,8 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await asyncio.gather(*(worker(c) for c in cards))
 
-        final_text = (
+        # Final output
+        final_summary = (
             "<pre><code>"
             f"📊 Mass Shopify Checker\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -3586,12 +3597,9 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🔄 Checked     : {checked} / {len(cards)}\n"
             f"💲 Total Amt   : ${total_price:.2f}\n"
             f"🏬 Gateway     : {gateway_used}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📝 Results\n"
-            f"────────────────\n"
-            + "\n".join(results) +
-            "</code></pre>"
+            f"━━━━━━━━━━━━━━━━━━━━━━━</code></pre>"
         )
+        final_text = final_summary + "\n\n📝 Results\n────────────────\n" + "\n".join(results)
         await msg.edit_text(final_text, parse_mode="HTML")
 
     # Run in background
