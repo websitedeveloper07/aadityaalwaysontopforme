@@ -3555,25 +3555,26 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # Classification
                     if "R4 TOKEN EMPTY" in resp_upper:
                         errors += 1
-                        line = f"⚠️ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        status_icon = "⚠️"
                     elif resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED", "EXPIRE_CARD", "EXPIRED_CARD"]:
                         declined += 1
-                        line = f"❌ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        status_icon = "❌"
                     elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS", "INSUFFICIENT_FUNDS"]:
                         approved += 1
-                        line = f"✅ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        status_icon = "✅"
                     elif status.lower() == "true" and resp_upper not in ["CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
                         approved += 1
-                        line = f"✅ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        status_icon = "✅"
                     else:
                         errors += 1
-                        line = f"⚠️ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        status_icon = "⚠️"
 
-                    results.append(line)
                     checked += 1
+                    # Store individual card result (response in italic)
+                    results.append(f"{status_icon} {escape(str(card))}\n   ↳ <i>{escape(resp)}</i>")
 
-                    # Progressive update
-                    text = (
+                    # Progressive summary update
+                    summary_text = (
                         "<pre><code>"
                         f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -3583,39 +3584,18 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"⚠️ 𝑬𝒓𝒓𝒐𝒓       : {errors}\n"
                         f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {checked} / {len(cards)}\n"
                         f"💲 𝑺𝒊𝒕𝒆 𝑷𝒓𝒊𝒄𝒆  : ${site_price if site_price else '0.00'}\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"#𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚𝒄𝒉𝒆𝒄𝒌𝒔\n"
-                        f"────────────────\n"
-                        + "\n".join(results) +
+                        f"🏬 𝑮𝒂𝒕𝒆𝒘𝒂𝒚     : {gateway_used}\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                         "</code></pre>"
                     )
+                    final_text = summary_text + "\n".join(results)
                     try:
-                        await msg.edit_text(text, parse_mode="HTML")
+                        await msg.edit_text(final_text, parse_mode="HTML")
                     except:
                         pass
 
             # Run all workers
             await asyncio.gather(*(worker(c, first=(i == 0)) for i, c in enumerate(cards)))
-
-        # Final output
-        final_text = (
-            "<pre><code>"
-            f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 : {len(cards)}\n"
-            f"✅ 𝑨𝒑𝒑𝒓𝒐𝒗𝒆𝒅    : {approved}\n"
-            f"❌ 𝑫𝒆𝒄𝒍𝒊𝒏𝒆𝒅    : {declined}\n"
-            f"⚠️ 𝑬𝒓𝒓𝒐𝒓       : {errors}\n"
-            f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {checked} / {len(cards)}\n"
-            f"💲 𝑺𝒊𝒕𝒆 𝑷𝒓𝒊𝒄𝒆  : ${site_price if site_price else '0.00'}\n"
-            f"🏬 𝑮𝒂𝒕𝒆𝒘𝒂𝒚     : {gateway_used}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"#𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚𝒄𝒉𝒆𝒄𝒌𝒔\n"
-            f"────────────────\n"
-            + "\n".join(results) +
-            "</code></pre>"
-        )
-        await msg.edit_text(final_text, parse_mode="HTML")
 
     # Run in background
     asyncio.create_task(run_check())
