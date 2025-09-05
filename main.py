@@ -3583,7 +3583,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🏬 𝑮𝐚𝐭𝐞𝐰𝐚𝐲     : #𝑺𝒆𝒍𝒇 𝑺𝒉𝒐𝒑𝒊𝒇𝒚\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                 "</code></pre>\n"
-                f"━━━━━━━━━━━━━\n\n"
+                
                 f"#𝑨𝒖𝒕𝒐𝒔𝐡𝐨𝐩𝐢𝐟𝐲𝒄𝐡𝐞𝐜𝐤𝒔\n"
                 f"────────────────\n"
             )
@@ -3593,7 +3593,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await msg.edit_text(final_text, parse_mode="HTML")
             except:
                 pass
-            await asyncio.sleep(0.5)  # small delay to avoid flood
+            await asyncio.sleep(0.3)  # small delay to avoid flood
 
 
 
