@@ -3443,10 +3443,10 @@ from db import get_user, update_user
 # Cooldown tracking
 last_msp_usage = {}
 
-# Correct regex for full card|mm|yy|cvv (12-19 digits)
-CARD_REGEX = re.compile(r"\b\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}\b")
+# Regex for full card|mm|yy|cvv
+CARD_REGEX = re.compile(r"\b\d{12,19}\|\d{2}\|(?:\d{2}|\d{4})\|\d{3,4}\b")
 
-# Consume one credit
+# Consume credit once
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -3473,15 +3473,14 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
 
-    # Cooldown 5s
+    # Cooldown 5 seconds
     if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
         return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
     last_msp_usage[user_id] = now
 
-    # Get raw input
+    # Get input from args or reply
     raw_input = " ".join(context.args) if context.args else \
                 (update.message.reply_to_message.text if update.message.reply_to_message else None)
-
     if not raw_input:
         return await update.message.reply_text(
             "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
@@ -3496,6 +3495,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(cards) > 50:
         cards = cards[:50]
 
+    # DB fetch
     user_data = await get_user(user_id)
     if not user_data:
         return await update.message.reply_text("❌ No user data found in DB.")
@@ -3515,27 +3515,21 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     gateway_used = "Self Shopify"
     results = []
 
-    async with httpx.AsyncClient() as session:
+    async with httpx.AsyncClient() as session:  # single client for all cards
 
         async def worker(card, first=False):
             nonlocal approved, declined, errors, checked, site_price, gateway_used, results
 
             async with sem:
-                card_str = str(card).replace(" ", "")  # always string
+                card_str = str(card).replace(" ", "")  # ensure string
+
                 resp, status, price, gateway = await check_card(session, base_url, site, card_str)
 
-                # Convert resp safely
-                if isinstance(resp, (tuple, list)):
-                    resp = " | ".join(map(str, resp))
-                else:
-                    resp = str(resp)
+                resp = " | ".join(map(str, resp)) if isinstance(resp, (tuple, list)) else str(resp)
 
-                # Get site price once
                 if first and site_price is None:
-                    try:
-                        site_price = float(price)
-                    except:
-                        site_price = 0.0
+                    try: site_price = float(price)
+                    except: site_price = 0.0
 
                 if gateway and gateway != "N/A":
                     gateway_used = gateway
@@ -3562,14 +3556,14 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 checked += 1
                 results.append(f"{icon} <code>{escape(card_str)}</code>\n   ↳ <i>{escape(resp)}</i>")
 
-                # Update progressive summary
+                # Progressive summary
                 summary = (
                     "<pre><code>"
                     f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝐝𝐬 : {len(cards)}\n"
-                    f"✅ 𝑨𝒑𝒑𝐫𝐨𝐯𝐞𝐝    : {approved}\n"
-                    f"❌ 𝑫𝒆𝒄𝐥𝐢𝐧𝐞𝐝    : {declined}\n"
+                    f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑪𝐚𝐫𝐝𝐬 : {len(cards)}\n"
+                    f"✅ 𝑨𝒑𝐩𝐫𝐨𝐯𝐞𝐝    : {approved}\n"
+                    f"❌ 𝑫𝐞𝒄𝐥𝐢𝐧𝐞𝐝    : {declined}\n"
                     f"⚠️ 𝑬𝒓𝐫𝐨𝐫       : {errors}\n"
                     f"🔄 𝑪𝐡𝐞𝐜𝐤𝐞𝐝     : {checked}/{len(cards)}\n"
                     f"💲 𝑺𝐢𝐭𝐞 𝑷𝐫𝐢𝐜𝐞  : ${site_price if site_price else '0.00'}\n"
@@ -3577,14 +3571,14 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                     "</code></pre>\n"
                 )
+
                 try:
                     await msg.edit_text(summary + "\n".join(results), parse_mode="HTML")
                 except:
                     pass
 
-        # Run workers concurrently
+        # Run all workers concurrently
         await asyncio.gather(*(worker(c, first=(i == 0)) for i, c in enumerate(cards)))
-
 
 
 
