@@ -3475,14 +3475,16 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
 
-    # Cooldown 5 seconds
+    # Cooldown 5s
     if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
         return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
     last_msp_usage[user_id] = now
 
-    # Collect cards from args or replied message
-    raw_input = " ".join(context.args) if context.args else None
-    if not raw_input and update.message.reply_to_message:
+    # Collect cards either from args or replied message
+    raw_input = None
+    if context.args:
+        raw_input = " ".join(context.args)
+    elif update.message.reply_to_message:
         raw_input = update.message.reply_to_message.text
 
     if not raw_input:
@@ -3492,7 +3494,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML"
         )
 
-    # Extract valid cards
+    # Extract cards
     cards = CARD_REGEX.findall(raw_input)
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
@@ -3503,6 +3505,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
     if not user_data:
         return await update.message.reply_text("❌ No user data found in DB.")
+
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.")
 
@@ -3514,22 +3517,27 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text("💳 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤…")
 
     sem = asyncio.Semaphore(3)
-    approved = declined = errors = checked = 0
+    approved, declined, errors = 0, 0, 0
+    checked = 0
     site_price = None
     gateway_used = "Self Shopify"
     results = []
 
     async with httpx.AsyncClient() as session:
+
         async def worker(card, first=False):
             nonlocal approved, declined, errors, checked, site_price, gateway_used, results
 
             async with sem:
-                # Ensure card is a string without spaces
-                card_str = str(card).replace(" ", "")
+                # ensure card string
+                card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
+                card_str = card_str.replace(" ", "")
 
                 resp, status, price, gateway = await check_card(session, base_url, site, card_str)
-                resp = str(resp) if not isinstance(resp, str) else resp
 
+                resp = str(resp)
+
+                # Set site price once
                 if first and site_price is None:
                     try:
                         site_price = float(price)
@@ -3560,21 +3568,23 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 checked += 1
 
-                # Monospace card + italic response
-                results.append(f"{status_icon} <code>{escape(card_str)}</code>\n   ↳ <i>{escape(resp)}</i>")
+                # Show full card
+                results.append(
+                    f"{status_icon} <code>{escape(card_str)}</code>\n ↳ <i>{escape(resp)}</i>"
+                )
 
-                # Progressive summary
+                # Update summary
                 summary_text = (
                     "<pre><code>"
                     f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝐫𝐝𝒔 : {len(cards)}\n"
-                    f"✅ 𝑨𝒑𝐩𝐫𝐨𝐯𝐞𝐝    : {approved}\n"
-                    f"❌ 𝑫𝐞𝒄𝐥𝐢𝐧𝐞𝐝    : {declined}\n"
-                    f"⚠️ 𝑬𝒓𝐫𝐨𝐫       : {errors}\n"
-                    f"🔄 𝑪𝐡𝐞𝐜𝐤𝐞𝐝     : {checked} / {len(cards)}\n"
-                    f"💲 𝑺𝐢𝒕𝐞 𝑷𝐫𝐢𝐜𝐞  : ${site_price if site_price else '0.00'}\n"
-                    f"🏬 𝑮𝐚𝐭𝐞𝐰𝐚𝐲     : {gateway_used}\n"
+                    f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 : {len(cards)}\n"
+                    f"✅ 𝑨𝒑𝒑𝒓𝒐𝒗𝒆𝒅    : {approved}\n"
+                    f"❌ 𝑫𝒆𝒄𝒍𝒊𝒏𝒆𝒅    : {declined}\n"
+                    f"⚠️ 𝑬𝒓𝒓𝒐𝒓       : {errors}\n"
+                    f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {checked} / {len(cards)}\n"
+                    f"💲 𝑺𝒊𝒕𝒆 𝑷𝒓𝒊𝒄𝒆  : ${site_price if site_price else '0.00'}\n"
+                    f"🏬 𝑮𝒂𝒕𝒆𝒘𝒂𝒚     : {gateway_used}\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                     "</code></pre>\n"
                 )
@@ -3585,7 +3595,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except:
                     pass
 
-        # Run all cards concurrently
+        # Run all workers
         await asyncio.gather(*(worker(c, first=(i == 0)) for i, c in enumerate(cards)))
 
 
