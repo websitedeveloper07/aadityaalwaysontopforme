@@ -3310,23 +3310,25 @@ async def run_msite_check(sites: list[str], msg):
                     "</code></pre>"
                 )
 
-                # --- Format site details ---
+                # --- Format site details (only working) ---
                 site_lines = []
                 for r in results:
-                    if not r:
+                    if not r or r["status"] != "working":  # skip dead sites
                         continue
-                    status_icon = "✅" if r["status"] == "working" else "❌"
                     display_site = (
                         r["site"]
                         .replace("https://", "")
                         .replace("http://", "")
                         .replace("www.", "")
                     )
-                    # Only the site in monospace
                     site_lines.append(
-                        f"{status_icon} <code>{escape(display_site)}</code>\n   ↳ 💲{r['price']:.1f}"
+                        f"✅ <code>{escape(display_site)}</code>\n   ↳ 💲{r['price']:.1f}"
                     )
-                details = "\n".join(site_lines)
+
+                if site_lines:
+                    details = "\n".join(site_lines)
+                else:
+                    details = "❌ No working sites found."
 
                 content = (
                     f"{summary}\n\n"
