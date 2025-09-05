@@ -3432,22 +3432,18 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 import aiohttp
-import asyncio
 import json
 from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
-from telegram.ext import (
-    ContextTypes, ConversationHandler, CommandHandler,
-    MessageHandler, filters
-)
+from telegram.ext import ContextTypes, ConversationHandler
 from db import get_user
 
 ASK_CARDS = 1  # Conversation state
 
 
 async def msp_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Start /msp command and ask user for cards"""
+    """Start /msp command and check cards if given"""
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
     site = user_data.get("custom_url")
@@ -3456,6 +3452,14 @@ async def msp_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ You have not added any sites. Use /seturl first.")
         return ConversationHandler.END
 
+    # If user passed cards directly after /msp
+    if context.args:
+        cards = [c.strip() for c in " ".join(context.args).splitlines() if c.strip()]
+        if cards:
+            update.message.text = "\n".join(cards)  # pass to card handler
+            return await msp_receive_cards(update, context)
+
+    # Otherwise ask them to send cards
     await update.message.reply_text(
         "⏳ 𝓟𝓵𝓮𝓪𝓼𝓮 send your cards (max 100) as text or .txt file.",
         parse_mode=ParseMode.HTML
@@ -3571,6 +3575,7 @@ async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     return ConversationHandler.END
+
 
 
 
