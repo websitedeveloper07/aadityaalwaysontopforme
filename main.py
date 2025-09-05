@@ -3193,27 +3193,30 @@ async def run_site_check(site_url: str, msg, user):
         )
 
 
+import asyncio
+import aiohttp
+import time
 import re
 import json
-import aiohttp
-import asyncio
-import time
 from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from telegram.error import TelegramError
+from db import get_user, update_user
 
-from db import get_user, update_user   # your DB functions
-
-# === Cooldown tracker for /msite ===
-last_msite_usage = {}
 
 API_TEMPLATE = (
     "https://auto-shopify-6cz4.onrender.com/index.php"
     "?site={site_url}&cc=5547300001996183|11|2028|197"
 )
 
-# === Credit system (1 credit per /msite run) ===
+MSITE_CONCURRENCY = 3
+MSITE_COOLDOWN = 5
+last_msite_usage = {}
+
+
+# --- Credit system ---
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -3223,147 +3226,151 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
-# === Single Site Checker ===
-async def check_single_site(site_url: str) -> dict:
-    if not site_url.startswith(("http://", "https://")):
-        site_url = "https://" + site_url
-
+async def fetch_site(session, site_url: str):
     api_url = API_TEMPLATE.format(site_url=site_url)
-
-    async with aiohttp.ClientSession() as session:
+    try:
         async with session.get(api_url, timeout=60) as resp:
             raw_text = await resp.text()
 
-    clean_text = re.sub(r'<[^>]+>', '', raw_text).strip()
-    json_start = clean_text.find('{')
-    if json_start != -1:
-        clean_text = clean_text[json_start:]
+        clean_text = re.sub(r"<[^>]+>", "", raw_text).strip()
+        json_start = clean_text.find("{")
+        if json_start != -1:
+            clean_text = clean_text[json_start:]
 
-    data = json.loads(clean_text)
+        data = json.loads(clean_text)
 
-    try:
-        price_val = float(data.get("Price", 0) or 0)
-    except (ValueError, TypeError):
-        price_val = 0.0
+        response = data.get("Response", "Unknown")
+        gateway = data.get("Gateway", "Shopify")
+        try:
+            price_float = float(data.get("Price", 0))
+        except (ValueError, TypeError):
+            price_float = 0.0
 
-    return {
-        "site": site_url,
-        "response": data.get("Response", "Unknown"),
-        "gateway": data.get("Gateway", "Shopify"),
-        "price": price_val,
-    }
+        return {
+            "site": site_url,
+            "price": price_float,
+            "status": "working" if price_float > 0 else "dead",
+            "response": response,
+            "gateway": gateway,
+        }
+
+    except Exception as e:
+        return {
+            "site": site_url,
+            "price": 0.0,
+            "status": "dead",
+            "response": f"Error: {str(e)}",
+            "gateway": "N/A",
+        }
 
 
-# === Mass Site Command ===
-async def msite(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    user_id = user.id
+async def run_msite_check(sites: list[str], msg):
+    total = len(sites)
+    results = []
+    counters = {"checked": 0, "working": 0, "dead": 0}
+    total_amt = 0.0
 
-    # === Cooldown check (5 seconds) ===
+    semaphore = asyncio.Semaphore(MSITE_CONCURRENCY)
+
+    async with aiohttp.ClientSession() as session:
+        async def worker(site):
+            async with semaphore:
+                res = await fetch_site(session, site)
+                results.append(res)
+                counters["checked"] += 1
+                if res["status"] == "working":
+                    counters["working"] += 1
+                    total_amt += res["price"]
+                else:
+                    counters["dead"] += 1
+
+                # Format summary block
+                summary = (
+                    "```"
+                    f"📊 Mass Site Checker Report\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"🌍 Total Sites : {total}\n"
+                    f"✅ Working     : {counters['working']}\n"
+                    f"❌ Dead        : {counters['dead']}\n"
+                    f"🔄 Checked     : {counters['checked']} / {total}\n"
+                    f"💲 Total Amt   : ${total_amt:.1f}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    "```"
+                )
+
+                # Format site details
+                site_lines = []
+                for r in results:
+                    site_lines.append(
+                        f"<code>{escape(r['site'])}</code>\n   ↳ ${r['price']:.1f}"
+                    )
+                details = "\n".join(site_lines)
+
+                content = f"{summary}\n\n📝 <b>Site Details</b>\n────────────────\n{details}\n────────────────"
+
+                try:
+                    await msg.edit_text(
+                        content,
+                        parse_mode=ParseMode.HTML,
+                        disable_web_page_preview=True,
+                    )
+                except TelegramError:
+                    pass
+
+        tasks = [asyncio.create_task(worker(s)) for s in sites]
+        await asyncio.gather(*tasks)
+
+
+# --- /msite command handler ---
+async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
     now = time.time()
-    if user_id in last_msite_usage and (now - last_msite_usage[user_id]) < 5:
+
+    # Cooldown check
+    if user_id in last_msite_usage and (now - last_msite_usage[user_id]) < MSITE_COOLDOWN:
+        remaining = round(MSITE_COOLDOWN - (now - last_msite_usage[user_id]), 1)
         await update.message.reply_text(
-            "⏳ Please wait 5 seconds before using /msite again."
+            f"⏳ Please wait {remaining}s before using /msite again."
         )
         return
     last_msite_usage[user_id] = now
 
-    # === Credit check ===
+    # Credit check
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You don’t have enough credits to use this command.")
         return
 
-    # === Parse sites (support both line and space separated) ===
-    text = update.message.text.replace("/msite", "", 1).strip()
-    if not text:
+    # Collect sites
+    sites = []
+    if context.args:
+        sites = [s.strip() for s in context.args if s.strip()]
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        sites = [s.strip() for s in update.message.reply_to_message.text.splitlines() if s.strip()]
+
+    if not sites:
         await update.message.reply_text(
-            "❌ Please provide up to 20 site URLs (space or newline separated).\n\n"
-            "Example:\n<code>/msite amazon.com flipkart.com</code>\n"
-            "or\n<code>/msite\namazon.com\nflipkart.com</code>",
-            parse_mode=ParseMode.HTML
+            "❌ Please provide site URLs.\nExample:\n<code>/msite amazon.com flipkart.com</code>",
+            parse_mode=ParseMode.HTML,
         )
         return
 
-    raw_sites = re.split(r"[\s\n]+", text)
-    sites = [s.strip() for s in raw_sites if s.strip()]
-    sites = sites[:20]  # limit to 20
+    if len(sites) > 20:
+        await update.message.reply_text(
+            f"⚠️ You can check a maximum of 20 sites at once.\nYou provided {len(sites)}.",
+            parse_mode=ParseMode.HTML,
+        )
+        sites = sites[:20]
 
-    # Initial placeholder
+    # Initial message
     msg = await update.message.reply_text(
-        f"⏳ Starting mass check for {len(sites)} sites...",
+        f"⏳ Checking {len(sites)} sites...",
         parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
+        disable_web_page_preview=True,
     )
 
     # Run in background
-    asyncio.create_task(run_mass_check(sites, msg))
+    asyncio.create_task(run_msite_check(sites, msg))
 
-
-# === Background Worker ===
-async def run_mass_check(sites: list[str], msg):
-    results = []
-    working_count = 0
-    dead_count = 0
-    total_amt = 0.0
-    semaphore = asyncio.Semaphore(3)  # limit 3 concurrent requests
-
-    async def process_site(site: str, index: int):
-        nonlocal working_count, dead_count, total_amt
-
-        async with semaphore:
-            try:
-                res = await check_single_site(site)
-                if res["price"] > 0:
-                    working_count += 1
-                    total_amt += res["price"]
-                    status_icon = "✅"
-                else:
-                    dead_count += 1
-                    status_icon = "❌"
-
-                details = (
-                    f"{status_icon} <code>{escape(site)}</code>\n"
-                    f"   ↳ ${res['price']:.2f}"
-                )
-            except Exception as e:
-                dead_count += 1
-                details = (
-                    f"❌ <code>{escape(site)}</code>\n"
-                    f"   ↳ $0.00 (Error)"
-                )
-
-            results.append((index, details))
-
-            # Build summary
-            summary = (
-                "📊 Mass Site Checker Report\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🌍 Total Sites : {len(sites)}\n"
-                f"✅ Working     : {working_count}\n"
-                f"❌ Dead        : {dead_count}\n"
-                f"🔄 Checked     : {len(results)} / {len(sites)}\n"
-                f"💲 Total Amt   : ${total_amt:.2f}\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━"
-            )
-
-            # Keep results in input order
-            ordered = [d for _, d in sorted(results, key=lambda x: x[0])]
-            details_block = "📝 Site Details\n────────────────\n" + "\n".join(ordered) + "\n────────────────"
-
-            final_text = f"```\n{summary}\n```" + f"\n\n{details_block}"
-
-            try:
-                await msg.edit_text(
-                    final_text,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True
-                )
-            except Exception:
-                pass
-
-    # Launch tasks in parallel with concurrency limit
-    tasks = [asyncio.create_task(process_site(site, i)) for i, site in enumerate(sites)]
-    await asyncio.gather(*tasks)
 
 
 
