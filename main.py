@@ -4657,7 +4657,7 @@ def main():
     application.add_handler(CommandHandler("remove", command_with_check(remove, "remove")))
     application.add_handler(CommandHandler("sp", command_with_check(sp, "sp")))
     application.add_handler(CommandHandler("site", command_with_check(site, "site")))
-    application.add_handler(CommandHandler("msite", command_with_check(msite_command, "msite")))
+    application.add_handler(CommandHandler("msite", command_with_check(msite, "msite")))
     application.add_handler(CommandHandler("gen", command_with_check(gen, "gen")))
     application.add_handler(CommandHandler("open", command_with_check(open_command, "open")))
     application.add_handler(CommandHandler("adcr", command_with_check(adcr_command, "adcr")))
