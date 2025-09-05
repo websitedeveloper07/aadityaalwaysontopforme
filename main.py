@@ -3299,7 +3299,7 @@ async def run_msite_check(sites: list[str], msg):
                 # --- Format summary block ---
                 summary = (
                     "<pre><code>"
-                    f"📊 𝑴𝒂𝒔𝒔 𝑺𝒊𝒕𝒆 𝑪𝒉𝒆𝒄𝒌𝒆𝒓 \n"
+                    f"📊 𝑴𝒂𝒔𝒔 𝑺𝒊𝒕𝒆 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                     f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑺𝒊𝒕𝒆𝒔 : {total}\n"
                     f"✅ 𝑾𝒐𝒓𝒌𝒊𝒏𝒈     : {counters['working']}\n"
@@ -3322,8 +3322,9 @@ async def run_msite_check(sites: list[str], msg):
                         .replace("http://", "")
                         .replace("www.", "")
                     )
+                    # Only the site in monospace
                     site_lines.append(
-                        f"{status_icon} {escape(display_site)}\n   ↳ 💲{r['price']:.1f}"
+                        f"{status_icon} <code>{escape(display_site)}</code>\n   ↳ 💲{r['price']:.1f}"
                     )
                 details = "\n".join(site_lines)
 
