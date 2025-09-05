@@ -3445,11 +3445,13 @@ from db import get_user
 
 ASK_CARDS = 1  # Conversation state
 
+
 async def msp_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start /msp command and ask user for cards"""
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
     site = user_data.get("custom_url")
+
     if not site:
         await update.message.reply_text("❌ You have not added any sites. Use /seturl first.")
         return ConversationHandler.END
@@ -3466,6 +3468,7 @@ async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
     site = user_data.get("custom_url")
+
     if not site:
         await update.message.reply_text("❌ No site found. Use /seturl first.")
         return ConversationHandler.END
@@ -3535,8 +3538,39 @@ async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"✅ Approved: {stats['working']}\n"
                     f"❌ Declined: {stats['dead']}\n"
                     f"⚠️ Error: {stats['error']}\n"
-                    f"🔄 Checked: {stats['checked']} / {stats['total']}\n
+                    f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
+                    f"💲 Amount: ${stats['amt']:.2f}\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "📝 Card Results\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"{formatted_results}",
+                    parse_mode=ParseMode.HTML
+                )
 
+            except Exception as e:
+                stats["error"] += 1
+                stats["checked"] += 1
+                card_results.append(f"⚠️ <code>{escape(card)}</code>\n   ↳ ERROR: {escape(str(e))}")
+
+    # Final update with all results
+    formatted_results = "\n".join(card_results)
+    await status_msg.edit_text(
+        f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓 - Finished ✅\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🌍 Total cards: {stats['total']}\n"
+        f"✅ Approved: {stats['working']}\n"
+        f"❌ Declined: {stats['dead']}\n"
+        f"⚠️ Error: {stats['error']}\n"
+        f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
+        f"💲 Amount: ${stats['amt']:.2f}\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📝 Final Results\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{formatted_results}",
+        parse_mode=ParseMode.HTML
+    )
+
+    return ConversationHandler.END
 
 
 
