@@ -3267,8 +3267,7 @@ async def fetch_site(session, site_url: str):
 async def run_msite_check(sites: list[str], msg):
     total = len(sites)
     results = []
-    counters = {"checked": 0, "working": 0, "dead": 0}
-    total_amt = 0.0
+    counters = {"checked": 0, "working": 0, "dead": 0, "amt": 0.0}
 
     semaphore = asyncio.Semaphore(MSITE_CONCURRENCY)
 
@@ -3280,7 +3279,7 @@ async def run_msite_check(sites: list[str], msg):
                 counters["checked"] += 1
                 if res["status"] == "working":
                     counters["working"] += 1
-                    total_amt += res["price"]
+                    counters["amt"] += res["price"]
                 else:
                     counters["dead"] += 1
 
@@ -3293,7 +3292,7 @@ async def run_msite_check(sites: list[str], msg):
                     f"✅ Working     : {counters['working']}\n"
                     f"❌ Dead        : {counters['dead']}\n"
                     f"🔄 Checked     : {counters['checked']} / {total}\n"
-                    f"💲 Total Amt   : ${total_amt:.1f}\n"
+                    f"💲 Total Amt   : ${counters['amt']:.1f}\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                     "```"
                 )
@@ -3319,6 +3318,7 @@ async def run_msite_check(sites: list[str], msg):
 
         tasks = [asyncio.create_task(worker(s)) for s in sites]
         await asyncio.gather(*tasks)
+
 
 
 # --- /msite command handler ---
