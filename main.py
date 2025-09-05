@@ -3233,9 +3233,8 @@ def normalize_site(site: str) -> str:
         site = "https://" + site
     return site
 
-
+# --- Fetch site info ---
 async def fetch_site(session, site_url: str):
-    # normalize before calling API
     normalized_url = normalize_site(site_url)
     api_url = API_TEMPLATE.format(site_url=normalized_url)
 
@@ -3243,14 +3242,13 @@ async def fetch_site(session, site_url: str):
         async with session.get(api_url, timeout=60) as resp:
             raw_text = await resp.text()
 
-        # Clean HTML junk
+        # Clean HTML
         clean_text = re.sub(r"<[^>]+>", "", raw_text).strip()
         json_start = clean_text.find("{")
         if json_start != -1:
             clean_text = clean_text[json_start:]
 
         data = json.loads(clean_text)
-
         response = data.get("Response", "Unknown")
         gateway = data.get("Gateway", "Shopify")
         try:
@@ -3259,7 +3257,7 @@ async def fetch_site(session, site_url: str):
             price_float = 0.0
 
         return {
-            "site": normalized_url,   # show normalized version
+            "site": normalized_url,
             "price": price_float,
             "status": "working" if price_float > 0 else "dead",
             "response": response,
@@ -3268,23 +3266,22 @@ async def fetch_site(session, site_url: str):
 
     except Exception as e:
         return {
-            "site": site_url,  # keep original here for debugging
+            "site": site_url,
             "price": 0.0,
             "status": "dead",
             "response": f"Error: {str(e)}",
             "gateway": "N/A",
         }
 
-
 # --- Mass Site Checker ---
 async def run_msite_check(sites: list[str], msg):
     total = len(sites)
     results = [None] * total
     counters = {"checked": 0, "working": 0, "dead": 0, "amt": 0.0}
-
     semaphore = asyncio.Semaphore(MSITE_CONCURRENCY)
 
     async with aiohttp.ClientSession() as session:
+
         async def worker(idx, site):
             async with semaphore:
                 res = await fetch_site(session, site)
@@ -3296,7 +3293,7 @@ async def run_msite_check(sites: list[str], msg):
                 else:
                     counters["dead"] += 1
 
-                # --- Format summary block ---
+                # --- Summary ---
                 summary = (
                     "<pre><code>"
                     f"📊 𝑴𝒂𝒔𝒔 𝑺𝒊𝒕𝒆 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
@@ -3310,10 +3307,10 @@ async def run_msite_check(sites: list[str], msg):
                     "</code></pre>"
                 )
 
-                # --- Format site details (only working) ---
+                # --- Site details (only working) ---
                 site_lines = []
                 for r in results:
-                    if not r or r["status"] != "working":  # skip dead sites
+                    if not r or r["status"] != "working":
                         continue
                     display_site = (
                         r["site"]
@@ -3325,10 +3322,7 @@ async def run_msite_check(sites: list[str], msg):
                         f"✅ <code>{escape(display_site)}</code>\n   ↳ 💲{r['price']:.1f}"
                     )
 
-                if site_lines:
-                    details = "\n".join(site_lines)
-                else:
-                    details = "❌ No working sites found."
+                details = "\n".join(site_lines) if site_lines else "❌ No working sites found."
 
                 content = (
                     f"{summary}\n\n"
@@ -3336,6 +3330,7 @@ async def run_msite_check(sites: list[str], msg):
                     f"────────────────\n{details}\n────────────────"
                 )
 
+                # --- Update message ---
                 try:
                     await msg.edit_text(
                         content,
@@ -3345,10 +3340,9 @@ async def run_msite_check(sites: list[str], msg):
                 except TelegramError:
                     pass
 
-        # Launch workers
+        # Launch all workers concurrently
         tasks = [asyncio.create_task(worker(i, s)) for i, s in enumerate(sites)]
         await asyncio.gather(*tasks)
-
 
 
 # --- /msite command handler ---
