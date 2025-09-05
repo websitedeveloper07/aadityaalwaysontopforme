@@ -3442,7 +3442,6 @@ last_msp_usage = {}
 
 # Fake DB function - replace with your DB lookup
 async def get_user_custom_url(user_id: int) -> str:
-    # Example: each user has their own base url
     return "https://auto-shopify-6cz4.onrender.com/index.php"
 
 # Shopify check request
@@ -3460,6 +3459,101 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         return resp, status, price, gateway
     except Exception as e:
         return f"Error: {e}", "false", "0", "N/A"
+
+# Background worker
+async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: list[str]):
+    user_id = update.effective_user.id
+    base_url = await get_user_custom_url(user_id)
+    site = "https://seoulceuticals.com"  # example, replace with DB if needed
+
+    msg = await update.message.reply_text("⚡ Processing Mass Shopify Check...")
+
+    approved, declined, errors = 0, 0, 0
+    checked = 0
+    total_price = 0.0
+    gateway_used = "Self Shopify"
+    results = []
+
+    sem = asyncio.Semaphore(3)
+
+    async with httpx.AsyncClient() as session:
+
+        async def worker(card):
+            nonlocal approved, declined, errors, checked, total_price, gateway_used, results
+
+            async with sem:
+                resp, status, price, gateway = await check_card(session, base_url, site, card)
+
+                try:
+                    total_price += float(price)
+                except:
+                    pass
+                if gateway and gateway != "N/A":
+                    gateway_used = gateway
+
+                # Classification
+                if resp in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
+                    declined += 1
+                    line = f"❌ `{card}`\n   ↳ _{resp}_"
+                elif resp == "3D_AUTHENTICATION" or status == "true":
+                    approved += 1
+                    line = f"✅ `{card}`\n   ↳ _{resp}_"
+                elif "Error" in resp:
+                    errors += 1
+                    line = f"⚠️ `{card}`\n   ↳ _{resp}_"
+                else:
+                    errors += 1
+                    line = f"⚠️ `{card}`\n   ↳ _{resp}_"
+
+                results.append(line)
+                checked += 1
+
+                # Update message progressively
+                text = (
+                    "```"
+                    "📊 Mass Shopify Checker\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"🌍 Total cards : {len(cards)}\n"
+                    f"✅ Approved    : {approved}\n"
+                    f"❌ Declined    : {declined}\n"
+                    f"⚠️ Error       : {errors}\n"
+                    f"🔄 Checked     : {checked} / {len(cards)}\n"
+                    f"💲 Site Price  : ${price}\n"
+                    f"🏬 Gateway     : {gateway_used}\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    "```"
+                    "\n\n📝 Results\n────────────────\n"
+                    + "\n".join(results)
+                )
+                try:
+                    await msg.edit_text(text, parse_mode="Markdown")
+                except:
+                    pass
+
+        # Run all cards
+        await asyncio.gather(*(worker(c) for c in cards))
+
+    # Final output
+    final_text = (
+        "```"
+        "📊 Mass Shopify Checker\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🌍 Total cards : {len(cards)}\n"
+        f"✅ Approved    : {approved}\n"
+        f"❌ Declined    : {declined}\n"
+        f"⚠️ Error       : {errors}\n"
+        f"🔄 Checked     : {checked} / {len(cards)}\n"
+        f"💲 Total Amt   : ${total_price:.2f}\n"
+        f"🏬 Gateway     : {gateway_used}\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "```"
+        "\n\n📝 Results\n────────────────\n"
+        + "\n".join(results)
+    )
+    try:
+        await msg.edit_text(final_text, parse_mode="Markdown")
+    except:
+        pass
 
 # /msp command
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3481,93 +3575,11 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(cards) > 50:
         cards = cards[:50]
 
-    base_url = await get_user_custom_url(user_id)
-    site = "https://seoulceuticals.com"  # example, replace with DB if needed
+    # Run background task
+    asyncio.create_task(run_msp(update, context, cards))
 
-    msg = await update.message.reply_text("⚡ Processing Mass Shopify Check...")
 
-    approved, declined, errors = 0, 0, 0
-    checked = 0
-    total_price = 0.0
-    gateway_used = None
-    results = []
 
-    sem = asyncio.Semaphore(3)  # run 3 in parallel
-
-    async with httpx.AsyncClient() as session:
-
-        async def worker(card):
-            nonlocal approved, declined, errors, checked, total_price, gateway_used, results
-
-            async with sem:
-                resp, status, price, gateway = await check_card(session, base_url, site, card)
-
-                # Save price & gateway (from last successful response)
-                try:
-                    total_price += float(price)
-                except:
-                    pass
-                if gateway != "N/A":
-                    gateway_used = gateway
-
-                # Classification
-                if resp in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
-                    declined += 1
-                    line = f"❌ `{card}`\n   ↳ *{resp}*"
-                elif resp == "3D_AUTHENTICATION" or status == "true":
-                    approved += 1
-                    line = f"✅ `{card}`\n   ↳ *{resp}*"
-                elif "Error" in resp:
-                    errors += 1
-                    line = f"⚠️ `{card}`\n   ↳ *{resp}*"
-                else:
-                    errors += 1
-                    line = f"⚠️ `{card}`\n   ↳ *{resp}*"
-
-                results.append(line)
-                checked += 1
-
-                # Update message progressively
-                text = (
-                    "📊 *Mass Shopify Checker*\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 Total cards : {len(cards)}\n"
-                    f"✅ Approved    : {approved}\n"
-                    f"❌ Declined    : {declined}\n"
-                    f"⚠️ Error       : {errors}\n"
-                    f"🔄 Checked     : {checked} / {len(cards)}\n"
-                    f"💲 Site Price  : ${price}\n"  # Price of this site
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    "📝 *Results*\n"
-                    "────────────────\n"
-                    + "\n".join(results)
-                )
-                await msg.edit_text(text, parse_mode="Markdown")
-
-        # Run all card workers
-        await asyncio.gather(*(worker(c) for c in cards))
-
-    # Final site details after all checks
-    final_text = (
-        "📊 *Mass Shopify Checker*\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🌍 Total cards : {len(cards)}\n"
-        f"✅ Approved    : {approved}\n"
-        f"❌ Declined    : {declined}\n"
-        f"⚠️ Error       : {errors}\n"
-        f"🔄 Checked     : {checked} / {len(cards)}\n"
-        f"💲 Total Amt   : ${total_price:.2f}\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "📝 *Results*\n"
-        "────────────────\n"
-        + "\n".join(results)
-        + "\n\n"
-        "📦 *Site Details*\n"
-        "────────────────\n"
-        f"Gateway → {gateway_used}\n"
-        f"Price   → ${total_price:.2f}"
-    )
-    await msg.edit_text(final_text, parse_mode="Markdown")
 
 
 
