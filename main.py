@@ -3456,8 +3456,8 @@ async def msp_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         cards = [c.strip() for c in " ".join(context.args).splitlines() if c.strip()]
         if cards:
-            update.message.text = "\n".join(cards)  # pass to card handler
-            return await msp_receive_cards(update, context)
+            # Call the card checker directly, skipping text/file extraction
+            return await process_cards(update, context, site, cards)
 
     # Otherwise ask them to send cards
     await update.message.reply_text(
@@ -3490,6 +3490,11 @@ async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ No cards found in your message/file.")
         return ConversationHandler.END
 
+    return await process_cards(update, context, site, cards)
+
+
+async def process_cards(update: Update, context: ContextTypes.DEFAULT_TYPE, site: str, cards: list[str]):
+    """Shared logic to check cards"""
     stats = {"total": len(cards), "working": 0, "dead": 0, "error": 0, "checked": 0, "amt": 0.0}
     card_results = []
 
@@ -3533,7 +3538,6 @@ async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 stats["checked"] += 1
                 card_results.append(f"{status_emoji} <code>{escape(card)}</code>\n   ↳ {escape(response_text)}")
 
-                # Update live message with last 10 results
                 formatted_results = "\n".join(card_results[-10:])
                 await status_msg.edit_text(
                     f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
@@ -3556,7 +3560,6 @@ async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 stats["checked"] += 1
                 card_results.append(f"⚠️ <code>{escape(card)}</code>\n   ↳ ERROR: {escape(str(e))}")
 
-    # Final update with all results
     formatted_results = "\n".join(card_results)
     await status_msg.edit_text(
         f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓 - Finished ✅\n"
