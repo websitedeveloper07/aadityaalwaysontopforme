@@ -3296,7 +3296,7 @@ async def run_msite_check(sites: list[str], msg):
                 else:
                     counters["dead"] += 1
 
-                # --- Format summary (inside <pre><code>) ---
+                # --- Format summary block ---
                 summary = (
                     "<pre><code>"
                     f"📊 𝑴𝒂𝒔𝒔 𝑺𝒊𝒕𝒆 𝑪𝒉𝒆𝒄𝒌𝒆𝒓 \n"
@@ -3315,8 +3315,15 @@ async def run_msite_check(sites: list[str], msg):
                 for r in results:
                     if not r:
                         continue
+                    status_icon = "✅" if r["status"] == "working" else "❌"
+                    display_site = (
+                        r["site"]
+                        .replace("https://", "")
+                        .replace("http://", "")
+                        .replace("www.", "")
+                    )
                     site_lines.append(
-                        f"<code>{escape(r['site'])}</code>\n   ↳ 💲{r['price']:.1f}"
+                        f"{status_icon} {escape(display_site)}\n   ↳ 💲{r['price']:.1f}"
                     )
                 details = "\n".join(site_lines)
 
@@ -3338,6 +3345,7 @@ async def run_msite_check(sites: list[str], msg):
         # Launch workers
         tasks = [asyncio.create_task(worker(i, s)) for i, s in enumerate(sites)]
         await asyncio.gather(*tasks)
+
 
 
 # --- /msite command handler ---
