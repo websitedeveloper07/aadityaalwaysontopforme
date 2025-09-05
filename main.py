@@ -4048,7 +4048,7 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Format each entry
         for idx, item in enumerate(entries, 1):
             # Only the "Entry X" line in a code block
-            msg_lines.append(f"<code>📌 Entry {idx}:</code>")
+            msg_lines.append(f"<pre><code>📌 Entry {idx}:</code></pre>")
             # Details with values in monospace
             msg_lines.append(f"   👤 Name    : <code>{item.get('name', 'N/A')}</code>")
             msg_lines.append(f"   🏷️ FName   : <code>{item.get('fname', 'N/A')}</code>")
@@ -4063,6 +4063,7 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching data: {str(e)}")
+
 
 
 
