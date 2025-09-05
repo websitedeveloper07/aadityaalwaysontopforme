@@ -4014,6 +4014,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import aiohttp
 import json
+from html import escape
 
 NUM_API = "https://e1e63696f2d5.ngrok-free.app/index.cpp?key=dark&number={number}"
 
@@ -4024,7 +4025,7 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     number = context.args[0]
-    await update.message.reply_text(f"🔎 Checking number: <code>{number}</code>", parse_mode="HTML")
+    await update.message.reply_text(f"🔎 Checking number: <code>{escape(number)}</code>", parse_mode="HTML")
 
     try:
         # Fetch data from API
@@ -4038,26 +4039,36 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ No data found for this number.")
             return
 
-        # Format each entry with values in monospace
-        msg_lines = []
+        # Header
+        msg_lines = [
+            "✦━━━━━━━━━━━━━━✦",
+            "     ⚡ 𝑪𝑨𝑹𝑫 ✘ 𝑪𝑯𝑲",
+            "✦━━━━━━━━━━━━━━✦",
+            ""
+        ]
+
+        # Format each entry
         for idx, item in enumerate(entries, 1):
+            # Only Entry header in triple backticks
+            msg_lines.append(f"```\n📌 Entry {idx}:\n```")
+            # Values in inline monospace
             msg_lines.append(
-                f"📌 Entry {idx}:\n"
-                f"   👤 Name    : <code>{item.get('name', 'N/A')}</code>\n"
-                f"   🏷️ FName   : <code>{item.get('fname', 'N/A')}</code>\n"
-                f"   📍 Address : <code>{item.get('address', 'N/A')}</code>\n"
-                f"   🌐 Circle  : <code>{item.get('circle', 'N/A')}</code>\n"
-                f"   📱 Mobile  : <code>{item.get('mobile', 'N/A')}</code>\n"
-                f"   🆔 ID      : <code>{item.get('id', 'N/A')}</code>\n"
+                f"   👤 Name    : <code>{escape(item.get('name', 'N/A'))}</code>\n"
+                f"   🏷️ FName   : <code>{escape(item.get('fname', 'N/A'))}</code>\n"
+                f"   📍 Address : <code>{escape(item.get('address', 'N/A'))}</code>\n"
+                f"   🌐 Circle  : <code>{escape(item.get('circle', 'N/A'))}</code>\n"
+                f"   📱 Mobile  : <code>{escape(item.get('mobile', 'N/A'))}</code>\n"
+                f"   🆔 ID      : <code>{escape(item.get('id', 'N/A'))}</code>\n"
             )
 
         msg_content = "\n".join(msg_lines)
 
-        # Send result without wrapping the whole thing in a code block
+        # Send result
         await update.message.reply_text(msg_content, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception as e:
-        await update.message.reply_text(f"❌ Error fetching data: {str(e)}")
+        await update.message.reply_text(f"❌ Error fetching data: {escape(str(e))}")
+
 
 
 
