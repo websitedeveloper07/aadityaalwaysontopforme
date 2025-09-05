@@ -3226,7 +3226,6 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
-# --- API worker ---
 def normalize_site(site: str) -> str:
     site = site.strip()
     if not site.startswith("http://") and not site.startswith("https://"):
@@ -3322,13 +3321,13 @@ async def run_msite_check(sites: list[str], msg):
                         f"✅ <code>{escape(display_site)}</code>\n   ↳ 💲{r['price']:.1f}"
                     )
 
-                details = "\n".join(site_lines) if site_lines else "❌ No working sites found."
-
-                content = (
-                    f"{summary}\n\n"
-                    f"📝 <b>𝑺𝒊𝒕𝒆 𝑫𝒆𝒕𝒂𝒊𝒍𝒔</b>\n"
-                    f"────────────────\n{details}\n────────────────"
-                )
+                details = "\n".join(site_lines)
+                content = summary
+                if details:
+                    content += (
+                        f"\n\n📝 <b>𝑺𝒊𝒕𝒆 𝑫𝒆𝒕𝒂𝒊𝒍𝒔</b>\n"
+                        f"────────────────\n{details}\n────────────────"
+                    )
 
                 # --- Update message ---
                 try:
@@ -3344,6 +3343,25 @@ async def run_msite_check(sites: list[str], msg):
         tasks = [asyncio.create_task(worker(i, s)) for i, s in enumerate(sites)]
         await asyncio.gather(*tasks)
 
+        # --- Final check for no working sites ---
+        if counters["working"] == 0:
+            final_content = (
+                "<pre><code>"
+                f"📊 𝑴𝒂𝒔𝒔 𝑺𝒊𝒕𝒆 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑺𝒊𝒕𝒆𝒔 : {total}\n"
+                f"✅ 𝑾𝒐𝒓𝒌𝒊𝒏𝒈     : 0\n"
+                f"❌ 𝑫𝒆𝒂𝒅        : {counters['dead']}\n"
+                f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {counters['checked']} / {total}\n"
+                f"💲 𝑻𝒐𝒕𝒂𝒍 𝑨𝒎𝒕   : $0.0\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "❌ No working sites found."
+                "</code></pre>"
+            )
+            try:
+                await msg.edit_text(final_content, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+            except TelegramError:
+                pass
 
 # --- /msite command handler ---
 async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3359,8 +3377,8 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     last_msite_usage[user_id] = now
 
-    # Credit check
-    if not await consume_credit(user_id):
+    # Credit check (5 credits per use)
+    if not await consume_credit(user_id, amount=5):
         await update.message.reply_text("❌ You don’t have enough credits to use this command.")
         return
 
