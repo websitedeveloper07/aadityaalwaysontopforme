@@ -4038,16 +4038,16 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ No data found for this number.")
             return
 
-        # Build message
-        msg_lines = []
-        msg_lines.append("✦━━━━━━━━━━━━━━✦")
-        msg_lines.append("     ⚡ 𝑪𝑨𝑹𝑫 ✘ 𝑪𝑯𝑲")
-        msg_lines.append("✦━━━━━━━━━━━━━━✦\n")
+        # Header
+        msg_lines = [
+            "✦━━━━━━━━━━━━━━✦",
+            "     ⚡ 𝑪𝑨𝑹𝑫 ✘ 𝑪𝑯𝑲",
+            "✦━━━━━━━━━━━━━━✦\n"
+        ]
 
+        # Format each entry
         for idx, item in enumerate(entries, 1):
-            # Entry header in code block
-            msg_lines.append(f"```\n📌 Entry {idx}:\n```")
-            # Entry details with values in monospace
+            msg_lines.append(f"```📌 Entry {idx}:```")
             msg_lines.append(f"   👤 Name    : <code>{item.get('name', 'N/A')}</code>")
             msg_lines.append(f"   🏷️ FName   : <code>{item.get('fname', 'N/A')}</code>")
             msg_lines.append(f"   📍 Address : <code>{item.get('address', 'N/A')}</code>")
@@ -4055,12 +4055,13 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg_lines.append(f"   📱 Mobile  : <code>{item.get('mobile', 'N/A')}</code>")
             msg_lines.append(f"   🆔 ID      : <code>{item.get('id', 'N/A')}</code>\n")
 
-        # Send the final message
-        final_msg = "\n".join(msg_lines)
-        await update.message.reply_text(final_msg, parse_mode="HTML", disable_web_page_preview=True)
+        msg_content = "\n".join(msg_lines)
+
+        await update.message.reply_text(msg_content, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching data: {str(e)}")
+
 
 
 
