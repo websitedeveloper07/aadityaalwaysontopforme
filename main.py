@@ -2716,14 +2716,12 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not site_input.startswith(("http://", "https://")):
         site_input = f"https://{site_input}"
 
-    # --- Check if already set ---
+    # --- Get current user data ---
     user_data = await get_user(user_id)
+
+    # --- Automatically remove existing custom URL ---
     if user_data.get("custom_url"):
-        await update.message.reply_text(
-            "❌ 𝙔𝙤𝙪 𝙖𝙡𝙧𝙚𝙖𝙙𝙮 𝙝𝙖𝙫𝙚 𝙖 𝙨𝙞𝙩𝙚 𝙨𝙚𝙩. 𝙍𝙚𝙢𝙤𝙫𝙚 𝙞𝙩 𝙛𝙞𝙧𝙨𝙩 𝙪𝙨𝙞𝙣𝙜 /𝙧𝙚𝙢𝙤𝙫𝙚.",
-            parse_mode=ParseMode.HTML
-        )
-        return
+        await update_user(user_id, custom_url=None)
 
     # --- Send initial processing message ---
     processing_msg = await update.message.reply_text(
@@ -2823,18 +2821,45 @@ async def process_seturl(user, user_id, site_input, processing_msg):
 
 
 
-async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler for /remove command to remove user's custom URL."""
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from html import escape
+from db import get_user
+
+async def mysites(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler for /mysites command to show user's added sites."""
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
 
-    if not user_data.get("custom_url"):
-        await update.message.reply_text("❌ 𝗬𝗼𝘂 𝗱𝗼𝗻’𝘁 𝗵𝗮𝘃𝗲 𝗮𝗻𝘆 𝗨𝗥𝗟 𝘀𝗲𝘁.")
+    # --- Get list of sites ---
+    sites = user_data.get("custom_urls")  # list of URLs
+    # If using single custom_url, convert to list
+    if not sites:
+        single_site = user_data.get("custom_url")
+        sites = [single_site] if single_site else []
+
+    if not sites:
+        await update.message.reply_text(
+            "❌ 𝗬𝗼𝘂 𝗵𝗮𝘃𝗲 𝗻𝗼 𝗮𝗱𝗱𝗲𝗱 𝘀𝗶𝘁𝗲𝘀 yet.",
+            parse_mode=ParseMode.HTML
+        )
         return
 
-    await update_user(user_id, custom_url=None)
+    # --- Format message ---
+    formatted_sites = ""
+    for i, site in enumerate(sites, start=1):
+        formatted_sites += f"🔹 <b>Site {i}</b>: <code>{escape(site)}</code>\n"
+
+    message_text = (
+        "📌 𝗬𝗼𝘂𝗿 𝗔𝗱𝗱𝗲𝗱 𝗦𝗶𝘁𝗲𝘀:\n\n"
+        f"{formatted_sites}"
+        "\nℹ️ Use /seturl <url> to add a new site."
+    )
+
     await update.message.reply_text(
-        "✅ 𝙔𝙤𝙪𝙧 𝙐𝙍𝙇 𝙝𝙖𝙨 𝙗𝙚𝙚𝙣 𝙧𝙚𝙢𝙤𝙫𝙚𝙙. 𝙎𝙚𝙩 𝙖 𝙣𝙚𝙬 𝙤𝙣𝙚 𝙪𝙨𝙞𝙣𝙜 /𝙨𝙚𝙩𝙪𝙧𝙡."
+        message_text,
+        parse_mode=ParseMode.HTML
     )
 
 
@@ -4797,7 +4822,7 @@ def main():
     application.add_handler(CommandHandler("mtchk", command_with_check(mtchk, "mtchk")))
     application.add_handler(CommandHandler("sh", command_with_check(sh_command, "sh")))
     application.add_handler(CommandHandler("seturl", command_with_check(seturl, "seturl")))
-    application.add_handler(CommandHandler("remove", command_with_check(remove, "remove")))
+    application.add_handler(CommandHandler("mysites", command_with_check(mysites, "mysites")))
     application.add_handler(CommandHandler("sp", command_with_check(sp, "sp")))
     application.add_handler(CommandHandler("site", command_with_check(site, "site")))
     application.add_handler(CommandHandler("msite", command_with_check(msite_command, "msite")))
