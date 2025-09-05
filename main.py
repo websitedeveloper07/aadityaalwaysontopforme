@@ -4048,7 +4048,7 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Format each entry
         msg_lines = [header]
         for idx, item in enumerate(entries, 1):
-            # Entry line in triple backticks
+            # Entry line in triple backticks (code block)
             msg_lines.append(f"```📌 Entry {idx}:```")
             # Values in monospace using <code>
             msg_lines.append(
@@ -4057,8 +4057,10 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"   📍 Address : <code>{item.get('address', 'N/A')}</code>\n"
                 f"   🌐 Circle  : <code>{item.get('circle', 'N/A')}</code>\n"
                 f"   📱 Mobile  : <code>{item.get('mobile', 'N/A')}</code>\n"
-                f"   🆔 ID      : <code>{item.get('id', 'N/A')}</code>\n"
+                f"   🆔 ID      : <code>{item.get('id', 'N/A')}</code>"
             )
+            # Add blank line between entries
+            msg_lines.append("")
 
         msg_content = "\n".join(msg_lines)
 
