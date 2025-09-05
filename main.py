@@ -3211,7 +3211,7 @@ API_TEMPLATE = (
     "?site={site_url}&cc=5547300001996183|11|2028|197"
 )
 
-MSITE_CONCURRENCY = 5
+MSITE_CONCURRENCY = 3
 MSITE_COOLDOWN = 5
 last_msite_usage = {}
 
