@@ -3193,6 +3193,167 @@ async def run_site_check(site_url: str, msg, user):
         )
 
 
+import re
+import json
+import aiohttp
+import asyncio
+import time
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+from db import get_user, update_user   # your DB functions
+
+# === Cooldown tracker for /msite ===
+last_msite_usage = {}
+
+API_TEMPLATE = (
+    "https://auto-shopify-6cz4.onrender.com/index.php"
+    "?site={site_url}&cc=5547300001996183|11|2028|197"
+)
+
+# === Credit system (1 credit per /msite run) ===
+async def consume_credit(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+
+# === Single Site Checker ===
+async def check_single_site(site_url: str) -> dict:
+    if not site_url.startswith(("http://", "https://")):
+        site_url = "https://" + site_url
+
+    api_url = API_TEMPLATE.format(site_url=site_url)
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(api_url, timeout=60) as resp:
+            raw_text = await resp.text()
+
+    clean_text = re.sub(r'<[^>]+>', '', raw_text).strip()
+    json_start = clean_text.find('{')
+    if json_start != -1:
+        clean_text = clean_text[json_start:]
+
+    data = json.loads(clean_text)
+
+    try:
+        price_val = float(data.get("Price", 0) or 0)
+    except (ValueError, TypeError):
+        price_val = 0.0
+
+    return {
+        "site": site_url,
+        "response": data.get("Response", "Unknown"),
+        "gateway": data.get("Gateway", "Shopify"),
+        "price": price_val,
+    }
+
+
+# === Mass Site Command ===
+async def msite(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_id = user.id
+
+    # === Cooldown check (5 seconds) ===
+    now = time.time()
+    if user_id in last_msite_usage and (now - last_msite_usage[user_id]) < 5:
+        await update.message.reply_text(
+            "⏳ Please wait 5 seconds before using /msite again."
+        )
+        return
+    last_msite_usage[user_id] = now
+
+    # === Credit check ===
+    if not await consume_credit(user_id):
+        await update.message.reply_text("❌ You don’t have enough credits to use this command.")
+        return
+
+    # === Parse sites ===
+    lines = update.message.text.splitlines()[1:]  # skip "/msite"
+    sites = [line.strip() for line in lines if line.strip()]
+    if not sites:
+        await update.message.reply_text(
+            "❌ Please provide up to 20 site URLs (one per line).\n\n"
+            "Example:\n<code>/msite\namazon.com\nflipkart.com</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    sites = sites[:20]  # limit to 20
+
+    # Initial placeholder
+    msg = await update.message.reply_text(
+        f"⏳ Starting mass check for {len(sites)} sites...",
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+
+    # Run in background
+    asyncio.create_task(run_mass_check(sites, msg))
+
+
+# === Background Worker ===
+async def run_mass_check(sites: list[str], msg):
+    results = []
+    working_count = 0
+    dead_count = 0
+    total_amt = 0.0
+    semaphore = asyncio.Semaphore(3)  # limit 3 concurrent requests
+
+    async def process_site(site: str):
+        nonlocal working_count, dead_count, total_amt
+
+        async with semaphore:
+            try:
+                res = await check_single_site(site)
+                if res["price"] > 0:
+                    working_count += 1
+                    total_amt += res["price"]
+                    status_icon = "✅"
+                else:
+                    dead_count += 1
+                    status_icon = "❌"
+
+                details = f"{status_icon} <code>{escape(site)}</code>  | 💲 {int(res['price'])}"
+            except Exception as e:
+                dead_count += 1
+                details = f"❌ <code>{escape(site)}</code>  | Error: {escape(str(e))}"
+
+            results.append(details)
+
+            # Build summary
+            summary = (
+                "📊 Mαѕѕ Sιтє Cнєcкєя \n"
+                "━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑺𝒊𝒕𝒆𝒔 : {len(sites)}\n"
+                f"✅ 𝑾𝒐𝒓𝒌𝒊𝒏𝒈     : {working_count}\n"
+                f"❌ 𝑫𝒆𝒂𝒅        : {dead_count}\n"
+                f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {len(results)} / {len(sites)}\n"
+                f"💲 𝑻𝒐𝒕𝒂𝒍 𝑨𝒎𝒕   : ${int(total_amt)}\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━"
+            )
+
+            details_block = "📝 S̳i̳t̳e̳ ̳D̳e̳t̳a̳i̳l̳s̳\n────────────────\n" + "\n".join(results) + "\n────────────────"
+
+            final_text = f"```{summary}```\n\n{details_block}"
+
+            try:
+                await msg.edit_text(
+                    final_text,
+                    parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True
+                )
+            except Exception:
+                pass
+
+    # Launch tasks in parallel with concurrency limit
+    tasks = [asyncio.create_task(process_site(site)) for site in sites]
+    await asyncio.gather(*tasks)
 
 
 
@@ -4496,6 +4657,7 @@ def main():
     application.add_handler(CommandHandler("remove", command_with_check(remove, "remove")))
     application.add_handler(CommandHandler("sp", command_with_check(sp, "sp")))
     application.add_handler(CommandHandler("site", command_with_check(site, "site")))
+    application.add_handler(CommandHandler("msite", command_with_check(msite_command, "msite")))
     application.add_handler(CommandHandler("gen", command_with_check(gen, "gen")))
     application.add_handler(CommandHandler("open", command_with_check(open_command, "open")))
     application.add_handler(CommandHandler("adcr", command_with_check(adcr_command, "adcr")))
