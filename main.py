@@ -3443,14 +3443,31 @@ from db import get_user
 WAITING_CARDS = 1
 
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Step 1: ask user for cards"""
+    """Handle /msp command, either with arguments or ask for cards"""
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
     sites = user_data.get("custom_url")
     if not sites:
         await update.message.reply_text("❌ No site set. Use /seturl first.")
-        return ConversationHandler.END
+        return
 
+    # Convert single string to list if needed
+    if isinstance(sites, str):
+        sites = [sites]
+
+    # Check if user sent cards directly
+    if context.args:
+        # Cards provided in command
+        cards_text = " ".join(context.args)
+        cards = [c.strip() for c in cards_text.splitlines() if c.strip()][:100]
+
+        processing_msg = await update.message.reply_text(
+            "⏳ 𝓜𝓪𝓼𝓼 𝓢𝓱𝓸𝓹𝓲𝓯𝔂 𝓒𝓱𝓮𝓬𝓴𝓮𝓻\nProcessing cards..."
+        )
+        asyncio.create_task(check_msp_cards(cards, sites, processing_msg))
+        return
+
+    # Otherwise, ask user to send cards
     await update.message.reply_text(
         "⏳ 𝓟𝓵𝓮𝓪𝓼𝓮 send your cards (max 100) as text or .txt file."
     )
