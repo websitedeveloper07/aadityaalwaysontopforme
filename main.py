@@ -3273,17 +3273,19 @@ async def msite(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ You don’t have enough credits to use this command.")
         return
 
-    # === Parse sites ===
-    lines = update.message.text.splitlines()[1:]  # skip "/msite"
-    sites = [line.strip() for line in lines if line.strip()]
-    if not sites:
+    # === Parse sites (support both line and space separated) ===
+    text = update.message.text.replace("/msite", "", 1).strip()
+    if not text:
         await update.message.reply_text(
-            "❌ Please provide up to 20 site URLs (one per line).\n\n"
-            "Example:\n<code>/msite\namazon.com\nflipkart.com</code>",
+            "❌ Please provide up to 20 site URLs (space or newline separated).\n\n"
+            "Example:\n<code>/msite amazon.com flipkart.com</code>\n"
+            "or\n<code>/msite\namazon.com\nflipkart.com</code>",
             parse_mode=ParseMode.HTML
         )
         return
 
+    raw_sites = re.split(r"[\s\n]+", text)
+    sites = [s.strip() for s in raw_sites if s.strip()]
     sites = sites[:20]  # limit to 20
 
     # Initial placeholder
@@ -3305,7 +3307,7 @@ async def run_mass_check(sites: list[str], msg):
     total_amt = 0.0
     semaphore = asyncio.Semaphore(3)  # limit 3 concurrent requests
 
-    async def process_site(site: str):
+    async def process_site(site: str, index: int):
         nonlocal working_count, dead_count, total_amt
 
         async with semaphore:
@@ -3319,28 +3321,36 @@ async def run_mass_check(sites: list[str], msg):
                     dead_count += 1
                     status_icon = "❌"
 
-                details = f"{status_icon} <code>{escape(site)}</code>  | 💲 {int(res['price'])}"
+                details = (
+                    f"{status_icon} <code>{escape(site)}</code>\n"
+                    f"   ↳ ${res['price']:.2f}"
+                )
             except Exception as e:
                 dead_count += 1
-                details = f"❌ <code>{escape(site)}</code>  | Error: {escape(str(e))}"
+                details = (
+                    f"❌ <code>{escape(site)}</code>\n"
+                    f"   ↳ $0.00 (Error)"
+                )
 
-            results.append(details)
+            results.append((index, details))
 
             # Build summary
             summary = (
-                "📊 Mαѕѕ Sιтє Cнєcкєя \n"
+                "📊 Mass Site Checker Report\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑺𝒊𝒕𝒆𝒔 : {len(sites)}\n"
-                f"✅ 𝑾𝒐𝒓𝒌𝒊𝒏𝒈     : {working_count}\n"
-                f"❌ 𝑫𝒆𝒂𝒅        : {dead_count}\n"
-                f"🔄 𝑪𝒉𝒆𝒄𝒌𝒆𝒅     : {len(results)} / {len(sites)}\n"
-                f"💲 𝑻𝒐𝒕𝒂𝒍 𝑨𝒎𝒕   : ${int(total_amt)}\n"
+                f"🌍 Total Sites : {len(sites)}\n"
+                f"✅ Working     : {working_count}\n"
+                f"❌ Dead        : {dead_count}\n"
+                f"🔄 Checked     : {len(results)} / {len(sites)}\n"
+                f"💲 Total Amt   : ${total_amt:.2f}\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━"
             )
 
-            details_block = "📝 S̳i̳t̳e̳ ̳D̳e̳t̳a̳i̳l̳s̳\n────────────────\n" + "\n".join(results) + "\n────────────────"
+            # Keep results in input order
+            ordered = [d for _, d in sorted(results, key=lambda x: x[0])]
+            details_block = "📝 Site Details\n────────────────\n" + "\n".join(ordered) + "\n────────────────"
 
-            final_text = f"```{summary}```\n\n{details_block}"
+            final_text = f"```\n{summary}\n```" + f"\n\n{details_block}"
 
             try:
                 await msg.edit_text(
@@ -3352,7 +3362,7 @@ async def run_mass_check(sites: list[str], msg):
                 pass
 
     # Launch tasks in parallel with concurrency limit
-    tasks = [asyncio.create_task(process_site(site)) for site in sites]
+    tasks = [asyncio.create_task(process_site(site, i)) for i, site in enumerate(sites)]
     await asyncio.gather(*tasks)
 
 
