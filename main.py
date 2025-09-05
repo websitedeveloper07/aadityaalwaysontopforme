@@ -3443,8 +3443,9 @@ from db import get_user, update_user
 # Cooldown tracking
 last_msp_usage = {}
 
-# Regex for full card|mm|yy|cvv (non-capturing groups)
-CARD_REGEX = re.compile(r"\b\d{12,19}\|\d{2}\|(?:\d{2}|\d{4})\|\d{3,4}\b")
+# Regex for full card format (captures full CC|MM|YY|CVV)
+CARD_REGEX = re.compile(r"(\d{13,19}\|\d{2}\|\d{2,4}\|\d{3,4})")
+
 
 # Consume credit once
 async def consume_credit(user_id: int) -> bool:
