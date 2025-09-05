@@ -4032,7 +4032,7 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Validate input
     if len(context.args) != 1 or not context.args[0].isdigit() or len(context.args[0]) != 10:
-        await update.message.reply_text("❌ Usage: /num <10-digit number>")
+        await update.message.reply_text("❌ Usage: /num <code>10-digit number</code>", parse_mode="HTML")
         return
 
     number = context.args[0]
