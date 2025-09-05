@@ -3443,14 +3443,15 @@ from db import get_user, update_user
 # Cooldown tracking
 last_msp_usage = {}
 
-# Regex for card detection
+# Regex for CC detection
 CARD_REGEX = re.compile(r"\b\d{12,19}\|\d{2}\|(?:\d{2}|\d{4})\|\d{3,4}\b")
 
-# Consume credit
+# Consume credit once
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
-        await update_user(user_id, credits=user_data["credits"] - 1)
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
         return True
     return False
 
@@ -3464,11 +3465,11 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         resp = data.get("Response", "Unknown")
         status = data.get("Status", "false")
         price = data.get("Price", "0")
-        gateway = data.get("Gateway", "Self Shopify")
+        gateway = data.get("Gateway", "N/A")
 
-        return str(resp), str(status), str(price), str(gateway)
+        return resp, status, price, gateway
     except Exception as e:
-        return f"Error: {e}", "false", "0", "Self Shopify"
+        return f"Error: {e}", "false", "0", "N/A"
 
 # /msp command
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3480,9 +3481,11 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
     last_msp_usage[user_id] = now
 
-    # Get cards from args or replied message
-    raw_input = " ".join(context.args) if context.args else None
-    if not raw_input and update.message.reply_to_message:
+    # Collect cards either from args or replied message
+    raw_input = None
+    if context.args:
+        raw_input = " ".join(context.args)
+    elif update.message.reply_to_message:
         raw_input = update.message.reply_to_message.text
 
     if not raw_input:
@@ -3499,7 +3502,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(cards) > 50:
         cards = cards[:50]
 
-    # Fetch user data
+    # DB fetch
     user_data = await get_user(user_id)
     if not user_data:
         return await update.message.reply_text("❌ No user data found in DB.")
@@ -3530,8 +3533,14 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 async with sem:
                     resp, status, price, gateway = await check_card(session, base_url, site, card)
-                    resp = str(resp)  # Ensure it's a string to prevent escape() error
 
+                    # Convert resp safely to string
+                    if isinstance(resp, (tuple, list)):
+                        resp = " | ".join(map(str, resp))
+                    else:
+                        resp = str(resp)
+
+                    # Get site price only once
                     if first and site_price is None:
                         try:
                             site_price = float(price)
@@ -3546,24 +3555,24 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # Classification
                     if "R4 TOKEN EMPTY" in resp_upper:
                         errors += 1
-                        line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        line = f"⚠️ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
                     elif resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED", "EXPIRE_CARD", "EXPIRED_CARD"]:
                         declined += 1
-                        line = f"❌ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        line = f"❌ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
                     elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS", "INSUFFICIENT_FUNDS"]:
                         approved += 1
-                        line = f"✅ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        line = f"✅ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
                     elif status.lower() == "true" and resp_upper not in ["CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
                         approved += 1
-                        line = f"✅ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        line = f"✅ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
                     else:
                         errors += 1
-                        line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
+                        line = f"⚠️ <code>{escape(str(card))}</code>\n   ↳ <i>{escape(resp)}</i>"
 
                     results.append(line)
                     checked += 1
 
-                    # Update message progressively
+                    # Progressive update
                     text = (
                         "<pre><code>"
                         f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
@@ -3610,6 +3619,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run in background
     asyncio.create_task(run_check())
+
 
 
 
