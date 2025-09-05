@@ -4045,30 +4045,29 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✦━━━━━━━━━━━━━━✦\n"
         )
 
-        # Format each entry
+        # Format each entry inside a code block
         msg_lines = [header]
         for idx, item in enumerate(entries, 1):
-            # Entry line in triple backticks (code block)
-            msg_lines.append(f"```📌 Entry {idx}:```")
-            # Values in monospace using <code>
-            msg_lines.append(
-                f"   👤 Name    : <code>{item.get('name', 'N/A')}</code>\n"
-                f"   🏷️ FName   : <code>{item.get('fname', 'N/A')}</code>\n"
-                f"   📍 Address : <code>{item.get('address', 'N/A')}</code>\n"
-                f"   🌐 Circle  : <code>{item.get('circle', 'N/A')}</code>\n"
-                f"   📱 Mobile  : <code>{item.get('mobile', 'N/A')}</code>\n"
-                f"   🆔 ID      : <code>{item.get('id', 'N/A')}</code>"
+            entry_block = (
+                f"📌 Entry {idx}:\n"
+                f"   👤 Name    : {item.get('name', 'N/A')}\n"
+                f"   🏷️ FName   : {item.get('fname', 'N/A')}\n"
+                f"   📍 Address : {item.get('address', 'N/A')}\n"
+                f"   🌐 Circle  : {item.get('circle', 'N/A')}\n"
+                f"   📱 Mobile  : {item.get('mobile', 'N/A')}\n"
+                f"   🆔 ID      : {item.get('id', 'N/A')}"
             )
-            # Add blank line between entries
-            msg_lines.append("")
+            # Wrap the entire entry in triple backticks
+            msg_lines.append(f"```\n{entry_block}\n```")
 
         msg_content = "\n".join(msg_lines)
 
         # Send final message
-        await update.message.reply_text(msg_content, parse_mode="HTML", disable_web_page_preview=True)
+        await update.message.reply_text(msg_content, parse_mode="Markdown", disable_web_page_preview=True)
 
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching data: {str(e)}")
+
 
 
 
