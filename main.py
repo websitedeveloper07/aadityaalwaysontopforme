@@ -4018,7 +4018,6 @@ import json
 NUM_API = "https://e1e63696f2d5.ngrok-free.app/index.cpp?key=dark&number={number}"
 
 async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Validate input
     if len(context.args) != 1 or not context.args[0].isdigit() or len(context.args[0]) != 10:
         await update.message.reply_text("❌ Usage: /num [10-digit number]")
         return
@@ -4027,7 +4026,6 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔎 Checking number: <code>{number}</code>", parse_mode="HTML")
 
     try:
-        # Fetch data from API
         async with aiohttp.ClientSession() as session:
             async with session.get(NUM_API.format(number=number), timeout=30) as resp:
                 text = await resp.text()
@@ -4038,7 +4036,6 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ No data found for this number.")
             return
 
-        # Header
         header = (
             "✦━━━━━━━━━━━━━━✦\n"
             "     ⚡ 𝑪𝑨𝑹𝑫 ✘ 𝑪𝑯𝑲\n"
@@ -4048,10 +4045,12 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg_lines = [header]
 
         for idx, item in enumerate(entries, 1):
-            # Only Entry line in code block
-            msg_lines.append(f"```📌 Entry {idx}:```")
-            
-            # The rest with values in monospace
+            # Proper code block for Entry line
+            msg_lines.append("```")
+            msg_lines.append(f"📌 Entry {idx}:")
+            msg_lines.append("```")
+
+            # Values in monospace using <code>
             msg_lines.append(
                 f"   👤 Name    : <code>{item.get('name', 'N/A')}</code>\n"
                 f"   🏷️ FName   : <code>{item.get('fname', 'N/A')}</code>\n"
@@ -4062,11 +4061,11 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         msg_content = "\n".join(msg_lines)
-
         await update.message.reply_text(msg_content, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching data: {str(e)}")
+
 
 
 
