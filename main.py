@@ -3436,6 +3436,7 @@ import time
 import httpx
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
+from html import escape
 from db import get_user, update_user
 
 # Cooldown tracking
@@ -3508,7 +3509,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         approved, declined, errors = 0, 0, 0
         checked = 0
         total_price = 0.0
-        gateway_used = None
+        gateway_used = "Self Shopify"
         results = []
 
         sem = asyncio.Semaphore(3)
@@ -3525,28 +3526,35 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         total_price += float(price)
                     except:
                         pass
-                    if gateway != "N/A":
+                    if gateway and gateway != "N/A":
                         gateway_used = gateway
 
+                    resp_upper = resp.upper().strip()
+
                     # Classification
-                    if resp in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED"]:
+                    if resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED"]:
                         declined += 1
-                        line = f"❌ <code>{card}</code>\n   ↳ <b>{resp}</b>"
-                    elif resp == "3D_AUTHENTICATION" or status == "true":
+                        line = f"❌ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
+                    elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS"]:
                         approved += 1
-                        line = f"✅ <code>{card}</code>\n   ↳ <b>{resp}</b>"
-                    elif "Error" in resp:
+                        line = f"✅ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
+                    elif status.lower() == "true" and resp_upper not in ["CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
+                        approved += 1
+                        line = f"✅ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
+                    elif "ERROR" in resp_upper:
                         errors += 1
-                        line = f"⚠️ <code>{card}</code>\n   ↳ <b>{resp}</b>"
+                        line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
                     else:
                         errors += 1
-                        line = f"⚠️ <code>{card}</code>\n   ↳ <b>{resp}</b>"
+                        line = f"⚠️ <code>{escape(card)}</code>\n   ↳ <i>{escape(resp)}</i>"
 
                     results.append(line)
                     checked += 1
 
+                    # Progressive update
                     text = (
-                        f"📊 <b>Mass Shopify Checker</b>\n"
+                        "<pre><code>"
+                        f"📊 Mass Shopify Checker\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                         f"🌍 Total cards : {len(cards)}\n"
                         f"✅ Approved    : {approved}\n"
@@ -3555,9 +3563,10 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"🔄 Checked     : {checked} / {len(cards)}\n"
                         f"💲 Site Price  : ${price}\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"📝 <b>Results</b>\n"
+                        f"📝 Results\n"
                         f"────────────────\n"
-                        + "\n".join(results)
+                        + "\n".join(results) +
+                        "</code></pre>"
                     )
                     try:
                         await msg.edit_text(text, parse_mode="HTML")
@@ -3567,7 +3576,8 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await asyncio.gather(*(worker(c) for c in cards))
 
         final_text = (
-            f"📊 <b>Mass Shopify Checker</b>\n"
+            "<pre><code>"
+            f"📊 Mass Shopify Checker\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"🌍 Total cards : {len(cards)}\n"
             f"✅ Approved    : {approved}\n"
@@ -3577,15 +3587,15 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💲 Total Amt   : ${total_price:.2f}\n"
             f"🏬 Gateway     : {gateway_used}\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📝 <b>Results</b>\n"
+            f"📝 Results\n"
             f"────────────────\n"
-            + "\n".join(results)
+            + "\n".join(results) +
+            "</code></pre>"
         )
         await msg.edit_text(final_text, parse_mode="HTML")
 
     # Run in background
     asyncio.create_task(run_check())
-
 
 
 
