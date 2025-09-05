@@ -4018,6 +4018,7 @@ import json
 NUM_API = "https://e1e63696f2d5.ngrok-free.app/index.cpp?key=dark&number={number}"
 
 async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Validate input
     if len(context.args) != 1 or not context.args[0].isdigit() or len(context.args[0]) != 10:
         await update.message.reply_text("❌ Usage: /num [10-digit number]")
         return
@@ -4026,6 +4027,7 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔎 Checking number: <code>{number}</code>", parse_mode="HTML")
 
     try:
+        # Fetch data from API
         async with aiohttp.ClientSession() as session:
             async with session.get(NUM_API.format(number=number), timeout=30) as resp:
                 text = await resp.text()
@@ -4036,32 +4038,26 @@ async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ No data found for this number.")
             return
 
-        header = (
-            "✦━━━━━━━━━━━━━━✦\n"
-            "     ⚡ 𝑪𝑨𝑹𝑫 ✘ 𝑪𝑯𝑲\n"
-            "✦━━━━━━━━━━━━━━✦\n"
-        )
-
-        msg_lines = [header]
+        # Build message
+        msg_lines = []
+        msg_lines.append("✦━━━━━━━━━━━━━━✦")
+        msg_lines.append("     ⚡ 𝑪𝑨𝑹𝑫 ✘ 𝑪𝑯𝑲")
+        msg_lines.append("✦━━━━━━━━━━━━━━✦\n")
 
         for idx, item in enumerate(entries, 1):
-            # Proper code block for Entry line
-            msg_lines.append("```")
-            msg_lines.append(f"📌 Entry {idx}:")
-            msg_lines.append("```")
+            # Entry header in code block
+            msg_lines.append(f"```\n📌 Entry {idx}:\n```")
+            # Entry details with values in monospace
+            msg_lines.append(f"   👤 Name    : <code>{item.get('name', 'N/A')}</code>")
+            msg_lines.append(f"   🏷️ FName   : <code>{item.get('fname', 'N/A')}</code>")
+            msg_lines.append(f"   📍 Address : <code>{item.get('address', 'N/A')}</code>")
+            msg_lines.append(f"   🌐 Circle  : <code>{item.get('circle', 'N/A')}</code>")
+            msg_lines.append(f"   📱 Mobile  : <code>{item.get('mobile', 'N/A')}</code>")
+            msg_lines.append(f"   🆔 ID      : <code>{item.get('id', 'N/A')}</code>\n")
 
-            # Values in monospace using <code>
-            msg_lines.append(
-                f"   👤 Name    : <code>{item.get('name', 'N/A')}</code>\n"
-                f"   🏷️ FName   : <code>{item.get('fname', 'N/A')}</code>\n"
-                f"   📍 Address : <code>{item.get('address', 'N/A')}</code>\n"
-                f"   🌐 Circle  : <code>{item.get('circle', 'N/A')}</code>\n"
-                f"   📱 Mobile  : <code>{item.get('mobile', 'N/A')}</code>\n"
-                f"   🆔 ID      : <code>{item.get('id', 'N/A')}</code>\n"
-            )
-
-        msg_content = "\n".join(msg_lines)
-        await update.message.reply_text(msg_content, parse_mode="HTML", disable_web_page_preview=True)
+        # Send the final message
+        final_msg = "\n".join(msg_lines)
+        await update.message.reply_text(final_msg, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching data: {str(e)}")
