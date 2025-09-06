@@ -1654,36 +1654,113 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+# main.py (relevant parts only)
+import asyncio
+import re
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
-from stripe import stripe_check   # import checker function
+from html import escape as escape_html
+from telegram.helpers import escape_markdown as escape_md
 
-async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
+from db import get_user, update_user
+from bin import get_bin_info
+from stripe import check_card, parse_result  # from stripe.py
+
+# Cooldown tracking (user_id -> last timestamp)
+last_st_usage = {}
+
+# Regex for CC format: cc|mm|yy(yy)|cvv
+CARD_REGEX = re.compile(r"^(\d{13,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})$")
+
+# ────────── Credit Management ────────── #
+async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+# ────────── /st Command ────────── #
+async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_id = user.id
+
+    # Cooldown check
+    now = asyncio.get_event_loop().time()
+    if user_id in last_st_usage and now - last_st_usage[user_id] < 5:
+        return await update.message.reply_text("⏳ Please wait 5s before using /st again.")
+
     if not context.args:
-        return await update.message.reply_text("⚠️ Usage: /st cc|mm|yy|cvv")
+        return await update.message.reply_text("⚠️ Usage: /st <cc|mm|yy|cvv>")
 
-    card = context.args[0]
-    msg = await update.message.reply_text("⏳ Processing...")
+    card_input = context.args[0].strip()
+    match = CARD_REGEX.match(card_input)
+    if not match:
+        return await update.message.reply_text("❌ Invalid card format. Use: cc|mm|yy|cvv")
 
-    status, response = await stripe_check(card)
+    cc, mm, yy, cvv = match.groups()
+    if len(yy) == 2:  # normalize YY to YYYY
+        yy = "20" + yy
+    cc_normalized = f"{cc}|{mm}|{yy}|{cvv}"
 
-    text = (
-        "═══  status  ═══\n"
-        f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{card}`\n"
-        f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 charged\n"
-        f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ *{response}*\n"
-        "――――――――――――――――\n"
-        f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ Visa\n"
-        f"[⌇] 𝐓𝐲𝐩𝐞 ➜ CREDIT |\n"
-        f"[⌇] 𝐁𝐚𝐧𝐤 ➜ UNKNOWN\n"
-        f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ UNITED STATES 🇺🇸\n"
-        "――――――――――――――――\n"
-        f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
-        "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
-        "――――――――――――――――"
+    # Check credits
+    if not await consume_credit(user_id):
+        return await update.message.reply_text("❌ You have no credits left.")
+
+    # Cooldown applied
+    last_st_usage[user_id] = now
+
+    # Send processing message
+    processing_msg = await update.message.reply_text("🔄 Processing your request...")
+
+    # Call stripe.py checker
+    raw_result = await check_card(cc, mm, yy, cvv)
+    status, api_status = parse_result(raw_result)
+
+    # Lookup BIN
+    bin_number = cc[:6]
+    bin_details = await get_bin_info(bin_number)
+
+    brand = (bin_details.get("scheme") or "N/A").title()
+    issuer = bin_details.get("bank") or "N/A"
+    country_name = bin_details.get("country") or "N/A"
+    country_flag = bin_details.get("country_emoji", "")
+    card_type = bin_details.get("type", "N/A")
+    card_level = bin_details.get("brand", "N/A")
+
+    # Escape + formatting
+    status_text = "APPROVED ✅" if status == "APPROVED" else (
+        "CCN ⚠️" if status == "CCN" else "DECLINED ❌"
     )
 
-    await msg.edit_text(text, parse_mode="Markdown")
+    header = f"═══ [ *{escape_md(status_text)}* ] ═══"
+    formatted_response = f"_{escape_md(api_status)}_"
+
+    bullet_text = "[⌇]"
+    bullet_link_url = "https://t.me/CARDER33"  # change if needed
+    bullet_link = f"[{escape_md(bullet_text)}]({bullet_link_url})"
+
+    # Build final message
+    final_text = (
+        f"{header}\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_md(cc_normalized)}`\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_md(brand)}`\n"
+        f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{escape_md(card_type)} | {escape_md(card_level)}`\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_md(issuer)}`\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_md(country_name)} {escape_md(country_flag)}`\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_md(user.first_name)}](tg://user?id={user.id})\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
+        f"――――――――――――――――"
+    )
+
+    # Edit the processing message with result
+    await processing_msg.edit_text(final_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
 
 
 
