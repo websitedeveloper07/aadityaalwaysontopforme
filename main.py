@@ -1682,6 +1682,8 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # ────────── /st Command ────────── #
+CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
+
 async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -1695,7 +1697,7 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("⚠️ Usage: /st <cc|mm|yy|cvv>")
 
     card_input = context.args[0].strip()
-    match = CARD_REGEX.match(card_input)
+    match = CARD_PATTERN.match(card_input)
     if not match:
         return await update.message.reply_text("❌ Invalid card format. Use: cc|mm|yy|cvv")
 
@@ -1715,12 +1717,18 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_msg = await update.message.reply_text("🔄 Processing your request...")
 
     # Call stripe.py checker
-    raw_result = await stripe_check(f"{cc}|{mm}|{yy}|{cvv}")
-    status, api_status = parse_result(raw_result)
+    try:
+        raw_result = await stripe_check(f"{cc}|{mm}|{yy}|{cvv}")
+        status, api_status = parse_result(raw_result)
+    except Exception as e:
+        status, api_status = "DECLINED", f"Parse error: {e}"
 
     # Lookup BIN
     bin_number = cc[:6]
-    bin_details = await get_bin_info(bin_number)
+    try:
+        bin_details = await get_bin_info(bin_number)
+    except Exception:
+        bin_details = {}
 
     brand = (bin_details.get("scheme") or "N/A").title()
     issuer = bin_details.get("bank") or "N/A"
@@ -1734,28 +1742,27 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "CCN ⚠️" if status == "CCN" else "DECLINED ❌"
     )
 
-    header = f"═══ [ *{escape_md(status_text)}* ] ═══"
+    header = f"═══ *{escape_md(status_text)}* ═══"
     formatted_response = f"_{escape_md(api_status)}_"
 
-    # Bullet link (fixed escaping issue)
-    bullet_text = "⌇"
+    # Clickable bullet link (used everywhere)
     bullet_link_url = "https://t.me/CARDER33"  # change if needed
-    bullet_link = f"[{escape_md(bullet_text)}]({bullet_link_url})"
+    bullet = f"[⌇]({bullet_link_url})"
 
     # Build final message
     final_text = (
         f"{header}\n"
-        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_md(cc_normalized)}`\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
+        f"{bullet} 𝐂𝐚𝐫𝐝 ➜ `{escape_md(cc_normalized)}`\n"
+        f"{bullet} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+        f"{bullet} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
         f"――――――――――――――――\n"
-        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_md(brand)}`\n"
-        f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{escape_md(card_type)} | {escape_md(card_level)}`\n"
-        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_md(issuer)}`\n"
-        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_md(country_name)} {escape_md(country_flag)}`\n"
+        f"{bullet} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_md(brand)}`\n"
+        f"{bullet} 𝐓𝐲𝐩𝐞 ➜ `{escape_md(card_type)} | {escape_md(card_level)}`\n"
+        f"{bullet} 𝐁𝐚𝐧𝐤 ➜ `{escape_md(issuer)}`\n"
+        f"{bullet} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_md(country_name)} {escape_md(country_flag)}`\n"
         f"――――――――――――――――\n"
-        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_md(user.first_name)}](tg://user?id={user.id})\n"
-        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
+        f"{bullet} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_md(user.first_name)}](tg://user?id={user.id})\n"
+        f"{bullet} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
         f"――――――――――――――――"
     )
 
@@ -1768,8 +1775,6 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"⚠️ Formatting error: {e}\n\n{final_text}",
             parse_mode=None
         )
-
-
 
 
 
