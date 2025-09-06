@@ -3495,6 +3495,9 @@ async def run_msp(update: Update, cards, base_url, site, msg):
     sem = asyncio.Semaphore(2)  # parallel limit
     lock = asyncio.Lock()       # prevent race in msg editing
 
+    # ✅ success keywords
+    success_keywords = ["thank you", "approved", "charged", "success", "insufficient funds"]
+
     async with httpx.AsyncClient() as session:
 
         async def worker(i, card):
@@ -3538,8 +3541,13 @@ async def run_msp(update: Update, cards, base_url, site, msg):
 
                 checked += 1
 
+                # ✅ Enhance response if success
+                display_resp = escape(resp)
+                if any(word in resp_upper.lower() for word in success_keywords):
+                    display_resp = f"{escape(resp)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+
                 results.append(
-                    f"{status_icon} <code>{escape(card_str)}</code>\n ↳ <i>{escape(resp)}</i>"
+                    f"{status_icon} <code>{escape(card_str)}</code>\n ↳ <i>{display_resp}</i>"
                 )
 
                 # Update message safely (one at a time)
@@ -3619,8 +3627,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run in background, don’t block bot
     asyncio.create_task(run_msp(update, cards, base_url, site, msg))
-
-
 
 
 
