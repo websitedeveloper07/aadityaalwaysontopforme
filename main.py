@@ -1685,7 +1685,7 @@ async def consume_credit(user_id: int) -> bool:
 from telegram import Update
 from telegram.ext import ContextTypes
 import re
-from stripe import check_card, parse_result  # make sure these are defined in stripe.py
+
 
 CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
