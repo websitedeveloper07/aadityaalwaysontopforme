@@ -1884,7 +1884,8 @@ async def run_mass_check(msg, cards, user_id):
         async with semaphore:
             try:
                 # call your existing check_card(session, card)
-                result_text, status = await check_card(card)
+                result_text, status = await check_card(session, some_site, card)
+
             except Exception as e:
                 result_text = f"❌ <code>{card}</code> - Error: {e}"
                 status = "error"
