@@ -5118,7 +5118,7 @@ def main():
     application.add_handler(CommandHandler("info", command_with_check(info, "info")))
     application.add_handler(CommandHandler("credits", command_with_check(credits_command, "credits")))
     application.add_handler(CommandHandler("chk", command_with_check(chk_command, "chk")))
-    application.add_handler(CommandHandler("st", st))
+    application.add_handler(CommandHandler("st", st_command))
     application.add_handler(CommandHandler("mchk", command_with_check(mchk_command, "mchk")))
     application.add_handler(CommandHandler("mass", command_with_check(mass_command, "mass")))
     application.add_handler(CommandHandler("mtchk", command_with_check(mtchk, "mtchk")))
