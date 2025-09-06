@@ -1664,7 +1664,7 @@ from telegram.helpers import escape_markdown as escape_md
 
 from db import get_user, update_user
 from bin import get_bin_info
-from stripe import check_card, parse_result  # from stripe.py
+from stripe import stripe_check, parse_result  # from stripe.py
 
 # Cooldown tracking (user_id -> last timestamp)
 last_st_usage = {}
