@@ -3030,7 +3030,7 @@ async def process_card_check(user, card_input, custom_url, msg):
         display_response = escape(response_text)
         success_keywords = ["thank you", "approved", "charged", "success"]
         if any(word in response_text.lower() for word in success_keywords):
-            display_response = f"{escape(response_text)} ➤𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+            display_response = f"{escape(response_text)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
 
         # Developer/branding
         DEVELOPER_NAME = "kคli liຖนxx"
@@ -3043,7 +3043,7 @@ async def process_card_check(user, card_input, custom_url, msg):
         formatted_msg = (
             "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ {escape(gateway)}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ <i>{escape(gateway)}</i>\n"
             f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price} 💸\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
