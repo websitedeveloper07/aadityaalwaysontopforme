@@ -1654,36 +1654,99 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes
-from stripe import stripe_check   # import checker function
+import logging
+import asyncio
+from datetime import datetime
+from html import escape
 
-async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        return await update.message.reply_text("⚠️ Usage: /st cc|mm|yy|cvv")
+from telegram import Update, ParseMode
+from telegram.ext import ContextTypes
 
-    card = context.args[0]
-    msg = await update.message.reply_text("⏳ Processing...")
+from stripe import stripe_check
+from db import get_user, update_user
+from bin import get_bin_info
 
+logger = logging.getLogger(__name__)
+
+user_cooldowns = {}
+BULLET_GROUP_LINK = "https://t.me/YOUR_GROUP_LINK"
+
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)} seconds.",
+            parse_mode=ParseMode.HTML
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+async def st_worker(update: Update, card: str):
+    user_id = update.effective_user.id
+    msg = await update.message.reply_text("⏳ Processing...", parse_mode=ParseMode.HTML)
+
+    # Stripe check
     status, response = await stripe_check(card)
 
+    # BIN lookup
+    bin_number = card.split("|")[0][:6]
+    bin_details = await get_bin_info(bin_number)
+
+    brand = (bin_details.get("scheme") or "N/A").title()
+    issuer = bin_details.get("bank") or "UNKNOWN"
+    country_name = bin_details.get("country") or "N/A"
+    country_flag = bin_details.get("country_emoji", "")
+    card_type = bin_details.get("type", "N/A")
+
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
     text = (
-        "═══  status  ═══\n"
-        f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{card}`\n"
-        f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 charged\n"
-        f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ *{response}*\n"
+        f"═══  status  ═══\n"
+        f"{bullet_link} <b>Card:</b> <code>{escape(card)}</code>\n"
+        f"{bullet_link} <b>Gateway:</b> Stripe charged\n"
+        f"{bullet_link} <b>Response:</b> <i>{escape(response)}</i>\n"
         "――――――――――――――――\n"
-        f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ Visa\n"
-        f"[⌇] 𝐓𝐲𝐩𝐞 ➜ CREDIT |\n"
-        f"[⌇] 𝐁𝐚𝐧𝐤 ➜ UNKNOWN\n"
-        f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ UNITED STATES 🇺🇸\n"
+        f"{bullet_link} <b>Brand:</b> <code>{brand}</code>\n"
+        f"{bullet_link} <b>Type:</b> <code>{card_type}</code>\n"
+        f"{bullet_link} <b>Bank:</b> <code>{issuer}</code>\n"
+        f"{bullet_link} <b>Country:</b> <code>{country_name} {country_flag}</code>\n"
         "――――――――――――――――\n"
-        f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
-        "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+        f"{bullet_link} <b>Requested by:</b> {update.effective_user.mention_html()}\n"
+        f"{bullet_link} <b>Developer:</b> kคli liຖนxx\n"
         "――――――――――――――――"
     )
 
-    await msg.edit_text(text, parse_mode="Markdown")
+    await msg.edit_text(text, parse_mode=ParseMode.HTML)
+
+async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    # Cooldown check
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    # Credit check
+    if not await consume_credit(user_id):
+        return await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
+
+    if not context.args:
+        return await update.message.reply_text("⚠️ Usage: /st cc|mm|yy|cvv", parse_mode=ParseMode.HTML)
+
+    card = context.args[0]
+
+    # Run the worker in background
+    asyncio.create_task(st_worker(update, card))
+
 
 
 
