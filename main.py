@@ -2741,7 +2741,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
     api_url = (
         "https://auto-shopify-6cz4.onrender.com/index.php"
         f"?site={site_input}"
-        "&cc=5242430428405662|03|28|3023"
+        "&cc=4312311807552605|08|2031|631"
         "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
     )
 
@@ -3080,7 +3080,7 @@ last_site_usage = {}
 
 API_TEMPLATE = (
     "https://auto-shopify-6cz4.onrender.com/index.php"
-    "?site={site_url}&cc=5547300001996183|11|2028|197"
+    "?site={site_url}&cc=4312311807552605|08|2031|631"
 )
 
 # === Credit system ===
