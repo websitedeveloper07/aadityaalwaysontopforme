@@ -1659,12 +1659,11 @@ import asyncio
 import re
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
-from html import escape as escape_html
 from telegram.helpers import escape_markdown as escape_md
 
 from db import get_user, update_user
 from bin import get_bin_info
-from stripe import stripe_check, parse_result  # from stripe.py
+from stripe import stripe_check, parse_result  # make sure stripe.py has stripe_check()
 
 # Cooldown tracking (user_id -> last timestamp)
 last_st_usage = {}
@@ -1716,7 +1715,7 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_msg = await update.message.reply_text("🔄 Processing your request...")
 
     # Call stripe.py checker
-    raw_result = await check_card(cc, mm, yy, cvv)
+    raw_result = await stripe_check(cc, mm, yy, cvv)
     status, api_status = parse_result(raw_result)
 
     # Lookup BIN
@@ -1738,7 +1737,8 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     header = f"═══ [ *{escape_md(status_text)}* ] ═══"
     formatted_response = f"_{escape_md(api_status)}_"
 
-    bullet_text = "[⌇]"
+    # Bullet link (fixed escaping issue)
+    bullet_text = "⌇"
     bullet_link_url = "https://t.me/CARDER33"  # change if needed
     bullet_link = f"[{escape_md(bullet_text)}]({bullet_link_url})"
 
@@ -1760,7 +1760,16 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Edit the processing message with result
-    await processing_msg.edit_text(final_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
+    try:
+        await processing_msg.edit_text(final_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
+    except Exception as e:
+        # Fallback if Markdown parse fails
+        await processing_msg.edit_text(
+            f"⚠️ Formatting error: {e}\n\n{final_text}",
+            parse_mode=None
+        )
+
+
 
 
 
