@@ -1864,6 +1864,11 @@ async def check_card(session, card: str):
 
 
 
+import asyncio
+import time
+import logging
+from telegram import TelegramError
+
 async def run_mass_check(msg, cards, user_id):
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
@@ -1873,51 +1878,38 @@ async def run_mass_check(msg, cards, user_id):
     start_time = time.time()
 
     queue = asyncio.Queue()
-    semaphore = asyncio.Semaphore(3)  # limit to 3 in parallel
+    semaphore = asyncio.Semaphore(3)  # max parallel checks
 
-    async with aiohttp.ClientSession() as session:
-        async def worker(card):
-            async with semaphore:
-                result_text, status = await check_card(session, card)
-                counters["checked"] += 1
-                counters[status] = counters.get(status, 0) + 1
-                # Push result into queue when ready
-                await queue.put(result_text)
+    async def worker(card):
+        async with semaphore:
+            try:
+                # call your existing check_card(session, card)
+                result_text, status = await check_card(card)
+            except Exception as e:
+                result_text = f"❌ <code>{card}</code> - Error: {e}"
+                status = "error"
 
-        # Start all workers in background
-        tasks = [asyncio.create_task(worker(c)) for c in cards]
+            counters["checked"] += 1
+            if status in counters:
+                counters[status] += 1
+            else:
+                counters["error"] += 1
 
-        async def consumer():
-            while True:
-                try:
-                    # Wait for next result
-                    result_text = await asyncio.wait_for(queue.get(), timeout=50)
-                except asyncio.TimeoutError:
-                    # Break if all workers finished and queue is empty
-                    if all(t.done() for t in tasks):
-                        break
-                    continue
+            await queue.put(result_text)
 
-                # Add result line and update message
-                results.append(result_text)
-                elapsed = round(time.time() - start_time, 2)
-                header = (
-                    f"✘ <b>Total</b> ↣ {total}\n"
-                    f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
-                    f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
-                    f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
-                    f"✘ <b>Error</b> ↣ {counters['error']}\n"
-                    f"✘ <b>Time</b> ↣ {elapsed}s"
-                )
-                content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
-                try:
-                    await msg.edit_text(content, parse_mode="HTML")
-                except TelegramError:
-                    pass
+    # Start workers
+    tasks = [asyncio.create_task(worker(c)) for c in cards]
 
-                await asyncio.sleep(1)  # wait 1s before showing next line
+    async def consumer():
+        while any(not t.done() for t in tasks) or not queue.empty():
+            try:
+                result_text = await asyncio.wait_for(queue.get(), timeout=2)
+            except asyncio.TimeoutError:
+                continue
 
-            # Final update after all done
+            results.append(result_text)
+
+            # Update the message
             elapsed = round(time.time() - start_time, 2)
             header = (
                 f"✘ <b>Total</b> ↣ {total}\n"
@@ -1928,9 +1920,14 @@ async def run_mass_check(msg, cards, user_id):
                 f"✘ <b>Time</b> ↣ {elapsed}s"
             )
             content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
-            await msg.edit_text(content, parse_mode="HTML")
+            try:
+                await msg.edit_text(content, parse_mode="HTML")
+            except TelegramError:
+                pass
 
-        await asyncio.gather(*tasks, consumer())
+            await asyncio.sleep(0.5)
+
+    await asyncio.gather(consumer(), *tasks)
 
 
 import time
