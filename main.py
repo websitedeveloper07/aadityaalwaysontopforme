@@ -1710,7 +1710,7 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.")
 
-    # Cooldown applied
+    # Apply cooldown
     last_st_usage[user_id] = now
 
     # Send processing message
@@ -1719,6 +1719,9 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Call stripe.py checker
     try:
         raw_result = await stripe_check(f"{cc}|{mm}|{yy}|{cvv}")
+        # Fix tuple issue
+        if isinstance(raw_result, tuple):
+            raw_result = raw_result[0]
         status, api_status = parse_result(raw_result)
     except Exception as e:
         status, api_status = "DECLINED", f"Parse error: {e}"
@@ -1745,9 +1748,9 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     header = f"═══ *{escape_md(status_text)}* ═══"
     formatted_response = f"_{escape_md(api_status)}_"
 
-    # Clickable bullet link (used everywhere)
+    # Bullet format (with brackets)
     bullet_link_url = "https://t.me/CARDER33"  # change if needed
-    bullet = f"[⌇]({bullet_link_url})"
+    bullet = f"[{escape_md('[⌇]')}]({bullet_link_url})"
 
     # Build final message
     final_text = (
@@ -1775,6 +1778,7 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"⚠️ Formatting error: {e}\n\n{final_text}",
             parse_mode=None
         )
+
 
 
 
