@@ -1654,70 +1654,40 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# main.py
-import asyncio
 from telegram import Update
-from telegram.ext import ContextTypes
-from stripe import main as stripe_main  # from stripe.py
-import httpx
-
-# Simple BIN lookup API
-async def bin_lookup(bin_number):
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(f"https://lookup.binlist.net/{bin_number}")
-            if r.status_code == 200:
-                data = r.json()
-                brand = data.get("scheme", "UNKNOWN").upper()
-                ctype = data.get("type", "UNKNOWN").upper()
-                bank = data.get("bank", {}).get("name", "UNKNOWN")
-                country = data.get("country", {}).get("name", "UNKNOWN")
-                flag = data.get("country", {}).get("emoji", "")
-                return brand, ctype, bank, f"{country} {flag}"
-    except:
-        pass
-    return "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN"
+from telegram.ext import CommandHandler, ContextTypes
+from stripe import stripe_check   # import checker function
 
 async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
     if not context.args:
-        return await update.message.reply_text("❌ Usage: /st <cc|mm|yy|cvv>")
+        return await update.message.reply_text("⚠️ Usage: /st cc|mm|yy|cvv")
 
     card = context.args[0]
-
-    # Send "Processing..." message
     msg = await update.message.reply_text("⏳ Processing...")
 
-    try:
-        # Run stripe check
-        status, response = await stripe_main(card)
+    status, response = await stripe_check(card)
 
-        # BIN lookup
-        cc = card.split("|")[0]
-        brand, ctype, bank, country = await bin_lookup(cc[:6])
+    text = (
+        "═══  status  ═══\n"
+        f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{card}`\n"
+        f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 charged\n"
+        f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ *{response}*\n"
+        "――――――――――――――――\n"
+        f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ Visa\n"
+        f"[⌇] 𝐓𝐲𝐩𝐞 ➜ CREDIT |\n"
+        f"[⌇] 𝐁𝐚𝐧𝐤 ➜ UNKNOWN\n"
+        f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ UNITED STATES 🇺🇸\n"
+        "――――――――――――――――\n"
+        f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
+        "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+        "――――――――――――――――"
+    )
 
-        # Build final result
-        text = (
-            "═══  𝐒𝐭𝐚𝐭𝐮𝐬  ═══\n"
-            f"[⌇] 𝐂𝐚𝐫𝐝 ➜ <code>{card}</code>\n"
-            f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 charged\n"
-            f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{response}</i>\n"
-            "――――――――――――――――\n"
-            f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}\n"
-            f"[⌇] 𝐓𝐲𝐩𝐞 ➜ {ctype}\n"
-            f"[⌇] 𝐁𝐚𝐧𝐤 ➜ {bank}\n"
-            f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country}\n"
-            "――――――――――――――――\n"
-            f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {user.mention_html()}\n"
-            "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
-            "――――――――――――――――"
-        )
+    await msg.edit_text(text, parse_mode="Markdown")
 
-        # Edit final message
-        await msg.edit_text(text, parse_mode="HTML")
+# register handler
+app.add_handler(CommandHandler("st", st))
 
-    except Exception as e:
-        await msg.edit_text(f"❌ Error: <code>{str(e)}</code>", parse_mode="HTML")
 
 
 
