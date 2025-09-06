@@ -1695,7 +1695,7 @@ async def st_worker(update: Update, card: str):
     user_id = update.effective_user.id
     msg = await update.message.reply_text("⏳ Processing...", parse_mode=ParseMode.HTML)
 
-    # Get status and message from stripe.py
+    # Get status and message directly from stripe.py
     status, response_text = await stripe_check(card)
 
     # Map status to emoji
@@ -1717,14 +1717,15 @@ async def st_worker(update: Update, card: str):
     country_flag = bin_details.get("country_emoji", "")
     card_type = bin_details.get("type", "N/A")
 
-    # Clickable bullet and developer
+    # Clickable bullet and developer link
     bullet = '<a href="https://t.me/CARDER33">[⌇]</a>'
     developer = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
 
-    status_line = f"═══ [ <i>{escape(response_text)}</i> ] ═══"
+    # Status line with emoji + status only
+    status_line = f"{status_emoji} ═══ [ <i>{status}</i> ] ═══"
 
     text = (
-        f"<b>{status_emoji} {status_line}</b>\n"
+        f"<b>{status_line}</b>\n"
         f"{bullet} <b>Card:</b> <code>{escape(card)}</code>\n"
         f"{bullet} <b>Gateway:</b> 𝑺𝒕𝒓𝒊𝒑𝒆 𝟏$ 💎\n"
         f"{bullet} <b>Response:</b> <i>{escape(response_text)}</i>\n"
@@ -1740,9 +1741,6 @@ async def st_worker(update: Update, card: str):
     )
 
     await msg.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-
-
-
 
 async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
