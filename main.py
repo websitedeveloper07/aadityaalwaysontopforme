@@ -1654,18 +1654,22 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import logging
+import asyncio
+from datetime import datetime
+from html import escape
+
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
-from stripe import stripe_check
+from stripe import stripe_check  # your existing stripe.py function
 from db import get_user, update_user
 from bin import get_bin_info
 
 logger = logging.getLogger(__name__)
 
 user_cooldowns = {}
-BULLET_GROUP_LINK = "https://t.me/YOUR_GROUP_LINK"
 
 async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
     last_run = user_cooldowns.get(user_id, 0)
@@ -1691,8 +1695,17 @@ async def st_worker(update: Update, card: str):
     user_id = update.effective_user.id
     msg = await update.message.reply_text("⏳ Processing...", parse_mode=ParseMode.HTML)
 
-    # Stripe check
-    status, response = await stripe_check(card)
+    # Get status and message directly from stripe.py
+    status, response_text = await stripe_check(card)
+
+    # Map status to emoji
+    emoji_map = {
+        "APPROVED": "✅",
+        "DECLINED": "❌",
+        "CCN": "⚠️",
+        "ERROR": "⚠️"
+    }
+    status_emoji = emoji_map.get(status, "❓")
 
     # BIN lookup
     bin_number = card.split("|")[0][:6]
@@ -1704,34 +1717,35 @@ async def st_worker(update: Update, card: str):
     country_flag = bin_details.get("country_emoji", "")
     card_type = bin_details.get("type", "N/A")
 
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+    # Clickable bullet pointing to your Telegram
+    bullet = '<a href="https://t.me/CARDER33">[⌇]</a>'
 
     text = (
-        f"═══  status  ═══\n"
-        f"{bullet_link} <b>Card:</b> <code>{escape(card)}</code>\n"
-        f"{bullet_link} <b>Gateway:</b> Stripe charged\n"
-        f"{bullet_link} <b>Response:</b> <i>{escape(response)}</i>\n"
+        f"<b>{status_emoji} {status}</b>\n"
+        f"{bullet} <b>Card:</b> <code>{escape(card)}</code>\n"
+        f"{bullet} <b>Gateway:</b> 𝑺𝒕𝒓𝒊𝒑𝒆 𝟏$ 💎\n"
+        f"{bullet} <b>Response:</b> <i>{escape(response_text)}</i>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} <b>Brand:</b> <code>{brand}</code>\n"
-        f"{bullet_link} <b>Type:</b> <code>{card_type}</code>\n"
-        f"{bullet_link} <b>Bank:</b> <code>{issuer}</code>\n"
-        f"{bullet_link} <b>Country:</b> <code>{country_name} {country_flag}</code>\n"
+        f"{bullet} <b>Brand:</b> <code>{brand}</code>\n"
+        f"{bullet} <b>Type:</b> <code>{card_type}</code>\n"
+        f"{bullet} <b>Bank:</b> <code>{issuer}</code>\n"
+        f"{bullet} <b>Country:</b> <code>{country_name} {country_flag}</code>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} <b>Requested by:</b> {update.effective_user.mention_html()}\n"
-        f"{bullet_link} <b>Developer:</b> kคli liຖนxx\n"
+        f"{bullet} <b>Requested by:</b> {update.effective_user.mention_html()}\n"
+        f"{bullet} <b>Developer:</b> kคli liຖนxx\n"
         "――――――――――――――――"
     )
 
-    await msg.edit_text(text, parse_mode=ParseMode.HTML)
+    await msg.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+
+
 
 async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    # Cooldown check
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Credit check
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
 
@@ -1740,9 +1754,8 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     card = context.args[0]
 
-    # Run the worker in background
+    # Run in background
     asyncio.create_task(st_worker(update, card))
-
 
 
 
