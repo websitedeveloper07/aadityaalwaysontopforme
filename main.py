@@ -1654,89 +1654,39 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# main.py (relevant parts only)
-import asyncio
-import re
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
-from telegram.helpers import escape_markdown as escape_md
+from stripe import stripe_check   # import checker function
 
-from db import get_user, update_user
-from bin import get_bin_info
-from stripe import stripe_check, parse_result  # make sure stripe.py has stripe_check()
+async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        return await update.message.reply_text("⚠️ Usage: /st cc|mm|yy|cvv")
 
-# Cooldown tracking (user_id -> last timestamp)
-last_st_usage = {}
+    card = context.args[0]
+    msg = await update.message.reply_text("⏳ Processing...")
 
-# Regex for CC format: cc|mm|yy(yy)|cvv
-CARD_REGEX = re.compile(r"^(\d{13,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})$")
+    status, response = await stripe_check(card)
 
-# ────────── Credit Management ────────── #
-async def consume_credit(user_id: int) -> bool:
-    """Consume 1 credit from DB user if available."""
-    user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
-        await update_user(user_id, credits=new_credits)
-        return True
-    return False
-
-# ────────── /st Command ────────── #
-from telegram import Update
-from telegram.ext import ContextTypes
-import re
-
-
-CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
-
-async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    text = update.message.text
-
-    # Extract card
-    match = CARD_PATTERN.search(text)
-    if not match:
-        return await update.message.reply_text("❌ Invalid card format. Use:\n`CC|MM|YY|CVV`", parse_mode="Markdown")
-
-    cc, mm, yy, cvv = match.groups()
-    card = f"{cc}|{mm}|{yy}|{cvv}"
-
-    # Call check_card (ensure it returns ONLY text, not tuple)
-    try:
-        response = check_card(card)  
-        if isinstance(response, tuple):
-            # If function returns tuple, take second part
-            response = response[1]
-
-        status, message = parse_result(response)
-    except Exception as e:
-        status, message = "ERROR", f"Exception: {str(e)}"
-
-    # Format status
-    status_icon = "✅" if status == "APPROVED" else "❌"
-    status_line = f"═══  𝗖𝗔𝗥𝗗 {status_icon}  ═══"
-
-    # Example BIN lookup (replace with your real BIN function)
-    brand, ctype, bank, country = "Visa", "CREDIT", "UNKNOWN", "UNITED STATES 🇺🇸"
-
-    # Final output
-    result_msg = (
-        f"{status_line}\n"
-        f"[⌇] 𝐂𝐚𝐫𝐝 ➜ {card}\n"
-        f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-        f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {message}\n"
-        f"――――――――――――――――\n"
-        f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}\n"
-        f"[⌇] 𝐓𝐲𝐩𝐞 ➜ {ctype}\n"
-        f"[⌇] 𝐁𝐚𝐧𝐤 ➜ {bank}\n"
-        f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country}\n"
-        f"――――――――――――――――\n"
-        f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {user.first_name}\n"
-        f"[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
-        f"――――――――――――――――"
+    text = (
+        "═══  status  ═══\n"
+        f"[⌇] 𝐂𝐚𝐫𝐝 ➜ `{card}`\n"
+        f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 charged\n"
+        f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ *{response}*\n"
+        "――――――――――――――――\n"
+        f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ Visa\n"
+        f"[⌇] 𝐓𝐲𝐩𝐞 ➜ CREDIT |\n"
+        f"[⌇] 𝐁𝐚𝐧𝐤 ➜ UNKNOWN\n"
+        f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ UNITED STATES 🇺🇸\n"
+        "――――――――――――――――\n"
+        f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
+        "[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
+        "――――――――――――――――"
     )
 
-    await update.message.reply_text(result_msg)
+    await msg.edit_text(text, parse_mode="Markdown")
+
+
+
 
 
 
@@ -5095,7 +5045,7 @@ def main():
     application.add_handler(CommandHandler("info", command_with_check(info, "info")))
     application.add_handler(CommandHandler("credits", command_with_check(credits_command, "credits")))
     application.add_handler(CommandHandler("chk", command_with_check(chk_command, "chk")))
-    application.add_handler(CommandHandler("st", st_command))
+    application.add_handler(CommandHandler("st", st))
     application.add_handler(CommandHandler("mchk", command_with_check(mchk_command, "mchk")))
     application.add_handler(CommandHandler("mass", command_with_check(mass_command, "mass")))
     application.add_handler(CommandHandler("mtchk", command_with_check(mtchk, "mtchk")))
