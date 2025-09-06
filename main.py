@@ -1682,88 +1682,61 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # ────────── /st Command ────────── #
+from telegram import Update
+from telegram.ext import ContextTypes
+import re
+from stripe import check_card, parse_result  # make sure these are defined in stripe.py
+
 CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
 async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    user_id = user.id
+    text = update.message.text
 
-    # Cooldown check
-    now = asyncio.get_event_loop().time()
-    if user_id in last_st_usage and now - last_st_usage[user_id] < 5:
-        return await update.message.reply_text("⏳ Please wait 5s before using /st again.")
-
-    if not context.args:
-        return await update.message.reply_text("⚠️ Usage: /st <cc|mm|yy|cvv>")
-
-    card_input = context.args[0].strip()
-    match = CARD_PATTERN.match(card_input)
+    # Extract card
+    match = CARD_PATTERN.search(text)
     if not match:
-        return await update.message.reply_text("❌ Invalid card format. Use: cc|mm|yy|cvv")
+        return await update.message.reply_text("❌ Invalid card format. Use:\n`CC|MM|YY|CVV`", parse_mode="Markdown")
 
     cc, mm, yy, cvv = match.groups()
-    if len(yy) == 2:  # normalize YY to YYYY
-        yy = "20" + yy
-    cc_normalized = f"{cc}|{mm}|{yy}|{cvv}"
+    card = f"{cc}|{mm}|{yy}|{cvv}"
 
-    # Check credits
-    if not await consume_credit(user_id):
-        return await update.message.reply_text("❌ You have no credits left.")
-
-    # Cooldown applied
-    last_st_usage[user_id] = now
-
-    # Send processing message
-    processing_msg = await update.message.reply_text("🔄 Processing your request...")
-
-    # Call stripe.py checker
+    # Call check_card (ensure it returns ONLY text, not tuple)
     try:
-        raw_result = await stripe_check(f"{cc}|{mm}|{yy}|{cvv}")
-        status, api_status = parse_result(raw_result)
+        response = check_card(card)  
+        if isinstance(response, tuple):
+            # If function returns tuple, take second part
+            response = response[1]
+
+        status, message = parse_result(response)
     except Exception as e:
-        status, api_status = "DECLINED", f"Parse error: {e}"
+        status, message = "ERROR", f"Exception: {str(e)}"
 
-    # Lookup BIN
-    bin_number = cc[:6]
-    try:
-        bin_details = await get_bin_info(bin_number)
-    except Exception:
-        bin_details = {}
+    # Format status
+    status_icon = "✅" if status == "APPROVED" else "❌"
+    status_line = f"═══  𝗖𝗔𝗥𝗗 {status_icon}  ═══"
 
-    brand = (bin_details.get("scheme") or "UNKNOWN").title()
-    issuer = bin_details.get("bank") or "UNKNOWN"
-    country_name = bin_details.get("country") or "UNKNOWN"
-    country_flag = bin_details.get("country_emoji", "")
-    card_type = bin_details.get("type", "UNKNOWN")
-    card_level = bin_details.get("brand", "")
+    # Example BIN lookup (replace with your real BIN function)
+    brand, ctype, bank, country = "Visa", "CREDIT", "UNKNOWN", "UNITED STATES 🇺🇸"
 
-    # Status text
-    if status == "APPROVED":
-        status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-    elif status == "CCN":
-        status_text = "𝗖𝗖𝗡 ⚠️"
-    else:
-        status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-
-    # Build final message
-    final_text = (
-        f"═══  {status_text}  ═══\n"
-        f"[⌇] 𝐂𝐚𝐫𝐝 ➜ {cc_normalized}\n"
-        f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒾𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-        f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {api_status}\n"
+    # Final output
+    result_msg = (
+        f"{status_line}\n"
+        f"[⌇] 𝐂𝐚𝐫𝐝 ➜ {card}\n"
+        f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+        f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {message}\n"
         f"――――――――――――――――\n"
         f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}\n"
-        f"[⌇] 𝐓𝐲𝐩𝐞 ➜ {card_type.upper()} | {card_level.upper()}\n"
-        f"[⌇] 𝐁𝐚𝐧𝐤 ➜ {issuer}\n"
-        f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country_name} {country_flag}\n"
+        f"[⌇] 𝐓𝐲𝐩𝐞 ➜ {ctype}\n"
+        f"[⌇] 𝐁𝐚𝐧𝐤 ➜ {bank}\n"
+        f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country}\n"
         f"――――――――――――――――\n"
         f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {user.first_name}\n"
         f"[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
         f"――――――――――――――――"
     )
 
-    # Edit the processing message with result (plain text, no Markdown)
-    await processing_msg.edit_text(final_text, parse_mode=None)
+    await update.message.reply_text(result_msg)
 
 
 
