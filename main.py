@@ -1685,8 +1685,6 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await msg.edit_text(text, parse_mode="Markdown")
 
-# register handler
-app.add_handler(CommandHandler("st", st))
 
 
 
