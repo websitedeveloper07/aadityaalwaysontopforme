@@ -1722,7 +1722,7 @@ async def st_worker(update: Update, card: str):
     developer = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
 
     # Status line with emoji + status only
-    status_line = f"{status_emoji} ═══ [ <i>{status}</i> ] ═══"
+    status_line = f"═══ [ <i>{status}{status_emoji}</i> ] ═══"
 
     text = (
         f"<b>{status_line}</b>\n"
