@@ -1710,7 +1710,7 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.")
 
-    # Apply cooldown
+    # Cooldown applied
     last_st_usage[user_id] = now
 
     # Send processing message
@@ -1719,9 +1719,6 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Call stripe.py checker
     try:
         raw_result = await stripe_check(f"{cc}|{mm}|{yy}|{cvv}")
-        # Fix tuple issue
-        if isinstance(raw_result, tuple):
-            raw_result = raw_result[0]
         status, api_status = parse_result(raw_result)
     except Exception as e:
         status, api_status = "DECLINED", f"Parse error: {e}"
@@ -1733,51 +1730,40 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         bin_details = {}
 
-    brand = (bin_details.get("scheme") or "N/A").title()
-    issuer = bin_details.get("bank") or "N/A"
-    country_name = bin_details.get("country") or "N/A"
+    brand = (bin_details.get("scheme") or "UNKNOWN").title()
+    issuer = bin_details.get("bank") or "UNKNOWN"
+    country_name = bin_details.get("country") or "UNKNOWN"
     country_flag = bin_details.get("country_emoji", "")
-    card_type = bin_details.get("type", "N/A")
-    card_level = bin_details.get("brand", "N/A")
+    card_type = bin_details.get("type", "UNKNOWN")
+    card_level = bin_details.get("brand", "")
 
-    # Escape + formatting
-    status_text = "APPROVED ✅" if status == "APPROVED" else (
-        "CCN ⚠️" if status == "CCN" else "DECLINED ❌"
-    )
-
-    header = f"═══ *{escape_md(status_text)}* ═══"
-    formatted_response = f"_{escape_md(api_status)}_"
-
-    # Bullet format (with brackets)
-    bullet_link_url = "https://t.me/CARDER33"  # change if needed
-    bullet = f"[{escape_md('[⌇]')}]({bullet_link_url})"
+    # Status text
+    if status == "APPROVED":
+        status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+    elif status == "CCN":
+        status_text = "𝗖𝗖𝗡 ⚠️"
+    else:
+        status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
 
     # Build final message
     final_text = (
-        f"{header}\n"
-        f"{bullet} 𝐂𝐚𝐫𝐝 ➜ `{escape_md(cc_normalized)}`\n"
-        f"{bullet} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-        f"{bullet} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
+        f"═══  {status_text}  ═══\n"
+        f"[⌇] 𝐂𝐚𝐫𝐝 ➜ {cc_normalized}\n"
+        f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒾𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+        f"[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {api_status}\n"
         f"――――――――――――――――\n"
-        f"{bullet} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_md(brand)}`\n"
-        f"{bullet} 𝐓𝐲𝐩𝐞 ➜ `{escape_md(card_type)} | {escape_md(card_level)}`\n"
-        f"{bullet} 𝐁𝐚𝐧𝐤 ➜ `{escape_md(issuer)}`\n"
-        f"{bullet} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_md(country_name)} {escape_md(country_flag)}`\n"
+        f"[⌇] 𝐁𝐫𝐚𝐧𝐝 ➜ {brand}\n"
+        f"[⌇] 𝐓𝐲𝐩𝐞 ➜ {card_type.upper()} | {card_level.upper()}\n"
+        f"[⌇] 𝐁𝐚𝐧𝐤 ➜ {issuer}\n"
+        f"[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ {country_name} {country_flag}\n"
         f"――――――――――――――――\n"
-        f"{bullet} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_md(user.first_name)}](tg://user?id={user.id})\n"
-        f"{bullet} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
+        f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {user.first_name}\n"
+        f"[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx\n"
         f"――――――――――――――――"
     )
 
-    # Edit the processing message with result
-    try:
-        await processing_msg.edit_text(final_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
-    except Exception as e:
-        # Fallback if Markdown parse fails
-        await processing_msg.edit_text(
-            f"⚠️ Formatting error: {e}\n\n{final_text}",
-            parse_mode=None
-        )
+    # Edit the processing message with result (plain text, no Markdown)
+    await processing_msg.edit_text(final_text, parse_mode=None)
 
 
 
