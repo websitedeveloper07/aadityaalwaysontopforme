@@ -1867,7 +1867,7 @@ async def check_card(session, card: str):
 import asyncio
 import time
 import logging
-from telegram import TelegramError
+
 
 async def run_mass_check(msg, cards, user_id):
     total = len(cards)
