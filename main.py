@@ -1654,13 +1654,9 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import logging
-import asyncio
-from datetime import datetime
-from html import escape
-
-from telegram import Update, ParseMode
+from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
 from stripe import stripe_check
 from db import get_user, update_user
