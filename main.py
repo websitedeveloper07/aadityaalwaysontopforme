@@ -1715,7 +1715,7 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_msg = await update.message.reply_text("🔄 Processing your request...")
 
     # Call stripe.py checker
-    raw_result = await stripe_check(cc, mm, yy, cvv)
+    raw_result = await stripe_check(f"{cc}|{mm}|{yy}|{cvv}")
     status, api_status = parse_result(raw_result)
 
     # Lookup BIN
