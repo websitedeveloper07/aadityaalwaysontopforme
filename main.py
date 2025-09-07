@@ -1852,7 +1852,7 @@ async def check_single_card(session, card: str):
     try:
         async with session.get(API_URL_TEMPLATE + card, timeout=40) as resp:
             data = await resp.json()
-        # Support both lower/uppercase keys
+
         status = str(data.get("status") or data.get("Status") or "unknown").strip().lower()
         response = str(data.get("response") or data.get("Response") or "No response").strip()
 
@@ -1883,9 +1883,9 @@ async def run_mass_checker(msg, cards, user):
     gateway_text = esc("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
     requester_text = f"<b>Requested By</b> ➜ {format_user_link(user)}"
 
-    # Initial "Processing" message
+    # --- Initial Processing Message ---
     initial_text = (
-        "```Processing⏳```\n"
+        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {requester_text}\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎..."
@@ -1942,13 +1942,14 @@ async def run_mass_checker(msg, cards, user):
         await asyncio.gather(*tasks, consumer())
 
     # --- Final edit ---
+    final_elapsed = round(time.time() - start_time, 2)
     final_header = (
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {esc(counters['checked'])}/{esc(total)}\n"
         f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {esc(counters['approved'])}\n"
         f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {esc(counters['declined'])}\n"
         f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {esc(counters['error'])}\n"
-        f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {esc(round(time.time() - start_time, 2))} Sec\n"
+        f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {esc(final_elapsed)} Sec\n"
         "──────── ⸙ ─────────"
     )
     final_content = final_header
@@ -1960,7 +1961,7 @@ async def run_mass_checker(msg, cards, user):
     except Exception as e:
         logging.error(f"[editMessageText-final] {e}")
 
-# --- /mass COMMAND ---
+
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
