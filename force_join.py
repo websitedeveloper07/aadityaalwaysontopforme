@@ -4,9 +4,9 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-# Use numeric ID for the group (-100xxxxxxxxxx)
-GROUP_ID = -1003021757536
-CHANNEL_USERNAME = "AXCMRX"  # Only used for join button (no membership check)
+GROUP_ID = -1003021757536   # numeric group ID (used only for membership check)
+GROUP_USERNAME = "Cardxchktesting"  # used for join button
+CHANNEL_USERNAME = "AXCMRX"         # used for join button (optional)
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
 logger = logging.getLogger("force_join")
@@ -26,7 +26,6 @@ async def safe_get_member(bot, chat_id: int, user_id: int):
 async def is_user_joined(bot, user_id: int) -> bool:
     """Check if user has joined the group only."""
     valid_statuses = ["member", "administrator", "creator"]
-
     group_status = await safe_get_member(bot, GROUP_ID, user_id)
 
     if group_status not in valid_statuses:
@@ -51,21 +50,20 @@ def force_join(func):
         joined = await is_user_joined(context.bot, user_id)
         if not joined:
             keyboard = [
-                [InlineKeyboardButton("📢 Join Group", url=f"https://t.me/{str(GROUP_ID).replace('-100', '')}")],
+                [InlineKeyboardButton("📢 Join Group", url=f"https://t.me/{GROUP_USERNAME}")],
                 [InlineKeyboardButton("📡 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME}")],
                 [InlineKeyboardButton("✅ I have joined", callback_data="check_joined")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            caption_text = (
-                "❌ You must join our group to use this bot.\n\n"
-                f"👉 Group ID: {GROUP_ID}\n"
-                f"👉 Channel: @{CHANNEL_USERNAME} (optional but recommended)\n\n"
-                "➡️ After joining, press ✅ I have joined."
-            )
+            caption_text = "❌ To use the bot please join below 👇"
 
             target = update.message or update.callback_query.message
-            await target.reply_photo(photo=FORCE_JOIN_IMAGE, caption=caption_text, reply_markup=reply_markup)
+            await target.reply_photo(
+                photo=FORCE_JOIN_IMAGE,
+                caption=caption_text,
+                reply_markup=reply_markup
+            )
             return  # Stop execution
 
         # User already joined → proceed
