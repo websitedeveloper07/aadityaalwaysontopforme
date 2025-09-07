@@ -4,16 +4,20 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-# Replace with numeric IDs if possible (-100xxxxxxxxxx for channels/supergroups)
-GROUP_ID = "@Cardxchktesting"
-CHANNEL_ID = "@AXCMRX"
+# Always use numeric IDs for reliability (-100xxxxxxxxxx format)
+GROUP_ID = -1003021757536   # Your supergroup
+CHANNEL_ID = -1002971317081 # Your channel
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
+
+# If you also want to keep clickable links for buttons, set usernames here:
+GROUP_USERNAME = "Cardxchktesting"
+CHANNEL_USERNAME = "AXCMRX"
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # --- Helper: Safe membership check ---
-async def safe_get_member(bot, chat_id: str, user_id: int):
+async def safe_get_member(bot, chat_id: int, user_id: int):
     """Safely check if a user is in a group/channel, handles API errors."""
     try:
         member = await bot.get_chat_member(chat_id, user_id)
@@ -55,16 +59,16 @@ def force_join(func):
         joined = await is_user_joined(context.bot, user_id)
         if not joined:
             keyboard = [
-                [InlineKeyboardButton("📢 Join Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
-                [InlineKeyboardButton("📡 Join Channel", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")],
+                [InlineKeyboardButton("📢 Join Group", url=f"https://t.me/{GROUP_USERNAME}")],
+                [InlineKeyboardButton("📡 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME}")],
                 [InlineKeyboardButton("✅ I have joined", callback_data="check_joined")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             caption_text = (
                 "❌ You must join our group and channel to use this bot.\n\n"
-                f"👉 Group: {GROUP_ID}\n"
-                f"👉 Channel: {CHANNEL_ID}\n\n"
+                f"👉 Group: @{GROUP_USERNAME}\n"
+                f"👉 Channel: @{CHANNEL_USERNAME}\n\n"
                 "➡️ After joining, press ✅ I have joined."
             )
 
