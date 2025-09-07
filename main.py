@@ -1878,9 +1878,35 @@ def mdv2_escape(text: str) -> str:
     return "".join(f"\\{c}" if c in escape_chars else c for c in text)
 
 # --- Helper to format clickable user link ---
-def format_user_link(user):
+import asyncio
+import time
+import logging
+import aiohttp
+from telegram import Update
+from telegram.error import BadRequest, TelegramError
+from telegram.ext import ContextTypes
+
+# --- Helper Functions ---
+def mdv2_escape(text: str) -> str:
+    """
+    Escape all MarkdownV2 special characters.
+    """
+    escape_chars = r"\_*[]()~`>#+-=|{}.!"
+    return "".join(f"\\{c}" if c in escape_chars else c for c in text)
+
+def format_user_link(user) -> str:
+    """
+    Return a clickable user link with the escaped full name.
+    """
     name = mdv2_escape(user.full_name)
     return f"[{name}](tg://user?id={user.id})"
+
+def extract_cards(text: str):
+    """
+    Extract card strings from a message.
+    """
+    # Example: simple split by lines
+    return [line.strip() for line in text.splitlines() if line.strip()]
 
 # --- RUN MASS CHECKER ---
 async def run_mass_checker(msg_obj, cards, user):
@@ -1893,13 +1919,14 @@ async def run_mass_checker(msg_obj, cards, user):
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
     requester_text = f"Requested By ➜ {format_user_link(user)}"
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
 
     # --- Initial Processing Message ---
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {requester_text}\n"
-        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎..."
+        f"{bullet_link} {status_text}"
     )
 
     try:
@@ -1962,8 +1989,6 @@ async def run_mass_checker(msg_obj, cards, user):
 
         await asyncio.gather(*tasks, consumer())
 
-
-# --- MASS HANDLER ---
 # --- MASS HANDLER ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -2011,12 +2036,13 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
     requester_text = f"Requested By ➜ {format_user_link(user)}"
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
 
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {requester_text}\n"
-        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎..."
+        f"{bullet_link} {status_text}"
     )
 
     try:
@@ -2031,6 +2057,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Start mass checker ---
     asyncio.create_task(run_mass_checker(initial_msg, cards, user))
+
 
 
 
