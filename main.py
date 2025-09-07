@@ -1525,12 +1525,6 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             disable_web_page_preview=True
         )
 
-
-
-
-
-
-
 import re
 import asyncio
 from telegram import Update
@@ -1592,16 +1586,21 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ No credits left.")
         return
 
-    # Escape everything for MarkdownV2
+    # Escape all dynamic text for MarkdownV2
     escaped_cc = escape_markdown(cc_normalized, version=2)
     bullet_text = escape_markdown("⌇", version=2)
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
+    # Escape static text
+    gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵", version=2)
+    status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
+
+    # Build processing message
     processing_text = (
-        "```Processing```" + "\n"
-        f"`{escaped_cc}`\n\n"
-        f"{bullet_link} Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
-        f"{bullet_link} Status ➜ Checking 🔎\\.\\.\\.\n"
+        "```⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴```" + "\n"
+        "```{escaped_cc}```" + "\n"
+        f"{bullet_link} {gateway_text}\n"
+        f"{bullet_link} {status_text}\n"
     )
 
     # Send processing message
@@ -1611,7 +1610,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True,
     )
 
-    # Run background check
+    # Run background check in the background
     asyncio.create_task(
         background_check(cc_normalized, [card, mm, yy, cvv], user, user_data, status_msg)
     )
