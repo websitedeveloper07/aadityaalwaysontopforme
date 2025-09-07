@@ -1984,7 +1984,20 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    await run_mass_checker(update.message, cards, user)
+    # --- send initial "Processing" message ---
+    try:
+        initial_msg = await update.message.reply_text(
+            "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```",
+            parse_mode="MarkdownV2",
+            disable_web_page_preview=True
+        )
+    except Exception as e:
+        logging.error(f"[mass_handler-init-msg] {e}")
+        return
+
+    # --- start mass checker ---
+    asyncio.create_task(run_mass_checker(initial_msg, cards, user))
+
 
 
 
