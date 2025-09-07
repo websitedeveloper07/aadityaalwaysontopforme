@@ -2087,7 +2087,6 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # --- Shopify Processor ---
-
 import asyncio
 import aiohttp
 import json
@@ -2124,17 +2123,18 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
 
-        # --- Gateway & status for processing message ---
+        # --- Gateway & status for processing ---
         gateway_text = "**Gateway ➜ #Shopify**"
         status_text = "**Status ➜ Checking 🔎...**"
 
-        # --- Send initial processing message ---
+        # --- Initial processing message ---
         processing_text = (
-            "𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n"
-            f"`{full_card}`\n\n"
+            "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+            f"```{full_card}```\n\n"
             f"{bullet_link} {gateway_text}\n"
             f"{bullet_link} {status_text}"
         )
+
         processing_msg = await update.message.reply_text(
             processing_text,
             parse_mode=ParseMode.MARKDOWN,
@@ -2165,9 +2165,8 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             return
 
         response = data.get("Response", "Unknown")
-        status = data.get("Status", "Unknown")
-        price = data.get("Price", "N/A")
         gateway = data.get("Gateway", "Shopify")
+        price = data.get("Price", "N/A")
 
         # --- BIN lookup ---
         try:
@@ -2183,16 +2182,13 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             country_name = "Unknown"
             country_flag = ""
 
-        # --- User info ---
-        updated_user = await get_user(user.id)
         requester = f"@{user.username}" if user.username else str(user.id)
 
-        # --- Developer info ---
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        # --- Final message ---
+        # --- Final formatted message ---
         final_msg = (
             f"═══[ <b>SHOPIFY</b> ]═══\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{full_card}</code>\n"
@@ -2209,7 +2205,6 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"――――――――――――――――"
         )
 
-        # --- Edit the same message ---
         await processing_msg.edit_text(
             final_msg,
             parse_mode=ParseMode.HTML,
@@ -2225,6 +2220,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
+
 
 
 
