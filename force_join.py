@@ -4,12 +4,13 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-# ⚠️ If either group/channel is private, replace with numeric chat_id (like -100xxxxxxxxxx)
-GROUP_ID = "@Cardxchktesting"   # or numeric ID
-CHANNEL_ID = "@AXCMRX"          # or numeric ID
+# Use @username for public groups/channels or numeric ID (-100xxxxxxxxxx) for private
+GROUP_ID = "@Cardxchktesting"   # Replace with numeric ID if private
+CHANNEL_ID = "@AXCMRX"          # Replace with numeric ID if private
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # --- Helper: Check if user joined ---
 async def is_user_joined(bot, user_id: int) -> bool:
@@ -18,20 +19,24 @@ async def is_user_joined(bot, user_id: int) -> bool:
         group_status = await bot.get_chat_member(GROUP_ID, user_id)
         channel_status = await bot.get_chat_member(CHANNEL_ID, user_id)
 
+        # Debug logging
+        logger.info(f"[DEBUG] User {user_id} group status: {group_status.status}")
+        logger.info(f"[DEBUG] User {user_id} channel status: {channel_status.status}")
+
         valid_statuses = ["member", "administrator", "creator"]
 
         if group_status.status not in valid_statuses:
-            logger.info(f"User {user_id} is NOT in group ({group_status.status})")
+            logger.warning(f"User {user_id} NOT in group → {group_status.status}")
             return False
         if channel_status.status not in valid_statuses:
-            logger.info(f"User {user_id} is NOT in channel ({channel_status.status})")
+            logger.warning(f"User {user_id} NOT in channel → {channel_status.status}")
             return False
 
         logger.info(f"User {user_id} is in both group and channel ✅")
         return True
 
     except Exception as e:
-        logger.warning(f"Error checking user {user_id} membership: {e}")
+        logger.error(f"Error checking user {user_id} membership: {e}")
         return False
 
 # --- Force Join Decorator ---
@@ -41,11 +46,11 @@ def force_join(func):
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
         user_id = update.effective_user.id
 
-        # ✅ Allow /start always
+        # Allow /start always
         if update.message and update.message.text.startswith("/start"):
             return await func(update, context, *args, **kwargs)
 
-        # 🔍 Check membership
+        # Check membership
         joined = await is_user_joined(context.bot, user_id)
         if not joined:
             keyboard = [
@@ -76,8 +81,9 @@ def force_join(func):
                 )
             return  # Stop command execution until joined
 
-        # ✅ User already joined → proceed with command
+        # User already joined → proceed with command
         return await func(update, context, *args, **kwargs)
+
     return wrapper
 
 # --- Callback for "✅ I have joined" button ---
@@ -95,3 +101,4 @@ async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.edit_message_caption("🎉 Welcome! You can now use the bot commands.")
     else:
         await query.answer("❌ You still need to join both group and channel.", show_alert=True)
+        logger.info(f"User {user_id} clicked 'I have joined' but is still not detected in both.")
