@@ -1778,7 +1778,7 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
 
     # Gateway + status lines
-    gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵", version=2)
+    gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
     status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
 
     bullet = '[⌇]'
@@ -1786,7 +1786,7 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Processing message
     processing_text = (
-        "```⏳ Processing```" + "\n"
+        "````𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```" + "\n"
         f"```{cc_normalized}```" + "\n\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
