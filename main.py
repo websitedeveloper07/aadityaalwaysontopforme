@@ -4191,17 +4191,17 @@ async def b3_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ API error: {e}")
         return
 
-    # --- Extract values from API response ---
-    status_match = re.search(r"(APPROVED ✅|DECLINED ❌)", text)
-    gateway_match = re.search(r"𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ⇾ (.+)", text)
-    response_match = re.search(r"𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ⇾ (.+)", text)
-    bin_match = re.search(r"𝗕𝗜𝗡 𝗜𝗻𝗳𝗼: (.+)", text)
-    bank_match = re.search(r"𝗕𝗮𝗻𝗸: (.+)", text)
-    country_match = re.search(r"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: (.+)", text)
+    # --- Clean parsing with regex ---
+    status_match   = re.search(r"(APPROVED ✅|DECLINED ❌)", text)
+    gateway_match  = re.search(r"𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ⇾ (.+)", text)
+    response_match = re.search(r"𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ⇾ (.+?)(?:\n|$)", text)
+    bin_match      = re.search(r"𝗕𝗜𝗡 𝗜𝗻𝗳𝗼: ([^\n]+)", text)
+    bank_match     = re.search(r"𝗕𝗮𝗻𝗸: ([^\n]+)", text)
+    country_match  = re.search(r"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: ([^\n]+)", text)
 
-    status = status_match.group(1) if status_match else "UNKNOWN"
-    gateway = gateway_match.group(1).strip() if gateway_match else "UNKNOWN"
-    response_msg = response_match.group(1).strip() if response_match else "UNKNOWN"
+    status   = status_match.group(1) if status_match else "UNKNOWN"
+    gateway  = gateway_match.group(1).strip() if gateway_match else "UNKNOWN"
+    response = response_match.group(1).strip() if response_match else "UNKNOWN"
 
     brand = "UNKNOWN"
     if bin_match:
@@ -4209,15 +4209,15 @@ async def b3_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if parts:
             brand = parts[0].strip().title()
 
-    bank = bank_match.group(1).strip() if bank_match else "UNKNOWN"
+    bank    = bank_match.group(1).strip() if bank_match else "UNKNOWN"
     country = country_match.group(1).strip() if country_match else "UNKNOWN"
 
-    # --- Format stylish output ---
+    # --- Final stylish output ---
     result = f"""═══[ {status} ]═══
 [⌇] 𝐂𝐚𝐫𝐝       ➜ {card}
 [⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ {gateway}
 
-[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response_msg}
+[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response}
 ――――――――――――――――
 [⌇] 𝐁𝐫𝐚𝐧𝐝      ➜ {brand}
 [⌇] 𝐁𝐚𝐧𝐤       ➜ {bank}
@@ -4228,8 +4228,6 @@ async def b3_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ――――――――――――――――"""
 
     await update.message.reply_text(result)
-
-# === Register command ===
 
 
 
