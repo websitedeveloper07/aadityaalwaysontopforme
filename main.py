@@ -791,12 +791,13 @@ from functools import wraps
 from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
+# --- Configuration ---
 GROUP_ID = "@CARDER33"
-CHANNEL_ID = "@KalinuxxxChannel"  # Replace with your channel
+CHANNEL_ID = "@KalinuxxxChannel"
 OWNER = "Kalinuxxx"
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
-# Force join decorator
+# --- Force Join Decorator ---
 def force_join(func):
     @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
@@ -807,7 +808,7 @@ def force_join(func):
 
             if group_status.status in [ChatMember.LEFT, ChatMember.KICKED] or \
                channel_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
-                
+
                 keyboard = [
                     [InlineKeyboardButton("Owner", url=f"https://t.me/{OWNER}")],
                     [InlineKeyboardButton("Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
@@ -825,7 +826,7 @@ def force_join(func):
                     ),
                     reply_markup=reply_markup
                 )
-                return  # Stop execution
+                return  # Stop command execution
         except Exception:
             await update.message.reply_text(
                 "⚠️ Could not verify your membership. Make sure the bot is admin in the group & channel."
@@ -833,6 +834,15 @@ def force_join(func):
             return
 
         return await func(update, context, *args, **kwargs)
+    return wrapper
+
+# --- Maintenance + Force Join Wrapper ---
+def command_with_join_and_check(command_func, command_name):
+    @force_join
+    @wraps(command_func)
+    async def wrapper(update, context, *args, **kwargs):
+        # Wrap with maintenance check if your original command_with_check exists
+        return await command_with_check(command_func, command_name)(update, context, *args, **kwargs)
     return wrapper
 
 
