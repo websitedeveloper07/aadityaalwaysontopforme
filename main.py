@@ -2172,7 +2172,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} <b>Bank</b> ➜ <code>{escape(issuer)}</code>\n"
             f"{bullet_link} <b>Country</b> ➜ <code>{escape(country_name)} {country_flag}</code>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} <b>Requested By</b> ➜ {{requester}}\n"
+            f"{bullet_link} <b>Requested By</b> ➜ {escape(requester)}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             "――――――――――――――――"
         )
