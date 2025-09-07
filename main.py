@@ -2121,23 +2121,23 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Clickable bullet ---
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
-        bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         # --- Gateway & status for processing ---
-        gateway_text = "**Gateway ➜ #Shopify**"
-        status_text = "**Status ➜ Checking 🔎...**"
+        gateway_text = "<b>Gateway ➜ #Shopify</b>"
+        status_text = "<b>Status ➜ Checking 🔎...</b>"
 
         # --- Initial processing message ---
         processing_text = (
             "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
-            f"```{full_card}```\n\n"
+            f"<code>{cc}</code>\n\n"
             f"{bullet_link} {gateway_text}\n"
             f"{bullet_link} {status_text}"
         )
 
         processing_msg = await update.message.reply_text(
             processing_text,
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
 
@@ -2186,23 +2186,23 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
-        developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+        developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
         # --- Final formatted message ---
         final_msg = (
             f"═══[ <b>SHOPIFY</b> ]═══\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{full_card}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
-            f"{bullet_link} <b>Response</b> ➜ {response}\n"
+            f"{bullet_link} <b>Gateway</b> ➜ <b>{gateway}</b>\n"
+            f"{bullet_link} <b>Response</b> ➜ <b>{response}</b>\n"
             f"{bullet_link} <b>Price</b> ➜ {price} 💸\n"
-            f"――――――――――――――――\n"
+            "――――――――――――――――\n"
             f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
             f"{bullet_link} <b>Bank</b> ➜ {issuer}\n"
             f"{bullet_link} <b>Country</b> ➜ {country_name} {country_flag}\n"
-            f"――――――――――――――――\n"
+            "――――――――――――――――\n"
             f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
-            f"――――――――――――――――"
+            "――――――――――――――――"
         )
 
         await processing_msg.edit_text(
@@ -2220,6 +2220,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
+
 
 
 
