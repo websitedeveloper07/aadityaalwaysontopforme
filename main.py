@@ -1723,9 +1723,9 @@ async def st_worker(update: Update, card: str, status_msg):
 
     # Build final result message
     result_text = (
-        f"*═══ [ {status}{status_emoji} ] ═══*\n"
+        f"*◇━━ [ {status}{status_emoji} ] ━━◇*\n"
         f"{bullet_link} *Card:* `{card}`\n"
-        f"{bullet_link} *Gateway:* 𝑺𝒕𝒓𝒊𝒑𝒆 𝟏$ 💎\n"
+        f"{bullet_link} *Gateway:* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
         f"{bullet_link} *Response:* _{response_text}_\n"
         "――――――――――――――――\n"
         f"{bullet_link} *Brand:* `{brand}`\n"
