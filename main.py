@@ -1848,24 +1848,29 @@ async def check_single_card(session, card: str):
         return f"`{card}`\n_i_❌ {e}_i_", "error"
 
 # --- MASS CHECK CORE ---
+from telegram.helpers import escape_markdown
+
 async def run_mass_checker(msg, cards, user_id):
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
     results = []
     start_time = time.time()
 
+    # Clickable bullet
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
+    
+    # Gateway & initial status
     gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
     status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
 
-    # Send initial processing message
-    processing_text = (
+    # Send initial message
+    initial_text = (
         "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
-    await msg.edit_text(processing_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
+    await msg.edit_text(initial_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
 
     queue = asyncio.Queue()
     semaphore = asyncio.Semaphore(CONCURRENCY)
@@ -1873,9 +1878,11 @@ async def run_mass_checker(msg, cards, user_id):
     async with aiohttp.ClientSession() as session:
         async def worker(card):
             async with semaphore:
+                # Check card
                 result_text, status = await check_single_card(session, card)
                 counters["checked"] += 1
                 counters[status] = counters.get(status, 0) + 1
+                # Append card result to queue
                 await queue.put(result_text)
 
         tasks = [asyncio.create_task(worker(c)) for c in cards]
@@ -1883,19 +1890,19 @@ async def run_mass_checker(msg, cards, user_id):
         async def consumer():
             while True:
                 try:
-                    result = await asyncio.wait_for(queue.get(), timeout=3)
+                    result = await asyncio.wait_for(queue.get(), timeout=2)
                 except asyncio.TimeoutError:
                     if all(t.done() for t in tasks):
                         break
                     continue
 
                 results.append(result)
-
                 elapsed = round(time.time() - start_time, 2)
+
+                # Header with live counts
                 header = (
-                    f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+                    "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
                     f"{bullet_link} {gateway_text}\n"
-                    f"{bullet_link} {status_text}\n"
                     f"{bullet_link} Total ⌁ {counters['checked']}/{total}\n"
                     f"{bullet_link} Approved ⌁ {counters['approved']}\n"
                     f"{bullet_link} Declined ⌁ {counters['declined']}\n"
@@ -1904,14 +1911,17 @@ async def run_mass_checker(msg, cards, user_id):
                     "──────── ⸙ ─────────"
                 )
 
+                # Combine header + results
                 content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
                 try:
                     await msg.edit_text(content, parse_mode="MarkdownV2", disable_web_page_preview=True)
                 except TelegramError:
                     pass
-                await asyncio.sleep(0.5)
+
+                await asyncio.sleep(0.3)
 
         await asyncio.gather(*tasks, consumer())
+
 
 # --- /mass COMMAND ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
