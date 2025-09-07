@@ -20,7 +20,7 @@ from config import ADMIN_IDS
 
 # === CONFIGURATION ===
 # IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
-TOKEN = "8482235621:AAGoRfV7pFVAcXJxmSd0P4W2oKljXbJDv9s"
+TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
 OWNER_ID = 8493360284
 
 
@@ -4349,83 +4349,6 @@ async def run_vbv_check(msg, update, card_data: str):
     await msg.edit_text(text, parse_mode="HTML", disable_web_page_preview=True)
 
 
-from telegram import Update
-from telegram.ext import ContextTypes
-import aiohttp
-import json
-from db import get_user, update_user
-
-NUM_API = "https://e1e63696f2d5.ngrok-free.app/index.cpp?key=dark&number={number}"
-
-async def consume_credit(user_id: int, amount: int = 1) -> bool:
-    """Consume `amount` credits from DB user if available."""
-    user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) >= amount:
-        new_credits = user_data["credits"] - amount
-        await update_user(user_id, credits=new_credits)
-        return True
-    return False
-
-async def num_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-
-    # Validate input
-    if len(context.args) != 1 or not context.args[0].isdigit() or len(context.args[0]) != 10:
-        await update.message.reply_text("❌ Usage: /num <code>10-digit number</code>", parse_mode="HTML")
-        return
-
-    number = context.args[0]
-
-    # Check credits before proceeding
-    user_data = await get_user(user_id)
-    if not user_data or user_data.get("credits", 0) < 5:
-        await update.message.reply_text("❌ You need at least 5 credits to use this command.")
-        return
-
-    # Send initial "Checking number" message
-    msg = await update.message.reply_text(
-        f"🔎 𝐂𝐡𝐞𝐜𝐤𝐢𝐧𝐠 𝐧𝐮𝐦𝐛𝐞𝐫: <code>{number}</code>",
-        parse_mode="HTML"
-    )
-
-    try:
-        # Fetch data from API
-        async with aiohttp.ClientSession() as session:
-            async with session.get(NUM_API.format(number=number), timeout=30) as resp:
-                text = await resp.text()
-                data = json.loads(text)
-
-        entries = data.get("data", [])
-        if not entries:
-            await msg.edit_text("❌ No data found for this number.")
-            return
-
-        # Consume 5 credits after successful fetch
-        await consume_credit(user_id, amount=5)
-
-        # Build message content
-        msg_lines = [
-            "✦━━━━━━━━━━━━━━✦",
-            "     ⚡ 𝑪𝑨𝑹𝐃 ✘ 𝑪𝑯𝑲",
-            "✦━━━━━━━━━━━━━━✦\n"
-        ]
-
-        # Format each entry
-        for idx, item in enumerate(entries, 1):
-            msg_lines.append(f"<pre><code>📌 Entry {idx}:</code></pre>")
-            msg_lines.append(f"   👤 𝐍𝐚𝐦𝐞    : <code>{item.get('name', 'N/A')}</code>")
-            msg_lines.append(f"   👨‍🎤 𝐅𝐍𝐚𝐦𝐞   : <code>{item.get('fname', 'N/A')}</code>")
-            msg_lines.append(f"   📍 𝐀𝐝𝐝𝐫𝐞𝐬𝐬 : <code>{item.get('address', 'N/A')}</code>")
-            msg_lines.append(f"   🌐 𝐂𝐢𝐫𝐜𝐥𝐞  : <code>{item.get('circle', 'N/A')}</code>")
-            msg_lines.append(f"   📱 𝐌𝐨𝐛𝐢𝐥𝐞  : <code>{item.get('mobile', 'N/A')}</code>")
-            msg_lines.append(f"   🆔 𝐈𝐃      : <code>{item.get('id', 'N/A')}</code>\n")
-
-        # Edit the original "Checking" message with full data
-        msg_content = "\n".join(msg_lines)
-        await msg.edit_text(msg_content, parse_mode="HTML", disable_web_page_preview=True)
-
-    except Exception as e:
-        await msg.edit_text(f"❌ Error fetching data: {str(e)}")
 
 
 
@@ -5082,7 +5005,7 @@ AUTHORIZED_CHATS = set()  # Groups you manually authorize
 OWNER_ID = 8493360284     # Replace with your Telegram user ID
 
 # 🔑 Bot token
-BOT_TOKEN = "8482235621:AAGoRfV7pFVAcXJxmSd0P4W2oKljXbJDv9s"
+BOT_TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
@@ -5136,7 +5059,6 @@ def main():
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
     application.add_handler(CommandHandler("vbv", vbv))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
-    application.add_handler(CommandHandler("num", num_command))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
     application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
 
