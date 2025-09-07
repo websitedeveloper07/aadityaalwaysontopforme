@@ -2111,33 +2111,34 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         parts = payload.split("|")
         if len(parts) != 4:
             await update.message.reply_text(
-                "❌ Invalid format.\nUse: <code>/sh 1234567812345678|12|2028|123</code>",
-                parse_mode=ParseMode.HTML
+                "❌ Invalid format.\nUse: `/sh 1234567812345678|12|2028|123`",
+                parse_mode=ParseMode.MARKDOWN_V2
             )
             return
 
         cc, mm, yy, cvv = [p.strip() for p in parts]
         full_card = f"{cc}|{mm}|{yy}|{cvv}"
+        cc_escaped = escape_md(cc)
 
-        # --- Clickable bullet ---
+        # --- Clickable bullet using MarkdownV2 ---
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
-        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+        bullet_link = f"[\\[⌇\\]]({BULLET_GROUP_LINK})"
 
-        # --- Gateway & status for processing ---
-        gateway_text = "<b>Gateway ➜ #Shopify</b>"
-        status_text = "<b>Status ➜ Checking 🔎...</b>"
+        # --- Gateway & Status ---
+        gateway_text = "*Gateway ➜ #Shopify*"
+        status_text = "*Status ➜ Checking 🔎...*"
 
         # --- Initial processing message ---
         processing_text = (
-            "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
-            f"<code>{cc}</code>\n\n"
+            f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+            f"```{cc_escaped}```\n\n"
             f"{bullet_link} {gateway_text}\n"
             f"{bullet_link} {status_text}"
         )
 
         processing_msg = await update.message.reply_text(
             processing_text,
-            parse_mode=ParseMode.HTML,
+            parse_mode=ParseMode.MARKDOWN_V2,
             disable_web_page_preview=True
         )
 
@@ -2152,7 +2153,6 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
                 api_response = await resp.text()
-
         # --- Parse API response ---
         try:
             data = json.loads(api_response)
@@ -2190,15 +2190,15 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Final formatted message ---
         final_msg = (
-            f"═══[ <b>SHOPIFY</b> ]═══\n"
+            f"◇━━ <b>SHOPIFY</b> ━━◇\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{full_card}</code>\n"
             f"{bullet_link} <b>Gateway</b> ➜ <b>{gateway}</b>\n"
-            f"{bullet_link} <b>Response</b> ➜ <b>{response}</b>\n"
-            f"{bullet_link} <b>Price</b> ➜ {price} 💸\n"
+            f"{bullet_link} <b>Response</b> ➜ <i>{response}</i>\n"
+            f"{bullet_link} <b>Price</b> ➜ {price}$ 💸\n"
             "――――――――――――――――\n"
-            f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
-            f"{bullet_link} <b>Bank</b> ➜ {issuer}\n"
-            f"{bullet_link} <b>Country</b> ➜ {country_name} {country_flag}\n"
+            f"{bullet_link} <b>Brand</b> ➜ <code>{brand}</code>\n"
+            f"{bullet_link} <b>Bank</b> ➜ <code>{issuer}</code>\n"
+            f"{bullet_link} <b>Country</b> ➜ <code>{country_name} {country_flag}</code>\n"
             "――――――――――――――――\n"
             f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
