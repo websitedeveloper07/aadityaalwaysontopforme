@@ -1964,6 +1964,7 @@ async def run_mass_checker(msg_obj, cards, user):
 
 
 # --- MASS HANDLER ---
+# --- MASS HANDLER ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -2005,8 +2006,32 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    # --- start mass checker with full initial text ---
-    asyncio.create_task(run_mass_checker(update.message, cards, user))
+    # --- Build initial "Processing" text ---
+    bullet = "[⌇]"
+    bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
+    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
+    requester_text = f"Requested By ➜ {format_user_link(user)}"
+
+    initial_text = (
+        f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+        f"{bullet_link} {gateway_text}\n"
+        f"{bullet_link} {requester_text}\n"
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎..."
+    )
+
+    try:
+        initial_msg = await update.message.reply_text(
+            initial_text,
+            parse_mode="MarkdownV2",
+            disable_web_page_preview=True
+        )
+    except BadRequest as e:
+        logging.error(f"[mass_handler-init-msg] {e}")
+        return
+
+    # --- Start mass checker ---
+    asyncio.create_task(run_mass_checker(initial_msg, cards, user))
+
 
 
 
