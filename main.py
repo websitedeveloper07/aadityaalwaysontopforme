@@ -2897,7 +2897,8 @@ from telegram.ext import ContextTypes
 from db import get_user, update_user, init_db
 
 # Ensure DB is initialized
-asyncio.get_event_loop().run_until_complete(init_db())
+asyncio.run(init_db())
+
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Telegram command: /seturl <site_url>"""
