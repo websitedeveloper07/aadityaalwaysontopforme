@@ -2103,8 +2103,8 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Initial processing message ---
         processing_text = (
-            f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
-            f"```{full_card}```\n\n"
+            f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+            f"<pre><code>{full_card}</code></pre>\n\n"
             f"{bullet_link} <b>Gateway ➜ Shopify</b>\n"
             f"{bullet_link} <b>Status ➜ Checking 🔎...</b>"
         )
