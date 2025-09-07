@@ -1498,7 +1498,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         final_text = (
             f"{header}\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_md(cc_normalized)}`\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_md(brand)}`\n"
@@ -1536,6 +1536,7 @@ import asyncio
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
 
 CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
@@ -1575,7 +1576,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_input:
         await update.message.reply_text(
-            "🚫 Usage: /chk <card|mm|yy|cvv> or reply to a message containing a card."
+            "🚫 Usage: /chk `card\\|mm\\|yy\\|cvv` or reply to a message containing a card.",
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
         return
 
@@ -1594,14 +1596,14 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Bullet link
-    bullet_text = escape_markdown_v2("[⌇]")
+    bullet_text = "\\[⌇\\]"  # escaped for MarkdownV2
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Processing message
     processing_text = (
         "```Processing```\n"
-        f"`{escape_markdown_v2(cc_normalized)}`\n\n"
-        f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
+        f"`{escape_markdown(cc_normalized, version=2)}`\n\n"
+        f"{bullet_link} Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
         f"{bullet_link} Status ➜ Checking 🔎\\.\\.\\.\n"
     )
 
@@ -1616,6 +1618,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         background_check(cc_normalized, parts, user, user_data, status_msg)
     )
+
 
 
 
