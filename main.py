@@ -1725,7 +1725,7 @@ async def st_worker(update: Update, card: str, status_msg):
 
     # Final result
     result_text = (
-        f"*◇━━  {status}{status_emoji}  ━━◇*\n"
+        f"*◇━━〔 {status}{status_emoji}  〕━━◇*\n"
         f"{bullet_link} *Card:* `{card}`\n"
         f"{bullet_link} *Gateway:* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
         f"{bullet_link} *Response:* _{response_text}_\n"
@@ -2159,10 +2159,11 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
-
+        full_name = " ".join(filter(None, [user.first_name, user.last_name]))
+        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━ <b>SHOPIFY</b> ━━◇\n"
+            f"◇━━〔 <b>SHOPIFY</b> 〕━━◇\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{full_card}</code>\n"
             f"{bullet_link} <b>Gateway</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟐.𝟏𝟓$\n"
             f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
@@ -2171,7 +2172,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} <b>Bank</b> ➜ <code>{escape(issuer)}</code>\n"
             f"{bullet_link} <b>Country</b> ➜ <code>{escape(country_name)} {country_flag}</code>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} <b>Requested By</b> ➜ {escape(requester)}\n"
+            f"{bullet_link} <b>Requested By</b> ➜ {{requester}}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             "――――――――――――――――"
         )
@@ -2566,7 +2567,10 @@ async def process_card_check(user, card_input, custom_url, msg):
         response_text = data.get("Response", "Unknown")
         price = f"{data.get('Price', '0')}$"
         gateway = data.get("Gateway", "Shopify")
-        requester = f"@{user.username}" if user.username else str(user.id)
+        # Make the user's full name clickable
+        full_name = " ".join(filter(None, [user.first_name, user.last_name]))
+        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
+
 
         # 🔥 Enhance Response if success
         display_response = escape(response_text)
