@@ -1832,6 +1832,10 @@ async def deduct_credit(user_id: int) -> bool:
 def extract_cards(text: str) -> list[str]:
     return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
 
+def esc(s: str) -> str:
+    """Escape text for Telegram MarkdownV2 safely."""
+    return escape_markdown(str(s), version=2)
+
 async def check_single_card(session, card: str):
     try:
         async with session.get(API_URL_TEMPLATE + card, timeout=40) as resp:
@@ -1839,8 +1843,8 @@ async def check_single_card(session, card: str):
         status = str(data.get("status", "unknown")).lower()
         response = escape(data.get("response", "No response"))
 
-        card_md = escape_markdown(card, version=2)
-        response_md = escape_markdown(response, version=2)
+        card_md = esc(card)
+        response_md = esc(response)
 
         if "approved" in status:
             return f"`{card_md}`\n✅ {response_md}", "approved"
@@ -1849,11 +1853,11 @@ async def check_single_card(session, card: str):
         else:
             return f"`{card_md}`\n⚠️ {response_md}", "error"
     except (aiohttp.ClientError, asyncio.TimeoutError):
-        card_md = escape_markdown(card, version=2)
+        card_md = esc(card)
         return f"`{card_md}`\n❌ Network Error", "error"
     except Exception as e:
-        card_md = escape_markdown(card, version=2)
-        return f"`{card_md}`\n❌ {escape_markdown(str(e), version=2)}", "error"
+        card_md = esc(card)
+        return f"`{card_md}`\n❌ {esc(str(e))}", "error"
 
 # --- MASS CHECK CORE ---
 async def run_mass_checker(msg, cards, user_id):
@@ -1862,12 +1866,13 @@ async def run_mass_checker(msg, cards, user_id):
     results = []
     start_time = time.time()
 
-    # Properly escaped texts
+    # Escaped texts
     bullet = "[⌇]"
-    bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
-    gateway_text = escape_markdown("Gateway ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵", version=2)
-    status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
+    bullet_link = f"[{esc(bullet)}]({BULLET_GROUP_LINK})"
+    gateway_text = esc("Gateway ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
+    status_text = esc("Status ➜ Checking 🔎...")
 
+    # Initial "Processing" text
     initial_text = (
         "```Processing ⏳```\n"
         f"{bullet_link} {gateway_text}\n"
@@ -1892,6 +1897,7 @@ async def run_mass_checker(msg, cards, user_id):
         tasks = [asyncio.create_task(worker(c)) for c in cards]
 
         async def consumer():
+            nonlocal results
             while True:
                 try:
                     result = await asyncio.wait_for(queue.get(), timeout=2)
@@ -1903,14 +1909,15 @@ async def run_mass_checker(msg, cards, user_id):
                 results.append(result)
                 elapsed = round(time.time() - start_time, 2)
 
+                # Live "processing" header
                 header = (
                     "```Processing ⏳```\n"
                     f"{bullet_link} {gateway_text}\n"
-                    f"{bullet_link} Total ⌁ {counters['checked']}/{total}\n"
-                    f"{bullet_link} Approved ⌁ {counters['approved']}\n"
-                    f"{bullet_link} Declined ⌁ {counters['declined']}\n"
-                    f"{bullet_link} Error ⌁ {counters['error']}\n"
-                    f"{bullet_link} Time ⌁ {elapsed} Sec\n"
+                    f"{bullet_link} Total ⌁ {esc(counters['checked'])}/{esc(total)}\n"
+                    f"{bullet_link} Approved ⌁ {esc(counters['approved'])}\n"
+                    f"{bullet_link} Declined ⌁ {esc(counters['declined'])}\n"
+                    f"{bullet_link} Error ⌁ {esc(counters['error'])}\n"
+                    f"{bullet_link} Time ⌁ {esc(elapsed)} Sec\n"
                     "──────── ⸙ ─────────"
                 )
 
@@ -1925,6 +1932,22 @@ async def run_mass_checker(msg, cards, user_id):
                 await asyncio.sleep(0.3)
 
         await asyncio.gather(*tasks, consumer())
+
+    # --- Final edit (remove Processing) ---
+    final_header = (
+        f"{bullet_link} {gateway_text}\n"
+        f"{bullet_link} Total ⌁ {esc(counters['checked'])}/{esc(total)}\n"
+        f"{bullet_link} Approved ⌁ {esc(counters['approved'])}\n"
+        f"{bullet_link} Declined ⌁ {esc(counters['declined'])}\n"
+        f"{bullet_link} Error ⌁ {esc(counters['error'])}\n"
+        f"{bullet_link} Time ⌁ {esc(round(time.time() - start_time, 2))} Sec\n"
+        "──────── ⸙ ─────────"
+    )
+    final_content = final_header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
+    try:
+        await msg.edit_text(final_content, parse_mode="MarkdownV2", disable_web_page_preview=True)
+    except Exception as e:
+        logging.error(f"[editMessageText-final] {e}")
 
 # --- /mass COMMAND ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1973,6 +1996,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(run_mass_checker(msg, cards, user_id))
+
 
 
 
