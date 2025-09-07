@@ -4,49 +4,41 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-# Always use numeric IDs for reliability (-100xxxxxxxxxx format)
-GROUP_ID = -1003021757536   # Your supergroup
-CHANNEL_ID = -1002971317081 # Your channel
+# Use numeric ID for the group (-100xxxxxxxxxx)
+GROUP_ID = -1003021757536
+CHANNEL_USERNAME = "AXCMRX"  # Only used for join button (no membership check)
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
-# If you also want to keep clickable links for buttons, set usernames here:
-GROUP_USERNAME = "Cardxchktesting"
-CHANNEL_USERNAME = "AXCMRX"
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("force_join")
 logger.setLevel(logging.INFO)
 
 # --- Helper: Safe membership check ---
 async def safe_get_member(bot, chat_id: int, user_id: int):
-    """Safely check if a user is in a group/channel, handles API errors."""
+    """Safely check if a user is in a group, handles API errors."""
     try:
         member = await bot.get_chat_member(chat_id, user_id)
         logger.info(f"[DEBUG] User {user_id} in {chat_id}: {member.status}")
         return member.status
     except Exception as e:
         logger.warning(f"[SAFE CHECK] Failed to get member {user_id} in {chat_id}: {e}")
-        return None  # Could not check (inaccessible list, user never started bot, etc.)
+        return None
 
 async def is_user_joined(bot, user_id: int) -> bool:
-    """Check if user has joined both group and channel."""
+    """Check if user has joined the group only."""
     valid_statuses = ["member", "administrator", "creator"]
 
     group_status = await safe_get_member(bot, GROUP_ID, user_id)
-    channel_status = await safe_get_member(bot, CHANNEL_ID, user_id)
 
     if group_status not in valid_statuses:
         logger.warning(f"User {user_id} NOT in group ({group_status})")
         return False
-    if channel_status not in valid_statuses:
-        logger.warning(f"User {user_id} NOT in channel ({channel_status})")
-        return False
 
-    logger.info(f"User {user_id} is in both group and channel ✅")
+    logger.info(f"User {user_id} is in group ✅")
     return True
 
 # --- Force Join Decorator ---
 def force_join(func):
-    """Decorator to enforce group/channel join before using a command."""
+    """Decorator to enforce group join before using a command."""
     @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
         user_id = update.effective_user.id
@@ -59,16 +51,16 @@ def force_join(func):
         joined = await is_user_joined(context.bot, user_id)
         if not joined:
             keyboard = [
-                [InlineKeyboardButton("📢 Join Group", url=f"https://t.me/{GROUP_USERNAME}")],
+                [InlineKeyboardButton("📢 Join Group", url=f"https://t.me/{str(GROUP_ID).replace('-100', '')}")],
                 [InlineKeyboardButton("📡 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME}")],
                 [InlineKeyboardButton("✅ I have joined", callback_data="check_joined")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             caption_text = (
-                "❌ You must join our group and channel to use this bot.\n\n"
-                f"👉 Group: @{GROUP_USERNAME}\n"
-                f"👉 Channel: @{CHANNEL_USERNAME}\n\n"
+                "❌ You must join our group to use this bot.\n\n"
+                f"👉 Group ID: {GROUP_ID}\n"
+                f"👉 Channel: @{CHANNEL_USERNAME} (optional but recommended)\n\n"
                 "➡️ After joining, press ✅ I have joined."
             )
 
@@ -92,8 +84,8 @@ async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TY
     joined = await is_user_joined(context.bot, user_id)
 
     if joined:
-        await query.answer("✅ You have joined, now you can use the bot!", show_alert=True)
+        await query.answer("✅ You have joined the group, now you can use the bot!", show_alert=True)
         await query.edit_message_caption("🎉 Welcome! You can now use the bot commands.")
     else:
-        await query.answer("❌ You still need to join both group and channel.", show_alert=True)
-        logger.info(f"User {user_id} clicked 'I have joined' but is still not detected in both.")
+        await query.answer("❌ You still need to join the group.", show_alert=True)
+        logger.info(f"User {user_id} clicked 'I have joined' but is still not in the group.")
