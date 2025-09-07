@@ -1810,7 +1810,7 @@ from telegram.helpers import escape_markdown
 # --- SETTINGS ---
 API_URL_TEMPLATE = (
     "https://darkboy-auto-stripe-y6qk.onrender.com/"
-    "gateway=massstripeauth/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
+    "gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
 )
 CONCURRENCY = 3
 RATE_LIMIT_SECONDS = 5
