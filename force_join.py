@@ -4,40 +4,41 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-# Use @username for public groups/channels or numeric ID (-100xxxxxxxxxx) for private
-GROUP_ID = "@Cardxchktesting"   # Replace with numeric ID if private
-CHANNEL_ID = "@AXCMRX"          # Replace with numeric ID if private
+# Replace with numeric IDs if possible (-100xxxxxxxxxx for channels/supergroups)
+GROUP_ID = "@Cardxchktesting"
+CHANNEL_ID = "@AXCMRX"
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# --- Helper: Check if user joined ---
+# --- Helper: Safe membership check ---
+async def safe_get_member(bot, chat_id: str, user_id: int):
+    """Safely check if a user is in a group/channel, handles API errors."""
+    try:
+        member = await bot.get_chat_member(chat_id, user_id)
+        logger.info(f"[DEBUG] User {user_id} in {chat_id}: {member.status}")
+        return member.status
+    except Exception as e:
+        logger.warning(f"[SAFE CHECK] Failed to get member {user_id} in {chat_id}: {e}")
+        return None  # Could not check (inaccessible list, user never started bot, etc.)
+
 async def is_user_joined(bot, user_id: int) -> bool:
     """Check if user has joined both group and channel."""
-    try:
-        group_status = await bot.get_chat_member(GROUP_ID, user_id)
-        channel_status = await bot.get_chat_member(CHANNEL_ID, user_id)
+    valid_statuses = ["member", "administrator", "creator"]
 
-        # Debug logging
-        logger.info(f"[DEBUG] User {user_id} group status: {group_status.status}")
-        logger.info(f"[DEBUG] User {user_id} channel status: {channel_status.status}")
+    group_status = await safe_get_member(bot, GROUP_ID, user_id)
+    channel_status = await safe_get_member(bot, CHANNEL_ID, user_id)
 
-        valid_statuses = ["member", "administrator", "creator"]
-
-        if group_status.status not in valid_statuses:
-            logger.warning(f"User {user_id} NOT in group → {group_status.status}")
-            return False
-        if channel_status.status not in valid_statuses:
-            logger.warning(f"User {user_id} NOT in channel → {channel_status.status}")
-            return False
-
-        logger.info(f"User {user_id} is in both group and channel ✅")
-        return True
-
-    except Exception as e:
-        logger.error(f"Error checking user {user_id} membership: {e}")
+    if group_status not in valid_statuses:
+        logger.warning(f"User {user_id} NOT in group ({group_status})")
         return False
+    if channel_status not in valid_statuses:
+        logger.warning(f"User {user_id} NOT in channel ({channel_status})")
+        return False
+
+    logger.info(f"User {user_id} is in both group and channel ✅")
+    return True
 
 # --- Force Join Decorator ---
 def force_join(func):
@@ -46,7 +47,7 @@ def force_join(func):
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
         user_id = update.effective_user.id
 
-        # Allow /start always
+        # Always allow /start
         if update.message and update.message.text.startswith("/start"):
             return await func(update, context, *args, **kwargs)
 
@@ -67,21 +68,11 @@ def force_join(func):
                 "➡️ After joining, press ✅ I have joined."
             )
 
-            if update.message:
-                await update.message.reply_photo(
-                    photo=FORCE_JOIN_IMAGE,
-                    caption=caption_text,
-                    reply_markup=reply_markup
-                )
-            elif update.callback_query:
-                await update.callback_query.message.reply_photo(
-                    photo=FORCE_JOIN_IMAGE,
-                    caption=caption_text,
-                    reply_markup=reply_markup
-                )
-            return  # Stop command execution until joined
+            target = update.message or update.callback_query.message
+            await target.reply_photo(photo=FORCE_JOIN_IMAGE, caption=caption_text, reply_markup=reply_markup)
+            return  # Stop execution
 
-        # User already joined → proceed with command
+        # User already joined → proceed
         return await func(update, context, *args, **kwargs)
 
     return wrapper
