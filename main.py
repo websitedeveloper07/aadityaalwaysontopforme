@@ -1894,18 +1894,10 @@ def mdv2_escape(text: str) -> str:
     escape_chars = r"\_*[]()~`>#+-=|{}.!"
     return "".join(f"\\{c}" if c in escape_chars else c for c in text)
 
-def format_user_link(user) -> str:
-    """
-    Return a clickable user link with the escaped full name.
-    """
-    name = mdv2_escape(user.full_name)
-    return f"[{name}](tg://user?id={user.id})"
-
 def extract_cards(text: str):
     """
     Extract card strings from a message.
     """
-    # Example: simple split by lines
     return [line.strip() for line in text.splitlines() if line.strip()]
 
 # --- RUN MASS CHECKER ---
@@ -1917,7 +1909,6 @@ async def run_mass_checker(msg_obj, cards, user):
 
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
-
 
     queue = asyncio.Queue()
     semaphore = asyncio.Semaphore(CONCURRENCY)
@@ -1946,7 +1937,7 @@ async def run_mass_checker(msg_obj, cards, user):
                 elapsed = round(time.time() - start_time, 2)
 
                 header = (
-                    f"{bullet_link} {gateway_text}\n"
+                    f"{bullet_link} {mdv2_escape('𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵')}\n"
                     f"{bullet_link} Total ➵ {mdv2_escape(str(counters['checked']))}/{mdv2_escape(str(total))}\n"
                     f"{bullet_link} Approved ➵ {mdv2_escape(str(counters['approved']))}\n"
                     f"{bullet_link} Declined ➵ {mdv2_escape(str(counters['declined']))}\n"
@@ -1969,7 +1960,6 @@ async def run_mass_checker(msg_obj, cards, user):
 
         await asyncio.gather(*tasks, consumer())
 
-# --- MASS HANDLER ---
 # --- MASS HANDLER ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -2012,7 +2002,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    # --- Build initial "Processing" text (only Gateway) ---
+    # --- Build initial "Processing" text (Gateway only) ---
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
@@ -2020,7 +2010,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎..."
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 \\🔎\\.\\.\\."
     )
 
     try:
