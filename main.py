@@ -789,35 +789,39 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from functools import wraps
 from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, CallbackQueryHandler
 
 # --- Configuration ---
-GROUP_ID = "@CARDER33"          # Use @username or numeric ID, not full https:// link
-CHANNEL_ID = "@abtkalinux"      # Same here, only username or ID
-OWNER = "Kalinuxxx"
+GROUP_ID = "@CARDER33"       # Use @username or numeric ID
+CHANNEL_ID = "@abtkalinux"   # Use @username or numeric ID
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
+
 
 # --- Force Join Decorator ---
 def force_join(func):
     @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        # ✅ Allow /start without blocking
+        if update.message and update.message.text.startswith("/start"):
+            return await func(update, context, *args, **kwargs)
+
         user_id = update.effective_user.id
+        joined = True
         try:
             group_status = await context.bot.get_chat_member(GROUP_ID, user_id)
             channel_status = await context.bot.get_chat_member(CHANNEL_ID, user_id)
-            joined = True
 
             if group_status.status in [ChatMember.LEFT, ChatMember.KICKED] or \
                channel_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
                 joined = False
         except Exception:
-            joined = False  # Treat any error as "not joined"
+            joined = False  # Treat error as "not joined"
 
         if not joined:
             keyboard = [
-                [InlineKeyboardButton("Owner", url=f"https://t.me/{OWNER}")],
                 [InlineKeyboardButton("Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
-                [InlineKeyboardButton("Channel", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")]
+                [InlineKeyboardButton("Channel", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")],
+                [InlineKeyboardButton("✅ I have joined", callback_data="check_joined")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -826,8 +830,8 @@ def force_join(func):
                 caption=(
                     "❌ You must join our group and channel to use this bot.\n\n"
                     f"Group: {GROUP_ID}\n"
-                    f"Channel: {CHANNEL_ID}\n"
-                    f"Owner: {OWNER}"
+                    f"Channel: {CHANNEL_ID}\n\n"
+                    "➡️ After joining, press ✅ I have joined."
                 ),
                 reply_markup=reply_markup
             )
@@ -836,14 +840,36 @@ def force_join(func):
     return wrapper
 
 
-# --- Force Join + Maintenance Wrapper ---
+# --- Maintenance + Force Join Wrapper ---
 def command_with_join_and_check(command_func, command_name):
     @force_join
     @wraps(command_func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
-        # call your existing maintenance checker
+        # ✅ Call your existing maintenance checker here
         return await command_with_check(command_func, command_name)(update, context, *args, **kwargs)
     return wrapper
+
+
+# --- Callback for "✅ I have joined" button ---
+async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    try:
+        group_status = await context.bot.get_chat_member(GROUP_ID, user_id)
+        channel_status = await context.bot.get_chat_member(CHANNEL_ID, user_id)
+
+        if group_status.status not in [ChatMember.LEFT, ChatMember.KICKED] and \
+           channel_status.status not in [ChatMember.LEFT, ChatMember.KICKED]:
+            await query.answer("✅ You have joined, now you can use the bot!", show_alert=True)
+        else:
+            await query.answer("❌ You still need to join both group and channel.", show_alert=True)
+    except Exception:
+        await query.answer("⚠️ Could not verify. Try again later.", show_alert=True)
+
+
+# --- Register in your main() ---
+
 
 
 
@@ -5209,6 +5235,7 @@ def main():
     application.add_handler(CommandHandler("reset", reset_command))
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
+    application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="check_joined"))
 
     # 📲 Callback & Error Handlers
     application.add_handler(CallbackQueryHandler(handle_callback))
