@@ -2493,7 +2493,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>{escape(card_input)}</code></pre>\n"
-        f"{bullet_link} Gateway ➜ <b>{escape(custom_url)}</b>\n"
+        f"{bullet_link} Gateway ➜ <i>{escape(gateway)}</i>\n"
         f"{bullet_link} Status ➜ Checking 🔎..."
     )
 
