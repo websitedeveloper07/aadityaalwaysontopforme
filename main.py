@@ -1808,7 +1808,6 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.error import TelegramError, BadRequest
-from telegram.helpers import escape_markdown
 from db import get_user, update_user
 
 # --- SETTINGS ---
@@ -1836,16 +1835,17 @@ async def deduct_credit(user_id: int) -> bool:
 def extract_cards(text: str) -> list[str]:
     return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
 
-def esc(s: str) -> str:
+def mdv2_escape(text: str) -> str:
     """Escape text for Telegram MarkdownV2 safely."""
-    return escape_markdown(str(s), version=2)
+    escape_chars = r"_*[]()~`>#+-=|{}.!"
+    return "".join(f"\\{c}" if c in escape_chars else c for c in str(text))
 
 def format_user_link(user) -> str:
     """Return a clickable Telegram user link using their name."""
     name = user.first_name
     if user.last_name:
         name += f" {user.last_name}"
-    return f"[{esc(name)}](tg://user?id={user.id})"
+    return f"[{mdv2_escape(name)}](tg://user?id={user.id})"
 
 # --- SINGLE CARD CHECK ---
 async def check_single_card(session, card: str):
@@ -1856,8 +1856,8 @@ async def check_single_card(session, card: str):
         status = str(data.get("status") or data.get("Status") or "unknown").strip().lower()
         response = str(data.get("response") or data.get("Response") or "No response").strip()
 
-        card_md = esc(card)
-        response_md = esc(response)
+        card_md = mdv2_escape(card)
+        response_md = mdv2_escape(response)
 
         if "approved" in status:
             return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ✅ _{response_md}_", "approved"
@@ -1867,33 +1867,34 @@ async def check_single_card(session, card: str):
             return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ⚠️ _{response_md}_", "error"
 
     except (aiohttp.ClientError, asyncio.TimeoutError):
-        return f"`{esc(card)}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ❌ _Network Error_", "error"
+        return f"`{mdv2_escape(card)}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ❌ _Network Error_", "error"
     except Exception as e:
-        return f"`{esc(card)}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ❌ _{esc(str(e))}_", "error"
+        return f"`{mdv2_escape(card)}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ❌ _{mdv2_escape(str(e))}_", "error"
 
 # --- MASS CHECK CORE ---
-async def run_mass_checker(msg, cards, user):
+async def run_mass_checker(msg_obj, cards, user):
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
     results = []
     start_time = time.time()
 
     bullet = "[⌇]"
-    bullet_link = f"[{esc(bullet)}]({BULLET_GROUP_LINK})"
-    gateway_text = esc("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
-    requester_text = f"<b>Requested By</b> ➜ {format_user_link(user)}"
+    bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
+    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
+    requester_text = f"Requested By ➜ {format_user_link(user)}"
 
     # --- Initial Processing Message ---
-    msg = (
-        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+    initial_text = (
+        f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {requester_text}\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎..."
     )
     try:
-        await msg.edit_text(initial_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
+        msg_obj = await msg_obj.reply_text(initial_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
     except BadRequest as e:
         logging.error(f"[editMessageText-init] {e.message}")
+        return
 
     queue = asyncio.Queue()
     semaphore = asyncio.Semaphore(CONCURRENCY)
@@ -1903,7 +1904,7 @@ async def run_mass_checker(msg, cards, user):
             async with semaphore:
                 result_text, status = await check_single_card(session, card)
                 counters["checked"] += 1
-                counters[status] = counters.get(status, 0) + 1
+                counters[status] += 1
                 await queue.put(result_text)
 
         tasks = [asyncio.create_task(worker(c)) for c in cards]
@@ -1923,17 +1924,17 @@ async def run_mass_checker(msg, cards, user):
 
                 header = (
                     f"{bullet_link} {gateway_text}\n"
-                    f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {esc(counters['checked'])}/{esc(total)}\n"
-                    f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {esc(counters['approved'])}\n"
-                    f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {esc(counters['declined'])}\n"
-                    f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {esc(counters['error'])}\n"
-                    f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {esc(elapsed)} Sec\n"
+                    f"{bullet_link} Total ➵ {mdv2_escape(counters['checked'])}/{mdv2_escape(total)}\n"
+                    f"{bullet_link} Approved ➵ {mdv2_escape(counters['approved'])}\n"
+                    f"{bullet_link} Declined ➵ {mdv2_escape(counters['declined'])}\n"
+                    f"{bullet_link} Error ➵ {mdv2_escape(counters['error'])}\n"
+                    f"{bullet_link} Time ➵ {mdv2_escape(elapsed)} Sec\n"
                     "──────── ⸙ ─────────"
                 )
                 content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
 
                 try:
-                    await msg.edit_text(content, parse_mode="MarkdownV2", disable_web_page_preview=True)
+                    await msg_obj.edit_text(content, parse_mode="MarkdownV2", disable_web_page_preview=True)
                 except (BadRequest, TelegramError) as e:
                     logging.error(f"[editMessageText-update] {e}")
 
@@ -1941,27 +1942,7 @@ async def run_mass_checker(msg, cards, user):
 
         await asyncio.gather(*tasks, consumer())
 
-    # --- Final edit ---
-    final_elapsed = round(time.time() - start_time, 2)
-    final_header = (
-        f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {esc(counters['checked'])}/{esc(total)}\n"
-        f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {esc(counters['approved'])}\n"
-        f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {esc(counters['declined'])}\n"
-        f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {esc(counters['error'])}\n"
-        f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {esc(final_elapsed)} Sec\n"
-        "──────── ⸙ ─────────"
-    )
-    final_content = final_header
-    if results:
-        final_content += "\n" + "\n──────── ⸙ ─────────\n".join(results)
-
-    try:
-        await msg.edit_text(final_content, parse_mode="MarkdownV2", disable_web_page_preview=True)
-    except Exception as e:
-        logging.error(f"[editMessageText-final] {e}")
-
-
+# --- MASS HANDLER ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -2003,7 +1984,8 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    asyncio.create_task(run_mass_checker(msg, cards, user))
+    await run_mass_checker(update.message, cards, user)
+
 
 
 
