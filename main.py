@@ -1804,7 +1804,7 @@ from html import escape
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.error import TelegramError
-from db import get_user, update_user  # async DB functions
+from db import get_user, update_user
 from telegram.helpers import escape_markdown
 
 # --- SETTINGS ---
@@ -1836,35 +1836,36 @@ async def check_single_card(session, card: str):
         status = str(data.get("status", "unknown")).lower()
         response = escape(data.get("response", "No response"))
 
+        # Escape for MarkdownV2
+        card_md = escape_markdown(card, version=2)
+        response_md = escape_markdown(response, version=2)
+
         if "approved" in status:
-            return f"`{card}`\n_i_✅ {response}_i_", "approved"
+            return f"`{card_md}`\n_i_✅ {response_md}_i_", "approved"
         elif "declined" in status:
-            return f"`{card}`\n_i_❌ {response}_i_", "declined"
+            return f"`{card_md}`\n_i_❌ {response_md}_i_", "declined"
         else:
-            return f"`{card}`\n_i_❌ {response}_i_", "error"
+            return f"`{card_md}`\n_i_❌ {response_md}_i_", "error"
     except (aiohttp.ClientError, asyncio.TimeoutError):
-        return f"`{card}`\n_i_❌ Network Error_i_", "error"
+        card_md = escape_markdown(card, version=2)
+        return f"`{card_md}`\n_i_❌ Network Error_i_", "error"
     except Exception as e:
-        return f"`{card}`\n_i_❌ {e}_i_", "error"
+        card_md = escape_markdown(card, version=2)
+        return f"`{card_md}`\n_i_❌ {escape_markdown(str(e), version=2)}_i_", "error"
 
 # --- MASS CHECK CORE ---
-from telegram.helpers import escape_markdown
-
 async def run_mass_checker(msg, cards, user_id):
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
     results = []
     start_time = time.time()
 
-    # Clickable bullet
     bullet = "[⌇]"
-    bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
-    
-    # Gateway & initial status
+    bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
     gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
     status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
 
-    # Send initial message
+    # Send initial processing message
     initial_text = (
         "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
@@ -1878,11 +1879,9 @@ async def run_mass_checker(msg, cards, user_id):
     async with aiohttp.ClientSession() as session:
         async def worker(card):
             async with semaphore:
-                # Check card
                 result_text, status = await check_single_card(session, card)
                 counters["checked"] += 1
                 counters[status] = counters.get(status, 0) + 1
-                # Append card result to queue
                 await queue.put(result_text)
 
         tasks = [asyncio.create_task(worker(c)) for c in cards]
@@ -1899,7 +1898,6 @@ async def run_mass_checker(msg, cards, user_id):
                 results.append(result)
                 elapsed = round(time.time() - start_time, 2)
 
-                # Header with live counts
                 header = (
                     "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
                     f"{bullet_link} {gateway_text}\n"
@@ -1911,7 +1909,6 @@ async def run_mass_checker(msg, cards, user_id):
                     "──────── ⸙ ─────────"
                 )
 
-                # Combine header + results
                 content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
                 try:
                     await msg.edit_text(content, parse_mode="MarkdownV2", disable_web_page_preview=True)
@@ -1921,7 +1918,6 @@ async def run_mass_checker(msg, cards, user_id):
                 await asyncio.sleep(0.3)
 
         await asyncio.gather(*tasks, consumer())
-
 
 # --- /mass COMMAND ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1934,7 +1930,8 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if elapsed < RATE_LIMIT_SECONDS:
             remaining = round(RATE_LIMIT_SECONDS - elapsed, 2)
             await update.message.reply_text(
-                f"⚠️ Please wait <b>{remaining}</b>s before using /mass again.", parse_mode="HTML"
+                f"⚠️ Please wait <b>{remaining}</b>s before using /mass again.",
+                parse_mode="HTML"
             )
             return
 
@@ -1945,7 +1942,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_last_command_time[user_id] = current_time
 
-    # Cards
+    # Extract cards
     cards = []
     if context.args:
         cards = context.args
@@ -1958,17 +1955,19 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if len(cards) > 30:
         await update.message.reply_text(
-            f"⚠️ Max 30 cards allowed. Only first 30 will be processed.", parse_mode="HTML"
+            "⚠️ Max 30 cards allowed. Only first 30 will be processed.",
+            parse_mode="HTML"
         )
         cards = cards[:30]
 
-    # Initial processing message
+    # Initial message
     msg = await update.message.reply_text(
         "⏳ <b>Processing cards...</b>", parse_mode="HTML"
     )
 
-    # Run mass check in background
+    # Run mass checker in background
     asyncio.create_task(run_mass_checker(msg, cards, user_id))
+
 
 
 
