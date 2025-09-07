@@ -5,8 +5,8 @@ from telegram.ext import ContextTypes
 
 # --- Configuration ---
 GROUP_ID = -1003021757536   # numeric group ID (used only for membership check)
-GROUP_USERNAME = "Cardxchktesting"  # used for join button
-CHANNEL_USERNAME = "AXCMRX"         # used for join button (optional)
+GROUP_USERNAME = "CARDER33"  # used for join button
+CHANNEL_USERNAME = "+EFlLesETogM3M2Q1"         # used for join button (optional)
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
 logger = logging.getLogger("force_join")
@@ -56,7 +56,7 @@ def force_join(func):
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            caption_text = "❌ To use the bot please join below 👇"
+            caption_text = "❌𝗨𝗻𝗹𝗼𝗰𝗸 𝗮𝗰𝗰𝗲𝘀𝘀 𝘁𝗼 𝘁𝗵𝗲 𝗯𝗼𝘁 𝗯𝘆 𝗷𝗼𝗶𝗻𝗶𝗻𝗴 𝗼𝘂𝗿 𝗰𝗵𝗮𝗻𝗻𝗲𝗹 𝗮𝗻𝗱 𝗴𝗿𝗼𝘂𝗽 𝘁𝗼𝗱𝗮𝘆!👇"
 
             target = update.message or update.callback_query.message
             await target.reply_photo(
@@ -82,8 +82,8 @@ async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TY
     joined = await is_user_joined(context.bot, user_id)
 
     if joined:
-        await query.answer("✅ You have joined the group, now you can use the bot!", show_alert=True)
+        await query.answer("✅ 𝗬𝗼𝘂 𝗵𝗮𝘃𝗲 𝗷𝗼𝗶𝗻𝗲𝗱, 𝗮𝗰𝗰𝗲𝘀𝘀 𝗴𝗿𝗮𝗻𝘁𝗲𝗱! 𝗡𝗼𝘄 𝘆𝗼𝘂 𝗰𝗮𝗻 𝘂𝘀𝗲 𝘁𝗵𝗲 𝗯𝗼𝘁 ✅", show_alert=True)
         await query.edit_message_caption("🎉 Welcome! You can now use the bot commands.")
     else:
-        await query.answer("❌ You still need to join the group.", show_alert=True)
+        await query.answer("❌ 𝗔𝗰𝗰𝗲𝘀𝘀 𝗱𝗲𝗻𝗶𝗲𝗱 – 𝘆𝗼𝘂 𝘀𝘁𝗶𝗹𝗹 𝗻𝗲𝗲𝗱 𝘁𝗼 𝗷𝗼𝗶𝗻!", show_alert=True)
         logger.info(f"User {user_id} clicked 'I have joined' but is still not in the group.")
