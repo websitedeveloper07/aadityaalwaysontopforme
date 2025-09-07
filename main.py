@@ -2076,7 +2076,7 @@ from telegram.ext import ContextTypes
 
 # --- Configuration ---
 RATE_LIMIT_SECONDS = 2  # adjust cooldown
-CONCURRENCY = 1          # adjust concurrency
+CONCURRENCY = 3          # adjust concurrency
 BULLET_GROUP_LINK = "https://t.me/yourgroup"  # replace with your link
 
 user_last_command_time = {}  # cooldown tracker
