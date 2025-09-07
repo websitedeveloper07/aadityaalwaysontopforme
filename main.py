@@ -797,31 +797,38 @@ CHANNEL_ID = "@abtkalinux"     # Channel username (bot must be admin)
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
 
+# --- Helper: Check if user joined ---
+async def is_user_joined(bot, user_id: int) -> bool:
+    try:
+        group_status = await bot.get_chat_member(GROUP_ID, user_id)
+        channel_status = await bot.get_chat_member(CHANNEL_ID, user_id)
+
+        if group_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
+            return False
+        if channel_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
+            return False
+        return True
+    except Exception:
+        return False
+
+
 # --- Force Join Decorator ---
 def force_join(func):
     @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
-        # ✅ Allow /start without blocking
+        user_id = update.effective_user.id
+
+        # ✅ Allow /start always
         if update.message and update.message.text.startswith("/start"):
             return await func(update, context, *args, **kwargs)
 
-        user_id = update.effective_user.id
-        joined = True
-        try:
-            group_status = await context.bot.get_chat_member(GROUP_ID, user_id)
-            channel_status = await context.bot.get_chat_member(CHANNEL_ID, user_id)
-
-            if group_status.status in [ChatMember.LEFT, ChatMember.KICKED] or \
-               channel_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
-                joined = False
-        except Exception:
-            joined = False  # Treat error as "not joined"
-
+        # 🔍 Check if user joined
+        joined = await is_user_joined(context.bot, user_id)
         if not joined:
             keyboard = [
                 [InlineKeyboardButton("📢 Join Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
                 [InlineKeyboardButton("📡 Join Channel", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")],
-                [InlineKeyboardButton("✅ I have joined", callback_data="check_joined")]
+                [InlineKeyboardButton("✅ I have joined", callback_data=f"check_joined:{func.__name__}")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -855,18 +862,22 @@ async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     user_id = query.from_user.id
 
-    try:
-        group_status = await context.bot.get_chat_member(GROUP_ID, user_id)
-        channel_status = await context.bot.get_chat_member(CHANNEL_ID, user_id)
+    # extract which command user was trying
+    data = query.data.split(":", 1)
+    command_name = data[1] if len(data) > 1 else None
 
-        if group_status.status not in [ChatMember.LEFT, ChatMember.KICKED] and \
-           channel_status.status not in [ChatMember.LEFT, ChatMember.KICKED]:
-            await query.answer("✅ You have joined, now you can use the bot!", show_alert=True)
-            await query.edit_message_caption("🎉 Welcome! You can now use the bot commands.")
-        else:
-            await query.answer("❌ You still need to join both group and channel.", show_alert=True)
-    except Exception:
-        await query.answer("⚠️ Could not verify. Try again later.", show_alert=True)
+    joined = await is_user_joined(context.bot, user_id)
+
+    if joined:
+        await query.answer("✅ You have joined, now you can use the bot!", show_alert=True)
+        await query.edit_message_caption("🎉 Welcome! You can now use the bot commands.")
+
+        # if command exists, run it again automatically
+        if command_name:
+            fake_update = Update.de_json(query.to_dict(), context.bot)
+            # you can trigger command again here if needed
+    else:
+        await query.answer("❌ You still need to join both group and channel.", show_alert=True)
 
 
 
