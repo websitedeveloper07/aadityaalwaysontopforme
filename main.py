@@ -787,19 +787,33 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import os
+import logging
 from functools import wraps
 from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, CallbackQueryHandler
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+from db import init_db
 
-# --- Configuration ---
-GROUP_ID = "@bosssdkkk"        # Group username (bot must be admin)
-CHANNEL_ID = "@abtkalinux"     # Channel username (bot must be admin)
+# --- Bot & Security Config ---
+BOT_TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
+OWNER_ID = 8493360284
+GROUP_ID = "@bosssdkkk"
+CHANNEL_ID = "@abtkalinux"
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
+# --- Logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # --- Helper: Check if user joined ---
 async def is_user_joined(bot, user_id: int) -> bool:
-    """Check if user has joined both group and channel."""
     try:
         group_status = await bot.get_chat_member(GROUP_ID, user_id)
         channel_status = await bot.get_chat_member(CHANNEL_ID, user_id)
@@ -812,19 +826,16 @@ async def is_user_joined(bot, user_id: int) -> bool:
     except Exception:
         return False
 
-
 # --- Force Join Decorator ---
 def force_join(func):
-    """Decorator to enforce group/channel join before using a command."""
     @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
         user_id = update.effective_user.id
 
-        # ✅ Allow /start always without blocking
+        # Always allow /start
         if update.message and update.message.text.startswith("/start"):
             return await func(update, context, *args, **kwargs)
 
-        # 🔍 Check membership
         joined = await is_user_joined(context.bot, user_id)
         if not joined:
             keyboard = [
@@ -845,7 +856,7 @@ def force_join(func):
                     ),
                     reply_markup=reply_markup
                 )
-            elif update.callback_query:  # if triggered via button
+            elif update.callback_query:
                 await update.callback_query.message.reply_photo(
                     photo=FORCE_JOIN_IMAGE,
                     caption=(
@@ -858,14 +869,11 @@ def force_join(func):
                 )
             return
 
-        # ✅ User already joined → proceed with command
         return await func(update, context, *args, **kwargs)
     return wrapper
 
-
-# --- Callback for "✅ I have joined" button ---
+# --- Callback for "I have joined" button ---
 async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Re-check membership when user clicks 'I have joined'."""
     query = update.callback_query
     user_id = query.from_user.id
 
@@ -876,6 +884,12 @@ async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.edit_message_caption("🎉 Welcome! You can now use the bot commands.")
     else:
         await query.answer("❌ You still need to join both group and channel.", show_alert=True)
+
+
+# --- Database init ---
+async def post_init(application):
+    await init_db()
+    logger.info("✅ Database initialized")
 
 
 
