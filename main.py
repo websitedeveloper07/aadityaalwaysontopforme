@@ -1576,33 +1576,30 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_input:
         await update.message.reply_text(
-            "🚫 Usage: /chk `card\\|mm\\|yy\\|cvv` or reply to a message containing a card.",
+            "🚫 Usage: /chk `card|mm|yy|cvv` or reply to a message containing a card.",
             parse_mode=ParseMode.MARKDOWN_V2,
         )
         return
 
     # Normalize month and year
-    parts = card_input.split("|")
-    card, mm, yy, cvv = parts
+    card, mm, yy, cvv = card_input.split("|")
     mm = mm.zfill(2)
-    if len(yy) == 4:
-        yy = yy[-2:]
-    parts = [card, mm, yy, cvv]
-    cc_normalized = "|".join(parts)
+    yy = yy[-2:] if len(yy) == 4 else yy
+    cc_normalized = "|".join([card, mm, yy, cvv])
 
     # Deduct credit
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ No credits left.")
         return
 
-    # Bullet link
-    bullet_text = "\\[⌇\\]"  # escaped for MarkdownV2
+    # Escape everything for MarkdownV2
+    escaped_cc = escape_markdown(cc_normalized, version=2)
+    bullet_text = escape_markdown("⌇", version=2)
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
-    # Processing message
     processing_text = (
-        "```Processing```\n"
-        f"`{escape_markdown(cc_normalized, version=2)}`\n\n"
+        "```Processing```" + "\n"
+        f"`{escaped_cc}`\n\n"
         f"{bullet_link} Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
         f"{bullet_link} Status ➜ Checking 🔎\\.\\.\\.\n"
     )
@@ -1616,9 +1613,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run background check
     asyncio.create_task(
-        background_check(cc_normalized, parts, user, user_data, status_msg)
+        background_check(cc_normalized, [card, mm, yy, cvv], user, user_data, status_msg)
     )
-
 
 
 
