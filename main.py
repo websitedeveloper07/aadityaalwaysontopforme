@@ -2488,6 +2488,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Clickable bullet
+        gateway = data.get("Gateway", "Shopify")
 
     # Initial processing message with proper code blocks
     processing_text = (
