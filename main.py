@@ -1541,12 +1541,14 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Get user data
     user_data = await get_user(user_id)
     if not user_data:
-        await update.effective_message.reply_text("❌ Could not fetch your user data.")
+        msg = escape_markdown("❌ Could not fetch your user data.", version=2)
+        await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
-        await update.effective_message.reply_text("❌ You have no credits left.")
+        msg = escape_markdown("❌ You have no credits left.", version=2)
+        await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     # Cooldown check
@@ -1568,9 +1570,11 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if match:
             card_input = match.group(0)
 
+    # No card input -> send usage message
     if not card_input:
+        usage_text = "🚫 Usage: /chk `card|mm|yy|cvv` or reply to a message containing a card."
         await update.message.reply_text(
-            "🚫 Usage: /chk `card|mm|yy|cvv` or reply to a message containing a card.",
+            escape_markdown(usage_text, version=2),
             parse_mode=ParseMode.MARKDOWN_V2,
         )
         return
@@ -1583,19 +1587,20 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Deduct credit
     if not await consume_credit(user_id):
-        await update.message.reply_text("❌ No credits left.")
+        msg = escape_markdown("❌ No credits left.", version=2)
+        await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     # Escape all dynamic text for MarkdownV2
     escaped_cc = escape_markdown(cc_normalized, version=2)
-    bullet_text = escape_markdown("[ ]", version=2)
+    bullet_text = escape_markdown("[⌇]", version=2)
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Escape static text
     gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵", version=2)
     status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
 
-    # Build processing message with proper f-strings
+    # Build processing message
     processing_text = (
         "```⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴```" + "\n"
         f"```{escaped_cc}```" + "\n\n"
