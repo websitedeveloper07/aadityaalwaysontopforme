@@ -1878,89 +1878,6 @@ def mdv2_escape(text: str) -> str:
     return "".join(f"\\{c}" if c in escape_chars else c for c in text)
 
 # --- Helper to format clickable user link ---
-import asyncio
-import time
-import logging
-import aiohttp
-from telegram import Update
-from telegram.error import BadRequest, TelegramError
-from telegram.ext import ContextTypes
-
-# --- Helper Functions ---
-def mdv2_escape(text: str) -> str:
-    """
-    Escape all MarkdownV2 special characters.
-    """
-    escape_chars = r"\_*[]()~`>#+-=|{}.!"
-    return "".join(f"\\{c}" if c in escape_chars else c for c in text)
-
-def extract_cards(text: str):
-    """
-    Extract card strings from a message.
-    """
-    return [line.strip() for line in text.splitlines() if line.strip()]
-
-# --- RUN MASS CHECKER ---
-async def run_mass_checker(msg_obj, cards, user):
-    total = len(cards)
-    counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
-    results = []
-    start_time = time.time()
-
-    bullet = "[⌇]"
-    bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
-
-    queue = asyncio.Queue()
-    semaphore = asyncio.Semaphore(CONCURRENCY)
-
-    async with aiohttp.ClientSession() as session:
-        async def worker(card):
-            async with semaphore:
-                result_text, status = await check_single_card(session, card)
-                counters["checked"] += 1
-                counters[status] += 1
-                await queue.put(result_text)
-
-        tasks = [asyncio.create_task(worker(c)) for c in cards]
-
-        async def consumer():
-            nonlocal results
-            while True:
-                try:
-                    result = await asyncio.wait_for(queue.get(), timeout=2)
-                except asyncio.TimeoutError:
-                    if all(t.done() for t in tasks):
-                        break
-                    continue
-
-                results.append(result)
-                elapsed = round(time.time() - start_time, 2)
-
-                header = (
-                    f"{bullet_link} {mdv2_escape('𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵')}\n"
-                    f"{bullet_link} Total ➵ {mdv2_escape(str(counters['checked']))}/{mdv2_escape(str(total))}\n"
-                    f"{bullet_link} Approved ➵ {mdv2_escape(str(counters['approved']))}\n"
-                    f"{bullet_link} Declined ➵ {mdv2_escape(str(counters['declined']))}\n"
-                    f"{bullet_link} Error ➵ {mdv2_escape(str(counters['error']))}\n"
-                    f"{bullet_link} Time ➵ {mdv2_escape(str(elapsed))} Sec\n"
-                    "──────── ⸙ ─────────"
-                )
-                content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
-
-                try:
-                    await msg_obj.edit_text(
-                        content,
-                        parse_mode="MarkdownV2",
-                        disable_web_page_preview=True
-                    )
-                except (BadRequest, TelegramError) as e:
-                    logging.error(f"[editMessageText-update] {e}")
-
-                await asyncio.sleep(0.3)
-
-        await asyncio.gather(*tasks, consumer())
-
-# --- MASS HANDLER ---
 import re
 import asyncio
 import time
@@ -1984,6 +1901,58 @@ def extract_cards(text: str):
     pattern = r"\b\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}\b"
     return re.findall(pattern, text)
 
+# --- MASS CHECKER ---
+async def run_mass_checker(msg_obj, cards, user):
+    total = len(cards)
+    counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
+    results = []
+    start_time = time.time()
+
+    bullet = "[⌇]"
+    bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
+    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
+
+    queue = asyncio.Queue()
+    semaphore = asyncio.Semaphore(CONCURRENCY)
+
+    async with aiohttp.ClientSession() as session:
+        async def worker(card):
+            async with semaphore:
+                # This function should return (text, status)
+                result_text, status = await check_single_card(session, card)
+                counters["checked"] += 1
+                counters[status] += 1
+                # Escape card & status
+                escaped_result = mdv2_escape(result_text)
+                results.append(f"{escaped_result}\n𝐒𝐭𝐚𝐭𝐮s ⌁ {status_emoji(status)} {status_text(status)}")
+                await update_message()
+
+        async def update_message():
+            elapsed = round(time.time() - start_time, 2)
+            header = (
+                f"{bullet_link} {gateway_text}\n"
+                f"{bullet_link} Total ➵ {counters['checked']}/{total}\n"
+                f"{bullet_link} Time ➵ {elapsed} Sec\n"
+                "──────── ⸙ ─────────"
+            )
+            content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
+            try:
+                await msg_obj.edit_text(
+                    content,
+                    parse_mode="MarkdownV2",
+                    disable_web_page_preview=True
+                )
+            except (BadRequest, TelegramError) as e:
+                logging.error(f"[editMessageText-update] {e}")
+
+        tasks = [asyncio.create_task(worker(c)) for c in cards]
+        await asyncio.gather(*tasks)
+
+def status_emoji(status: str):
+    return "✅" if status.lower() == "approved" else "⚠️" if status.lower() == "error" else "❌"
+
+def status_text(status: str):
+    return "Succeeded" if status.lower() == "approved" else "No response" if status.lower() == "error" else "Declined"
 
 # --- MASS HANDLER ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1991,7 +1960,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     current_time = time.time()
 
-    # Cooldown (example)
+    # Cooldown
     if user_id in user_last_command_time:
         elapsed = current_time - user_last_command_time[user_id]
         if elapsed < RATE_LIMIT_SECONDS:
@@ -2029,11 +1998,9 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
-
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
-        f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎..."
+        f"{bullet_link} {gateway_text}"
     )
 
     try:
@@ -2048,8 +2015,6 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Start mass checker ---
     asyncio.create_task(run_mass_checker(initial_msg, cards, user))
-
-
 
 
 
