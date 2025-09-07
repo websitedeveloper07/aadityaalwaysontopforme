@@ -1498,7 +1498,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         final_text = (
             f"{header}\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_md(cc_normalized)}`\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_md(brand)}`\n"
@@ -1588,17 +1588,17 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Escape all dynamic text for MarkdownV2
     escaped_cc = escape_markdown(cc_normalized, version=2)
-    bullet_text = escape_markdown("⌇", version=2)
+    bullet_text = escape_markdown("[ ]", version=2)
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Escape static text
     gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵", version=2)
     status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
 
-    # Build processing message
+    # Build processing message with proper f-strings
     processing_text = (
         "```⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴```" + "\n"
-        "```{escaped_cc}```" + "\n"
+        f"```{escaped_cc}```" + "\n\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
