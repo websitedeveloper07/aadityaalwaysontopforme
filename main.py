@@ -3988,6 +3988,13 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 import asyncio
+
+# 🔧 Fix for Python 3.12 + Pyrogram sync
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
 import re
 import logging
 from datetime import datetime
@@ -3996,6 +4003,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from pyrogram import Client
 from pyrogram.errors import FloodWait, AuthKeyUnregistered, UsernameInvalid
+
 
 # ----------------- Database Integration -----------------
 # Make sure your 'db.py' has these async functions: init_db, get_user, update_user
