@@ -788,9 +788,8 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         "🔹 *𝙎𝙩𝙧𝙞𝙥𝙚*\n"
         f"{bullet_link} `/chk cc\\|mm\\|yy\\|cvv` – Single Stripe Auth\n"
-        f"{bullet_link} `/mchk` – Multi x10 Stripe Auth\n"
         f"{bullet_link} `/mass` – Mass x30 Stripe Auth 2\n"
-        f"{bullet_link} `/mtchk txt file` – Mass x200 Stripe Auth 3\n\n"
+
 
        "🔹 *𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲*\n"
         f"{bullet_link} `/b3 cc\\|mm\\|yy\\|cvv` – Braintree Premium Auth\n"
@@ -1509,7 +1508,6 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_md(brand)}`\n"
-            f"{bullet_link} 𝐓𝐲𝐩𝐞 ➜ `{escape_md(card_type)} | {escape_md(card_level)}`\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_md(issuer)}`\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_md(country_name)} {escape_md(country_flag)}`\n"
             f"――――――――――――――――\n"
@@ -2166,9 +2164,8 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━ <b>SHOPIFY</b> ━━◇\n"
             f"{bullet_link} <b>Card</b> ➜ <code>{full_card}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ <b>{escape(gateway)}</b>\n"
+            f"{bullet_link} <b>Gateway</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟐.𝟏𝟓$\n"
             f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
-            f"{bullet_link} <b>Price</b> ➜ {escape(str(price))}$ 💸\n"
             "――――――――――――――――\n"
             f"{bullet_link} <b>Brand</b> ➜ <code>{escape(brand)}</code>\n"
             f"{bullet_link} <b>Bank</b> ➜ <code>{escape(issuer)}</code>\n"
@@ -2444,6 +2441,8 @@ API_CHECK_TEMPLATE = (
 
 
 # ===== Main Command =====
+from html import escape
+
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -2487,14 +2486,25 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Send initial "Checking..." message
+    # Clickable bullet
+
+    # Initial processing message with proper code blocks
+    processing_text = (
+        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+        f"<pre><code>{escape(card_input)}</code></pre>\n"
+        f"{bullet_link} Gateway ➜ <b>{escape(custom_url)}</b>\n"
+        f"{bullet_link} Status ➜ Checking 🔎..."
+    )
+
     msg = await update.message.reply_text(
-        f"⏳ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 𝗰𝗮𝗿𝗱: <code>{escape(card_input)}</code>...",
-        parse_mode=ParseMode.HTML
+        processing_text,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
     )
 
     # Run the actual heavy work in background
     asyncio.create_task(process_card_check(user, card_input, custom_url, msg))
+
 
 
 # ===== Worker =====
