@@ -2058,32 +2058,6 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# --- Background /sh processing ---
-import json
-import logging
-from html import escape
-import aiohttp
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-from bin import get_bin_info  # <-- your custom BIN module
-from db import get_user, update_user  # credits system
-
-logger = logging.getLogger(__name__)
-
-
-# --- Credit system helper ---
-async def consume_credit(user_id: int) -> bool:
-    try:
-        user_data = await get_user(user_id)
-        if user_data and user_data.get("credits", 0) > 0:
-            new_credits = user_data["credits"] - 1
-            await update_user(user_id, credits=new_credits)
-            return True
-    except Exception as e:
-        logger.warning(f"[consume_credit] Error for {user_id}: {e}")
-    return False
 
 
 # --- Shopify Processor ---
@@ -2099,6 +2073,10 @@ from telegram.constants import ParseMode
 logger = logging.getLogger(__name__)
 
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
+    """
+    Process a /sh command: check Shopify card, display response and BIN info.
+    """
+
     try:
         user = update.effective_user
 
@@ -2118,27 +2096,17 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         cc, mm, yy, cvv = [p.strip() for p in parts]
         full_card = f"{cc}|{mm}|{yy}|{cvv}"
-        cc_escaped = escape_md(cc)
 
-        # --- Clickable bullet using MarkdownV2 ---
+        # --- Clickable bullet ---
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
-        bullet_link = f"[\\[⌇\\]]({BULLET_GROUP_LINK})"
-
-        # --- Gateway & Status ---
-        gateway_text = "*Gateway ➜ #Shopify*"
-        status_text = "*Status ➜ Checking 🔎...*"
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">⌇</a>'
 
         # --- Initial processing message ---
-        processing_text = (
-            f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
-            f"```{cc_escaped}```\n\n"
-            f"{bullet_link} {gateway_text}\n"
-            f"{bullet_link} {status_text}"
-        )
-
         processing_msg = await update.message.reply_text(
-            processing_text,
-            parse_mode=ParseMode.MARKDOWN_V2,
+            f"𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n<code>{escape(full_card)}</code>\n\n"
+            f"{bullet_link} <b>Gateway ➜ Shopify</b>\n"
+            f"{bullet_link} <b>Status ➜ Checking 🔎...</b>",
+            parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
 
@@ -2153,6 +2121,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
                 api_response = await resp.text()
+
         # --- Parse API response ---
         try:
             data = json.loads(api_response)
@@ -2191,16 +2160,16 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- Final formatted message ---
         final_msg = (
             f"◇━━ <b>SHOPIFY</b> ━━◇\n"
-            f"{bullet_link} <b>Card</b> ➜ <code>{full_card}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ <b>{gateway}</b>\n"
-            f"{bullet_link} <b>Response</b> ➜ <i>{response}</i>\n"
-            f"{bullet_link} <b>Price</b> ➜ {price}$ 💸\n"
+            f"{bullet_link} <b>Card</b> ➜ <code>{escape(full_card)}</code>\n"
+            f"{bullet_link} <b>Gateway</b> ➜ <b>{escape(gateway)}</b>\n"
+            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
+            f"{bullet_link} <b>Price</b> ➜ {escape(str(price))}$ 💸\n"
             "――――――――――――――――\n"
-            f"{bullet_link} <b>Brand</b> ➜ <code>{brand}</code>\n"
-            f"{bullet_link} <b>Bank</b> ➜ <code>{issuer}</code>\n"
-            f"{bullet_link} <b>Country</b> ➜ <code>{country_name} {country_flag}</code>\n"
+            f"{bullet_link} <b>Brand</b> ➜ <code>{escape(brand)}</code>\n"
+            f"{bullet_link} <b>Bank</b> ➜ <code>{escape(issuer)}</code>\n"
+            f"{bullet_link} <b>Country</b> ➜ <code>{escape(country_name)} {country_flag}</code>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
+            f"{bullet_link} <b>Requested By</b> ➜ {escape(requester)}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             "――――――――――――――――"
         )
@@ -2220,7 +2189,6 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
-
 
 
 
