@@ -799,6 +799,7 @@ FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0
 
 # --- Helper: Check if user joined ---
 async def is_user_joined(bot, user_id: int) -> bool:
+    """Check if user has joined both group and channel."""
     try:
         group_status = await bot.get_chat_member(GROUP_ID, user_id)
         channel_status = await bot.get_chat_member(CHANNEL_ID, user_id)
@@ -814,11 +815,12 @@ async def is_user_joined(bot, user_id: int) -> bool:
 
 # --- Force Join Decorator ---
 def force_join(func):
+    """Decorator to enforce group/channel join before using a command."""
     @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
         user_id = update.effective_user.id
 
-        # ✅ Allow /start always
+        # ✅ Allow /start always without blocking
         if update.message and update.message.text.startswith("/start"):
             return await func(update, context, *args, **kwargs)
 
@@ -832,23 +834,38 @@ def force_join(func):
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            await update.message.reply_photo(
-                photo=FORCE_JOIN_IMAGE,
-                caption=(
-                    "❌ You must join our group and channel to use this bot.\n\n"
-                    f"👉 Group: {GROUP_ID}\n"
-                    f"👉 Channel: {CHANNEL_ID}\n\n"
-                    "➡️ After joining, press ✅ I have joined."
-                ),
-                reply_markup=reply_markup
-            )
+            if update.message:
+                await update.message.reply_photo(
+                    photo=FORCE_JOIN_IMAGE,
+                    caption=(
+                        "❌ You must join our group and channel to use this bot.\n\n"
+                        f"👉 Group: {GROUP_ID}\n"
+                        f"👉 Channel: {CHANNEL_ID}\n\n"
+                        "➡️ After joining, press ✅ I have joined."
+                    ),
+                    reply_markup=reply_markup
+                )
+            elif update.callback_query:  # if triggered via button
+                await update.callback_query.message.reply_photo(
+                    photo=FORCE_JOIN_IMAGE,
+                    caption=(
+                        "❌ You must join our group and channel to use this bot.\n\n"
+                        f"👉 Group: {GROUP_ID}\n"
+                        f"👉 Channel: {CHANNEL_ID}\n\n"
+                        "➡️ After joining, press ✅ I have joined."
+                    ),
+                    reply_markup=reply_markup
+                )
             return
+
+        # ✅ User already joined → proceed with command
         return await func(update, context, *args, **kwargs)
     return wrapper
 
 
 # --- Callback for "✅ I have joined" button ---
 async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Re-check membership when user clicks 'I have joined'."""
     query = update.callback_query
     user_id = query.from_user.id
 
@@ -4895,6 +4912,7 @@ from telegram.ext import (
     filters,
 )
 from db import init_db
+from force_join import force_join, check_joined_callback  # import the decorator & callback
 
 # 🛡️ Security
 AUTHORIZED_CHATS = set()  # Groups you manually authorize
@@ -4907,7 +4925,6 @@ BOT_TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 # 🚫 Unauthorized firewall handler
 async def block_unauthorized(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -4916,46 +4933,45 @@ async def block_unauthorized(update, context: ContextTypes.DEFAULT_TYPE):
         "🔗 Official group: https://t.me/CARDER33"
     )
 
-
 # 🧠 Database init
 async def post_init(application):
     await init_db()
     logger.info("✅ Database initialized")
 
-
 # 📌 Register force-join commands
 def register_force_join(application):
+    # Callback for "✅ I have joined"
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="check_joined"))
 
-    application.add_handler(CommandHandler("close", command_with_join_and_check(close_command, "close")))
-    application.add_handler(CommandHandler("restart", command_with_join_and_check(restart_command, "restart")))
-    application.add_handler(CommandHandler("start", command_with_join_and_check(start, "start")))
-    application.add_handler(CommandHandler("cmds", command_with_join_and_check(cmds_command, "cmds")))
-    application.add_handler(CommandHandler("info", command_with_join_and_check(info, "info")))
-    application.add_handler(CommandHandler("credits", command_with_join_and_check(credits_command, "credits")))
-    application.add_handler(CommandHandler("chk", command_with_join_and_check(chk_command, "chk")))
-    application.add_handler(CommandHandler("st", force_join(st)))  # no maintenance
-    application.add_handler(CommandHandler("mchk", command_with_join_and_check(mchk_command, "mchk")))
-    application.add_handler(CommandHandler("mass", command_with_join_and_check(mass_command, "mass")))
-    application.add_handler(CommandHandler("mtchk", command_with_join_and_check(mtchk, "mtchk")))
-    application.add_handler(CommandHandler("sh", command_with_join_and_check(sh_command, "sh")))
-    application.add_handler(CommandHandler("seturl", command_with_join_and_check(seturl, "seturl")))
-    application.add_handler(CommandHandler("mysites", command_with_join_and_check(mysites, "mysites")))
+    # Wrap all commands with force_join decorator
+    application.add_handler(CommandHandler("close", force_join(close_command)))
+    application.add_handler(CommandHandler("restart", force_join(restart_command)))
+    application.add_handler(CommandHandler("start", force_join(start)))
+    application.add_handler(CommandHandler("cmds", force_join(cmds_command)))
+    application.add_handler(CommandHandler("info", force_join(info)))
+    application.add_handler(CommandHandler("credits", force_join(credits_command)))
+    application.add_handler(CommandHandler("chk", force_join(chk_command)))
+    application.add_handler(CommandHandler("st", force_join(st)))
+    application.add_handler(CommandHandler("mchk", force_join(mchk_command)))
+    application.add_handler(CommandHandler("mass", force_join(mass_command)))
+    application.add_handler(CommandHandler("mtchk", force_join(mtchk)))
+    application.add_handler(CommandHandler("sh", force_join(sh_command)))
+    application.add_handler(CommandHandler("seturl", force_join(seturl)))
+    application.add_handler(CommandHandler("mysites", force_join(mysites)))
     application.add_handler(CommandHandler("msp", force_join(msp)))
-    application.add_handler(CommandHandler("sp", command_with_join_and_check(sp, "sp")))
-    application.add_handler(CommandHandler("site", command_with_join_and_check(site, "site")))
-    application.add_handler(CommandHandler("msite", command_with_join_and_check(msite_command, "msite")))
-    application.add_handler(CommandHandler("gen", command_with_join_and_check(gen, "gen")))
-    application.add_handler(CommandHandler("open", command_with_join_and_check(open_command, "open")))
-    application.add_handler(CommandHandler("adcr", command_with_join_and_check(adcr_command, "adcr")))
-    application.add_handler(CommandHandler("bin", command_with_join_and_check(bin_lookup, "bin")))
-    application.add_handler(CommandHandler("fk", command_with_join_and_check(fk_command, "fk")))
+    application.add_handler(CommandHandler("sp", force_join(sp)))
+    application.add_handler(CommandHandler("site", force_join(site)))
+    application.add_handler(CommandHandler("msite", force_join(msite_command)))
+    application.add_handler(CommandHandler("gen", force_join(gen)))
+    application.add_handler(CommandHandler("open", force_join(open_command)))
+    application.add_handler(CommandHandler("adcr", force_join(adcr_command)))
+    application.add_handler(CommandHandler("bin", force_join(bin_lookup)))
+    application.add_handler(CommandHandler("fk", force_join(fk_command)))
     application.add_handler(CommandHandler("b3", force_join(b3_handler)))
     application.add_handler(CommandHandler("vbv", force_join(vbv)))
-    application.add_handler(CommandHandler("fl", command_with_join_and_check(fl_command, "fl")))
-    application.add_handler(CommandHandler("status", command_with_join_and_check(status_command, "status")))
-    application.add_handler(CommandHandler("redeem", command_with_join_and_check(redeem_command, "redeem")))
-
+    application.add_handler(CommandHandler("fl", force_join(fl_command)))
+    application.add_handler(CommandHandler("status", force_join(status_command)))
+    application.add_handler(CommandHandler("redeem", force_join(redeem_command)))
 
 # 🎯 MAIN ENTRY POINT
 def main():
@@ -4985,7 +5001,6 @@ def main():
     # 🔁 Start polling
     logger.info("🤖 Bot started and is polling for updates...")
     application.run_polling()
-
 
 if __name__ == '__main__':
     main()
