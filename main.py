@@ -4955,7 +4955,7 @@ async def post_init(application):
 # 📌 Register force-join commands
 def register_force_join(application):
     # Callback for "✅ I have joined"
-    application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="check_joined"))
+    application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
 
     # Wrap all commands with force_join decorator
     application.add_handler(CommandHandler("close", force_join(close_command)))
@@ -5005,12 +5005,12 @@ def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # 📲 Callback & Error Handlers
+    # ✅ Register force-join first so it doesn’t get swallowed
+    register_force_join(application)
+
+    # 📲 Generic Callback & Error Handlers (added after force-join)
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
-
-    # ✅ Register force-join commands
-    register_force_join(application)
 
     # 🔁 Start polling
     logger.info("🤖 Bot started and is polling for updates...")
@@ -5018,3 +5018,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
