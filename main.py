@@ -1598,15 +1598,14 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Processing message
-    # Processing message
     processing_text = (
         "```Processing```\n"
         f"`{escape_markdown_v2(cc_normalized)}`\n\n"
         f"{bullet_link} Gateway ➜ 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
-        f"{bullet_link} Status ➜ Checking 🔎...\n"
+        f"{bullet_link} Status ➜ Checking 🔎\\.\\.\\.\n"
     )
 
-
+    # Send processing message
     status_msg = await update.effective_message.reply_text(
         processing_text,
         parse_mode=ParseMode.MARKDOWN_V2,
@@ -1617,6 +1616,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         background_check(cc_normalized, parts, user, user_data, status_msg)
     )
+
 
 
 
