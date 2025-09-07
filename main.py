@@ -1572,10 +1572,15 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # No card input -> send usage message
     if not card_input:
-        usage_text = "🚫 Usage: /chk `card|mm|yy|cvv` or reply to a message containing a card."
-        await update.message.reply_text(
-            escape_markdown(usage_text, version=2),
-            parse_mode=ParseMode.MARKDOWN_V2,
+        # Split to make only the card part monospace
+        usage_prefix = escape_markdown("🚫 Usage: /chk ", version=2)
+        usage_card = escape_markdown("`card|mm|yy|cvv`", version=2)
+        usage_suffix = escape_markdown(" or reply to a message containing a card.", version=2)
+        usage_text = f"{usage_prefix}{usage_card}{usage_suffix}"
+
+        await update.effective_message.reply_text(
+            usage_text,
+            parse_mode=ParseMode.MARKDOWN_V2
         )
         return
 
@@ -1588,7 +1593,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deduct credit
     if not await consume_credit(user_id):
         msg = escape_markdown("❌ No credits left.", version=2)
-        await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+        await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     # Escape all dynamic text for MarkdownV2
@@ -1612,14 +1617,13 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_msg = await update.effective_message.reply_text(
         processing_text,
         parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True,
+        disable_web_page_preview=True
     )
 
-    # Run background check in the background
+    # Run background check
     asyncio.create_task(
         background_check(cc_normalized, [card, mm, yy, cvv], user, user_data, status_msg)
     )
-
 
 
 
