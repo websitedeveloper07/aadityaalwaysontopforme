@@ -1396,7 +1396,7 @@ logger = logging.getLogger(__name__)
 # Global variable for user cooldowns
 user_cooldowns = {}
 
-async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 3) -> bool:
     """Enforces a cooldown period for a user to prevent spamming."""
     last_run = user_cooldowns.get(user_id, 0)
     now = datetime.now().timestamp()
@@ -1615,7 +1615,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Build processing message
     processing_text = (
-        "```⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴```" + "\n"
+        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳ ```" + "\n"
         f"```{cc_normalized}```" + "\n\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
