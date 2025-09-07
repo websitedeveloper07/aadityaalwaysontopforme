@@ -2003,11 +2003,6 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    # Initial reply
-    msg = await update.message.reply_text(
-        "```Processing ⏳```", parse_mode="MarkdownV2"
-    )
-
     asyncio.create_task(run_mass_checker(msg, cards, user))
 
 
