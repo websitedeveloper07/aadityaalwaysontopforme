@@ -1832,9 +1832,11 @@ async def deduct_credit(user_id: int) -> bool:
 def extract_cards(text: str) -> list[str]:
     return re.findall(r'\d{12,16}[ |]\d{2,4}[ |]\d{2,4}[ |]\d{3,4}', text)
 
+
 def esc(s: str) -> str:
     """Escape text for Telegram MarkdownV2 safely."""
     return escape_markdown(str(s), version=2)
+
 
 async def check_single_card(session, card: str):
     try:
@@ -1866,6 +1868,7 @@ async def check_single_card(session, card: str):
 async def run_mass_checker(msg, cards, user_id):
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
+    results = []
     start_time = time.time()
 
     # Escaped texts
@@ -1899,6 +1902,7 @@ async def run_mass_checker(msg, cards, user_id):
         tasks = [asyncio.create_task(worker(c)) for c in cards]
 
         async def consumer():
+            nonlocal results
             while True:
                 try:
                     result = await asyncio.wait_for(queue.get(), timeout=2)
@@ -1907,6 +1911,7 @@ async def run_mass_checker(msg, cards, user_id):
                         break
                     continue
 
+                results.append(result)
                 elapsed = round(time.time() - start_time, 2)
 
                 # Live "processing" header
@@ -1921,8 +1926,8 @@ async def run_mass_checker(msg, cards, user_id):
                     "──────── ⸙ ─────────"
                 )
 
-                # Show just the latest result each time
-                content = header + "\n" + result
+                # Show results accumulated so far
+                content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
 
                 try:
                     await msg.edit_text(content, parse_mode="MarkdownV2", disable_web_page_preview=True)
@@ -1931,7 +1936,7 @@ async def run_mass_checker(msg, cards, user_id):
                 except TelegramError as e:
                     logging.error(f"[editMessageText-update] TelegramError: {e}")
 
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.3)  # show 1 by 1
 
         await asyncio.gather(*tasks, consumer())
 
@@ -1946,10 +1951,15 @@ async def run_mass_checker(msg, cards, user_id):
         "──────── ⸙ ─────────"
     )
 
+    final_content = final_header
+    if results:
+        final_content += "\n" + "\n──────── ⸙ ─────────\n".join(results)
+
     try:
-        await msg.edit_text(final_header, parse_mode="MarkdownV2", disable_web_page_preview=True)
+        await msg.edit_text(final_content, parse_mode="MarkdownV2", disable_web_page_preview=True)
     except Exception as e:
         logging.error(f"[editMessageText-final] {e}")
+
 
 # --- /mass COMMAND ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
