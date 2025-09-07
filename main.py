@@ -392,9 +392,14 @@ async def get_user_cached(user_id, context):
     context.user_data["profile"] = user_data
     return user_data
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 def get_main_keyboard() -> InlineKeyboardMarkup:
     """
-    Creates and returns the main inline keyboard with all primary buttons.
+    Creates and returns the main inline keyboard with updated layout:
+    - 2 buttons in the first row
+    - 2 buttons in the second row
+    - 1 button in the third row
     """
     return InlineKeyboardMarkup([
         [
@@ -402,10 +407,12 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("⌨️ 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬", callback_data="tools_menu")
         ],
         [
-            InlineKeyboardButton("💎 Owner", url=DEV_LINK)
+            InlineKeyboardButton("💎 Owner", url=DEV_LINK),
+            InlineKeyboardButton("🔐 3DS Lookup", callback_data="ds_lookup")
         ],
-        [InlineKeyboardButton("👥 Official Group", url=OFFICIAL_GROUP_LINK)],
-        [InlineKeyboardButton("🔐 3DS Lookup", callback_data="ds_lookup")]
+        [
+            InlineKeyboardButton("👥 Official Group", url=OFFICIAL_GROUP_LINK)
+        ]
     ])
 
 async def build_start_message(user, context) -> tuple[str, InlineKeyboardMarkup]:
