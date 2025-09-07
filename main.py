@@ -1841,29 +1841,31 @@ async def check_single_card(session, card: str):
         async with session.get(API_URL_TEMPLATE + card, timeout=40) as resp:
             data = await resp.json()
         status = str(data.get("status", "unknown")).lower()
-        response = escape(data.get("response", "No response"))
+        response = data.get("response", "No response")
 
         card_md = esc(card)
         response_md = esc(response)
 
         if "approved" in status:
-            return f"`{card_md}`\n✅ {response_md}", "approved"
+            return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ⌁ ✅ _{response_md}_", "approved"
         elif "declined" in status:
-            return f"`{card_md}`\n❌ {response_md}", "declined"
+            return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ⌁ ❌ _{response_md}_", "declined"
         else:
-            return f"`{card_md}`\n⚠️ {response_md}", "error"
+            return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ⌁ ⚠️ _{response_md}_", "error"
+
     except (aiohttp.ClientError, asyncio.TimeoutError):
         card_md = esc(card)
-        return f"`{card_md}`\n❌ Network Error", "error"
+        return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ⌁ ❌ _Network Error_", "error"
+
     except Exception as e:
         card_md = esc(card)
-        return f"`{card_md}`\n❌ {esc(str(e))}", "error"
+        return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮𝐬 ⌁ ❌ _{esc(str(e))}_", "error"
+
 
 # --- MASS CHECK CORE ---
 async def run_mass_checker(msg, cards, user_id):
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
-    results = []
     start_time = time.time()
 
     # Escaped texts
@@ -1897,7 +1899,6 @@ async def run_mass_checker(msg, cards, user_id):
         tasks = [asyncio.create_task(worker(c)) for c in cards]
 
         async def consumer():
-            nonlocal results
             while True:
                 try:
                     result = await asyncio.wait_for(queue.get(), timeout=2)
@@ -1906,7 +1907,6 @@ async def run_mass_checker(msg, cards, user_id):
                         break
                     continue
 
-                results.append(result)
                 elapsed = round(time.time() - start_time, 2)
 
                 # Live "processing" header
@@ -1921,7 +1921,9 @@ async def run_mass_checker(msg, cards, user_id):
                     "──────── ⸙ ─────────"
                 )
 
-                content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results[-20:])
+                # Show just the latest result each time
+                content = header + "\n" + result
+
                 try:
                     await msg.edit_text(content, parse_mode="MarkdownV2", disable_web_page_preview=True)
                 except BadRequest as e:
@@ -1929,7 +1931,7 @@ async def run_mass_checker(msg, cards, user_id):
                 except TelegramError as e:
                     logging.error(f"[editMessageText-update] TelegramError: {e}")
 
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(0.5)
 
         await asyncio.gather(*tasks, consumer())
 
@@ -1943,9 +1945,9 @@ async def run_mass_checker(msg, cards, user_id):
         f"{bullet_link} Time ⌁ {esc(round(time.time() - start_time, 2))} Sec\n"
         "──────── ⸙ ─────────"
     )
-    final_content = final_header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
+
     try:
-        await msg.edit_text(final_content, parse_mode="MarkdownV2", disable_web_page_preview=True)
+        await msg.edit_text(final_header, parse_mode="MarkdownV2", disable_web_page_preview=True)
     except Exception as e:
         logging.error(f"[editMessageText-final] {e}")
 
