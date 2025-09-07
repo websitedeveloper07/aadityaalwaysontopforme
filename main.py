@@ -1884,7 +1884,7 @@ async def run_mass_checker(msg, cards, user):
     requester_text = f"<b>Requested By</b> ➜ {format_user_link(user)}"
 
     # --- Initial Processing Message ---
-    initial_text = (
+    msg = (
         "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {requester_text}\n"
