@@ -792,8 +792,8 @@ from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMar
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-GROUP_ID = "@CARDER33"
-CHANNEL_ID = "@KalinuxxxChannel"
+GROUP_ID = "https://t.me/CARDER33"
+CHANNEL_ID = "https://t.me/abtkalinux"
 OWNER = "Kalinuxxx"
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
@@ -805,44 +805,36 @@ def force_join(func):
         try:
             group_status = await context.bot.get_chat_member(GROUP_ID, user_id)
             channel_status = await context.bot.get_chat_member(CHANNEL_ID, user_id)
+            joined = True
 
             if group_status.status in [ChatMember.LEFT, ChatMember.KICKED] or \
                channel_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
-
-                keyboard = [
-                    [InlineKeyboardButton("Owner", url=f"https://t.me/{OWNER}")],
-                    [InlineKeyboardButton("Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
-                    [InlineKeyboardButton("Channel", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")]
-                ]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-
-                await update.message.reply_photo(
-                    photo=FORCE_JOIN_IMAGE,
-                    caption=(
-                        "❌ You must join our group and channel to use this bot.\n\n"
-                        f"Group: {GROUP_ID}\n"
-                        f"Channel: {CHANNEL_ID}\n"
-                        f"Owner: {OWNER}"
-                    ),
-                    reply_markup=reply_markup
-                )
-                return  # Stop command execution
+                joined = False
         except Exception:
-            await update.message.reply_text(
-                "⚠️ Could not verify your membership. Make sure the bot is admin in the group & channel."
+            joined = False  # Treat any error as "not joined"
+
+        if not joined:
+            # Show image + buttons only
+            keyboard = [
+                [InlineKeyboardButton("Owner", url=f"https://t.me/{OWNER}")],
+                [InlineKeyboardButton("Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
+                [InlineKeyboardButton("Channel", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await update.message.reply_photo(
+                photo=FORCE_JOIN_IMAGE,
+                caption=(
+                    "❌ You must join our group and channel to use this bot.\n\n"
+                    f"Group: {GROUP_ID}\n"
+                    f"Channel: {CHANNEL_ID}\n"
+                    f"Owner: {OWNER}"
+                ),
+                reply_markup=reply_markup
             )
-            return
+            return  # Stop command execution
 
         return await func(update, context, *args, **kwargs)
-    return wrapper
-
-# --- Maintenance + Force Join Wrapper ---
-def command_with_join_and_check(command_func, command_name):
-    @force_join
-    @wraps(command_func)
-    async def wrapper(update, context, *args, **kwargs):
-        # Wrap with maintenance check if your original command_with_check exists
-        return await command_with_check(command_func, command_name)(update, context, *args, **kwargs)
     return wrapper
 
 
