@@ -822,13 +822,13 @@ def force_join(func):
         if update.message and update.message.text.startswith("/start"):
             return await func(update, context, *args, **kwargs)
 
-        # 🔍 Check if user joined
+        # 🔍 Check membership
         joined = await is_user_joined(context.bot, user_id)
         if not joined:
             keyboard = [
                 [InlineKeyboardButton("📢 Join Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
                 [InlineKeyboardButton("📡 Join Channel", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")],
-                [InlineKeyboardButton("✅ I have joined", callback_data=f"check_joined:{func.__name__}")]
+                [InlineKeyboardButton("✅ I have joined", callback_data="check_joined")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -847,37 +847,19 @@ def force_join(func):
     return wrapper
 
 
-# --- Maintenance + Force Join Wrapper ---
-def command_with_join_and_check(command_func, command_name):
-    @force_join
-    @wraps(command_func)
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
-        # 🔧 Run your existing maintenance checker here
-        return await command_with_check(command_func, command_name)(update, context, *args, **kwargs)
-    return wrapper
-
-
 # --- Callback for "✅ I have joined" button ---
 async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
-
-    # extract which command user was trying
-    data = query.data.split(":", 1)
-    command_name = data[1] if len(data) > 1 else None
 
     joined = await is_user_joined(context.bot, user_id)
 
     if joined:
         await query.answer("✅ You have joined, now you can use the bot!", show_alert=True)
         await query.edit_message_caption("🎉 Welcome! You can now use the bot commands.")
-
-        # if command exists, run it again automatically
-        if command_name:
-            fake_update = Update.de_json(query.to_dict(), context.bot)
-            # you can trigger command again here if needed
     else:
         await query.answer("❌ You still need to join both group and channel.", show_alert=True)
+
 
 
 
