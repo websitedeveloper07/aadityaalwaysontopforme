@@ -1917,22 +1917,7 @@ async def run_mass_checker(msg_obj, cards, user):
 
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
-    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
-    requester_text = f"Requested By ➜ {format_user_link(user)}"
-    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
 
-    # --- Initial Processing Message ---
-    initial_text = (
-        f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
-        f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} {requester_text}\n"
-        f"{bullet_link} {status_text}"
-    )
-
-
-    except BadRequest as e:
-        logging.error(f"[editMessageText-init] {e.message}")
-        return
 
     queue = asyncio.Queue()
     semaphore = asyncio.Semaphore(CONCURRENCY)
