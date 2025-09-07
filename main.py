@@ -1872,6 +1872,17 @@ async def check_single_card(session, card: str):
         return f"`{mdv2_escape(card)}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ❌ _{mdv2_escape(str(e))}_", "error"
 
 # --- MASS CHECK CORE ---
+# --- Helper to escape MarkdownV2 special characters ---
+def mdv2_escape(text: str) -> str:
+    escape_chars = r"_*[]()~`>#+-=|{}.!"
+    return "".join(f"\\{c}" if c in escape_chars else c for c in text)
+
+# --- Helper to format clickable user link ---
+def format_user_link(user):
+    name = mdv2_escape(user.full_name)
+    return f"[{name}](tg://user?id={user.id})"
+
+# --- RUN MASS CHECKER ---
 async def run_mass_checker(msg_obj, cards, user):
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
@@ -1890,8 +1901,13 @@ async def run_mass_checker(msg_obj, cards, user):
         f"{bullet_link} {requester_text}\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎..."
     )
+
     try:
-        msg_obj = await msg_obj.reply_text(initial_text, parse_mode="MarkdownV2", disable_web_page_preview=True)
+        msg_obj = await msg_obj.reply_text(
+            initial_text,
+            parse_mode="MarkdownV2",
+            disable_web_page_preview=True
+        )
     except BadRequest as e:
         logging.error(f"[editMessageText-init] {e.message}")
         return
@@ -1924,23 +1940,28 @@ async def run_mass_checker(msg_obj, cards, user):
 
                 header = (
                     f"{bullet_link} {gateway_text}\n"
-                    f"{bullet_link} Total ➵ {mdv2_escape(counters['checked'])}/{mdv2_escape(total)}\n"
-                    f"{bullet_link} Approved ➵ {mdv2_escape(counters['approved'])}\n"
-                    f"{bullet_link} Declined ➵ {mdv2_escape(counters['declined'])}\n"
-                    f"{bullet_link} Error ➵ {mdv2_escape(counters['error'])}\n"
-                    f"{bullet_link} Time ➵ {mdv2_escape(elapsed)} Sec\n"
+                    f"{bullet_link} Total ➵ {mdv2_escape(str(counters['checked']))}/{mdv2_escape(str(total))}\n"
+                    f"{bullet_link} Approved ➵ {mdv2_escape(str(counters['approved']))}\n"
+                    f"{bullet_link} Declined ➵ {mdv2_escape(str(counters['declined']))}\n"
+                    f"{bullet_link} Error ➵ {mdv2_escape(str(counters['error']))}\n"
+                    f"{bullet_link} Time ➵ {mdv2_escape(str(elapsed))} Sec\n"
                     "──────── ⸙ ─────────"
                 )
                 content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
 
                 try:
-                    await msg_obj.edit_text(content, parse_mode="MarkdownV2", disable_web_page_preview=True)
+                    await msg_obj.edit_text(
+                        content,
+                        parse_mode="MarkdownV2",
+                        disable_web_page_preview=True
+                    )
                 except (BadRequest, TelegramError) as e:
                     logging.error(f"[editMessageText-update] {e}")
 
                 await asyncio.sleep(0.3)
 
         await asyncio.gather(*tasks, consumer())
+
 
 # --- MASS HANDLER ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1984,19 +2005,9 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    # --- send initial "Processing" message ---
-    try:
-        initial_msg = await update.message.reply_text(
-            "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```",
-            parse_mode="MarkdownV2",
-            disable_web_page_preview=True
-        )
-    except Exception as e:
-        logging.error(f"[mass_handler-init-msg] {e}")
-        return
+    # --- start mass checker with full initial text ---
+    asyncio.create_task(run_mass_checker(update.message, cards, user))
 
-    # --- start mass checker ---
-    asyncio.create_task(run_mass_checker(initial_msg, cards, user))
 
 
 
