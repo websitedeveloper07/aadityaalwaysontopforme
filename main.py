@@ -2099,13 +2099,18 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Clickable bullet ---
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
-        bullet_link = f'<a href="{BULLET_GROUP_LINK}">⌇</a>'
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         # --- Initial processing message ---
-        processing_msg = await update.message.reply_text(
-            f"𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n<code>{escape(full_card)}</code>\n\n"
+        processing_text = (
+            f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+            f"```{full_card}```\n\n"
             f"{bullet_link} <b>Gateway ➜ Shopify</b>\n"
-            f"{bullet_link} <b>Status ➜ Checking 🔎...</b>",
+            f"{bullet_link} <b>Status ➜ Checking 🔎...</b>"
+        )
+
+        processing_msg = await update.message.reply_text(
+            processing_text,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
@@ -2160,7 +2165,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- Final formatted message ---
         final_msg = (
             f"◇━━ <b>SHOPIFY</b> ━━◇\n"
-            f"{bullet_link} <b>Card</b> ➜ <code>{escape(full_card)}</code>\n"
+            f"{bullet_link} <b>Card</b> ➜ <code>{full_card}</code>\n"
             f"{bullet_link} <b>Gateway</b> ➜ <b>{escape(gateway)}</b>\n"
             f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
             f"{bullet_link} <b>Price</b> ➜ {escape(str(price))}$ 💸\n"
@@ -2189,8 +2194,6 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
-
-
 
 
 
