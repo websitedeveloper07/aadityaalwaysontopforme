@@ -1961,12 +1961,37 @@ async def run_mass_checker(msg_obj, cards, user):
         await asyncio.gather(*tasks, consumer())
 
 # --- MASS HANDLER ---
+import re
+import asyncio
+import time
+import logging
+import aiohttp
+from telegram import Update
+from telegram.error import BadRequest, TelegramError
+from telegram.ext import ContextTypes
+
+# --- Helper Functions ---
+def mdv2_escape(text: str) -> str:
+    """Escape all MarkdownV2 special characters."""
+    escape_chars = r"\_*[]()~`>#+-=|{}.!"
+    return "".join(f"\\{c}" if c in escape_chars else c for c in text)
+
+def extract_cards(text: str):
+    """
+    Extract only cards in the format: number|mm|yy(or yyyy)|cvv
+    Example: 5444229355036011|07|29|700
+    """
+    pattern = r"\b\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}\b"
+    return re.findall(pattern, text)
+
+
+# --- MASS HANDLER ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     current_time = time.time()
 
-    # Cooldown
+    # Cooldown (example)
     if user_id in user_last_command_time:
         elapsed = current_time - user_last_command_time[user_id]
         if elapsed < RATE_LIMIT_SECONDS:
@@ -1984,15 +2009,13 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_last_command_time[user_id] = current_time
 
-    # Extract cards
+    # Extract cards only from replied message
     cards = []
-    if context.args:
-        cards = context.args
-    elif update.message.reply_to_message and update.message.reply_to_message.text:
+    if update.message.reply_to_message and update.message.reply_to_message.text:
         cards = extract_cards(update.message.reply_to_message.text)
 
     if not cards:
-        await update.message.reply_text("🚫 No cards found.", parse_mode="HTML")
+        await update.message.reply_text("🚫 No valid cards found in replied message.", parse_mode="HTML")
         return
 
     if len(cards) > 30:
@@ -2002,7 +2025,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    # --- Build initial "Processing" text (Gateway only) ---
+    # --- Build initial "Processing" text ---
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
@@ -2010,7 +2033,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 \\🔎\\.\\.\\."
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎..."
     )
 
     try:
@@ -2025,6 +2048,7 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Start mass checker ---
     asyncio.create_task(run_mass_checker(initial_msg, cards, user))
+
 
 
 
