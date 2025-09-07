@@ -1862,13 +1862,14 @@ async def run_mass_checker(msg, cards, user_id):
     results = []
     start_time = time.time()
 
+    # Properly escaped texts
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
     gateway_text = escape_markdown("Gateway ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵", version=2)
     status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
 
     initial_text = (
-        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳```\n"
+        "```Processing ⏳```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
@@ -1903,7 +1904,7 @@ async def run_mass_checker(msg, cards, user_id):
                 elapsed = round(time.time() - start_time, 2)
 
                 header = (
-                    "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳```\n"
+                    "```Processing ⏳```\n"
                     f"{bullet_link} {gateway_text}\n"
                     f"{bullet_link} Total ⌁ {counters['checked']}/{total}\n"
                     f"{bullet_link} Approved ⌁ {counters['approved']}\n"
@@ -1968,10 +1969,11 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Initial reply (block code)
     msg = await update.message.reply_text(
-        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳```", parse_mode="MarkdownV2"
+        "```Processing ⏳```", parse_mode="MarkdownV2"
     )
 
     asyncio.create_task(run_mass_checker(msg, cards, user_id))
+
 
 
 
