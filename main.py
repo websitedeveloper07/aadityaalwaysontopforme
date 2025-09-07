@@ -792,8 +792,8 @@ from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMar
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-GROUP_ID = "https://t.me/CARDER33"
-CHANNEL_ID = "https://t.me/abtkalinux"
+GROUP_ID = "@CARDER33"          # Use @username or numeric ID, not full https:// link
+CHANNEL_ID = "@abtkalinux"      # Same here, only username or ID
 OWNER = "Kalinuxxx"
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
@@ -814,7 +814,6 @@ def force_join(func):
             joined = False  # Treat any error as "not joined"
 
         if not joined:
-            # Show image + buttons only
             keyboard = [
                 [InlineKeyboardButton("Owner", url=f"https://t.me/{OWNER}")],
                 [InlineKeyboardButton("Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
@@ -832,9 +831,18 @@ def force_join(func):
                 ),
                 reply_markup=reply_markup
             )
-            return  # Stop command execution
-
+            return
         return await func(update, context, *args, **kwargs)
+    return wrapper
+
+
+# --- Force Join + Maintenance Wrapper ---
+def command_with_join_and_check(command_func, command_name):
+    @force_join
+    @wraps(command_func)
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        # call your existing maintenance checker
+        return await command_with_check(command_func, command_name)(update, context, *args, **kwargs)
     return wrapper
 
 
