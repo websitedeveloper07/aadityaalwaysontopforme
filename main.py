@@ -1877,15 +1877,20 @@ def mdv2_escape(text: str) -> str:
     escape_chars = r"_*[]()~`>#+-=|{}.!"
     return "".join(f"\\{c}" if c in escape_chars else c for c in text)
 
-# --- Helper to format clickable user link ---
-import re
 import asyncio
 import time
 import logging
 import aiohttp
+import re
 from telegram import Update
 from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes
+
+# --- Config ---
+CONCURRENCY = 5
+BULLET_GROUP_LINK = "https://t.me/examplegroup"
+RATE_LIMIT_SECONDS = 10
+user_last_command_time = {}  # track last command time per user
 
 # --- Helper Functions ---
 def mdv2_escape(text: str) -> str:
@@ -1893,15 +1898,32 @@ def mdv2_escape(text: str) -> str:
     escape_chars = r"\_*[]()~`>#+-=|{}.!"
     return "".join(f"\\{c}" if c in escape_chars else c for c in text)
 
+def format_user_link(user) -> str:
+    """Return a clickable user link with escaped full name."""
+    name = mdv2_escape(user.full_name)
+    return f"[{name}](tg://user?id={user.id})"
+
 def extract_cards(text: str):
     """
-    Extract only cards in the format: number|mm|yy(or yyyy)|cvv
-    Example: 5444229355036011|07|29|700
+    Extract only valid card lines from text.
+    Format: card_number|MM|YY|CVV or card_number|MM|YYYY|CVV
     """
-    pattern = r"\b\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}\b"
-    return re.findall(pattern, text)
+    card_regex = re.compile(r"\b\d{13,19}\|\d{2}\|\d{2,4}\|\d{3,4}\b")
+    return card_regex.findall(text)
 
-# --- MASS CHECKER ---
+# --- Single Card Check Placeholder ---
+async def check_single_card(session, card):
+    """
+    Dummy function for checking a card.
+    Replace this with your actual API/gateway call.
+    """
+    await asyncio.sleep(0.1)
+    # Simulate status randomly
+    import random
+    status = random.choice(["approved", "declined", "error"])
+    return f"{card} ➜ {status.upper()}", status
+
+# --- RUN MASS CHECKER ---
 async def run_mass_checker(msg_obj, cards, user):
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
@@ -1910,7 +1932,6 @@ async def run_mass_checker(msg_obj, cards, user):
 
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
-    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
 
     queue = asyncio.Queue()
     semaphore = asyncio.Semaphore(CONCURRENCY)
@@ -1918,41 +1939,49 @@ async def run_mass_checker(msg_obj, cards, user):
     async with aiohttp.ClientSession() as session:
         async def worker(card):
             async with semaphore:
-                # This function should return (text, status)
                 result_text, status = await check_single_card(session, card)
                 counters["checked"] += 1
                 counters[status] += 1
-                # Escape card & status
-                escaped_result = mdv2_escape(result_text)
-                results.append(f"{escaped_result}\n𝐒𝐭𝐚𝐭𝐮s ⌁ {status_emoji(status)} {status_text(status)}")
-                await update_message()
-
-        async def update_message():
-            elapsed = round(time.time() - start_time, 2)
-            header = (
-                f"{bullet_link} {gateway_text}\n"
-                f"{bullet_link} Total ➵ {counters['checked']}/{total}\n"
-                f"{bullet_link} Time ➵ {elapsed} Sec\n"
-                "──────── ⸙ ─────────"
-            )
-            content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
-            try:
-                await msg_obj.edit_text(
-                    content,
-                    parse_mode="MarkdownV2",
-                    disable_web_page_preview=True
-                )
-            except (BadRequest, TelegramError) as e:
-                logging.error(f"[editMessageText-update] {e}")
+                await queue.put(result_text)
 
         tasks = [asyncio.create_task(worker(c)) for c in cards]
-        await asyncio.gather(*tasks)
 
-def status_emoji(status: str):
-    return "✅" if status.lower() == "approved" else "⚠️" if status.lower() == "error" else "❌"
+        async def consumer():
+            nonlocal results
+            while True:
+                try:
+                    result = await asyncio.wait_for(queue.get(), timeout=2)
+                except asyncio.TimeoutError:
+                    if all(t.done() for t in tasks):
+                        break
+                    continue
 
-def status_text(status: str):
-    return "Succeeded" if status.lower() == "approved" else "No response" if status.lower() == "error" else "Declined"
+                results.append(result)
+                elapsed = round(time.time() - start_time, 2)
+
+                header = (
+                    f"{bullet_link} {mdv2_escape('𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵')}\n"
+                    f"{bullet_link} Total ➵ {mdv2_escape(str(counters['checked']))}/{mdv2_escape(str(total))}\n"
+                    f"{bullet_link} Approved ➵ {mdv2_escape(str(counters['approved']))}\n"
+                    f"{bullet_link} Declined ➵ {mdv2_escape(str(counters['declined']))}\n"
+                    f"{bullet_link} Error ➵ {mdv2_escape(str(counters['error']))}\n"
+                    f"{bullet_link} Time ➵ {mdv2_escape(str(elapsed))} Sec\n"
+                    "──────── ⸙ ─────────"
+                )
+                content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
+
+                try:
+                    await msg_obj.edit_text(
+                        content,
+                        parse_mode="MarkdownV2",
+                        disable_web_page_preview=True
+                    )
+                except (BadRequest, TelegramError) as e:
+                    logging.error(f"[editMessageText-update] {e}")
+
+                await asyncio.sleep(0.3)
+
+        await asyncio.gather(*tasks, consumer())
 
 # --- MASS HANDLER ---
 async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1971,20 +2000,22 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # Credit check
+    # Credit check placeholder
     if not await deduct_credit(user_id):
         await update.message.reply_text("❌ You have no credits.", parse_mode="HTML")
         return
 
     user_last_command_time[user_id] = current_time
 
-    # Extract cards only from replied message
+    # Extract cards
     cards = []
-    if update.message.reply_to_message and update.message.reply_to_message.text:
+    if context.args:
+        cards = extract_cards(" ".join(context.args))
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
         cards = extract_cards(update.message.reply_to_message.text)
 
     if not cards:
-        await update.message.reply_text("🚫 No valid cards found in replied message.", parse_mode="HTML")
+        await update.message.reply_text("🚫 No valid cards found.", parse_mode="HTML")
         return
 
     if len(cards) > 30:
@@ -1994,13 +2025,14 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         cards = cards[:30]
 
-    # --- Build initial "Processing" text ---
+    # --- Initial Processing Message ---
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
-        f"{bullet_link} {gateway_text}"
+        f"{bullet_link} {gateway_text}\n"
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 \\🔎\\.\\.\\."
     )
 
     try:
@@ -2013,8 +2045,9 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"[mass_handler-init-msg] {e}")
         return
 
-    # --- Start mass checker ---
+    # Start mass checker
     asyncio.create_task(run_mass_checker(initial_msg, cards, user))
+
 
 
 
