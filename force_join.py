@@ -83,7 +83,7 @@ async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     if joined:
         await query.answer("✅ 𝗬𝗼𝘂 𝗵𝗮𝘃𝗲 𝗷𝗼𝗶𝗻𝗲𝗱, 𝗮𝗰𝗰𝗲𝘀𝘀 𝗴𝗿𝗮𝗻𝘁𝗲𝗱! 𝗡𝗼𝘄 𝘆𝗼𝘂 𝗰𝗮𝗻 𝘂𝘀𝗲 𝘁𝗵𝗲 𝗯𝗼𝘁 ✅", show_alert=True)
-        await query.edit_message_caption("🎉 Welcome! You can now use the bot commands.")
+        await query.edit_message_caption("✨ 𝗪𝗲𝗹𝗰𝗼𝗺𝗲! 𝗕𝗼𝘁 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗮𝗿𝗲 𝗻𝗼𝘄 𝗮𝘃𝗮𝗶𝗹𝗮𝗯𝗹𝗲 𝗳𝗼𝗿 𝘆𝗼𝘂 𝗶𝗻 𝗽𝗿𝗶𝘃𝗮𝘁𝗲 𝗰𝗵𝗮𝘁𝘀 𝗮𝗻𝗱 𝗴𝗿𝗼𝘂𝗽𝘀.")
     else:
         await query.answer("❌ 𝗔𝗰𝗰𝗲𝘀𝘀 𝗱𝗲𝗻𝗶𝗲𝗱 – 𝘆𝗼𝘂 𝘀𝘁𝗶𝗹𝗹 𝗻𝗲𝗲𝗱 𝘁𝗼 𝗷𝗼𝗶𝗻!", show_alert=True)
         logger.info(f"User {user_id} clicked 'I have joined' but is still not in the group.")
