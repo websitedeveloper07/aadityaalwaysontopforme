@@ -4,7 +4,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-GROUP_ID = -1003021757536   # numeric group ID (used only for membership check)
+GROUP_ID = -1002554243871   # numeric group ID (used only for membership check)
 GROUP_USERNAME = "CARDER33"  # used for join button
 CHANNEL_USERNAME = "+EFlLesETogM3M2Q1"         # used for join button (optional)
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
