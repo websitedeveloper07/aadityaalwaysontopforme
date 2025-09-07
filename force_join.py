@@ -1,13 +1,12 @@
-# force_join.py
-
 from functools import wraps
 import logging
-from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-GROUP_ID = "@Cardxchktesting"        # Group username (bot must be admin)
-CHANNEL_ID = "@AXCMRX"     # Channel username (bot must be admin)
+# ⚠️ If either group/channel is private, replace with numeric chat_id (like -100xxxxxxxxxx)
+GROUP_ID = "@Cardxchktesting"   # or numeric ID
+CHANNEL_ID = "@AXCMRX"          # or numeric ID
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
 logger = logging.getLogger(__name__)
@@ -19,14 +18,18 @@ async def is_user_joined(bot, user_id: int) -> bool:
         group_status = await bot.get_chat_member(GROUP_ID, user_id)
         channel_status = await bot.get_chat_member(CHANNEL_ID, user_id)
 
-        if group_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
-            logger.info(f"User {user_id} has NOT joined the group")
+        valid_statuses = ["member", "administrator", "creator"]
+
+        if group_status.status not in valid_statuses:
+            logger.info(f"User {user_id} is NOT in group ({group_status.status})")
             return False
-        if channel_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
-            logger.info(f"User {user_id} has NOT joined the channel")
+        if channel_status.status not in valid_statuses:
+            logger.info(f"User {user_id} is NOT in channel ({channel_status.status})")
             return False
-        logger.info(f"User {user_id} has joined both group and channel")
+
+        logger.info(f"User {user_id} is in both group and channel ✅")
         return True
+
     except Exception as e:
         logger.warning(f"Error checking user {user_id} membership: {e}")
         return False
