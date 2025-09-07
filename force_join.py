@@ -7,7 +7,7 @@ from telegram.ext import ContextTypes
 
 # --- Configuration ---
 GROUP_ID = "@Cardxchktesting"        # Group username (bot must be admin)
-CHANNEL_ID = "@abtkalinux"     # Channel username (bot must be admin)
+CHANNEL_ID = "@AXCMRX"     # Channel username (bot must be admin)
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
 logger = logging.getLogger(__name__)
