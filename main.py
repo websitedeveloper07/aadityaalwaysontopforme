@@ -4191,28 +4191,28 @@ async def b3_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ API error: {e}")
         return
 
-    # --- Clean parsing with regex ---
-    status_match   = re.search(r"(APPROVED ✅|DECLINED ❌)", text)
-    gateway_match  = re.search(r"𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ⇾ (.+)", text)
-    response_match = re.search(r"𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ⇾ (.+?)(?:\n|$)", text)
-    bin_match      = re.search(r"𝗕𝗜𝗡 𝗜𝗻𝗳𝗼: ([^\n]+)", text)
-    bank_match     = re.search(r"𝗕𝗮𝗻𝗸: ([^\n]+)", text)
-    country_match  = re.search(r"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: ([^\n]+)", text)
+    # Extract cleanly line by line
+    status   = re.search(r"(APPROVED ✅|DECLINED ❌)", text)
+    gateway  = re.search(r"𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ⇾ ([^\n]+)", text)
+    response = re.search(r"𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ⇾ ([^\n]+)", text)
+    bininfo  = re.search(r"𝗕𝗜𝗡 𝗜𝗻𝗳𝗼: ([^\n]+)", text)
+    bank     = re.search(r"𝗕𝗮𝗻𝗸: ([^\n]+)", text)
+    country  = re.search(r"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: ([^\n]+)", text)
 
-    status   = status_match.group(1) if status_match else "UNKNOWN"
-    gateway  = gateway_match.group(1).strip() if gateway_match else "UNKNOWN"
-    response = response_match.group(1).strip() if response_match else "UNKNOWN"
+    status   = status.group(1) if status else "UNKNOWN"
+    gateway  = gateway.group(1).strip() if gateway else "UNKNOWN"
+    response = response.group(1).strip() if response else "UNKNOWN"
 
     brand = "UNKNOWN"
-    if bin_match:
-        parts = bin_match.group(1).split("-")
+    if bininfo:
+        parts = bininfo.group(1).split("-")
         if parts:
             brand = parts[0].strip().title()
 
-    bank    = bank_match.group(1).strip() if bank_match else "UNKNOWN"
-    country = country_match.group(1).strip() if country_match else "UNKNOWN"
+    bank    = bank.group(1).strip() if bank else "UNKNOWN"
+    country = country.group(1).strip() if country else "UNKNOWN"
 
-    # --- Final stylish output ---
+    # Final neat message
     result = f"""═══[ {status} ]═══
 [⌇] 𝐂𝐚𝐫𝐝       ➜ {card}
 [⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ {gateway}
