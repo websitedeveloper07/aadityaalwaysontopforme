@@ -792,7 +792,7 @@ from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMar
 from telegram.ext import ContextTypes, CallbackQueryHandler
 
 # --- Configuration ---
-GROUP_ID = "@CARDER33"       # Use @username or numeric ID
+GROUP_ID = "@bosssdkkk"       # Use @username or numeric ID
 CHANNEL_ID = "@abtkalinux"   # Use @username or numeric ID
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
