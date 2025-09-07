@@ -787,6 +787,53 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+from functools import wraps
+from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+
+GROUP_ID = "@CARDER33"
+CHANNEL_ID = "@KalinuxxxChannel"  # Replace with your channel
+OWNER = "Kalinuxxx"
+FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
+
+# Force join decorator
+def force_join(func):
+    @wraps(func)
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        user_id = update.effective_user.id
+        try:
+            group_status = await context.bot.get_chat_member(GROUP_ID, user_id)
+            channel_status = await context.bot.get_chat_member(CHANNEL_ID, user_id)
+
+            if group_status.status in [ChatMember.LEFT, ChatMember.KICKED] or \
+               channel_status.status in [ChatMember.LEFT, ChatMember.KICKED]:
+                
+                keyboard = [
+                    [InlineKeyboardButton("Owner", url=f"https://t.me/{OWNER}")],
+                    [InlineKeyboardButton("Group", url=f"https://t.me/{GROUP_ID.lstrip('@')}")],
+                    [InlineKeyboardButton("Channel", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+
+                await update.message.reply_photo(
+                    photo=FORCE_JOIN_IMAGE,
+                    caption=(
+                        "❌ You must join our group and channel to use this bot.\n\n"
+                        f"Group: {GROUP_ID}\n"
+                        f"Channel: {CHANNEL_ID}\n"
+                        f"Owner: {OWNER}"
+                    ),
+                    reply_markup=reply_markup
+                )
+                return  # Stop execution
+        except Exception:
+            await update.message.reply_text(
+                "⚠️ Could not verify your membership. Make sure the bot is admin in the group & channel."
+            )
+            return
+
+        return await func(update, context, *args, **kwargs)
+    return wrapper
 
 
 
@@ -5104,35 +5151,41 @@ def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
     # 📌 Register Commands
-    application.add_handler(CommandHandler("close", command_with_check(close_command, "close")))
-    application.add_handler(CommandHandler("restart", command_with_check(restart_command, "restart")))
-    application.add_handler(CommandHandler("start", command_with_check(start, "start")))
-    application.add_handler(CommandHandler("cmds", command_with_check(cmds_command, "cmds")))
-    application.add_handler(CommandHandler("info", command_with_check(info, "info")))
-    application.add_handler(CommandHandler("credits", command_with_check(credits_command, "credits")))
-    application.add_handler(CommandHandler("chk", command_with_check(chk_command, "chk")))
-    application.add_handler(CommandHandler("st", st))
-    application.add_handler(CommandHandler("mchk", command_with_check(mchk_command, "mchk")))
-    application.add_handler(CommandHandler("mass", command_with_check(mass_command, "mass")))
-    application.add_handler(CommandHandler("mtchk", command_with_check(mtchk, "mtchk")))
-    application.add_handler(CommandHandler("sh", command_with_check(sh_command, "sh")))
-    application.add_handler(CommandHandler("seturl", command_with_check(seturl, "seturl")))
-    application.add_handler(CommandHandler("mysites", command_with_check(mysites, "mysites")))
-    application.add_handler(CommandHandler("msp", msp))
-    application.add_handler(CommandHandler("sp", command_with_check(sp, "sp")))
-    application.add_handler(CommandHandler("site", command_with_check(site, "site")))
-    application.add_handler(CommandHandler("msite", command_with_check(msite_command, "msite")))
-    application.add_handler(CommandHandler("gen", command_with_check(gen, "gen")))
-    application.add_handler(CommandHandler("open", command_with_check(open_command, "open")))
-    application.add_handler(CommandHandler("adcr", command_with_check(adcr_command, "adcr")))
-    application.add_handler(CommandHandler("bin", command_with_check(bin_lookup, "bin")))
-    application.add_handler(CommandHandler("fk", command_with_check(fk_command, "fk")))
-    application.add_handler(CommandHandler("scr", command_with_check(scrap_command, "scr")))
-    application.add_handler(CommandHandler("b3", b3_handler))
-    application.add_handler(CommandHandler("vbv", vbv))
-    application.add_handler(CommandHandler("fl", command_with_check(fl_command, "fl")))
-    application.add_handler(CommandHandler("status", command_with_check(status_command, "status")))
-    application.add_handler(CommandHandler("redeem", command_with_check(redeem_command, "redeem")))
+# Wrap with force_join
+    def fj(func):
+        return force_join(func)
+
+    application.add_handler(CommandHandler("close", command_with_join_and_check(close_command, "close")))
+    application.add_handler(CommandHandler("restart", command_with_join_and_check(restart_command, "restart")))
+    application.add_handler(CommandHandler("start", command_with_join_and_check(start, "start")))
+    application.add_handler(CommandHandler("cmds", command_with_join_and_check(cmds_command, "cmds")))
+    application.add_handler(CommandHandler("info", command_with_join_and_check(info, "info")))
+    application.add_handler(CommandHandler("credits", command_with_join_and_check(credits_command, "credits")))
+    application.add_handler(CommandHandler("chk", command_with_join_and_check(chk_command, "chk")))
+    application.add_handler(CommandHandler("st", force_join(st)))  # no maintenance
+    application.add_handler(CommandHandler("mchk", command_with_join_and_check(mchk_command, "mchk")))
+    application.add_handler(CommandHandler("mass", command_with_join_and_check(mass_command, "mass")))
+    application.add_handler(CommandHandler("mtchk", command_with_join_and_check(mtchk, "mtchk")))
+    application.add_handler(CommandHandler("sh", command_with_join_and_check(sh_command, "sh")))
+    application.add_handler(CommandHandler("seturl", command_with_join_and_check(seturl, "seturl")))
+    application.add_handler(CommandHandler("mysites", command_with_join_and_check(mysites, "mysites")))
+    application.add_handler(CommandHandler("msp", force_join(msp)))
+    application.add_handler(CommandHandler("sp", command_with_join_and_check(sp, "sp")))
+    application.add_handler(CommandHandler("site", command_with_join_and_check(site, "site")))
+    application.add_handler(CommandHandler("msite", command_with_join_and_check(msite_command, "msite")))
+    application.add_handler(CommandHandler("gen", command_with_join_and_check(gen, "gen")))
+    application.add_handler(CommandHandler("open", command_with_join_and_check(open_command, "open")))
+    application.add_handler(CommandHandler("adcr", command_with_join_and_check(adcr_command, "adcr")))
+    application.add_handler(CommandHandler("bin", command_with_join_and_check(bin_lookup, "bin")))
+    application.add_handler(CommandHandler("fk", command_with_join_and_check(fk_command, "fk")))
+    application.add_handler(CommandHandler("scr", command_with_join_and_check(scrap_command, "scr")))
+    application.add_handler(CommandHandler("b3", force_join(b3_handler)))
+    application.add_handler(CommandHandler("vbv", force_join(vbv)))
+    application.add_handler(CommandHandler("fl", command_with_join_and_check(fl_command, "fl")))
+    application.add_handler(CommandHandler("status", command_with_join_and_check(status_command, "status")))
+    application.add_handler(CommandHandler("redeem", command_with_join_and_check(redeem_command, "redeem")))
+
+
 
     # 🔐 Admin Commands
     owner_filter = filters.User(OWNER_ID)
