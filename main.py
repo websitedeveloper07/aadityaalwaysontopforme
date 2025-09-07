@@ -4899,7 +4899,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     ContextTypes,
     MessageHandler,
-    filters
+    filters,
 )
 from db import init_db
 
@@ -4927,17 +4927,10 @@ async def block_unauthorized(update, context: ContextTypes.DEFAULT_TYPE):
 # 🧠 Database init
 async def post_init(application):
     await init_db()
-    logger.info("Database initialized")
+    logger.info("✅ Database initialized")
 
 
-# 🎯 MAIN ENTRY POINT
-def main():
-    # Build app
-    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
-
-    # 📌 Register Commands
-# Wrap with force_join
-# --- Register in your main() ---
+# 📌 Register force-join commands
 def register_force_join(application):
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="check_joined"))
 
@@ -4971,6 +4964,10 @@ def register_force_join(application):
     application.add_handler(CommandHandler("redeem", command_with_join_and_check(redeem_command, "redeem")))
 
 
+# 🎯 MAIN ENTRY POINT
+def main():
+    # Build app
+    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
     # 🔐 Admin Commands
     owner_filter = filters.User(OWNER_ID)
@@ -4985,13 +4982,15 @@ def register_force_join(application):
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-
     # 📲 Callback & Error Handlers
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
+    # ✅ Register force-join commands
+    register_force_join(application)
+
     # 🔁 Start polling
-    logger.info("Bot started and is polling for updates...")
+    logger.info("🤖 Bot started and is polling for updates...")
     application.run_polling()
 
 
