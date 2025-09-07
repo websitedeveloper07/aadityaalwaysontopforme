@@ -1578,14 +1578,14 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # No card input -> send usage message
     if not card_input:
+        # Escape only the non-code parts; keep inline monospace for card
         usage_text = (
-            "🚫 Usage: /chk "
-            "`card|mm|yy|cvv` or reply to a message containing a card."
+            f"{escape_markdown('🚫 Usage: /chk ', version=2)}"
+            "`card|mm|yy|cvv`"
+            f"{escape_markdown(' or reply to a message containing a card.', version=2)}"
         )
-        # Escape only the non-code parts
-        usage_text = usage_text.replace("`card|mm|yy|cvv`", "```card|mm|yy|cvv```")
         await update.effective_message.reply_text(
-            escape_markdown(usage_text, version=2),
+            usage_text,
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return
@@ -1605,7 +1605,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Dynamic text (code block does NOT need escaping)
+    # Dynamic text for message (code block does NOT need escaping)
     bullet_text = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet_text, version=2)}]({BULLET_GROUP_LINK})"
 
@@ -1628,10 +1628,11 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-    # Run background check in the background
+    # Run background check
     asyncio.create_task(
         background_check(cc_normalized, [card, mm, yy, cvv], user, user_data, status_msg)
     )
+
 
 
 
