@@ -830,7 +830,7 @@ def md_escape(text: str) -> str:
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the bot's full commands menu with categories."""
 
-    bullet_text = escape_all_markdown("[⌇]")
+    bullet_text = md_escape("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     cmds_message = (
@@ -838,21 +838,20 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         "🔹 *𝙎𝙩𝙧𝙞𝙥𝙚*\n"
         f"{bullet_link} `/chk cc\\|mm\\|yy\\|cvv` – Single Stripe Auth\n"
-        f"{bullet_link} `/st cc\\|mm\\|yy\\|cvv` – Stripe 1$\n"
-        f"{bullet_link} `/mass` – Mass x30 Stripe Auth 2\n"
+        f"{bullet_link} `/st cc\\|mm\\|yy\\|cvv` – Stripe 1$ \n"
+        f"{bullet_link} `/mass` – Mass x30 Stripe Auth 2\n\n"
 
-
-       "🔹 *𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲*\n"
+        "🔹 *𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲*\n"
         f"{bullet_link} `/b3 cc\\|mm\\|yy\\|cvv` – Braintree Premium Auth\n"
-        f"{bullet_link} `/vbv cc\\|mm\\|yy\\|cvv` – 3DS Lookup\n"
+        f"{bullet_link} `/vbv cc\\|mm\\|yy\\|cvv` – 3DS Lookup\n\n"
 
         "🔹 *𝙎𝙝𝙤𝙥𝙞𝙛𝙮*\n"
         f"{bullet_link} `/sh` – Shopify Charge \\$2.5\n"
         f"{bullet_link} `/seturl \\<site url\\>` – Set your Shopify site\n"
         f"{bullet_link} `/sp` – Auto check on your saved Shopify site\n"
         f"{bullet_link} `/msp` – Mass Shopify Charged\n"
-        f"{bullet_link} `/site \\<url\\>` – Check if Shopify site is live\n\n"
-        f"{bullet_link} `/msite \\<urls\\>` – Mass shopify site check\n\n"
+        f"{bullet_link} `/site \\<url\\>` – Check if Shopify site is live\n"
+        f"{bullet_link} `/msite \\<urls\\>` – Mass Shopify site check\n"
         f"{bullet_link} `/mysites` – Check Your added sites\n\n"
 
         "🔹 *𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨*\n"
@@ -875,6 +874,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
