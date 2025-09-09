@@ -475,6 +475,8 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=keyboard,
     )
 
+
+
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
@@ -482,8 +484,12 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     def escape_md(text: str) -> str:
         """Escape all MarkdownV2 special characters."""
-        special_chars = r"[_*\[\]()~`>#+-=|{}.!]"
+        special_chars = r"[_*\[\]()~`>#+\-=|{}.!]"
         return re.sub(special_chars, r"\\\g<0>", str(text))
+
+    def escape_all_markdown(text: str) -> str:
+        """Helper to escape everything needed for bullets/links."""
+        return escape_md(text)
 
     bullet_text = escape_all_markdown("[⌇]")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
@@ -492,37 +498,40 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✦━━━━━━━━━━━━━━✦\n"
         "     ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet_link} `/start` – Welcome message\n"
-        f"{bullet_link} `/cmds` – Shows all commands\n"
-        f"{bullet_link} `/gen` `[bin]` `[no\\. of cards]` – Generate cards\n"
-        f"{bullet_link} `/bin` `<bin>` – BIN lookup\n"
-        f"{bullet_link} `/vbv` –  3DS Lookup\n"
-        f"{bullet_link} `/b3` `cc\\|mm\\|yy\\|cvv` – Braintree Premium Auth\n"
-        f"{bullet_link} `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
-        f"{bullet_link} `/st` `cc\\|mm\\|yy\\|cvv` – Stripe 1\\$\n"
-        f"{bullet_link} `/mass` –  Mass Stripe Auth 2\n"
-        f"{bullet_link} `/sh` Shopify 2.5\\$\n"
-        f"{bullet_link} `/seturl` `<site url>` – Set a Shopify site\n"
-        f"{bullet_link} `/mysites` – View your added site\n"
-        f"{bullet_link} `/sp` – Check on your added Shopify site\n"
-        f"{bullet_link} `/msp` – Mass Shopify Charged\n"
-        f"{bullet_link} `/site` – Check if Shopify site is working\n"
-        f"{bullet_link} `/msite` – Mass Shopify site Checking\n"
-        f"{bullet_link} `/fk` – Generate fake identity info\n"
-        f"{bullet_link} `/fl` `<dump>` – Fetch CCs from dump\n"
-        f"{bullet_link} `/open` – Extract cards from a file\n"
-        f"{bullet_link} `/status` – Bot system status info\n"
-        f"{bullet_link} `/credits` – Check remaining credits\n"
-        f"{bullet_link} `/info` – Show your user info\n\n"
+        f"{bullet_link} <code>/start</code> – Welcome message\n"
+        f"{bullet_link} <code>/cmds</code> – Shows all commands\n"
+        f"{bullet_link} <code>/gen [bin] [no\\. of cards]</code> – Generate cards\n"
+        f"{bullet_link} <code>/bin &lt;bin&gt;</code> – BIN lookup\n"
+        f"{bullet_link} <code>/vbv</code> – 3DS Lookup\n"
+        f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> – Braintree Premium Auth\n"
+        f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> – Stripe Auth\n"
+        f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$ Auth\n"
+        f"{bullet_link} <code>/mass</code> – Mass Stripe Auth 2\n"
+        f"{bullet_link} <code>/sh</code> – Shopify 2.5$\n"
+        f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set a Shopify site\n"
+        f"{bullet_link} <code>/mysites</code> – View your added site\n"
+        f"{bullet_link} <code>/sp</code> – Check on your added Shopify site\n"
+        f"{bullet_link} <code>/msp</code> – Mass Shopify Charged\n"
+        f"{bullet_link} <code>/site</code> – Check if Shopify site is working\n"
+        f"{bullet_link} <code>/msite</code> – Mass Shopify site Checking\n"
+        f"{bullet_link} <code>/fk</code> – Generate fake identity info\n"
+        f"{bullet_link} <code>/fl &lt;dump&gt;</code> – Fetch CCs from dump\n"
+        f"{bullet_link} <code>/open</code> – Extract cards from a file\n"
+        f"{bullet_link} <code>/status</code> – Bot system status info\n"
+        f"{bullet_link} <code>/credits</code> – Check remaining credits\n"
+        f"{bullet_link} <code>/info</code> – Show your user info\n\n"
     )
 
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
+    ]
 
-    keyboard = [[InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]]
     await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        caption=text,
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Gates' button."""
