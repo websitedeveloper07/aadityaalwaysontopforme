@@ -3632,11 +3632,11 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not card_data:
         await update.message.reply_text(
-             "⚠️ Usage: <code>/vbv &lt;card|mm|yyyy|cvv&gt;</code>\n"
-             "Or reply to a message containing a card.",
-              parse_mode=ParseMode.HTML
-            )
-            return
+            "⚠️ Usage: <code>/vbv &lt;card|mm|yyyy|cvv&gt;</code>\n"
+            "Or reply to a message containing a card.",
+          parse_mode=ParseMode.HTML
+             )
+             return
 
 
     # Send processing message
