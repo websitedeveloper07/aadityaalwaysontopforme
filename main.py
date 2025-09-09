@@ -477,27 +477,14 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-import re
-
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
     await q.answer()
 
-    def escape_md(text: str) -> str:
-        """Escape all MarkdownV2 special characters (if needed)."""
-        special_chars = r"[_*\[\]()~`>#+\-=|{}.!]"
-        return re.sub(special_chars, r"\\\g<0>", str(text))
-
-    def escape_all_markdown(text: str) -> str:
-        """Helper to escape everything needed for bullets/links."""
-        return escape_md(text)
-
-    bullet_text = escape_all_markdown("[⌇]")
-    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+    BULLET_GROUP_LINK = "https://t.me/CARDER33"
+    bullet_text = "[⌇]"
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>{bullet_text}</a>"
 
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
@@ -515,9 +502,9 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/sh</code> – Shopify 2.5$\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set a Shopify site\n"
         f"{bullet_link} <code>/mysites</code> – View your added site\n"
-        f"{bullet_link} <code>/sp</code> – Check on your added Shopify site\n"
-        f"{bullet_link} <code>/msp</code> – Mass Shopify Charged\n"
-        f"{bullet_link} <code>/site</code> – Check if Shopify site is working\n"
+        f"{bullet_link} <code>/sp</code> – Auto Shopify Checker\n"
+        f"{bullet_link} <code>/msp</code> – Mass Auto Shopify\n"
+        f"{bullet_link} <code>/site</code> – Check Shopify site\n"
         f"{bullet_link} <code>/msite</code> – Mass Shopify site Checking\n"
         f"{bullet_link} <code>/fk</code> – Generate fake identity info\n"
         f"{bullet_link} <code>/fl &lt;dump&gt;</code> – Fetch CCs from dump\n"
@@ -531,12 +518,22 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ]
 
-    # Use edit_message_text instead of edit_message_caption
-    await q.edit_message_text(
-        text=text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    try:
+        # Use edit_message_caption because original message is a photo
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        # Fallback: send a new message if editing fails
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+        logger.warning(f"Failed to edit caption: {e}")
+
 
 
 
