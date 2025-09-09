@@ -2973,7 +2973,6 @@ from telegram.ext import ContextTypes
 from telegram.error import TelegramError
 from db import get_user, update_user
 
-
 API_TEMPLATE = (
     "https://auto-shopify-6cz4.onrender.com/index.php"
     "?site={site_url}&cc=5547300001996183|11|2028|197"
@@ -2983,24 +2982,21 @@ MSITE_CONCURRENCY = 3
 MSITE_COOLDOWN = 5
 last_msite_usage = {}
 
-
 # --- Credit system ---
-async def consume_credit(user_id: int, amount: int = 1) -> bool:
-    """Deducts credits from the user. Returns True if successful, False if not enough credits."""
+async def consume_credit(user_id: int) -> bool:
+    """Deducts 1 credit from the user if available."""
     user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) >= amount:
-        new_credits = user_data["credits"] - amount
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
         await update_user(user_id, credits=new_credits)
         return True
     return False
-
 
 def normalize_site(site: str) -> str:
     site = site.strip()
     if not site.startswith("http://") and not site.startswith("https://"):
         site = "https://" + site
     return site
-
 
 # --- Fetch site info ---
 async def fetch_site(session, site_url: str):
@@ -3011,7 +3007,6 @@ async def fetch_site(session, site_url: str):
         async with session.get(api_url, timeout=60) as resp:
             raw_text = await resp.text()
 
-        # Clean HTML
         clean_text = re.sub(r"<[^>]+>", "", raw_text).strip()
         json_start = clean_text.find("{")
         if json_start != -1:
@@ -3041,7 +3036,6 @@ async def fetch_site(session, site_url: str):
             "response": f"Error: {str(e)}",
             "gateway": "N/A",
         }
-
 
 # --- Mass Site Checker ---
 async def run_msite_check(sites: list[str], msg):
@@ -3134,56 +3128,63 @@ async def run_msite_check(sites: list[str], msg):
             except TelegramError:
                 pass
 
-
 # --- /msite command handler ---
 async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    now = time.time()
+    try:
+        user_id = update.effective_user.id
+        now = time.time()
 
-    # Cooldown check
-    if user_id in last_msite_usage and (now - last_msite_usage[user_id]) < MSITE_COOLDOWN:
-        remaining = round(MSITE_COOLDOWN - (now - last_msite_usage[user_id]), 1)
-        await update.message.reply_text(
-            f"⏳ Please wait {remaining}s before using /msite again."
-        )
-        return
-    last_msite_usage[user_id] = now
+        # Cooldown check
+        if user_id in last_msite_usage and (now - last_msite_usage[user_id]) < MSITE_COOLDOWN:
+            remaining = round(MSITE_COOLDOWN - (now - last_msite_usage[user_id]), 1)
+            await update.message.reply_text(
+                f"⏳ Please wait {remaining}s before using /msite again."
+            )
+            return
+        last_msite_usage[user_id] = now
 
-    # Credit check (5 credits per use)
-    if not await consume_credit(user_id, amount=5):
-        await update.message.reply_text("❌ You don’t have enough credits to use this command.")
-        return
+        # Credit check (1 credit per use)
+        if not await consume_credit(user_id):
+            await update.message.reply_text("❌ You don’t have enough credits to use this command.")
+            return
 
-    # Collect sites
-    sites = []
-    if context.args:
-        sites = [s.strip() for s in context.args if s.strip()]
-    elif update.message.reply_to_message and update.message.reply_to_message.text:
-        sites = [s.strip() for s in update.message.reply_to_message.text.splitlines() if s.strip()]
+        # Collect sites
+        sites = []
+        if context.args:
+            sites = [s.strip() for s in context.args if s.strip()]
+        elif update.message.reply_to_message and update.message.reply_to_message.text:
+            sites = [s.strip() for s in update.message.reply_to_message.text.splitlines() if s.strip()]
 
-    if not sites:
-        await update.message.reply_text(
-            "❌ Please provide site URLs.\nExample:\n<code>/msite amazon.com flipkart.com</code>",
+        if not sites:
+            await update.message.reply_text(
+                "❌ Please provide site URLs.\nExample:\n<code>/msite amazon.com flipkart.com</code>",
+                parse_mode=ParseMode.HTML,
+            )
+            return
+
+        if len(sites) > 100:
+            await update.message.reply_text(
+                f"⚠️ You can check a maximum of 100 sites at once.\nYou provided {len(sites)}.",
+                parse_mode=ParseMode.HTML,
+            )
+            sites = sites[:100]
+
+        # Initial message
+        msg = await update.message.reply_text(
+            f"⏳ 𝐂𝐡𝐞𝐜𝐤𝐢𝐧𝐠 {len(sites)} 𝐒𝐢𝐭𝐞𝐬...",
             parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
         )
-        return
 
-    if len(sites) > 100:
+        # Run in background
+        asyncio.create_task(run_msite_check(sites, msg))
+
+    except Exception as e:
         await update.message.reply_text(
-            f"⚠️ You can check a maximum of 100 sites at once.\nYou provided {len(sites)}.",
-            parse_mode=ParseMode.HTML,
+            "❌ An unexpected error occurred. Please try again later or contact the owner."
         )
-        sites = sites[:100]
+        print(f"[ERROR] /msite command failed: {e}")
 
-    # Initial message
-    msg = await update.message.reply_text(
-        f"⏳ 𝐂𝐡𝐞𝐜𝐤𝐢𝐧𝐠 {len(sites)} 𝐒𝐢𝐭𝐞𝐬...",
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True,
-    )
-
-    # Run in background
-    asyncio.create_task(run_msite_check(sites, msg))
 
 
 
