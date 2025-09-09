@@ -637,7 +637,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         "✨ Select a charge gate below:"
     )
     keyboard = [
-        [InlineKeyboardButton("💸 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 5$", callback_data="shopify_gate")],
+        [InlineKeyboardButton("💸 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 2.5$", callback_data="shopify_gate")],
         [InlineKeyboardButton("⚡ 𝗔𝘂𝘁𝗼 𝗦𝗵𝗼𝗽𝗶𝗳𝘆", callback_data="autoshopify_gate")],
         [InlineKeyboardButton("💳 𝗦𝘁𝗿𝗶𝗽𝗲 1$", callback_data="stripe_gate")],
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
@@ -658,7 +658,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "✦━━━━━━━━━━━━━━✦\n"
         "      💸 <b>Shopify 2.5$</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/sh</code> - <i>Check a single card on Shopify $5</i>\n"
+        "• <code>/sh</code> - <i>Check a single card on Shopify $2.5</i>\n"
         "  Example:\n"
         "  <code>/sh 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits.\n\n"
