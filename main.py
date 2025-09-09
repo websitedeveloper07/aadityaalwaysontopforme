@@ -3771,7 +3771,27 @@ API_URL = "https://inclusion-start-colombia-petition.trycloudflare.com/check"
 
 API_KEY = "Xcracker911"
 SITE = "https://apluscollectibles.com"
-COOKIES = "_ga_D1Q49TMJ2C=GS2.1.s1757220818$o7$g0$t1757220818$j60$l0$h0;wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b=xcrasjwiiwjwr663%7C1758272921%7CBPf39ptFyvGAQ34Dn1nIXF1fvcY5spDCUhlsfKA1Wp4%7C301e75542869a8a7dbbcf88f245dddf67e40a88c925b8b137785ca10d8f0c986;sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;cfz_google-analytics_v4=%7B"uoEf_engagementDuration"%3A%7B"v"%3A"0"%2C"e"%3A1788756819052%7D%2C"uoEf_engagementStart"%3A%7B"v"%3A"1757220819052"%2C"e"%3A1788756819052%7D%2C"uoEf_counter"%3A%7B"v"%3A"43"%2C"e"%3A1788756819052%7D%2C"uoEf_session_counter"%3A%7B"v"%3A"8"%2C"e"%3A1788756819052%7D%2C"uoEf_ga4"%3A%7B"v"%3A"0486ee08-be8c-416f-a2a9-e6cc9b586a2c"%2C"e"%3A1788756819052%7D%2C"uoEf__z_ga_audiences"%3A%7B"v"%3A"0486ee08-be8c-416f-a2a9-e6cc9b586a2c"%2C"e"%3A1788099028638%7D%2C"uoEf_let"%3A%7B"v"%3A"1757220819052"%2C"e"%3A1788756819052%7D%2C"uoEf_ga4sid"%3A%7B"v"%3A"1807422450"%2C"e"%3A1757222619052%7D%7D;wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f=9023%7Cother%7Cread%7C5ad6eca7c2a7a49651f38d465011c7ae8f8529e64b49ffad8bc1527e1540360d;sbjs_session=pgs%3D1%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;mailchimp_user_email=xcrasjwiiwjwr663%40gmail.com;sbjs_migrations=1418474375998%3D1;mailchimp_user_previous_email=xcrasjwiiwjwr663%40gmail.com;Subscribe=true;sbjs_first_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;_ga=GA1.1.1082691390.1756563029;_gcl_au=1.1.1821381797.1756563029;breeze_folder_name=6bae3cd94ddbfe28435ae88815e64956a5198266;cfzs_google-analytics_v4=%7B"uoEf_pageviewCounter"%3A%7B"v"%3A"1"%7D%7D;dfehc_user=f9046e64c7ce9c01a633953b208018fe;mailchimp_landing_site=https%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;sbjs_current_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36"  # <-- full cookies here
+COOKIES = '''_ga_D1Q49TMJ2C=GS2.1.s1757220818$o7$g0$t1757220818$j60$l0$h0;
+wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b=xcrasjwiiwjwr663%7C1758272921%7CBPf39ptFyvGAQ34Dn1nIXF1fvcY5spDCUhlsfKA1Wp4%7C301e75542869a8a7dbbcf88f245dddf67e40a88c925b8b137785ca10d8f0c986;
+sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+cfz_google-analytics_v4=%7B"uoEf_engagementDuration"%3A%7B"v"%3A"0"%2C"e"%3A1788756819052%7D%2C"uoEf_engagementStart"%3A%7B"v"%3A"1757220819052"%2C"e"%3A1788756819052%7D%2C"uoEf_counter"%3A%7B"v"%3A"43"%2C"e"%3A1788756819052%7D%2C"uoEf_session_counter"%3A%7B"v"%3A"8"%2C"e"%3A1788756819052%7D%2C"uoEf_ga4"%3A%7B"v"%3A"0486ee08-be8c-416f-a2a9-e6cc9b586a2c"%2C"e"%3A1788756819052%7D%2C"uoEf__z_ga_audiences"%3A%7B"v"%3A"0486ee08-be8c-416f-a2a9-e6cc9b586a2c"%2C"e"%3A1788099028638%7D%2C"uoEf_let"%3A%7B"v"%3A"1757220819052"%2C"e"%3A1788756819052%7D%2C"uoEf_ga4sid"%3A%7B"v"%3A"1807422450"%2C"e"%3A1757222619052%7D%7D;
+wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f=9023%7Cother%7Cread%7C5ad6eca7c2a7a49651f38d465011c7ae8f8529e64b49ffad8bc1527e1540360d;
+sbjs_session=pgs%3D1%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;
+mailchimp_user_email=xcrasjwiiwjwr663%40gmail.com;
+sbjs_migrations=1418474375998%3D1;
+mailchimp_user_previous_email=xcrasjwiiwjwr663%40gmail.com;
+Subscribe=true;
+sbjs_first_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
+_ga=GA1.1.1082691390.1756563029;
+_gcl_au=1.1.1821381797.1756563029;
+breeze_folder_name=6bae3cd94ddbfe28435ae88815e64956a5198266;
+cfzs_google-analytics_v4=%7B"uoEf_pageviewCounter"%3A%7B"v"%3A"1"%7D%7D;
+dfehc_user=f9046e64c7ce9c01a633953b208018fe;
+mailchimp_landing_site=https%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;
+sbjs_current_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36'''
+
 
 async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
