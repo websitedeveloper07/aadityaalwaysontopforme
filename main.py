@@ -624,6 +624,11 @@ async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAU
     )
 
 
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# --- Charge Sub Menu ---
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Charge' button."""
     q = update.callback_query
@@ -637,7 +642,8 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
     keyboard = [
         [InlineKeyboardButton("💸 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 5$", callback_data="shopify_gate")],
         [InlineKeyboardButton("⚡ 𝗔𝘂𝘁𝗼 𝗦𝗵𝗼𝗽𝗶𝗳𝘆", callback_data="autoshopify_gate")],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
+        [InlineKeyboardButton("💳 𝗦𝘁𝗿𝗶𝗽𝗲 1$", callback_data="stripe_gate")],
+        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
     ]
     await q.edit_message_caption(
         text,
@@ -645,6 +651,8 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
+
+# --- Shopify Gate ---
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Shopify 5$' button."""
     q = update.callback_query
@@ -657,7 +665,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "  Example:\n"
         "  <code>/sh 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits.\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\– 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
@@ -670,6 +678,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
 
+# --- Auto Shopify Gate ---
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Auto Shopify' button."""
     q = update.callback_query
@@ -678,22 +687,22 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         "✦━━━━━━━━━━━━━━✦\n"
         "    ⚡ 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/sp` \\- *Auto Shopify Checker*\n"
+        "• `/sp` - *Auto Shopify Checker*\n"
         "  Example:\n"
-        "  `/sp 1234567890123456\\|12\\|2026\\|123`\n\n"
-        "• `/msp` \\- *Mass Auto Shopify Checker*\n"
+        "  `/sp 1234567890123456|12|2026|123`\n\n"
+        "• `/msp` - *Mass Auto Shopify Checker*\n"
         "  Example:\n"
-        "  `/msp 1234567890123456\\|12\\|2026\\|123`\n\n"
-        "• `/seturl <shopify site>` \\- *Set your custom Shopify site*\n"
+        "  `/msp 1234567890123456|12|2026|123`\n\n"
+        "• `/seturl <shopify site>` - *Set your custom Shopify site*\n"
         "  Example:\n"
-        "  `/seturl https:\\/\\/yourshopify\\.com`\n\n"
-        "• `/remove` \\- *Remove your saved Shopify site*\n"
+        "  `/seturl https://yourshopify.com`\n\n"
+        "• `/remove` - *Remove your saved Shopify site*\n"
         "  Example:\n"
         "  `/remove`\n\n"
-        "✨ First set your preferred Shopify site using `/seturl`\\.\n"
+        "✨ First set your preferred Shopify site using `/seturl`.\n"
         "Then run `/sp` to automatically check cards on that site 🚀\n"
-        "If you no longer want to𝗦𝘁𝗮𝘁𝘂𝘀 use a custom site, run `/remove`\\.\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+        "If you no longer want to use a custom site, run `/remove`.\n\n"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
@@ -704,6 +713,33 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
+
+# --- Stripe 1$ Gate ---
+async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Stripe 1$' button."""
+    q = update.callback_query
+    await q.answer()
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      💳 <b>Stripe 1$</b>\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "• <code>/st</code> - <i>Check a single card on Stripe $1</i>\n"
+        "  Example:\n"
+        "  <code>/st 1234567890123456|12|2026|123</code>\n\n"
+        "⚡ Each check deducts credits.\n\n"
+        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+    )
+    keyboard = [
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+    ]
+    await q.edit_message_caption(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
 
 
 async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -753,6 +789,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await shopify_gate_handler(update, context)
     elif data == "autoshopify_gate":
         await autoshopify_gate_handler(update, context)
+    elif data == "stripe_gate":   # ✅ Added Stripe handler
+        await stripe_gate_handler(update, context)
     elif data == "stripe_examples":
         await stripe_examples_handler(update, context)
     elif data == "braintree_examples":
@@ -763,6 +801,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
@@ -2946,10 +2985,11 @@ last_msite_usage = {}
 
 
 # --- Credit system ---
-async def consume_credit(user_id: int) -> bool:
+async def consume_credit(user_id: int, amount: int = 1) -> bool:
+    """Deducts credits from the user. Returns True if successful, False if not enough credits."""
     user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
+    if user_data and user_data.get("credits", 0) >= amount:
+        new_credits = user_data["credits"] - amount
         await update_user(user_id, credits=new_credits)
         return True
     return False
@@ -2960,6 +3000,7 @@ def normalize_site(site: str) -> str:
     if not site.startswith("http://") and not site.startswith("https://"):
         site = "https://" + site
     return site
+
 
 # --- Fetch site info ---
 async def fetch_site(session, site_url: str):
@@ -3000,6 +3041,7 @@ async def fetch_site(session, site_url: str):
             "response": f"Error: {str(e)}",
             "gateway": "N/A",
         }
+
 
 # --- Mass Site Checker ---
 async def run_msite_check(sites: list[str], msg):
@@ -3092,6 +3134,7 @@ async def run_msite_check(sites: list[str], msg):
             except TelegramError:
                 pass
 
+
 # --- /msite command handler ---
 async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -3141,6 +3184,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run in background
     asyncio.create_task(run_msite_check(sites, msg))
+
 
 
 import asyncio
