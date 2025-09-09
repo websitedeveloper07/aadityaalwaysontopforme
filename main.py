@@ -681,7 +681,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-# Helper function to escape MarkdownV2 special characters
+# Escape MarkdownV2 special characters (only outside code blocks)
 def escape_markdown_v2(text: str) -> str:
     return re.sub(r'([_\*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
 
@@ -690,26 +690,26 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
     q = update.callback_query
     await q.answer()
 
+    # Monospace commands/examples wrapped in triple backticks
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "    ⚡ 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/sp` - *Auto Shopify Checker*\n"
-        "  Example:\n"
-        "  `/sp 1234567890123456|12|2026|123`\n\n"
-        "• `/msp` - *Mass Auto Shopify Checker*\n"
-        "  Example:\n"
-        "  `/msp 1234567890123456|12|2026|123`\n\n"
-        "• `/seturl <shopify site>` - *Set your custom Shopify site*\n"
-        "  Example:\n"
-        "  `/seturl https://yourshopify.com`\n\n"
+        "```\n"
+        "/sp    - Auto Shopify Checker\n"
+        "Example:\n"
+        "/sp 1234567890123456|12|2026|123\n\n"
+        "/msp   - Mass Auto Shopify Checker\n"
+        "Example:\n"
+        "/msp 1234567890123456|12|2026|123\n\n"
+        "/seturl <shopify site> - Set your custom Shopify site\n"
+        "Example:\n"
+        "/seturl https://yourshopify.com\n"
+        "```\n\n"
         "✨ First set your preferred Shopify site using `/seturl`.\n"
         "Then run `/sp` to automatically check cards on that site 🚀\n"
         "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
-
-    # Escape text for MarkdownV2
-    safe_text = escape_markdown_v2(text)
 
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
@@ -717,7 +717,7 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
     ]
 
     await q.edit_message_caption(
-        caption=safe_text,
+        caption=text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
