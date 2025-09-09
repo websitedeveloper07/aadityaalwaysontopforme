@@ -677,6 +677,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
 # --- Auto Shopify Gate ---
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -688,19 +689,19 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         "✦━━━━━━━━━━━━━━✦\n"
         "    ⚡ 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "```\n"
+        "<pre>"
         "/sp    - Auto Shopify Checker\n"
         "Example:\n"
         "/sp 1234567890123456|12|2026|123\n\n"
         "/msp   - Mass Auto Shopify Checker\n"
         "Example:\n"
         "/msp 1234567890123456|12|2026|123\n\n"
-        "/seturl <shopify site> - Set your custom Shopify site\n"
+        "/seturl &lt;shopify site&gt; - Set your custom Shopify site\n"
         "Example:\n"
         "/seturl https://yourshopify.com\n"
-        "```\n\n"
-        "✨ First set your preferred Shopify site using `/seturl`.\n"
-        "Then run `/sp` to automatically check cards on that site 🚀\n"
+        "</pre>\n\n"
+        "✨ First set your preferred Shopify site using <code>/seturl</code>.\n"
+        "Then run <code>/sp</code> to automatically check cards on that site 🚀\n"
         "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
 
@@ -709,11 +710,12 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
 
-    # Send caption WITHOUT parse_mode to avoid Markdown errors
     await q.edit_message_caption(
         caption=text,
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
 
 
 # --- Stripe 1$ Gate ---
