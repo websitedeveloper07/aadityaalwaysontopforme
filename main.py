@@ -676,10 +676,20 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 # --- Auto Shopify Gate ---
+import re
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# Helper function to escape MarkdownV2 special characters
+def escape_markdown_v2(text: str) -> str:
+    return re.sub(r'([_\*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
+
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Auto Shopify' button."""
     q = update.callback_query
     await q.answer()
+
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "    ⚡ 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲\n"
@@ -697,15 +707,21 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         "Then run `/sp` to automatically check cards on that site 🚀\n"
         "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
+
+    # Escape text for MarkdownV2
+    safe_text = escape_markdown_v2(text)
+
     keyboard = [
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
     ]
+
     await q.edit_message_caption(
-        text,
+        caption=safe_text,
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
 
 
 # --- Stripe 1$ Gate ---
