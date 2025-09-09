@@ -3636,7 +3636,7 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
              "Or reply to a message containing a card.",
               parse_mode=ParseMode.HTML
             )
-           return
+            return
 
 
     # Send processing message
