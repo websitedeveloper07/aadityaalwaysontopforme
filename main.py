@@ -499,15 +499,15 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} `/vbv` –  3DS Lookup\n"
         f"{bullet_link} `/b3` `cc\\|mm\\|yy\\|cvv` – Braintree Premium Auth\n"
         f"{bullet_link} `/chk` `cc\\|mm\\|yy\\|cvv` – Stripe Auth\n"
-        f"{bullet_link} `/mchk` –  Multi Stripe\n"
+        f"{bullet_link} `/st` `cc\\|mm\\|yy\\|cvv` – Stripe 1\\$\n"
         f"{bullet_link} `/mass` –  Mass Stripe Auth 2\n"
-        f"{bullet_link} `/mtchk` `txt file` Mass stripe Auth 3\n"
-        f"{bullet_link} `/sh` Shopify 5\\$\n"
+        f"{bullet_link} `/sh` Shopify 2.5\\$\n"
         f"{bullet_link} `/seturl` `<site url>` – Set a Shopify site\n"
-        f"{bullet_link} `/remove` – Remove your added site\n"
+        f"{bullet_link} `/mysites` – View your added site\n"
         f"{bullet_link} `/sp` – Check on your added Shopify site\n"
         f"{bullet_link} `/msp` – Mass Shopify Charged\n"
         f"{bullet_link} `/site` – Check if Shopify site is working\n"
+        f"{bullet_link} `/msite` – Mass Shopify site Checking\n"
         f"{bullet_link} `/fk` – Generate fake identity info\n"
         f"{bullet_link} `/fl` `<dump>` – Fetch CCs from dump\n"
         f"{bullet_link} `/open` – Extract cards from a file\n"
@@ -659,7 +659,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      💸 <b>Shopify 5$</b>\n"
+        "      💸 <b>Shopify 2.5$</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• <code>/sh</code> - <i>Check a single card on Shopify $5</i>\n"
         "  Example:\n"
@@ -696,12 +696,8 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         "• `/seturl <shopify site>` - *Set your custom Shopify site*\n"
         "  Example:\n"
         "  `/seturl https://yourshopify.com`\n\n"
-        "• `/remove` - *Remove your saved Shopify site*\n"
-        "  Example:\n"
-        "  `/remove`\n\n"
         "✨ First set your preferred Shopify site using `/seturl`.\n"
         "Then run `/sp` to automatically check cards on that site 🚀\n"
-        "If you no longer want to use a custom site, run `/remove`.\n\n"
         "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
     )
     keyboard = [
@@ -827,6 +823,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         "🔹 *𝙎𝙩𝙧𝙞𝙥𝙚*\n"
         f"{bullet_link} `/chk cc\\|mm\\|yy\\|cvv` – Single Stripe Auth\n"
+        f"{bullet_link} `/st cc\\|mm\\|yy\\|cvv` – Stripe 1$\n"
         f"{bullet_link} `/mass` – Mass x30 Stripe Auth 2\n"
 
 
@@ -835,9 +832,8 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} `/vbv cc\\|mm\\|yy\\|cvv` – 3DS Lookup\n"
 
         "🔹 *𝙎𝙝𝙤𝙥𝙞𝙛𝙮*\n"
-        f"{bullet_link} `/sh` – Shopify Charge \\$5\n"
+        f"{bullet_link} `/sh` – Shopify Charge \\$2.5\n"
         f"{bullet_link} `/seturl \\<site url\\>` – Set your Shopify site\n"
-        f"{bullet_link} `/remove` – Remove your saved Shopify site\n"
         f"{bullet_link} `/sp` – Auto check on your saved Shopify site\n"
         f"{bullet_link} `/msp` – Mass Shopify Charged\n"
         f"{bullet_link} `/site \\<url\\>` – Check if Shopify site is live\n\n"
@@ -1542,16 +1538,16 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         # Build final message with [⌇] bullets
         final_text = (
             f"{header}\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ `{escape_md(cc_normalized)}`\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➜ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ {formatted_response}\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ `{escape_md(cc_normalized)}`\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ {formatted_response}\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ `{escape_md(brand)}`\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ `{escape_md(issuer)}`\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ `{escape_md(country_name)} {escape_md(country_flag)}`\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ `{escape_md(brand)}`\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ `{escape_md(issuer)}`\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ `{escape_md(country_name)} {escape_md(country_flag)}`\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ [{escape_md(user.first_name)}](tg://user?id={user.id})\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ [{escape_md(user.first_name)}](tg://user?id={user.id})\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
             f"――――――――――――――――"
         )
 
@@ -1654,8 +1650,8 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet_link = f"[{escape_markdown(bullet_text, version=2)}]({BULLET_GROUP_LINK})"
 
     # Static text
-    gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵", version=2)
-    status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
+    gateway_text = escape_markdown("Gateway ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵", version=2)
+    status_text = escape_markdown("Status ➵ Checking 🔎...", version=2)
 
     # Build processing message
     processing_text = (
@@ -1765,17 +1761,16 @@ async def st_worker(update: Update, card: str, status_msg):
     # Final result
     result_text = (
         f"*◇━━〔 {status}{status_emoji}  〕━━◇*\n"
-        f"{bullet_link} *Card:* `{card}`\n"
-        f"{bullet_link} *Gateway:* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
-        f"{bullet_link} *Response:* _{response_text}_\n"
+        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* `{card}`\n"
+        f"{bullet_link} *𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
+        f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* _{response_text}_\n"
         "――――――――――――――――\n"
-        f"{bullet_link} *Brand:* `{brand}`\n"
-        f"{bullet_link} *Type:* `{card_type}`\n"
-        f"{bullet_link} *Bank:* `{issuer}`\n"
-        f"{bullet_link} *Country:* `{country_name} {country_flag}`\n"
+        f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝 ➵* `{brand}`\n"
+        f"{bullet_link} *𝐁𝐚𝐧𝐤 ➵* `{issuer}`\n"
+        f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵* `{country_name} {country_flag}`\n"
         "――――――――――――――――\n"
-        f"{bullet_link} *Requested by:* {requested_by}\n"
-        f"{bullet_link} *Developer:* {developer}\n"
+        f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵* {requested_by}\n"
+        f"{bullet_link} *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵* {developer}\n"
         "――――――――――――――――"
     )
 
@@ -1818,8 +1813,8 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     yy = yy[-2:] if len(yy) == 4 else yy
     cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
 
-    gateway_text = escape_markdown("Gateway ➜ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
-    status_text = escape_markdown("Status ➜ Checking 🔎...", version=2)
+    gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
+    status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
 
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
@@ -1899,16 +1894,16 @@ async def check_single_card(session, card: str):
         response_md = mdv2_escape(response)
 
         if "approved" in status:
-            return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ✅ _{response_md}_", "approved"
+            return f"`{card_md}`\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ ✅ _{response_md}_", "approved"
         elif "declined" in status:
-            return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ❌ _{response_md}_", "declined"
+            return f"`{card_md}`\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ ❌ _{response_md}_", "declined"
         else:
-            return f"`{card_md}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ⚠️ _{response_md}_", "error"
+            return f"`{card_md}`\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ ⚠️ _{response_md}_", "error"
 
     except (aiohttp.ClientError, asyncio.TimeoutError):
-        return f"`{mdv2_escape(card)}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ❌ _Network Error_", "error"
+        return f"`{mdv2_escape(card)}`\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ ❌ _Network Error_", "error"
     except Exception as e:
-        return f"`{mdv2_escape(card)}`\n𝐒𝐭𝐚𝐭𝐮s ⌁ ❌ _{mdv2_escape(str(e))}_", "error"
+        return f"`{mdv2_escape(card)}`\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ ❌ _{mdv2_escape(str(e))}_", "error"
 
 # --- MASS CHECK CORE ---
 import asyncio
@@ -1950,15 +1945,14 @@ async def run_mass_checker(msg_obj, cards, user):
 
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
-    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
-    requester_text = f"Requested By ➜ {format_user_link(user)}"
-    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
+    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
+    requester_text = f"Requested By ➵ {format_user_link(user)}"
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
 
     # --- Initial Processing Message ---
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} {requester_text}\n"
         f"{bullet_link} {status_text}"
     )
 
@@ -2000,11 +1994,11 @@ async def run_mass_checker(msg_obj, cards, user):
 
                 header = (
                     f"{bullet_link} {gateway_text}\n"
-                    f"{bullet_link} Total ➵ {mdv2_escape(str(counters['checked']))}/{mdv2_escape(str(total))}\n"
-                    f"{bullet_link} Approved ➵ {mdv2_escape(str(counters['approved']))}\n"
-                    f"{bullet_link} Declined ➵ {mdv2_escape(str(counters['declined']))}\n"
-                    f"{bullet_link} Error ➵ {mdv2_escape(str(counters['error']))}\n"
-                    f"{bullet_link} Time ➵ {mdv2_escape(str(elapsed))} Sec\n"
+                    f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {mdv2_escape(str(counters['checked']))}/{mdv2_escape(str(total))}\n"
+                    f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {mdv2_escape(str(counters['approved']))}\n"
+                    f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {mdv2_escape(str(counters['declined']))}\n"
+                    f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {mdv2_escape(str(counters['error']))}\n"
+                    f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {mdv2_escape(str(elapsed))} Sec\n"
                     "──────── ⸙ ─────────"
                 )
                 content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
@@ -2082,12 +2076,12 @@ async def run_mass_checker(msg_obj, cards, user):
                 elapsed = round(time.time() - start_time, 2)
 
                 header = (
-                    f"{bullet_link} {mdv2_escape('𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵')}\n"
-                    f"{bullet_link} Total ➵ {mdv2_escape(str(counters['checked']))}/{mdv2_escape(str(total))}\n"
-                    f"{bullet_link} Approved ➵ {mdv2_escape(str(counters['approved']))}\n"
-                    f"{bullet_link} Declined ➵ {mdv2_escape(str(counters['declined']))}\n"
-                    f"{bullet_link} Error ➵ {mdv2_escape(str(counters['error']))}\n"
-                    f"{bullet_link} Time ➵ {mdv2_escape(str(elapsed))} Sec\n"
+                    f"{bullet_link} {mdv2_escape('𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵')}\n"
+                    f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {mdv2_escape(str(counters['checked']))}/{mdv2_escape(str(total))}\n"
+                    f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {mdv2_escape(str(counters['approved']))}\n"
+                    f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {mdv2_escape(str(counters['declined']))}\n"
+                    f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {mdv2_escape(str(counters['error']))}\n"
+                    f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {mdv2_escape(str(elapsed))} Sec\n"
                     "──────── ⸙ ─────────"
                 )
                 content = header + "\n" + "\n──────── ⸙ ─────────\n".join(results)
@@ -2183,8 +2177,8 @@ async def mass_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Build initial "Processing" message (Gateway only) ---
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
-    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➜ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
-    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➜ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
+    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵")
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
 
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
@@ -2295,8 +2289,8 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➜ Shopify</b>\n"
-            f"{bullet_link} <b>Status ➜ Checking 🔎...</b>"
+            f"{bullet_link} <b>Gateway ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚</b>\n"
+            f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
         processing_msg = await update.message.reply_text(
@@ -2356,16 +2350,16 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- Final formatted message ---
         final_msg = (
             f"◇━━〔 <b>SHOPIFY</b> 〕━━◇\n"
-            f"{bullet_link} <b>Card</b> ➜ <code>{full_card}</code>\n"
-            f"{bullet_link} <b>Gateway</b> ➜ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟐.𝟏𝟓$\n"
-            f"{bullet_link} <b>Response</b> ➜ <i>{escape(response)}</i>\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟐.𝟏𝟓$\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{escape(response)}</i>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} <b>Brand</b> ➜ <code>{escape(brand)}</code>\n"
-            f"{bullet_link} <b>Bank</b> ➜ <code>{escape(issuer)}</code>\n"
-            f"{bullet_link} <b>Country</b> ➜ <code>{escape(country_name)} {country_flag}</code>\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{escape(issuer)}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} <b>Requested By</b> ➜ {requester}\n"
-            f"{bullet_link} <b>Developer</b> ➜ {developer_clickable}\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
             "――――――――――――――――"
         )
 
@@ -2512,13 +2506,13 @@ async def process_seturl(user, user_id, site_input, processing_msg):
 
         formatted_msg = (
             f"═══[ <b>{site_status}</b> ]═══\n"
-            f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➜ <code>{escape(site_input)}</code>\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➜ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙉𝙤𝙧𝙢𝙖𝙡\n"
-            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➜ <i>{escape(response)}</i>\n"
-            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➜ {escape(price)}$ 💸\n"
+            f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➵ <code>{escape(site_input)}</code>\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➵ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙉𝙤𝙧𝙢𝙖𝙡\n"
+            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➵ <i>{escape(response)}</i>\n"
+            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➵ {escape(price)}$ 💸\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➜ {requester}\n"
-            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➜ {developer_clickable}\n"
+            f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➵ {requester}\n"
+            f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➵ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
@@ -2686,8 +2680,8 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>{escape(card_input)}</code></pre>\n"
-        f"{bullet_link} Gateway ➜ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚\n"
-        f"{bullet_link} Status ➜ Checking 🔎..."
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚\n"
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
     )
 
     msg = await update.message.reply_text(
@@ -2780,18 +2774,18 @@ async def process_card_check(user, card_input, custom_url, msg):
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         formatted_msg = (
-            "═══[ 𝗔𝘂𝘁𝗼𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝       ➜ <code>{card_input}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➜ <i>{escape(gateway)}</i>\n"
-            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➜ {price} 💸\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{display_response}</i>\n"
+            "═══[ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚 ]═══\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝       ➵ <code>{card_input}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➵ <i>{escape(gateway)}</i>\n"
+            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➵ {price} 💸\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➜ <code>{brand}</code>\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤       ➜ <code>{issuer}</code>\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➜ <code>{country_flag} {country_name}</code>\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➵ <code>{brand}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤       ➵ <code>{issuer}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➵ <code>{country_flag} {country_name}</code>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
             "――――――――――――――――"
         )
 
@@ -2932,14 +2926,14 @@ async def run_site_check(site_url: str, msg, user):
 
         formatted_msg = (
             f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
-            f"{bullet_link} 𝐒𝐢𝐭𝐞       ➜ <code>{escape(site_url)}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➜ {escape(gateway)}\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➜ <i>{escape(response)}</i>\n"
-            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➜ {price} 💸\n"
-            f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬      ➜ <b>{status}</b>\n\n"
+            f"{bullet_link} 𝐒𝐢𝐭𝐞       ➵ <code>{escape(site_url)}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➵ {escape(gateway)}\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ <i>{escape(response)}</i>\n"
+            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➵ {price} 💸\n"
+            f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬      ➵ <b>{status}</b>\n\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {requester}\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
             f"――――――――――――――――"
         )
 
@@ -3713,16 +3707,16 @@ async def run_vbv_check(msg, update, card_data: str):
 
     text = (
         "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
-        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➜ <code>{safe_card}</code>\n"
-        f"{bullet_link} BIN ➜ <code>{bin_number}</code>\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➜ <i>{safe_reason} {check_mark}</i>\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{safe_card}</code>\n"
+        f"{bullet_link} BIN ➵ <code>{bin_number}</code>\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{safe_reason} {check_mark}</i>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➜ <code>{safe_brand}</code>\n"
-        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➜ <code>{safe_issuer}</code>\n"
-        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➜ <code>{safe_country}</code>\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{safe_brand}</code>\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{safe_issuer}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{safe_country}</code>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➜ {update.effective_user.mention_html()}\n"
-        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➜ {developer_clickable}"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {update.effective_user.mention_html()}\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
     )
 
     await msg.edit_text(text, parse_mode="HTML", disable_web_page_preview=True)
