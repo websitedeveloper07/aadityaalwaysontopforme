@@ -477,13 +477,18 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+import re
+
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
     await q.answer()
 
     def escape_md(text: str) -> str:
-        """Escape all MarkdownV2 special characters."""
+        """Escape all MarkdownV2 special characters (if needed)."""
         special_chars = r"[_*\[\]()~`>#+\-=|{}.!]"
         return re.sub(special_chars, r"\\\g<0>", str(text))
 
@@ -500,7 +505,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✦━━━━━━━━━━━━━━✦\n\n"
         f"{bullet_link} <code>/start</code> – Welcome message\n"
         f"{bullet_link} <code>/cmds</code> – Shows all commands\n"
-        f"{bullet_link} <code>/gen [bin] [no\\. of cards]</code> – Generate cards\n"
+        f"{bullet_link} <code>/gen [bin] [no. of cards]</code> – Generate cards\n"
         f"{bullet_link} <code>/bin &lt;bin&gt;</code> – BIN lookup\n"
         f"{bullet_link} <code>/vbv</code> – 3DS Lookup\n"
         f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> – Braintree Premium Auth\n"
@@ -526,11 +531,13 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
     ]
 
-    await q.edit_message_caption(
-        caption=text,
+    # Use edit_message_text instead of edit_message_caption
+    await q.edit_message_text(
+        text=text,
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
 
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
