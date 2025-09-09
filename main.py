@@ -822,58 +822,53 @@ from telegram.ext import ContextTypes
 
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
-def md_escape(text: str) -> str:
-    """Escape text for Markdown V2."""
-    escape_chars = r"_*[]()~`>#+-=|{}.!<>"
-    return ''.join(f"\\{c}" if c in escape_chars else c for c in text)
-
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows the bot's full commands menu with categories."""
+    """Shows the bot's full commands menu with categories in HTML mode."""
 
-    bullet_text = md_escape("[⌇]")
-    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
     cmds_message = (
-        "━━━[ 👇 *𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂* ]━━━⬣\n\n"
+        "━━━[ 👇 <b>𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂</b> ]━━━⬣\n\n"
 
-        "🔹 *𝙎𝙩𝙧𝙞𝙥𝙚*\n"
-        f"{bullet_link} `/chk cc\\|mm\\|yy\\|cvv` – Single Stripe Auth\n"
-        f"{bullet_link} `/st cc\\|mm\\|yy\\|cvv` – Stripe 1$ \n"
-        f"{bullet_link} `/mass` – Mass x30 Stripe Auth 2\n\n"
+        "🔹 <b>𝙎𝙩𝙧𝙞𝙥𝙚</b>\n"
+        f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> – Single Stripe Auth\n"
+        f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$\n"
+        f"{bullet_link} <code>/mass</code> – Mass x30 Stripe Auth 2\n\n"
 
-        "🔹 *𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲*\n"
-        f"{bullet_link} `/b3 cc\\|mm\\|yy\\|cvv` – Braintree Premium Auth\n"
-        f"{bullet_link} `/vbv cc\\|mm\\|yy\\|cvv` – 3DS Lookup\n\n"
+        "🔹 <b>𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲</b>\n"
+        f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> – Braintree Premium Auth\n"
+        f"{bullet_link} <code>/vbv cc|mm|yy|cvv</code> – 3DS Lookup\n\n"
 
-        "🔹 *𝙎𝙝𝙤𝙥𝙞𝙛𝙮*\n"
-        f"{bullet_link} `/sh` – Shopify Charge \\$2.5\n"
-        f"{bullet_link} `/seturl \\<site url\\>` – Set your Shopify site\n"
-        f"{bullet_link} `/sp` – Auto check on your saved Shopify site\n"
-        f"{bullet_link} `/msp` – Mass Shopify Charged\n"
-        f"{bullet_link} `/site \\<url\\>` – Check if Shopify site is live\n"
-        f"{bullet_link} `/msite \\<urls\\>` – Mass Shopify site check\n"
-        f"{bullet_link} `/mysites` – Check Your added sites\n\n"
+        "🔹 <b>𝙎𝙝𝙤𝙥𝙞𝙛𝙮</b>\n"
+        f"{bullet_link} <code>/sh</code> – Shopify Charge $2.5\n"
+        f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set your Shopify site\n"
+        f"{bullet_link} <code>/sp</code> – Auto check on your saved Shopify site\n"
+        f"{bullet_link} <code>/msp</code> – Mass Shopify Charged\n"
+        f"{bullet_link} <code>/site &lt;url&gt;</code> – Check if Shopify site is live\n"
+        f"{bullet_link} <code>/msite &lt;urls&gt;</code> – Mass Shopify site check\n"
+        f"{bullet_link} <code>/mysites</code> – Check your added sites\n\n"
 
-        "🔹 *𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨*\n"
-        f"{bullet_link} `/gen [bin] [no\\. of cards]` – Generate cards from BIN\n"
-        f"{bullet_link} `/bin \\<bin\\>` – BIN lookup \\(Bank, Country, Type\\)\n"
-        f"{bullet_link} `/fk \\<country\\>` – Fake identity generator\n"
-        f"{bullet_link} `/fl \\<dump\\>` – Extract CCs from dumps\n"
-        f"{bullet_link} `/open` – Extract cards from uploaded file\n\n"
+        "🔹 <b>𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨</b>\n"
+        f"{bullet_link} <code>/gen [bin] [no. of cards]</code> – Generate cards from BIN\n"
+        f"{bullet_link} <code>/bin &lt;bin&gt;</code> – BIN lookup (Bank, Country, Type)\n"
+        f"{bullet_link} <code>/fk &lt;country&gt;</code> – Fake identity generator\n"
+        f"{bullet_link} <code>/fl &lt;dump&gt;</code> – Extract CCs from dumps\n"
+        f"{bullet_link} <code>/open</code> – Extract cards from uploaded file\n\n"
 
-        "🔹 *𝙎𝙮𝙨𝙩𝙚𝙢 ＆ 𝙐𝙨𝙚𝙧*\n"
-        f"{bullet_link} `/start` – Welcome message\n"
-        f"{bullet_link} `/cmds` – Show all commands\n"
-        f"{bullet_link} `/status` – Bot system status\n"
-        f"{bullet_link} `/credits` – Check your remaining credits\n"
-        f"{bullet_link} `/info` – Show your user info\n"
+        "🔹 <b>𝙎𝙮𝙨𝙩𝙚𝙢 & 𝙐𝙨𝙚𝙧</b>\n"
+        f"{bullet_link} <code>/start</code> – Welcome message\n"
+        f"{bullet_link} <code>/cmds</code> – Show all commands\n"
+        f"{bullet_link} <code>/status</code> – Bot system status\n"
+        f"{bullet_link} <code>/credits</code> – Check your remaining credits\n"
+        f"{bullet_link} <code>/info</code> – Show your user info\n"
     )
 
     await update.effective_message.reply_text(
         cmds_message,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
+
 
 
 
