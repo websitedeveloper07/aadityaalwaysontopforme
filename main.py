@@ -3744,7 +3744,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-API_URL = "https://inclusion-start-colombia-petition.trycloudflare.com/check"
+API_URL = "https://autob3cook.onrender.com/check?"
 
 API_KEY = "Xcracker911"
 SITE = "https://apluscollectibles.com"
