@@ -3970,22 +3970,133 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 
 
 
-import re
+import aiohttp
+import asyncio
 import time
-import requests
-import tempfile
+import re
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler
+from telegram.ext import ContextTypes
 
-# Selenium fallback
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
+# ---------------- CMS / Card / Security Patterns ---------------- #
+CMS_PATTERNS = {
+    'Shopify': r'cdn\.shopify\.com|shopify\.js',
+    'BigCommerce': r'cdn\.bigcommerce\.com|bigcommerce\.com',
+    'Wix': r'static\.parastorage\.com|wix\.com',
+    'Squarespace': r'static1\.squarespace\.com|squarespace-cdn\.com',
+    'WooCommerce': r'wp-content/plugins/woocommerce/',
+    'Magento': r'static/version\d+/frontend/|magento/',
+    'PrestaShop': r'prestashop\.js|prestashop/',
+    'OpenCart': r'catalog/view/theme|opencart/',
+    'Shopify Plus': r'shopify-plus|cdn\.shopifycdn\.net/',
+    'Salesforce Commerce Cloud': r'demandware\.edgesuite\.net/',
+    'WordPress': r'wp-content|wp-includes/',
+    'Joomla': r'media/jui|joomla\.js|media/system/js|joomla\.javascript/',
+    'Drupal': r'sites/all/modules|drupal\.js/|sites/default/files|drupal\.settings\.js/',
+    'TYPO3': r'typo3temp|typo3/',
+    'Concrete5': r'concrete/js|concrete5/',
+    'Umbraco': r'umbraco/|umbraco\.config/',
+    'Sitecore': r'sitecore/content|sitecore\.js/',
+    'Kentico': r'cms/getresource\.ashx|kentico\.js/',
+    'Episerver': r'episerver/|episerver\.js/',
+    'Custom CMS': r'(?:<meta name="generator" content="([^"]+)")'
+}
 
+CARD_PATTERNS = {
+    'Visa': r'visa[^a-z]|cc-visa|vi-?card',
+    'Mastercard': r'master[ -]?card|mc-?card',
+    'Amex': r'amex|american.?express',
+    'Discover': r'discover/',
+    'JCB': r'jcb/',
+    'Maestro': r'maestro/',
+    'UnionPay': r'union.?pay/',
+    'Diners Club': r'diners.?club/',
+    'CVV': r'cvv|cvc|card.?verification.?value',
+    'Card Number': r'card.?number|cc.?number|credit.?card.?number',
+    'Expiry Date': r'expiry.?date|exp.?date|card.?expiration',
+    'Cardholder Name': r'cardholder.?name|name.?on.?card',
+    '3D Secure': r'3d.?secure|3.?d.?secure|verified.?by.?visa|mastercard.?securecode|secure.?code|3ds|three.?d.?secure'
+}
 
-# 🌍 Global Payment Gateways (your list)
-PAYMENT_GATEWAYS = [
+SECURITY_PATTERNS = {
+    'GraphQL': r'graphql|__schema|query\s*{',
+    'GraphQL Endpoint': r'\/graphql|\/api\/graphql'
+}
+
+# ---------------- Headers Builder ---------------- #
+def build_headers(url: str):
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    domain = urlparse(url).netloc
+    headers = {
+        "authority": domain,
+        "scheme": "https",
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "accept-language": "en-US,en;q=0.9",
+        "cache-control": "max-age=0",
+        "sec-ch-ua": '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
+        "sec-ch-ua-mobile": "?1",
+        "sec-ch-ua-platform": '"Android"',
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+        "sec-fetch-user": "?1",
+        "upgrade-insecure-requests": "1",
+        "user-agent": (
+            "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/140.0.0.0 Mobile Safari/537.36"
+        ),
+    }
+    return headers, url
+
+# ---------------- /gate Function ---------------- #
+async def gate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("⚠️ Usage: /gate <site_url>")
+        return
+
+    site = context.args[0]
+    headers, site = build_headers(site)
+    msg = await update.message.reply_text(f"🔎 Scanning {site} ...\nPlease wait ⏳", parse_mode="Markdown")
+    start = time.time()
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(site, headers=headers, timeout=15) as resp:
+                status = resp.status
+                html = await resp.text()
+
+        soup = BeautifulSoup(html, "html.parser")
+        text = html.lower()
+
+        # ----- Detect CMS -----
+        cms_found = "Unknown"
+        for cms, pattern in CMS_PATTERNS.items():
+            if re.search(pattern, text, re.I):
+                cms_found = cms
+                break
+
+        # ----- Detect Card Patterns -----
+        card_found = []
+        security_found = []
+        for name, pattern in CARD_PATTERNS.items():
+            if re.search(pattern, text, re.I):
+                card_found.append(name)
+        for name, pattern in SECURITY_PATTERNS.items():
+            if re.search(pattern, text, re.I):
+                security_found.append(name)
+
+        # ----- Captcha & Cloudflare -----
+        captcha = "Detected" if "recaptcha" in text or "hcaptcha" in text else "No captcha detected"
+        cloud = "Cloudflare" if "cloudflare" in text else "None"
+
+        # ----- 2D/3D Security -----
+        security_level = "3D Secure ✅" if any(x.lower() in text for x in ["3d secure","3ds"]) else "2D (No 3D Secure Found ❌)"
+
+        # ----- Payment Gateways (empty for user to fill) -----
+        gateways = [
     # Major Global & Popular Gateways
     "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
     "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
@@ -4055,202 +4166,36 @@ PAYMENT_GATEWAYS = [
     "Primer", "TrueLayer", "GoCardless", "Modulr", "Currencycloud",
     "Volt", "Form3", "Banking Circle", "Mangopay", "Checkout Finland",
     "Vipps", "Swish", "MobilePay"
-]  # paste your full list here
+]
 
-CMS_PATTERNS = {
-    'Shopify': r'cdn\.shopify\.com|shopify\.js',
-    'BigCommerce': r'cdn\.bigcommerce\.com|bigcommerce\.com',
-    'Wix': r'static\.parastorage\.com|wix\.com',
-    'Squarespace': r'static1\.squarespace\.com|squarespace-cdn\.com',
-    'WooCommerce': r'wp-content/plugins/woocommerce/',
-    'Magento': r'static/version\d+/frontend/|magento/',
-    'PrestaShop': r'prestashop\.js|prestashop/',
-    'OpenCart': r'catalog/view/theme|opencart/',
-    'Shopify Plus': r'shopify-plus|cdn\.shopifycdn\.net/',
-    'Salesforce Commerce Cloud': r'demandware\.edgesuite\.net/',
-    'WordPress': r'wp-content|wp-includes/',
-    'Joomla': r'media/jui|joomla\.js',
-    'Drupal': r'sites/all/modules|drupal\.js/',
-    'Joomla': r'media/system/js|joomla\.javascript/',
-    'Drupal': r'sites/default/files|drupal\.settings\.js/',
-    'TYPO3': r'typo3temp|typo3/',
-    'Concrete5': r'concrete/js|concrete5/',
-    'Umbraco': r'umbraco/|umbraco\.config/',
-    'Sitecore': r'sitecore/content|sitecore\.js/',
-    'Kentico': r'cms/getresource\.ashx|kentico\.js/',
-    'Episerver': r'episerver/|episerver\.js/',
-    'Custom CMS': r'(?:<meta name="generator" content="([^"]+)")'
-}       # your CMS dict
-CARD_PATTERNS = {
-    'Visa': r'visa[^a-z]|cc-visa|vi-?card',
-    'Mastercard': r'master[ -]?card|mc-?card',
-    'Amex': r'amex|american.?express',
-    'Discover': r'discover/',
-    'JCB': r'jcb/',
-    'Maestro': r'maestro/',
-    'UnionPay': r'union.?pay/',
-    'Diners Club': r'diners.?club/',
-    'CVV': r'cvv|cvc|card.?verification.?value',
-    'Card Number': r'card.?number|cc.?number|credit.?card.?number',
-    'Expiry Date': r'expiry.?date|exp.?date|card.?expiration',
-    'Cardholder Name': r'cardholder.?name|name.?on.?card',
-    '3D Secure': r'3d.?secure|3.?d.?secure|verified.?by.?visa|mastercard.?securecode|secure.?code|3ds|three.?d.?secure',
-    'Credit Card Number': r'credit.?card.?number|ccn',
-    'Card Code': r'card.?code|security.?code',
-    'Card Verification Code': r'card.?verification.?code|cvc2',
-    'Card Identification Number': r'card.?identification.?number|cid',
-    'Card Issue Number': r'card.?issue.?number|issue.?number',
-    'Card Start Date': r'card.?start.?date|start.?date',
-    'Card Type': r'card.?type|credit|debit',
-    'Card Brand': r'card.?brand|visa|mastercard|amex|discover|jcb|maestro|unionpay|diners',
-    'Card Token': r'card.?token|payment.?token',
-    'Card Bin': r'card.?bin|bin.?number',
-    'Card Last Four Digits': r'last.?four.?digits|last4',
-    'Card Expiry Month': r'expiry.?month|exp.?month',
-    'Card Expiry Year': r'expiry.?year|exp.?year',
-}      # your Card dict
-SECURITY_PATTERNS = {
-    'GraphQL': r'graphql|__schema|query\s*{',
-    'GraphQL Endpoint': r'\/graphql|\/api\/graphql'
-}  # your Security dict
-CLOUD_SERVICES = ["cloudflare", "akamai", "imperva", "incapsula", "sucuri", "fastly"]
-
-
-def get_driver():
-    """Start headless Chrome with unique profile (avoid session clash)."""
-    chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-
-    temp_user_data = tempfile.mkdtemp()
-    chrome_options.add_argument(f"--user-data-dir={temp_user_data}")
-
-    service = Service("/usr/local/bin/chromedriver")  # adjust path if needed
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    return driver
-
-
-def fetch_site(url: str) -> str:
-    """Try requests first, fallback to Selenium if blocked."""
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        resp = requests.get(url, headers=headers, timeout=12)
-        resp.raise_for_status()
-        return resp.text
-    except Exception:
-        # fallback with selenium
-        driver = get_driver()
-        driver.get(url)
-        html = driver.page_source
-        driver.quit()
-        return html
-
-
-def detect_payment_gateways(html: str):
-    found = []
-    for g in PAYMENT_GATEWAYS:
-        if re.search(rf"\b{re.escape(g)}\b", html, re.I):
-            found.append(g)
-    return list(set(found))
-
-
-def detect_cms(html: str):
-    found = []
-    for cms, pattern in CMS_PATTERNS.items():
-        if re.search(pattern, html, re.I):
-            found.append(cms)
-    return found or ["Unknown"]
-
-
-def detect_card_security(html: str):
-    found = []
-    for name, pattern in CARD_PATTERNS.items():
-        if re.search(pattern, html, re.I):
-            found.append(name)
-    return found
-
-
-def detect_additional_security(html: str):
-    found = []
-    for name, pattern in SECURITY_PATTERNS.items():
-        if re.search(pattern, html, re.I):
-            found.append(name)
-    return found
-
-
-def detect_cloud(html: str, headers: dict):
-    for c in CLOUD_SERVICES:
-        if re.search(c, html, re.I):
-            return c
-    server_header = headers.get("server", "")
-    for c in CLOUD_SERVICES:
-        if c.lower() in server_header.lower():
-            return c
-    return None
-
-
-async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) == 0:
-        await update.message.reply_text("⚠️ Usage:\n`/gate https://example.com`", parse_mode="MarkdownV2")
-        return
-
-    url = context.args[0]
-    start_time = time.time()
-
-    msg = await update.message.reply_text("```\nProcessing site scan... 🔎\n```", parse_mode="MarkdownV2", disable_web_page_preview=True)
-
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        try:
-            resp = requests.get(url, headers=headers, timeout=12)
-            status_code = resp.status_code
-            html = resp.text
-        except Exception:
-            html = fetch_site(url)
-            status_code = 200
-
-        soup = BeautifulSoup(html, "html.parser")
-
-        # --- Detections ---
-        gateways = detect_payment_gateways(html)
-        cms = detect_cms(html)
-        card = detect_card_security(html)
-        extra_sec = detect_additional_security(html)
-        cloud = detect_cloud(html, resp.headers if 'resp' in locals() else {})
-
-        # 2D/3D Secure check
-        security_status = "3D Secure Detected ✅" if any("3D Secure" in c for c in card) else "2D (No 3D Secure Found ❌)"
-
-        process_time = time.time() - start_time
-
-        # Format Output (monospace + no link preview)
-        final_report = f"""
+        taken = round(time.time() - start, 2)
+        result = f"""
 ┏━━━━━━━⍟
 ┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ✅
 ┗━━━━━━━━━━━⊛
 
-[⸙] 𝐒𝐢𝐭𝐞 ➳ `{url}`
-[⸙] 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ `{", ".join(gateways) if gateways else "None"}`
-[⸙] 𝐂𝐌𝐒 ➳ `{", ".join(cms)}`
-[⸙] 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➳ `{"Detected" if "captcha" in html.lower() else "No captcha detected"}`
-[⸙] 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➳ `{cloud if cloud else "None"}`
+⸙ 𝐒𝐢𝐭𝐞 ➳ {site}
+⸙ 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ {', '.join(gateways)}
+⸙ 𝐂𝐌𝐒 ➳ {cms_found}
+⸙ 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➳ {captcha}
+⸙ 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➳ {cloud}
 ──────── ⸙ ─────────
-[⸙] 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ `{security_status}`
-[⸙] 𝐂𝐚𝐫𝐝 𝐃𝐞𝐭𝐚𝐢𝐥𝐬 ➳ `{", ".join(card) if card else "Unknown"}`
-[⸙] 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ `{", ".join(extra_sec) if extra_sec else "Not Detected"}`
-[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ `{status_code}`
+⸙ 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ {security_level}
+⸙ 𝐂𝐚𝐫𝐝 𝐃𝐞𝐭𝐚𝐢𝐥𝐬 ➳ {', '.join(card_found) if card_found else 'Unknown'}
+⸙ 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ {', '.join(security_found) if security_found else 'Not Detected'}
+⸙ 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status}
 ──────── ⸙ ─────────
-[⸙] 𝐑𝐞𝐪 𝐁𝐲 ⌁ `{update.effective_user.first_name}`
-[⸙] 𝐃𝐞𝐯 ⌁ ⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
-[⸙] 𝗧𝗶𝗺𝗲 ⌁ `{round(process_time,2)} seconds`
-"""
+⸙ 𝐑𝐞𝐪 𝐁𝐲 ⌁ {update.effective_user.first_name}
+⸙ 𝐃𝐞𝐯 ⌁ ⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
+⸙ 𝗧𝗶𝗺𝗲 ⌁ {taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬
+        """
 
-        await msg.edit_text(final_report, parse_mode="MarkdownV2", disable_web_page_preview=True)
+        await msg.edit_text(result, parse_mode="Markdown")
 
     except Exception as e:
-        await msg.edit_text(f"❌ Error: `{str(e)}`", parse_mode="MarkdownV2", disable_web_page_preview=True)
+        await msg.edit_text(f"❌ Error: {e}")
+
+
 
 
 
