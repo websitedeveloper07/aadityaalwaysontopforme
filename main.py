@@ -3770,22 +3770,40 @@ sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7
 sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36'''
 
 
+from html import escape
+from telegram.constants import ParseMode
+
+# --- Braintree Command ---
 async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Usage: `/b3 cc|mm|yyyy|cvv`", parse_mode="Markdown")
+        await update.message.reply_text(
+            "Usage: `/b3 cc|mm|yyyy|cvv`",
+            parse_mode="Markdown"
+        )
         return
 
+    user = update.effective_user
     cc_input = context.args[0]
+    full_card = cc_input
 
-    # Step 1: Send initial "processing" message
-    processing_msg = await update.message.reply_text(
-        f"**Processing...**\n"
-        f"💳 Gateway: `Braintree Premium Auth`\n"
-        f"⏳ Status: Checking",
-        parse_mode="Markdown"
+    BULLET_GROUP_LINK = "https://t.me/CARDER33"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+    # --- Initial processing message ---
+    processing_text = (
+        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+        f"<pre><code>{full_card}</code></pre>\n\n"
+        f"{bullet_link} <b>Gateway ➵ Braintree</b>\n"
+        f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
     )
 
-    # Step 2: Call API
+    processing_msg = await update.message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+
+    # --- Step 2: Call API ---
     params = {
         "key": API_KEY,
         "site": SITE,
@@ -3793,27 +3811,72 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "cc": cc_input
     }
 
-    async with aiohttp.ClientSession() as session:
-        try:
+    try:
+        async with aiohttp.ClientSession() as session:
             async with session.get(API_URL, params=params) as resp:
                 data = await resp.json()
-        except Exception as e:
-            await processing_msg.edit_text(f"❌ Error: `{e}`", parse_mode="Markdown")
-            return
+    except Exception as e:
+        await processing_msg.edit_text(
+            f"❌ Error: <code>{escape(str(e))}</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
 
-    # Step 3: Extract fields
+    # --- Step 3: Extract response ---
     cc = data.get("cc", cc_input)
-    response_text = data.get("response", "No response")
+    response = data.get("response", "No response")
     status = data.get("status", "UNKNOWN")
 
-    # Step 4: Update the message
-    await processing_msg.edit_text(
-        f"**Braintree Premium Auth**\n\n"
-        f"💳 Card: `{cc}`\n"
-        f"_Response_: {response_text}\n\n"
-        f"📌 Status: *{status}*",
-        parse_mode="Markdown"
+    # --- BIN lookup ---
+    try:
+        bin_number = cc[:6]
+        bin_details = await get_bin_info(bin_number)
+        brand = (bin_details.get("scheme") or "N/A").title()
+        issuer = bin_details.get("bank") or "N/A"
+        country_name = bin_details.get("country") or "Unknown"
+        country_flag = bin_details.get("country_emoji", "")
+    except Exception as e:
+        logger.warning(f"BIN lookup failed for {bin_number}: {e}")
+        brand = issuer = "N/A"
+        country_name = "Unknown"
+        country_flag = ""
+
+    # --- User info ---
+    full_name = " ".join(filter(None, [user.first_name, user.last_name]))
+    requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
+
+    DEVELOPER_NAME = "kคli liຖนxx"
+    DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+    developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+
+    # --- Final formatted message ---
+    final_msg = (
+        f"◇━━〔 <b>BRAINTREE</b> 〕━━◇\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Braintree Premium Auth\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{escape(response)}</i>\n"
+        "――――――――――――――――\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{escape(issuer)}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
+        "――――――――――――――――\n"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
+        "――――――――――――――――"
     )
+
+    try:
+        await processing_msg.edit_text(
+            final_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+    except Exception as e:
+        logger.exception("Error editing final message")
+        await update.message.reply_text(
+            f"❌ Error: <code>{escape(str(e))}</code>",
+            parse_mode=ParseMode.HTML
+        )
 
 
 
