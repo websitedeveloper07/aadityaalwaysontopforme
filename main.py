@@ -3970,6 +3970,150 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 
 
 
+import re
+import requests
+from bs4 import BeautifulSoup
+from telegram import Update
+from telegram.ext import ContextTypes
+
+# 🌍 Comprehensive Global Payment Gateways List
+PAYMENT_GATEWAYS = [
+    # --- Global ---
+    "stripe", "paypal", "braintree", "adyen", "checkout.com", "worldpay",
+    "skrill", "square", "authorize.net", "cybersource", "2checkout",
+    "klarna", "afterpay", "affirm", "sezzle", "zip pay",
+    "amazon pay", "apple pay", "google pay", "samsung pay",
+
+    # --- Asia ---
+    "razorpay", "paytm", "ccavenue", "payu", "instamojo", "cashfree", "billdesk",
+    "alipay", "wechat pay", "unionpay", "line pay", "rakuten pay", "konbini",
+    "tenpay", "paymaya", "gcash", "dragonpay", "momo wallet", "grabpay",
+
+    # --- Europe ---
+    "giropay", "sofort", "ideal", "bancontact", "multibanco", "trustly",
+    "paysafecard", "eps", "postepay", "blik", "przelewy24", "mb way",
+
+    # --- Middle East & Africa ---
+    "fawry", "payfort", "tap payments", "mada", "stc pay", "qpay",
+    "mpesa", "pesapal", "flutterwave", "dpo group", "cellulant", "interswitch",
+
+    # --- Americas ---
+    "venmo", "zelle", "plaid", "chase pay", "paypal zettle",
+    "mercadopago", "pagseguro", "ebanx", "boleto bancario", "oxxo pay",
+    "pse pagos", "todito cash", "cabal", "redpagos",
+
+    # --- Russia & CIS ---
+    "qiwi", "yandex money", "webmoney", "tinkoff pay", "sberpay",
+
+    # --- Crypto ---
+    "bitpay", "coinpayments", "coingate", "cryptopay", "moonpay", "ramp network"
+]
+
+# ☁️ Cloud/CDN Detection Keywords
+CLOUD_SERVICES = ["cloudflare", "akamai", "imperva", "incapsula", "sucuri", "fastly"]
+
+
+async def detect_features(url: str) -> dict:
+    headers = {"User-Agent": "Mozilla/5.0"}
+    result = {
+        "payment_gateways": [],
+        "captcha": False,
+        "cvv_fields": False,
+        "cloud_protection": False,
+    }
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=12)
+        resp.raise_for_status()
+        html = resp.text
+        soup = BeautifulSoup(html, "html.parser")
+    except Exception as e:
+        return {"error": str(e)}
+
+    # --- Payment Gateways (HTML + inline JS) ---
+    for g in PAYMENT_GATEWAYS:
+        if re.search(rf"\b{re.escape(g)}\b", html, re.I):
+            result["payment_gateways"].append(g)
+
+    # --- Scan linked JS files too ---
+    js_links = [tag["src"] for tag in soup.find_all("script", src=True)]
+    for js_url in js_links:
+        if not js_url.startswith("http"):
+            if js_url.startswith("/"):
+                js_url = url.rstrip("/") + js_url
+            else:
+                continue
+        try:
+            js_resp = requests.get(js_url, headers=headers, timeout=8)
+            js_text = js_resp.text
+            for g in PAYMENT_GATEWAYS:
+                if g not in result["payment_gateways"] and re.search(rf"\b{re.escape(g)}\b", js_text, re.I):
+                    result["payment_gateways"].append(g)
+        except:
+            pass
+
+    # --- Captcha detection ---
+    if (
+        soup.find("div", {"class": re.compile(r"captcha", re.I)}) or
+        soup.find("iframe", {"src": re.compile(r"captcha", re.I)}) or
+        "g-recaptcha" in html or "hcaptcha" in html
+    ):
+        result["captcha"] = True
+
+    # --- CVV / Card Security Fields ---
+    if (
+        soup.find("input", {"name": re.compile(r"cvv|cvc|security", re.I)}) or
+        soup.find("input", {"id": re.compile(r"cvv|cvc|security", re.I)})
+    ):
+        result["cvv_fields"] = True
+
+    # --- Cloud Protection (via HTML + headers) ---
+    for c in CLOUD_SERVICES:
+        if re.search(c, html, re.I):
+            result["cloud_protection"] = True
+            break
+
+    server_header = resp.headers.get("server", "")
+    if any(c.lower() in server_header.lower() for c in CLOUD_SERVICES):
+        result["cloud_protection"] = True
+
+    return result
+
+
+# 🚀 Telegram /gate Command
+async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) == 0:
+        await update.message.reply_text("⚠️ Usage:\n`/gate https://example.com`", parse_mode="Markdown")
+        return
+
+    url = context.args[0]
+    msg = await update.message.reply_text("```\nProcessing site scan... 🔎\n```", parse_mode="Markdown")
+
+    results = await detect_features(url)
+
+    if "error" in results:
+        await msg.edit_text(f"❌ Error: `{results['error']}`", parse_mode="Markdown")
+        return
+
+    gateways = ", ".join(results["payment_gateways"]) if results["payment_gateways"] else "None Found"
+
+    final_report = f"""
+🔍 **Scan Report for {url}**
+
+💳 **Payment Gateways:**  
+`{gateways}`
+
+🧩 **Captcha Detected:**  
+`{"Yes" if results["captcha"] else "No"}`
+
+🔐 **CVV/Security Fields:**  
+`{"Yes" if results["cvv_fields"] else "No"}`
+
+☁️ **Cloud Protection (CDN/WAF):**  
+`{"Yes" if results["cloud_protection"] else "No"}`
+"""
+
+    await msg.edit_text(final_report, parse_mode="Markdown")
 
 
 
@@ -4672,6 +4816,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("fk", force_join(fk_command)))
     application.add_handler(CommandHandler("vbv", force_join(vbv)))
     application.add_handler(CommandHandler("b3", b3))
+    application.add_handler(CommandHandler("gate", gate_command))
     application.add_handler(CommandHandler("fl", force_join(fl_command)))
     application.add_handler(CommandHandler("status", force_join(status_command)))
     application.add_handler(CommandHandler("redeem", force_join(redeem_command)))
