@@ -3970,193 +3970,179 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 
 
 
-import aiohttp
 import asyncio
-import time
-import re
-from urllib.parse import urlparse
-from bs4 import BeautifulSoup
 from telegram import Update
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, CommandHandler
+import aiohttp
+from bs4 import BeautifulSoup
 
-# ---------------- CMS / Card / Security Patterns ---------------- #
-CMS_PATTERNS = {
-    'Shopify': r'cdn\.shopify\.com|shopify\.js',
-    'BigCommerce': r'cdn\.bigcommerce\.com|bigcommerce\.com',
-    'Wix': r'static\.parastorage\.com|wix\.com',
-    'Squarespace': r'static1\.squarespace\.com|squarespace-cdn\.com',
-    'WooCommerce': r'wp-content/plugins/woocommerce/',
-    'Magento': r'static/version\d+/frontend/|magento/',
-    'PrestaShop': r'prestashop\.js|prestashop/',
-    'OpenCart': r'catalog/view/theme|opencart/',
-    'Shopify Plus': r'shopify-plus|cdn\.shopifycdn\.net/',
-    'Salesforce Commerce Cloud': r'demandware\.edgesuite\.net/',
-    'WordPress': r'wp-content|wp-includes/',
-    'Joomla': r'media/jui|joomla\.js|media/system/js|joomla\.javascript/',
-    'Drupal': r'sites/all/modules|drupal\.js/|sites/default/files|drupal\.settings\.js/',
-    'TYPO3': r'typo3temp|typo3/',
-    'Concrete5': r'concrete/js|concrete5/',
-    'Umbraco': r'umbraco/|umbraco\.config/',
-    'Sitecore': r'sitecore/content|sitecore\.js/',
-    'Kentico': r'cms/getresource\.ashx|kentico\.js/',
-    'Episerver': r'episerver/|episerver\.js/',
-    'Custom CMS': r'(?:<meta name="generator" content="([^"]+)")'
-}
+# Selenium imports for JS-heavy pages
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
 
-CARD_PATTERNS = {
-    'Visa': r'visa[^a-z]|cc-visa|vi-?card',
-    'Mastercard': r'master[ -]?card|mc-?card',
-    'Amex': r'amex|american.?express',
-    'Discover': r'discover/',
-    'JCB': r'jcb/',
-    'Maestro': r'maestro/',
-    'UnionPay': r'union.?pay/',
-    'Diners Club': r'diners.?club/',
-    'CVV': r'cvv|cvc|card.?verification.?value',
-    'Card Number': r'card.?number|cc.?number|credit.?card.?number',
-    'Expiry Date': r'expiry.?date|exp.?date|card.?expiration',
-    'Cardholder Name': r'cardholder.?name|name.?on.?card',
-    '3D Secure': r'3d.?secure|3.?d.?secure|verified.?by.?visa|mastercard.?securecode|secure.?code|3ds|three.?d.?secure'
-}
+# List of gateways to check
+GATEWAYS = [
+    # Major Global & Popular Gateways
+    "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
+    "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
+    "Checkout.com", "Bolt", "Eway", "PayFlow", "Payeezy",
+    "Paddle", "Mollie", "Viva Wallet", "Rocketgateway", "Rocketgate",
+    "Rocket", "Auth.net", "Authnet", "rocketgate.com", "Recurly",
 
-SECURITY_PATTERNS = {
-    'GraphQL': r'graphql|__schema|query\s*{',
-    'GraphQL Endpoint': r'\/graphql|\/api\/graphql'
-}
+    # E-commerce Platforms
+    "Shopify", "WooCommerce", "BigCommerce", "Magento", "Magento Payments",
+    "OpenCart", "PrestaShop", "3DCart", "Ecwid", "Shift4Shop",
+    "Shopware", "VirtueMart", "CS-Cart", "X-Cart", "LemonStand",
 
-# ---------------- Headers Builder ---------------- #
-def build_headers(url: str):
-    if not url.startswith(("http://", "https://")):
-        url = "https://" + url
-    domain = urlparse(url).netloc
+    # Additional Payment Solutions
+    "AVS", "Convergepay", "PaySimple", "oceanpayments", "eProcessing",
+    "hipay", "cybersourse", "payjunction", "usaepay", "creo",
+    "SquareUp", "ebizcharge", "cpay", "Moneris", "cardknox",
+    "matt sorra", "Chargify", "Paytrace", "hostedpayments", "securepay",
+    "blackbaud", "LawPay", "clover", "cardconnect", "bluepay",
+    "fluidpay", "Ebiz", "chasepaymentech", "Auruspay", "sagepayments",
+    "paycomet", "geomerchant", "realexpayments", "Razorpay",
+
+    # Digital Wallets & Payment Apps
+    "Apple Pay", "Google Pay", "Samsung Pay", "Venmo", "Cash App",
+    "Revolut", "Zelle", "Alipay", "WeChat Pay", "PayPay", "Line Pay",
+    "Skrill", "Neteller", "WebMoney", "Payoneer", "Paysafe",
+    "Payeer", "GrabPay", "PayMaya", "MoMo", "TrueMoney",
+    "Touch n Go", "GoPay", "Dana", "JKOPay", "EasyPaisa",
+
+    # Regional & Country Specific
+    "Paytm", "UPI", "PayU", "CCAvenue",
+    "Mercado Pago", "PagSeguro", "Yandex.Checkout", "PayFort", "MyFatoorah",
+    "Kushki", "DLocal", "RuPay", "BharatPe", "Midtrans", "MOLPay",
+    "iPay88", "KakaoPay", "Toss Payments", "NaverPay", "OVO", "GCash",
+    "Bizum", "Culqi", "Pagar.me", "Rapyd", "PayKun", "Instamojo",
+    "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "Atom", "BillDesk",
+    "Citrus Pay", "RazorpayX", "Cashfree", "PayUbiz", "EBS",
+
+    # Buy Now Pay Later
+    "Klarna", "Affirm", "Afterpay", "Zip", "Sezzle",
+    "Splitit", "Perpay", "Quadpay", "Laybuy", "Openpay",
+    "Atome", "Cashalo", "Hoolah", "Pine Labs", "ChargeAfter",
+
+    # Cryptocurrency
+    "BitPay", "Coinbase Commerce", "CoinGate", "CoinPayments", "Crypto.com Pay",
+    "BTCPay Server", "NOWPayments", "OpenNode", "Utrust", "MoonPay",
+    "Binance Pay", "CoinsPaid", "BitGo", "Flexa", "Circle",
+
+    # European Payment Methods
+    "iDEAL", "Giropay", "Sofort", "Bancontact", "Przelewy24",
+    "EPS", "Multibanco", "Trustly", "PPRO", "EcoPayz",
+
+    # Enterprise Solutions
+    "ACI Worldwide", "Bank of America Merchant Services",
+    "JP Morgan Payment Services", "Wells Fargo Payment Solutions",
+    "Deutsche Bank Payments", "Barclaycard", "American Express Payment Gateway",
+    "Discover Network", "UnionPay", "JCB Payment Gateway",
+
+    # New Payment Technologies
+    "Plaid", "Stripe Terminal", "Square Terminal", "Adyen Terminal",
+    "Toast POS", "Lightspeed Payments", "Poynt", "PAX",
+    "SumUp", "iZettle", "Tyro", "Vend", "ShopKeep", "Revel",
+
+    # Additional Payment Solutions
+    "HiPay", "Dotpay", "PayBox", "PayStack", "Flutterwave",
+    "Opayo", "MultiSafepay", "PayXpert", "Bambora", "RedSys",
+    "NPCI", "JazzCash", "Blik", "PagBank", "VibePay", "Mode",
+    "Primer", "TrueLayer", "GoCardless", "Modulr", "Currencycloud",
+    "Volt", "Form3", "Banking Circle", "Mangopay", "Checkout Finland",
+    "Vipps", "Swish", "MobilePay"
+]
+
+# Async function for basic HTML scraping
+async def detect_gateways_aiohttp(url):
+    detected = []
     headers = {
-        "authority": domain,
-        "scheme": "https",
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "accept-language": "en-US,en;q=0.9",
-        "cache-control": "max-age=0",
-        "sec-ch-ua": '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
-        "sec-ch-ua-mobile": "?1",
-        "sec-ch-ua-platform": '"Android"',
-        "sec-fetch-dest": "document",
-        "sec-fetch-mode": "navigate",
-        "sec-fetch-site": "none",
-        "sec-fetch-user": "?1",
-        "upgrade-insecure-requests": "1",
-        "user-agent": (
-            "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/140.0.0.0 Mobile Safari/537.36"
-        ),
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/140.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
     }
-    return headers, url
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=20) as resp:
+                html = await resp.text()
+                soup = BeautifulSoup(html, "html.parser")
+                
+                for gateway in GATEWAYS:
+                    if gateway.lower() in html.lower():
+                        detected.append(gateway.title())
+                
+                # Detect custom credit card forms
+                forms = soup.find_all("form")
+                for form in forms:
+                    if form.find("input", {"name": "cardnumber"}) or form.find("input", {"name": "cvv"}):
+                        if "Custom Credit Card" not in detected:
+                            detected.append("Custom Credit Card")
+                
+                return detected if detected else ["None Detected"]
+    except Exception as e:
+        return [f"Error: {e}"]
 
-# ---------------- /gate Function ---------------- #
-async def gate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Selenium-based detection for JS-heavy sites
+def detect_gateways_selenium(url):
+    detected = []
+    try:
+        options = Options()
+        options.add_argument("--headless")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        driver = webdriver.Chrome(options=options)
+        driver.get(url)
+        time.sleep(5)  # Wait for JS to load
+
+        html = driver.page_source
+
+        for gateway in GATEWAYS:
+            if gateway.lower() in html.lower():
+                detected.append(gateway.title())
+
+        forms = driver.find_elements(By.TAG_NAME, "form")
+        for form in forms:
+            if form.get_attribute("innerHTML"):
+                inner_html = form.get_attribute("innerHTML").lower()
+                if "cardnumber" in inner_html or "cvv" in inner_html:
+                    if "Custom Credit Card" not in detected:
+                        detected.append("Custom Credit Card")
+        driver.quit()
+        return detected if detected else ["None Detected"]
+    except Exception as e:
+        return [f"Error: {e}"]
+
+# Telegram /gate command
+async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("⚠️ Usage: /gate <site_url>")
         return
 
-    site = context.args[0]
-    headers, site = build_headers(site)
-    msg = await update.message.reply_text(f"🔎 Scanning {site} ...\nPlease wait ⏳", parse_mode="Markdown")
-    start = time.time()
+    url = context.args[0].strip()
+    if not url.startswith("http"):
+        url = "https://" + url
 
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(site, headers=headers, timeout=15) as resp:
-                status = resp.status
-                html = await resp.text()
+    msg = await update.message.reply_text(f"🔍 Scanning {url} ...")
 
-        soup = BeautifulSoup(html, "html.parser")
-        text = html.lower()
+    # First try aiohttp detection
+    gateways = await detect_gateways_aiohttp(url)
 
-        # ----- Detect CMS -----
-        cms_found = "Unknown"
-        for cms, pattern in CMS_PATTERNS.items():
-            if re.search(pattern, text, re.I):
-                cms_found = cms
-                break
+    # If nothing found or Cloudflare/JS site, try Selenium
+    if "None Detected" in gateways or "Error" in gateways[0]:
+        gateways = detect_gateways_selenium(url)
 
-        # ----- Detect Card Patterns -----
-        card_found = []
-        security_found = []
-        for name, pattern in CARD_PATTERNS.items():
-            if re.search(pattern, text, re.I):
-                card_found.append(name)
-        for name, pattern in SECURITY_PATTERNS.items():
-            if re.search(pattern, text, re.I):
-                security_found.append(name)
+    response = f"┏━━━━━━━⍟\n┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ✅\n┗━━━━━━━━━━━⊛\n\n"
+    response += f"⸙ 𝐒𝐢𝐭𝐞 ➳ {url}\n"
+    response += f"⸙ 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ {', '.join(gateways)}\n"
+    await msg.edit_text(response)
 
-        # ----- Captcha & Cloudflare -----
-        captcha = "Detected" if "recaptcha" in text or "hcaptcha" in text else "No captcha detected"
-        cloud = "Cloudflare" if "cloudflare" in text else "None"
+# To add handler in your bot:
+# application.add_handler(CommandHandler("gate", gate_command))
 
-        # ----- 2D/3D Security -----
-        security_level = "3D Secure ✅" if any(x.lower() in text for x in ["3d secure","3ds"]) else "2D (No 3D Secure Found ❌)"
-
-        # ----- Payment Gateways (full list) -----
-        gateways = [
-            "PayPal","Stripe","Braintree","Square","Cybersource","lemon-squeezy","Authorize.Net",
-            "2Checkout","Adyen","Worldpay","SagePay","Checkout.com","Bolt","Eway","PayFlow",
-            "Payeezy","Paddle","Mollie","Viva Wallet","Rocketgateway","Rocketgate","Auth.net",
-            "Recurly","Shopify","WooCommerce","BigCommerce","Magento","OpenCart","PrestaShop",
-            "3DCart","Ecwid","Shift4Shop","Shopware","VirtueMart","CS-Cart","X-Cart","LemonStand",
-            "AVS","Convergepay","PaySimple","oceanpayments","eProcessing","hipay","payjunction",
-            "usaepay","creo","SquareUp","ebizcharge","cpay","Moneris","cardknox","Chargify",
-            "Paytrace","hostedpayments","securepay","blackbaud","LawPay","clover","cardconnect",
-            "bluepay","fluidpay","Ebiz","chasepaymentech","Auruspay","sagepayments","paycomet",
-            "geomerchant","realexpayments","Razorpay","Apple Pay","Google Pay","Samsung Pay",
-            "Venmo","Cash App","Revolut","Zelle","Alipay","WeChat Pay","PayPay","Line Pay",
-            "Skrill","Neteller","WebMoney","Payoneer","Paysafe","Payeer","GrabPay","PayMaya",
-            "MoMo","TrueMoney","Touch n Go","GoPay","Dana","JKOPay","EasyPaisa","Paytm","UPI",
-            "PayU","CCAvenue","Mercado Pago","PagSeguro","Yandex.Checkout","PayFort","MyFatoorah",
-            "Kushki","DLocal","RuPay","BharatPe","Midtrans","MOLPay","iPay88","KakaoPay",
-            "Toss Payments","NaverPay","OVO","GCash","Bizum","Culqi","Pagar.me","Rapyd",
-            "PayKun","Instamojo","PhonePe","BharatQR","Freecharge","Mobikwik","Atom","BillDesk",
-            "Citrus Pay","RazorpayX","Cashfree","PayUbiz","EBS","Klarna","Affirm","Afterpay",
-            "Zip","Sezzle","Splitit","Perpay","Quadpay","Laybuy","Openpay","Atome","Cashalo",
-            "Hoolah","Pine Labs","ChargeAfter","BitPay","Coinbase Commerce","CoinGate","CoinPayments",
-            "Crypto.com Pay","BTCPay Server","NOWPayments","OpenNode","Utrust","MoonPay",
-            "Binance Pay","CoinsPaid","BitGo","Flexa","Circle","iDEAL","Giropay","Sofort",
-            "Bancontact","Przelewy24","EPS","Multibanco","Trustly","PPRO","EcoPayz",
-            "ACI Worldwide","Bank of America Merchant Services","JP Morgan Payment Services",
-            "Wells Fargo Payment Solutions","Deutsche Bank Payments","Barclaycard",
-            "American Express Payment Gateway","Discover Network","UnionPay","JCB Payment Gateway",
-            "Plaid","Stripe Terminal","Square Terminal","Adyen Terminal","Toast POS",
-            "Lightspeed Payments","Poynt","PAX","SumUp","iZettle","Tyro","Vend","ShopKeep",
-            "Revel","HiPay","Dotpay","PayBox","PayStack","Flutterwave","Opayo","MultiSafepay",
-            "PayXpert","Bambora","RedSys","NPCI","JazzCash","Blik","PagBank","VibePay","Mode",
-            "Primer","TrueLayer","GoCardless","Modulr","Currencycloud","Volt","Form3",
-            "Banking Circle","Mangopay","Checkout Finland","Vipps","Swish","MobilePay"
-        ]
-
-        taken = round(time.time() - start, 2)
-        result = f"""
-┏━━━━━━━⍟
-┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ✅
-┗━━━━━━━━━━━⊛
-
-⸙ 𝐒𝐢𝐭𝐞 ➳ {site}
-⸙ 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ {', '.join(gateways)}
-⸙ 𝐂𝐌𝐒 ➳ {cms_found}
-⸙ 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➳ {captcha}
-⸙ 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➳ {cloud}
-──────── ⸙ ─────────
-⸙ 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ {security_level}
-⸙ 𝐂𝐚𝐫𝐝 𝐃𝐞𝐭𝐚𝐢𝐥𝐬 ➳ {', '.join(card_found) if card_found else 'Unknown'}
-⸙ 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ {', '.join(security_found) if security_found else 'Not Detected'}
-⸙ 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {status}
-──────── ⸙ ─────────
-⸙ 𝐑𝐞𝐪 𝐁𝐲 ⌁ {update.effective_user.first_name}
-⸙ 𝐃𝐞𝐯 ⌁ ⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
-⸙ 𝗧𝗶𝗺𝗲 ⌁ {taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬
-        """
-
-        await msg.edit_text(result, parse_mode="Markdown")
-
-    except Exception as e:
-        await msg.edit_text(f"❌ Error: {e}")
 
 
 
