@@ -3747,7 +3747,7 @@ from telegram.ext import ContextTypes
 from db import get_user, update_user  # credit system
 
 logger = logging.getLogger(__name__)
-
+BASE_COOLDOWN = 20  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
 SITE = "https://apluscollectibles.com"
@@ -3800,14 +3800,17 @@ sbjs_session=pgs%3D9%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fadd-pay
 
 cookie_index = 0
 
+# --- Cooldown tracker (per-user) ---
+user_last_command_time = {}
+COOLDOWN_SECONDS = BASE_COOLDOWN // len(COOKIES_LIST)  # e.g., 3 cookies → ~6s cooldown
+
+# --- Rotate cookies ---
 def get_next_cookie():
     global cookie_index
     cookie = COOKIES_LIST[cookie_index]
-    cookie_index = (cookie_index + 1) % len(COOKIES_LIST)  # rotate cookies
+    cookie_index = (cookie_index + 1) % len(COOKIES_LIST)  # rotate
     return cookie
 
-# Adjust cooldown dynamically based on cookie count
-COOLDOWN_SECONDS = BASE_COOLDOWN // len(COOKIES_LIST)  # e.g., 2 cookies → 10s
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
@@ -3821,8 +3824,9 @@ async def consume_credit(user_id: int) -> bool:
         logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
     return False
 
-# --- Command Handler (/b3) ---
-async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+# --- /b3 Command ---
+async def b3(update: Update, context):
     user = update.effective_user
     user_id = user.id
     current_time = time.time()
@@ -3831,9 +3835,9 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text(
             "Usage: `/b3 cc|mm|yyyy|cvv`",
-            parse_mode="Markdown"
+            parse_mode=ParseMode.MARKDOWN
         )
-        return  # no cooldown if no args
+        return  # no cooldown
 
     # --- Cooldown check ---
     if user_id in user_last_command_time:
@@ -3867,7 +3871,7 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-    # --- Run check in background ---
+    # --- Run in background ---
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
 
 # --- Background Task ---
