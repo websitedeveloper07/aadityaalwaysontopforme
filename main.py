@@ -3970,20 +3970,46 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 
 
 
+import re
+import aiohttp
 import asyncio
+from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
-import aiohttp
-from bs4 import BeautifulSoup
 
-# Selenium imports for JS-heavy pages
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-import time
+# CMS patterns
+CMS_PATTERNS = {
+    'Shopify': r'cdn\.shopify\.com|shopify\.js',
+    'BigCommerce': r'cdn\.bigcommerce\.com|bigcommerce\.com',
+    'Wix': r'static\.parastorage\.com|wix\.com',
+    'Squarespace': r'static1\.squarespace\.com|squarespace-cdn\.com',
+    'WooCommerce': r'wp-content/plugins/woocommerce/',
+    'Magento': r'static/version\d+/frontend/|magento/',
+    'PrestaShop': r'prestashop\.js|prestashop/',
+    'OpenCart': r'catalog/view/theme|opencart/',
+    'Shopify Plus': r'shopify-plus|cdn\.shopifycdn\.net/',
+    'Salesforce Commerce Cloud': r'demandware\.edgesuite\.net/',
+    'WordPress': r'wp-content|wp-includes/',
+    'Joomla': r'media/jui|joomla\.js',
+    'Drupal': r'sites/all/modules|drupal\.js/',
+    'Joomla': r'media/system/js|joomla\.javascript/',
+    'Drupal': r'sites/default/files|drupal\.settings\.js/',
+    'TYPO3': r'typo3temp|typo3/',
+    'Concrete5': r'concrete/js|concrete5/',
+    'Umbraco': r'umbraco/|umbraco\.config/',
+    'Sitecore': r'sitecore/content|sitecore\.js/',
+    'Kentico': r'cms/getresource\.ashx|kentico\.js/',
+    'Episerver': r'episerver/|episerver\.js/',
+    'Custom CMS': r'(?:<meta name="generator" content="([^"]+)")'
+}
 
-# List of gateways to check
-GATEWAYS = [
+# Security patterns
+SECURITY_PATTERNS = {
+    '3D Secure': r'3d_secure|threed_secure|secure_redirect',
+}
+
+# Example list of gateways (add your own)
+PAYMENT_GATEWAYS = [
     # Major Global & Popular Gateways
     "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
     "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
@@ -4055,92 +4081,103 @@ GATEWAYS = [
     "Vipps", "Swish", "MobilePay"
 ]
 
-# Async function for basic HTML scraping
-async def detect_gateways_aiohttp(url):
-    detected = []
+async def fetch_site(url: str):
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/140.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
+        "authority": domain,
+        "scheme": "https",
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "accept-language": "en-US,en;q=0.9",
+        "cache-control": "max-age=0",
+        "sec-ch-ua": '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
+        "sec-ch-ua-mobile": "?1",
+        "sec-ch-ua-platform": '"Android"',
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+        "sec-fetch-user": "?1",
+        "upgrade-insecure-requests": "1",
+        "user-agent": (
+            "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/140.0.0.0 Mobile Safari/537.36"
     }
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=20) as resp:
-                html = await resp.text()
-                soup = BeautifulSoup(html, "html.parser")
-                
-                for gateway in GATEWAYS:
-                    if gateway.lower() in html.lower():
-                        detected.append(gateway.title())
-                
-                # Detect custom credit card forms
-                forms = soup.find_all("form")
-                for form in forms:
-                    if form.find("input", {"name": "cardnumber"}) or form.find("input", {"name": "cvv"}):
-                        if "Custom Credit Card" not in detected:
-                            detected.append("Custom Credit Card")
-                
-                return detected if detected else ["None Detected"]
-    except Exception as e:
-        return [f"Error: {e}"]
+    async with aiohttp.ClientSession(headers=headers) as session:
+        try:
+            async with session.get(url, timeout=15) as resp:
+                text = await resp.text()
+                return resp.status, text
+        except Exception:
+            return None, None
 
-# Selenium-based detection for JS-heavy sites
-def detect_gateways_selenium(url):
+def detect_cms(html: str):
+    for cms, pattern in CMS_PATTERNS.items():
+        if re.search(pattern, html, re.IGNORECASE):
+            return cms
+    return "Unknown"
+
+def detect_security(html: str):
+    for name, pattern in SECURITY_PATTERNS.items():
+        if re.search(pattern, html, re.IGNORECASE):
+            return "3D Secure Detected ✅"
+    return "2D (No 3D Secure Found ❌)"
+
+def detect_gateways(html: str):
     detected = []
-    try:
-        options = Options()
-        options.add_argument("--headless")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
-        driver = webdriver.Chrome(options=options)
-        driver.get(url)
-        time.sleep(5)  # Wait for JS to load
+    for gateway in PAYMENT_GATEWAYS:
+        if re.search(gateway, html, re.IGNORECASE):
+            detected.append(gateway)
+    if not detected:
+        return "None Detected"
+    return ", ".join(detected)
 
-        html = driver.page_source
+def detect_captcha(html: str):
+    if re.search(r'captcha|recaptcha', html, re.IGNORECASE):
+        return "Captcha Detected ✅"
+    return "No captcha detected"
 
-        for gateway in GATEWAYS:
-            if gateway.lower() in html.lower():
-                detected.append(gateway.title())
+def detect_cloudflare(html: str):
+    if "cloudflare" in html.lower():
+        return "Cloudflare Detected ✅"
+    return "None"
 
-        forms = driver.find_elements(By.TAG_NAME, "form")
-        for form in forms:
-            if form.get_attribute("innerHTML"):
-                inner_html = form.get_attribute("innerHTML").lower()
-                if "cardnumber" in inner_html or "cvv" in inner_html:
-                    if "Custom Credit Card" not in detected:
-                        detected.append("Custom Credit Card")
-        driver.quit()
-        return detected if detected else ["None Detected"]
-    except Exception as e:
-        return [f"Error: {e}"]
-
-# Telegram /gate command
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("⚠️ Usage: /gate <site_url>")
+        await update.message.reply_text("Usage: /gate <site_url>")
+        return
+    
+    url = context.args[0]
+    status, html = await fetch_site(url)
+
+    if not html:
+        await update.message.reply_text(f"❌ Error: Cannot access `{url}`")
         return
 
-    url = context.args[0].strip()
-    if not url.startswith("http"):
-        url = "https://" + url
+    cms = detect_cms(html)
+    security = detect_security(html)
+    gateways = detect_gateways(html)
+    captcha = detect_captcha(html)
+    cloudflare = detect_cloudflare(html)
 
-    msg = await update.message.reply_text(f"🔍 Scanning {url} ...")
+    # Telegram-friendly output with monospace for values
+    message = f"""
+◇━━〔 Lookup Results 〕━━◇
+[⌇] Site ➵ `{url}`
+[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲s ➵ `{gateways}`
+[⌇] 𝐂𝐌𝐒 ➵ `{cms}`
+――――――――――――――――
+[⌇] 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{captcha}`
+[⌇] 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ `{cloudflare}`
+[⌇] 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `{security}`
+――――――――――――――――
+[⌇] 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `Not Detected`
+[⌇] 𝐒𝐭𝐚𝐭𝐮𝐬 ➵ `{status}`
+――――――――――――――――
+[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ `{update.effective_user.first_name}`
+[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ `kคli liຖนxx`
+"""
+    await update.message.reply_text(message, parse_mode="MarkdownV2")
 
-    # First try aiohttp detection
-    gateways = await detect_gateways_aiohttp(url)
-
-    # If nothing found or Cloudflare/JS site, try Selenium
-    if "None Detected" in gateways or "Error" in gateways[0]:
-        gateways = detect_gateways_selenium(url)
-
-    response = f"┏━━━━━━━⍟\n┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ✅\n┗━━━━━━━━━━━⊛\n\n"
-    response += f"⸙ 𝐒𝐢𝐭𝐞 ➳ {url}\n"
-    response += f"⸙ 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ {', '.join(gateways)}\n"
-    await msg.edit_text(response)
-
-# To add handler in your bot:
+# To register the command in your bot
 # application.add_handler(CommandHandler("gate", gate_command))
 
 
