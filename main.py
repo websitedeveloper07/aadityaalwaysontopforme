@@ -4095,78 +4095,41 @@ async def gate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # ----- 2D/3D Security -----
         security_level = "3D Secure ✅" if any(x.lower() in text for x in ["3d secure","3ds"]) else "2D (No 3D Secure Found ❌)"
 
-        # ----- Payment Gateways (empty for user to fill) -----
+        # ----- Payment Gateways (full list) -----
         gateways = [
-    # Major Global & Popular Gateways
-    "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
-    "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
-    "Checkout.com", "Bolt", "Eway", "PayFlow", "Payeezy",
-    "Paddle", "Mollie", "Viva Wallet", "Rocketgateway", "Rocketgate",
-    "Rocket", "Auth.net", "Authnet", "rocketgate.com", "Recurly",
-
-    # E-commerce Platforms
-    "Shopify", "WooCommerce", "BigCommerce", "Magento", "Magento Payments",
-    "OpenCart", "PrestaShop", "3DCart", "Ecwid", "Shift4Shop",
-    "Shopware", "VirtueMart", "CS-Cart", "X-Cart", "LemonStand",
-
-    # Additional Payment Solutions
-    "AVS", "Convergepay", "PaySimple", "oceanpayments", "eProcessing",
-    "hipay", "cybersourse", "payjunction", "usaepay", "creo",
-    "SquareUp", "ebizcharge", "cpay", "Moneris", "cardknox",
-    "matt sorra", "Chargify", "Paytrace", "hostedpayments", "securepay",
-    "blackbaud", "LawPay", "clover", "cardconnect", "bluepay",
-    "fluidpay", "Ebiz", "chasepaymentech", "Auruspay", "sagepayments",
-    "paycomet", "geomerchant", "realexpayments", "Razorpay",
-
-    # Digital Wallets & Payment Apps
-    "Apple Pay", "Google Pay", "Samsung Pay", "Venmo", "Cash App",
-    "Revolut", "Zelle", "Alipay", "WeChat Pay", "PayPay", "Line Pay",
-    "Skrill", "Neteller", "WebMoney", "Payoneer", "Paysafe",
-    "Payeer", "GrabPay", "PayMaya", "MoMo", "TrueMoney",
-    "Touch n Go", "GoPay", "Dana", "JKOPay", "EasyPaisa",
-
-    # Regional & Country Specific
-    "Paytm", "UPI", "PayU", "CCAvenue",
-    "Mercado Pago", "PagSeguro", "Yandex.Checkout", "PayFort", "MyFatoorah",
-    "Kushki", "DLocal", "RuPay", "BharatPe", "Midtrans", "MOLPay",
-    "iPay88", "KakaoPay", "Toss Payments", "NaverPay", "OVO", "GCash",
-    "Bizum", "Culqi", "Pagar.me", "Rapyd", "PayKun", "Instamojo",
-    "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "Atom", "BillDesk",
-    "Citrus Pay", "RazorpayX", "Cashfree", "PayUbiz", "EBS",
-
-    # Buy Now Pay Later
-    "Klarna", "Affirm", "Afterpay", "Zip", "Sezzle",
-    "Splitit", "Perpay", "Quadpay", "Laybuy", "Openpay",
-    "Atome", "Cashalo", "Hoolah", "Pine Labs", "ChargeAfter",
-
-    # Cryptocurrency
-    "BitPay", "Coinbase Commerce", "CoinGate", "CoinPayments", "Crypto.com Pay",
-    "BTCPay Server", "NOWPayments", "OpenNode", "Utrust", "MoonPay",
-    "Binance Pay", "CoinsPaid", "BitGo", "Flexa", "Circle",
-
-    # European Payment Methods
-    "iDEAL", "Giropay", "Sofort", "Bancontact", "Przelewy24",
-    "EPS", "Multibanco", "Trustly", "PPRO", "EcoPayz",
-
-    # Enterprise Solutions
-    "ACI Worldwide", "Bank of America Merchant Services",
-    "JP Morgan Payment Services", "Wells Fargo Payment Solutions",
-    "Deutsche Bank Payments", "Barclaycard", "American Express Payment Gateway",
-    "Discover Network", "UnionPay", "JCB Payment Gateway",
-
-    # New Payment Technologies
-    "Plaid", "Stripe Terminal", "Square Terminal", "Adyen Terminal",
-    "Toast POS", "Lightspeed Payments", "Poynt", "PAX",
-    "SumUp", "iZettle", "Tyro", "Vend", "ShopKeep", "Revel",
-
-    # Additional Payment Solutions
-    "HiPay", "Dotpay", "PayBox", "PayStack", "Flutterwave",
-    "Opayo", "MultiSafepay", "PayXpert", "Bambora", "RedSys",
-    "NPCI", "JazzCash", "Blik", "PagBank", "VibePay", "Mode",
-    "Primer", "TrueLayer", "GoCardless", "Modulr", "Currencycloud",
-    "Volt", "Form3", "Banking Circle", "Mangopay", "Checkout Finland",
-    "Vipps", "Swish", "MobilePay"
-]
+            "PayPal","Stripe","Braintree","Square","Cybersource","lemon-squeezy","Authorize.Net",
+            "2Checkout","Adyen","Worldpay","SagePay","Checkout.com","Bolt","Eway","PayFlow",
+            "Payeezy","Paddle","Mollie","Viva Wallet","Rocketgateway","Rocketgate","Auth.net",
+            "Recurly","Shopify","WooCommerce","BigCommerce","Magento","OpenCart","PrestaShop",
+            "3DCart","Ecwid","Shift4Shop","Shopware","VirtueMart","CS-Cart","X-Cart","LemonStand",
+            "AVS","Convergepay","PaySimple","oceanpayments","eProcessing","hipay","payjunction",
+            "usaepay","creo","SquareUp","ebizcharge","cpay","Moneris","cardknox","Chargify",
+            "Paytrace","hostedpayments","securepay","blackbaud","LawPay","clover","cardconnect",
+            "bluepay","fluidpay","Ebiz","chasepaymentech","Auruspay","sagepayments","paycomet",
+            "geomerchant","realexpayments","Razorpay","Apple Pay","Google Pay","Samsung Pay",
+            "Venmo","Cash App","Revolut","Zelle","Alipay","WeChat Pay","PayPay","Line Pay",
+            "Skrill","Neteller","WebMoney","Payoneer","Paysafe","Payeer","GrabPay","PayMaya",
+            "MoMo","TrueMoney","Touch n Go","GoPay","Dana","JKOPay","EasyPaisa","Paytm","UPI",
+            "PayU","CCAvenue","Mercado Pago","PagSeguro","Yandex.Checkout","PayFort","MyFatoorah",
+            "Kushki","DLocal","RuPay","BharatPe","Midtrans","MOLPay","iPay88","KakaoPay",
+            "Toss Payments","NaverPay","OVO","GCash","Bizum","Culqi","Pagar.me","Rapyd",
+            "PayKun","Instamojo","PhonePe","BharatQR","Freecharge","Mobikwik","Atom","BillDesk",
+            "Citrus Pay","RazorpayX","Cashfree","PayUbiz","EBS","Klarna","Affirm","Afterpay",
+            "Zip","Sezzle","Splitit","Perpay","Quadpay","Laybuy","Openpay","Atome","Cashalo",
+            "Hoolah","Pine Labs","ChargeAfter","BitPay","Coinbase Commerce","CoinGate","CoinPayments",
+            "Crypto.com Pay","BTCPay Server","NOWPayments","OpenNode","Utrust","MoonPay",
+            "Binance Pay","CoinsPaid","BitGo","Flexa","Circle","iDEAL","Giropay","Sofort",
+            "Bancontact","Przelewy24","EPS","Multibanco","Trustly","PPRO","EcoPayz",
+            "ACI Worldwide","Bank of America Merchant Services","JP Morgan Payment Services",
+            "Wells Fargo Payment Solutions","Deutsche Bank Payments","Barclaycard",
+            "American Express Payment Gateway","Discover Network","UnionPay","JCB Payment Gateway",
+            "Plaid","Stripe Terminal","Square Terminal","Adyen Terminal","Toast POS",
+            "Lightspeed Payments","Poynt","PAX","SumUp","iZettle","Tyro","Vend","ShopKeep",
+            "Revel","HiPay","Dotpay","PayBox","PayStack","Flutterwave","Opayo","MultiSafepay",
+            "PayXpert","Bambora","RedSys","NPCI","JazzCash","Blik","PagBank","VibePay","Mode",
+            "Primer","TrueLayer","GoCardless","Modulr","Currencycloud","Volt","Form3",
+            "Banking Circle","Mangopay","Checkout Finland","Vipps","Swish","MobilePay"
+        ]
 
         taken = round(time.time() - start, 2)
         result = f"""
@@ -4194,6 +4157,7 @@ async def gate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.edit_text(f"❌ Error: {e}")
+
 
 
 
