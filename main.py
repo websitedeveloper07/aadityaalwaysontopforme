@@ -3971,45 +3971,85 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 
 
 import re
+import time
 import requests
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.ext import ContextTypes
 
-# 🌍 Comprehensive Global Payment Gateways List
+# 🌍 Comprehensive Payment Gateway List
 PAYMENT_GATEWAYS = [
-    # --- Global ---
-    "stripe", "paypal", "braintree", "adyen", "checkout.com", "worldpay",
-    "skrill", "square", "authorize.net", "cybersource", "2checkout",
-    "klarna", "afterpay", "affirm", "sezzle", "zip pay",
-    "amazon pay", "apple pay", "google pay", "samsung pay",
+    # Major Global & Popular Gateways
+    "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
+    "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
+    "Checkout.com", "Bolt", "Eway", "PayFlow", "Payeezy",
+    "Paddle", "Mollie", "Viva Wallet", "Rocketgateway", "Rocketgate",
+    "Rocket", "Auth.net", "Authnet", "rocketgate.com", "Recurly",
 
-    # --- Asia ---
-    "razorpay", "paytm", "ccavenue", "payu", "instamojo", "cashfree", "billdesk",
-    "alipay", "wechat pay", "unionpay", "line pay", "rakuten pay", "konbini",
-    "tenpay", "paymaya", "gcash", "dragonpay", "momo wallet", "grabpay",
+    # E-commerce Platforms
+    "Shopify", "WooCommerce", "BigCommerce", "Magento", "Magento Payments",
+    "OpenCart", "PrestaShop", "3DCart", "Ecwid", "Shift4Shop",
+    "Shopware", "VirtueMart", "CS-Cart", "X-Cart", "LemonStand",
 
-    # --- Europe ---
-    "giropay", "sofort", "ideal", "bancontact", "multibanco", "trustly",
-    "paysafecard", "eps", "postepay", "blik", "przelewy24", "mb way",
+    # Additional Payment Solutions
+    "AVS", "Convergepay", "PaySimple", "oceanpayments", "eProcessing",
+    "hipay", "cybersourse", "payjunction", "usaepay", "creo",
+    "SquareUp", "ebizcharge", "cpay", "Moneris", "cardknox",
+    "matt sorra", "Chargify", "Paytrace", "hostedpayments", "securepay",
+    "blackbaud", "LawPay", "clover", "cardconnect", "bluepay",
+    "fluidpay", "Ebiz", "chasepaymentech", "Auruspay", "sagepayments",
+    "paycomet", "geomerchant", "realexpayments", "Razorpay",
 
-    # --- Middle East & Africa ---
-    "fawry", "payfort", "tap payments", "mada", "stc pay", "qpay",
-    "mpesa", "pesapal", "flutterwave", "dpo group", "cellulant", "interswitch",
+    # Digital Wallets & Payment Apps
+    "Apple Pay", "Google Pay", "Samsung Pay", "Venmo", "Cash App",
+    "Revolut", "Zelle", "Alipay", "WeChat Pay", "PayPay", "Line Pay",
+    "Skrill", "Neteller", "WebMoney", "Payoneer", "Paysafe",
+    "Payeer", "GrabPay", "PayMaya", "MoMo", "TrueMoney",
+    "Touch n Go", "GoPay", "Dana", "JKOPay", "EasyPaisa",
 
-    # --- Americas ---
-    "venmo", "zelle", "plaid", "chase pay", "paypal zettle",
-    "mercadopago", "pagseguro", "ebanx", "boleto bancario", "oxxo pay",
-    "pse pagos", "todito cash", "cabal", "redpagos",
+    # Regional & Country Specific
+    "Paytm", "UPI", "PayU", "CCAvenue",
+    "Mercado Pago", "PagSeguro", "Yandex.Checkout", "PayFort", "MyFatoorah",
+    "Kushki", "DLocal", "RuPay", "BharatPe", "Midtrans", "MOLPay",
+    "iPay88", "KakaoPay", "Toss Payments", "NaverPay", "OVO", "GCash",
+    "Bizum", "Culqi", "Pagar.me", "Rapyd", "PayKun", "Instamojo",
+    "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "Atom", "BillDesk",
+    "Citrus Pay", "RazorpayX", "Cashfree", "PayUbiz", "EBS",
 
-    # --- Russia & CIS ---
-    "qiwi", "yandex money", "webmoney", "tinkoff pay", "sberpay",
+    # Buy Now Pay Later
+    "Klarna", "Affirm", "Afterpay", "Zip", "Sezzle",
+    "Splitit", "Perpay", "Quadpay", "Laybuy", "Openpay",
+    "Atome", "Cashalo", "Hoolah", "Pine Labs", "ChargeAfter",
 
-    # --- Crypto ---
-    "bitpay", "coinpayments", "coingate", "cryptopay", "moonpay", "ramp network"
+    # Cryptocurrency
+    "BitPay", "Coinbase Commerce", "CoinGate", "CoinPayments", "Crypto.com Pay",
+    "BTCPay Server", "NOWPayments", "OpenNode", "Utrust", "MoonPay",
+    "Binance Pay", "CoinsPaid", "BitGo", "Flexa", "Circle",
+
+    # European Payment Methods
+    "iDEAL", "Giropay", "Sofort", "Bancontact", "Przelewy24",
+    "EPS", "Multibanco", "Trustly", "PPRO", "EcoPayz",
+
+    # Enterprise Solutions
+    "ACI Worldwide", "Bank of America Merchant Services",
+    "JP Morgan Payment Services", "Wells Fargo Payment Solutions",
+    "Deutsche Bank Payments", "Barclaycard", "American Express Payment Gateway",
+    "Discover Network", "UnionPay", "JCB Payment Gateway",
+
+    # New Payment Technologies
+    "Plaid", "Stripe Terminal", "Square Terminal", "Adyen Terminal",
+    "Toast POS", "Lightspeed Payments", "Poynt", "PAX",
+    "SumUp", "iZettle", "Tyro", "Vend", "ShopKeep", "Revel",
+
+    # Additional Payment Solutions
+    "HiPay", "Dotpay", "PayBox", "PayStack", "Flutterwave",
+    "Opayo", "MultiSafepay", "PayXpert", "Bambora", "RedSys",
+    "NPCI", "JazzCash", "Blik", "PagBank", "VibePay", "Mode",
+    "Primer", "TrueLayer", "GoCardless", "Modulr", "Currencycloud",
+    "Volt", "Form3", "Banking Circle", "Mangopay", "Checkout Finland",
+    "Vipps", "Swish", "MobilePay"
 ]
 
-# ☁️ Cloud/CDN Detection Keywords
 CLOUD_SERVICES = ["cloudflare", "akamai", "imperva", "incapsula", "sucuri", "fastly"]
 
 
@@ -4017,66 +4057,62 @@ async def detect_features(url: str) -> dict:
     headers = {"User-Agent": "Mozilla/5.0"}
     result = {
         "payment_gateways": [],
-        "captcha": False,
-        "cvv_fields": False,
-        "cloud_protection": False,
+        "captcha": "No captcha detected",
+        "cvv_fields": "Unknown",
+        "cloud_protection": "None",
+        "status": "Unknown",
+        "security": "2D (No 3D Secure Found)",
+        "inbuilt_system": "Not Detected",
+        "time_taken": 0.0,
     }
 
+    start_time = time.time()
     try:
         resp = requests.get(url, headers=headers, timeout=12)
         resp.raise_for_status()
         html = resp.text
         soup = BeautifulSoup(html, "html.parser")
+        result["status"] = str(resp.status_code)
+    except requests.exceptions.HTTPError as e:
+        result["status"] = str(e)
+        result["error"] = f"HTTP Error: {e}"
+        return result
     except Exception as e:
-        return {"error": str(e)}
+        result["status"] = "Error"
+        result["error"] = str(e)
+        return result
 
-    # --- Payment Gateways (HTML + inline JS) ---
+    # --- Payment Gateways ---
     for g in PAYMENT_GATEWAYS:
         if re.search(rf"\b{re.escape(g)}\b", html, re.I):
-            result["payment_gateways"].append(g)
+            result["payment_gateways"].append(g.capitalize())
 
-    # --- Scan linked JS files too ---
-    js_links = [tag["src"] for tag in soup.find_all("script", src=True)]
-    for js_url in js_links:
-        if not js_url.startswith("http"):
-            if js_url.startswith("/"):
-                js_url = url.rstrip("/") + js_url
-            else:
-                continue
-        try:
-            js_resp = requests.get(js_url, headers=headers, timeout=8)
-            js_text = js_resp.text
-            for g in PAYMENT_GATEWAYS:
-                if g not in result["payment_gateways"] and re.search(rf"\b{re.escape(g)}\b", js_text, re.I):
-                    result["payment_gateways"].append(g)
-        except:
-            pass
-
-    # --- Captcha detection ---
+    # --- Captcha ---
     if (
         soup.find("div", {"class": re.compile(r"captcha", re.I)}) or
         soup.find("iframe", {"src": re.compile(r"captcha", re.I)}) or
         "g-recaptcha" in html or "hcaptcha" in html
     ):
-        result["captcha"] = True
+        result["captcha"] = "Detected"
 
-    # --- CVV / Card Security Fields ---
+    # --- CVV ---
     if (
         soup.find("input", {"name": re.compile(r"cvv|cvc|security", re.I)}) or
         soup.find("input", {"id": re.compile(r"cvv|cvc|security", re.I)})
     ):
-        result["cvv_fields"] = True
+        result["cvv_fields"] = "Present"
 
-    # --- Cloud Protection (via HTML + headers) ---
+    # --- Cloud Protection ---
     for c in CLOUD_SERVICES:
         if re.search(c, html, re.I):
-            result["cloud_protection"] = True
+            result["cloud_protection"] = c.capitalize()
             break
 
     server_header = resp.headers.get("server", "")
     if any(c.lower() in server_header.lower() for c in CLOUD_SERVICES):
-        result["cloud_protection"] = True
+        result["cloud_protection"] = server_header
 
+    result["time_taken"] = round(time.time() - start_time, 2)
     return result
 
 
@@ -4087,30 +4123,33 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     url = context.args[0]
-    msg = await update.message.reply_text("```\nProcessing site scan... 🔎\n```", parse_mode="Markdown")
+    msg = await update.message.reply_text("`Processing site scan... 🔎`", parse_mode="Markdown")
 
     results = await detect_features(url)
 
     if "error" in results:
-        await msg.edit_text(f"❌ Error: `{results['error']}`", parse_mode="Markdown")
+        await msg.edit_text(f"❌ Error: {results['error']}", parse_mode="Markdown")
         return
 
-    gateways = ", ".join(results["payment_gateways"]) if results["payment_gateways"] else "None Found"
+    gateways = ", ".join(results["payment_gateways"]) if results["payment_gateways"] else "None"
 
+    # ✨ Fancy Formatted Output
     final_report = f"""
-🔍 **Scan Report for {url}**
+┏━━━━━━━⍟
+┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ✅
+┗━━━━━━━━━━━⊛
 
-💳 **Payment Gateways:**  
-`{gateways}`
-
-🧩 **Captcha Detected:**  
-`{"Yes" if results["captcha"] else "No"}`
-
-🔐 **CVV/Security Fields:**  
-`{"Yes" if results["cvv_fields"] else "No"}`
-
-☁️ **Cloud Protection (CDN/WAF):**  
-`{"Yes" if results["cloud_protection"] else "No"}`
+[⸙] 𝐒𝐢𝐭𝐞 ➳ {url}
+[⸙] 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ {gateways}
+[⸙] 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➳ {results['captcha']}
+[⸙] 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➳ {results['cloud_protection']}
+──────── ⸙ ─────────
+[⸙] 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ {results['security']}
+[⸙] 𝐂𝐕𝐕/𝐂𝐕𝐂 ➳ {results['cvv_fields']}
+[⸙] 𝐈𝐧𝐛𝐮𝐢𝐥𝐭 𝐒𝐲𝐬𝐭𝐞𝐦 ➳ {results['inbuilt_system']}
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {results['status']}
+──────── ⸙ ─────────
+[⸙] 𝗧𝗶𝗺𝗲 ⌁ {results['time_taken']} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬
 """
 
     await msg.edit_text(final_report, parse_mode="Markdown")
