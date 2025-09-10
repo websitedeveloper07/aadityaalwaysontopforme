@@ -4023,7 +4023,7 @@ PAYMENT_GATEWAYS = [
     "Shopware", "VirtueMart", "CS-Cart", "X-Cart", "LemonStand",
 
     # Additional Payment Solutions
-    "AVS", "Convergepay", "PaySimple", "oceanpayments", "eProcessing",
+    "Convergepay", "PaySimple", "oceanpayments", "eProcessing",
     "hipay", "cybersourse", "payjunction", "usaepay", "creo",
     "SquareUp", "ebizcharge", "cpay", "Moneris", "cardknox",
     "matt sorra", "Chargify", "Paytrace", "hostedpayments", "securepay",
@@ -4032,7 +4032,7 @@ PAYMENT_GATEWAYS = [
     "paycomet", "geomerchant", "realexpayments", "Razorpay",
 
     # Digital Wallets & Payment Apps
-    "Apple Pay", "Google Pay", "Samsung Pay", "Venmo", "Cash App",
+    "Apple Pay", "Google Pay", "Samsung Pay",  "Cash App",
     "Revolut", "Zelle", "Alipay", "WeChat Pay", "PayPay", "Line Pay",
     "Skrill", "Neteller", "WebMoney", "Payoneer", "Paysafe",
     "Payeer", "GrabPay", "PayMaya", "MoMo", "TrueMoney",
@@ -4042,24 +4042,20 @@ PAYMENT_GATEWAYS = [
     "Paytm", "UPI", "PayU", "CCAvenue",
     "Mercado Pago", "PagSeguro", "Yandex.Checkout", "PayFort", "MyFatoorah",
     "Kushki", "DLocal", "RuPay", "BharatPe", "Midtrans", "MOLPay",
-    "iPay88", "KakaoPay", "Toss Payments", "NaverPay", "OVO", "GCash",
+    "iPay88", "KakaoPay", "Toss Payments", "NaverPay",
     "Bizum", "Culqi", "Pagar.me", "Rapyd", "PayKun", "Instamojo",
-    "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "Atom", "BillDesk",
+    "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "BillDesk",
     "Citrus Pay", "RazorpayX", "Cashfree", "PayUbiz", 
 
     # Buy Now Pay Later
-    "Klarna", "Affirm", "Afterpay", "Zip", "Sezzle",
+    "Klarna", "Affirm", "Afterpay",
     "Splitit", "Perpay", "Quadpay", "Laybuy", "Openpay",
-    "Atome", "Cashalo", "Hoolah", "Pine Labs", "ChargeAfter",
+    "Cashalo", "Hoolah", "Pine Labs", "ChargeAfter",
 
     # Cryptocurrency
     "BitPay", "Coinbase Commerce", "CoinGate", "CoinPayments", "Crypto.com Pay",
     "BTCPay Server", "NOWPayments", "OpenNode", "Utrust", "MoonPay",
-    "Binance Pay", "CoinsPaid", "BitGo", "Flexa", "Circle",
-
-    # European Payment Methods
-    "iDEAL", "Giropay", "Sofort", "Bancontact", "Przelewy24",
-    "EPS", "Multibanco", "Trustly", "PPRO", "EcoPayz",
+    "Binance Pay", "CoinsPaid", "BitGo", "Flexa", 
 
     # Enterprise Solutions
     "ACI Worldwide", "Bank of America Merchant Services",
@@ -4067,18 +4063,7 @@ PAYMENT_GATEWAYS = [
     "Deutsche Bank Payments", "Barclaycard", "American Express Payment Gateway",
     "Discover Network", "UnionPay", "JCB Payment Gateway",
 
-    # New Payment Technologies
-    "Plaid", "Stripe Terminal", "Square Terminal", "Adyen Terminal",
-    "Toast POS", "Lightspeed Payments", "Poynt", "PAX",
-    "SumUp", "iZettle", "Tyro", "Vend", "ShopKeep", "Revel",
 
-    # Additional Payment Solutions
-    "HiPay", "Dotpay", "PayBox", "PayStack", "Flutterwave",
-    "Opayo", "MultiSafepay", "PayXpert", "Bambora", "RedSys",
-    "NPCI", "JazzCash", "Blik", "PagBank", "VibePay", "Mode",
-    "Primer", "TrueLayer", "GoCardless", "Modulr", "Currencycloud",
-    "Volt", "Form3", "Banking Circle", "Mangopay", "Checkout Finland",
-    "Vipps", "Swish", "MobilePay"
 ]
 
 from urllib.parse import urlparse
@@ -4150,8 +4135,8 @@ def detect_security(html: str):
     ]
     for pattern in patterns_3ds:
         if re.search(pattern, html, re.IGNORECASE):
-            return "3D Secure Detected ✅"
-    return "2D (No 3D Secure Found ❌)"
+            return "3D Secure Detected ❌"
+    return "2D (No 3D Secure Found ✅)"
 
 def detect_gateways(html: str):
     detected = [g for g in PAYMENT_GATEWAYS if re.search(g, html, re.IGNORECASE)]
@@ -4199,7 +4184,7 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
     results = (
         f"◇━━〔 𝑳𝒐𝒐𝒌𝒖𝒑 𝑹𝒆𝒔𝒖𝒍𝒕𝒔 〕━━◇\n"
         f"{bullet_link} 𝐒𝐢𝐭𝐞 ➵ `{escape_markdown(url, version=2)}`\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ `{escape_markdown(gateways, version=2)}`\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ _{escape_markdown(gateways, version=2)}_\n"
         f"{bullet_link} 𝐂𝐌𝐒 ➵ `{escape_markdown(cms, version=2)}`\n"
         f"――――――――――――――――\n"
         f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{escape_markdown(captcha, version=2)}`\n"
