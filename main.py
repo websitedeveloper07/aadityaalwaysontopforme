@@ -3771,20 +3771,25 @@ sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Lin
 
 
 import time
+import logging
+import aiohttp
 from html import escape
+from telegram import Update
 from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# Dictionary to track user cooldowns
+logger = logging.getLogger(__name__)
+
+# Cooldown tracker (per-user)
 user_last_command_time = {}
 COOLDOWN_SECONDS = 20
 
-# --- Braintree Command ---
 async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     current_time = time.time()
 
-    # --- Cooldown check ---
+    # --- Cooldown check (non-blocking) ---
     if user_id in user_last_command_time:
         elapsed = current_time - user_last_command_time[user_id]
         if elapsed < COOLDOWN_SECONDS:
@@ -3816,21 +3821,14 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <b>Gateway ➵ Braintree</b>\n"
         f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
     )
-
     processing_msg = await update.message.reply_text(
         processing_text,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
 
-    # --- Step 2: Call API ---
-    params = {
-        "key": API_KEY,
-        "site": SITE,
-        "cookies": COOKIES,
-        "cc": cc_input
-    }
-
+    # --- API request ---
+    params = {"key": API_KEY, "site": SITE, "cookies": COOKIES, "cc": cc_input}
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(API_URL, params=params) as resp:
@@ -3842,7 +3840,7 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # --- Step 3: Extract response ---
+    # --- API response fields ---
     cc = data.get("cc", cc_input)
     response = data.get("response", "No response")
     status = data.get("status", "UNKNOWN").upper()
