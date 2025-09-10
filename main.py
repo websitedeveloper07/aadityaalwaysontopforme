@@ -3977,9 +3977,41 @@ from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.ext import ContextTypes
 
+# For Selenium fallback
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
 # 🌍 Comprehensive Payment Gateway List
 PAYMENT_GATEWAYS = [
-    # Major Global & Popular Gateways
+    # --- Global ---
+    "stripe", "paypal", "braintree", "adyen", "checkout.com", "worldpay",
+    "skrill", "square", "authorize.net", "cybersource", "2checkout",
+    "klarna", "afterpay", "affirm", "sezzle", "zip pay",
+    "amazon pay", "apple pay", "google pay", "samsung pay",
+
+    # --- Asia ---
+    "razorpay", "paytm", "ccavenue", "payu", "instamojo", "cashfree", "billdesk",
+    "alipay", "wechat pay", "unionpay", "line pay", "rakuten pay", "konbini",
+    "tenpay", "paymaya", "gcash", "dragonpay", "momo wallet", "grabpay",
+
+    # --- Europe ---
+    "giropay", "sofort", "ideal", "bancontact", "multibanco", "trustly",
+    "paysafecard", "eps", "postepay", "blik", "przelewy24", "mb way",
+
+    # --- Middle East & Africa ---
+    "fawry", "payfort", "tap payments", "mada", "stc pay", "qpay",
+    "mpesa", "pesapal", "flutterwave", "dpo group", "cellulant", "interswitch",
+
+    # --- Americas ---
+    "venmo", "zelle", "plaid", "chase pay", "paypal zettle",
+    "mercadopago", "pagseguro", "ebanx", "boleto bancario", "oxxo pay",
+    "pse pagos", "todito cash", "cabal", "redpagos",
+
+    # --- Russia & CIS ---
+    "qiwi", "yandex money", "webmoney", "tinkoff pay", "sberpay",
+
+    # --- Crypto ---
+    "bitpay", "coinpayments", "coingate", "cryptopay", "moonpay", "ramp network"
     "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
     "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
     "Checkout.com", "Bolt", "Eway", "PayFlow", "Payeezy",
@@ -4053,8 +4085,28 @@ PAYMENT_GATEWAYS = [
 CLOUD_SERVICES = ["cloudflare", "akamai", "imperva", "incapsula", "sucuri", "fastly"]
 
 
-async def detect_features(url: str) -> dict:
+def fetch_html(url: str) -> tuple[str, dict, str]:
+    """Try requests first, if fails use Selenium"""
     headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        resp = requests.get(url, headers=headers, timeout=12)
+        resp.raise_for_status()
+        return resp.text, resp.headers, str(resp.status_code)
+    except Exception:
+        # 🚀 Fallback to Selenium
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.set_page_load_timeout(20)
+        driver.get(url)
+        html = driver.page_source
+        driver.quit()
+        return html, {}, "200 (Selenium)"
+
+
+async def detect_features(url: str) -> dict:
     result = {
         "payment_gateways": [],
         "captcha": "No captcha detected",
@@ -4068,15 +4120,9 @@ async def detect_features(url: str) -> dict:
 
     start_time = time.time()
     try:
-        resp = requests.get(url, headers=headers, timeout=12)
-        resp.raise_for_status()
-        html = resp.text
+        html, headers, status = fetch_html(url)
         soup = BeautifulSoup(html, "html.parser")
-        result["status"] = str(resp.status_code)
-    except requests.exceptions.HTTPError as e:
-        result["status"] = str(e)
-        result["error"] = f"HTTP Error: {e}"
-        return result
+        result["status"] = status
     except Exception as e:
         result["status"] = "Error"
         result["error"] = str(e)
@@ -4107,10 +4153,10 @@ async def detect_features(url: str) -> dict:
         if re.search(c, html, re.I):
             result["cloud_protection"] = c.capitalize()
             break
-
-    server_header = resp.headers.get("server", "")
-    if any(c.lower() in server_header.lower() for c in CLOUD_SERVICES):
-        result["cloud_protection"] = server_header
+    for c in CLOUD_SERVICES:
+        if headers and c.lower() in str(headers).lower():
+            result["cloud_protection"] = c.capitalize()
+            break
 
     result["time_taken"] = round(time.time() - start_time, 2)
     return result
@@ -4153,6 +4199,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
 
     await msg.edit_text(final_report, parse_mode="Markdown")
+
 
 
 
