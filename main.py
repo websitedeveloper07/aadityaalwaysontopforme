@@ -499,6 +499,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> – Stripe Auth\n"
         f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$ Auth\n"
         f"{bullet_link} <code>/mass</code> – Mass Stripe Auth 2\n"
+        f"{bullet_link} <code>/gate site url</code> – Payment Gateway Checker\n"
         f"{bullet_link} <code>/sh</code> – Shopify 2.5$\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set a Shopify site\n"
         f"{bullet_link} <code>/mysites</code> – View your added site\n"
@@ -850,6 +851,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         "🔹 <b>𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨</b>\n"
         f"{bullet_link} <code>/gen [bin] [no. of cards]</code> – Generate cards from BIN\n"
+        f"{bullet_link} <code>/gate site url</code> – Payment Gateway Checker\n"
         f"{bullet_link} <code>/bin &lt;bin&gt;</code> – BIN lookup (Bank, Country, Type)\n"
         f"{bullet_link} <code>/fk &lt;country&gt;</code> – Fake identity generator\n"
         f"{bullet_link} <code>/fl &lt;dump&gt;</code> – Extract CCs from dumps\n"
@@ -4113,9 +4115,10 @@ async def fetch_site(url: str):
     async with aiohttp.ClientSession(headers=headers) as session:
         try:
             async with session.get(url, timeout=15) as resp:
-                return resp.status, await resp.text()
+                text = await resp.text()
+                return resp.status, text, resp.headers
         except Exception:
-            return None, None
+            return None, None, None
 
 # --- Detection functions ---
 def detect_cms(html: str):
@@ -4125,14 +4128,7 @@ def detect_cms(html: str):
     return "Unknown"
 
 def detect_security(html: str):
-    """
-    Detects whether 3D Secure is implemented.
-    Returns '3D Secure Detected ✅' or '2D (No 3D Secure Found ❌)'
-    """
-    # Common keywords for 3DS pages
-    patterns_3ds = [
-        r'3ds', r'verify', r'authentication', r'dsv', r'securecode', r'pareq', r'acs'
-    ]
+    patterns_3ds = [r'3ds', r'verify', r'authentication', r'dsv', r'securecode', r'pareq', r'acs']
     for pattern in patterns_3ds:
         if re.search(pattern, html, re.IGNORECASE):
             return "3D Secure Detected ✅"
@@ -4143,14 +4139,27 @@ def detect_gateways(html: str):
     return ", ".join(detected) if detected else "None Detected"
 
 def detect_captcha(html: str):
-    return "Captcha Detected ✅" if re.search(r'captcha|recaptcha', html, re.IGNORECASE) else "No captcha detected"
+    html_lower = html.lower()
+    if "hcaptcha" in html_lower:
+        return "hCaptcha Detected ✅"
+    elif "recaptcha" in html_lower or "g-recaptcha" in html_lower:
+        return "reCAPTCHA Detected ✅"
+    elif "captcha" in html_lower:
+        return "Generic Captcha Detected ✅"
+    return "No Captcha Detected"
 
-def detect_cloudflare(html: str):
-    return "Cloudflare Detected ✅" if "cloudflare" in html.lower() else "None"
+def detect_cloudflare(html: str, headers=None):
+    cf_markers = ["cloudflare", "cf-browser-verification", "attention required! | cloudflare"]
+    if headers:
+        cf_headers = ["cf-ray", "server"]
+        if any(h.lower() in headers for h in cf_headers):
+            return "Cloudflare Detected ✅"
+    if any(marker.lower() in html.lower() for marker in cf_markers):
+        return "Cloudflare Detected ✅"
+    return "None"
 
 # --- Worker for background scanning ---
 async def gate_worker(update: Update, url: str, msg, user_id: int):
-    # Credit check
     if not await consume_credit(user_id):
         await msg.edit_text(
             escape_markdown("❌ You don't have enough credits to perform this scan.", version=2),
@@ -4160,7 +4169,7 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
         return
 
     await asyncio.sleep(2)  # small delay for realism
-    status, html = await fetch_site(url)
+    status, html, headers = await fetch_site(url)
     if not html:
         await msg.edit_text(
             escape_markdown(f"❌ Error: Cannot access {url}", version=2),
@@ -4173,7 +4182,7 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
     security = detect_security(html)
     gateways = detect_gateways(html)
     captcha = detect_captcha(html)
-    cloudflare = detect_cloudflare(html)
+    cloudflare = detect_cloudflare(html, headers=headers)
 
     user = update.effective_user
     requester_clickable = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
@@ -4191,7 +4200,7 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
         f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ `{escape_markdown(cloudflare, version=2)}`\n"
         f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `{escape_markdown(security, version=2)}`\n"
         f"――――――――――――――――\n"
-        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬 ➵ `Checked ✅`\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬 ➵ `{status}`\n"
         f"――――――――――――――――\n"
         f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
         f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
@@ -4208,7 +4217,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     user_id = update.effective_user.id
 
-    # Prepare processing message
+    # Processing message
     status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...", version=2)
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
@@ -4220,7 +4229,6 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-    # Run worker
     asyncio.create_task(gate_worker(update, url, msg, user_id))
 
 
