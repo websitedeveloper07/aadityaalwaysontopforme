@@ -4147,8 +4147,8 @@ def detect_cms(html: str):
 def detect_security(html: str):
     for _, pattern in SECURITY_PATTERNS.items():
         if re.search(pattern, html, re.IGNORECASE):
-            return "3D Secure Detected ✅"
-    return "2D (No 3D Secure Found ❌)"
+            return "3D Secure Detected ❌"
+    return "2D (No 3D Secure Found ✅)"
 
 def detect_gateways(html: str):
     detected = []
@@ -4199,27 +4199,26 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
     cloudflare = detect_cloudflare(html)
 
     user = update.effective_user
-    full_name = user.first_name
-    requester = escape_markdown(full_name, version=2)
+    requester_name = escape_markdown(user.first_name, version=2)
+    requester_clickable = f"[{requester_name}](tg://user?id={user.id})"
     developer_clickable = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
 
     # Construct final results message
     results = (
-        f"◇━━〔 Lookup Results 〕━━◇\n"
-        f"{bullet_link} Site ➵ `{escape_markdown(url, version=2)}`\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲s ➵ `{escape_markdown(gateways, version=2)}`\n"
+        f"◇━━〔 𝑳𝒐𝒐𝒌𝒖𝒑 𝑹𝒆𝒔𝒖𝒍𝒕𝒔 〕━━◇\n"
+        f"{bullet_link} 𝐒𝐢𝐭𝐞 ➵ `{escape_markdown(url, version=2)}`\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ _{escape_markdown(gateways, version=2)}_\n"
         f"{bullet_link} 𝐂𝐌𝐒 ➵ `{escape_markdown(cms, version=2)}`\n"
         f"――――――――――――――――\n"
         f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{escape_markdown(captcha, version=2)}`\n"
         f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ `{escape_markdown(cloudflare, version=2)}`\n"
         f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `{escape_markdown(security, version=2)}`\n"
         f"――――――――――――――――\n"
-        f"{bullet_link} 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `Not Detected`\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬 ➵ `Checked ✅`\n"
         f"――――――――――――――――\n"
-        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
         f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
     )
 
@@ -4235,7 +4234,7 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     # Prepare processing message
-    status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
+    status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...", version=2)
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
     processing_text = f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```" + "\n" + f"{bullet_link} {status_text}\n"
