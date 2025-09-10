@@ -4036,12 +4036,12 @@ PAYMENT_GATEWAYS = [
     "Revolut", "Zelle", "Alipay", "WeChat Pay", "PayPay", "Line Pay",
     "Skrill", "Neteller", "WebMoney", "Payoneer", "Paysafe",
     "Payeer", "GrabPay", "PayMaya", "MoMo", "TrueMoney",
-    "Touch n Go", "GoPay", "Dana", "JKOPay", "EasyPaisa",
+    "Touch n Go", "GoPay", "JKOPay", "EasyPaisa",
 
     # Regional & Country Specific
     "Paytm", "UPI", "PayU", "CCAvenue",
     "Mercado Pago", "PagSeguro", "Yandex.Checkout", "PayFort", "MyFatoorah",
-    "Kushki", "DLocal", "RuPay", "BharatPe", "Midtrans", "MOLPay",
+    "Kushki", "RuPay", "BharatPe", "Midtrans", "MOLPay",
     "iPay88", "KakaoPay", "Toss Payments", "NaverPay",
     "Bizum", "Culqi", "Pagar.me", "Rapyd", "PayKun", "Instamojo",
     "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "BillDesk",
@@ -4135,8 +4135,8 @@ def detect_security(html: str):
     ]
     for pattern in patterns_3ds:
         if re.search(pattern, html, re.IGNORECASE):
-            return "3D Secure Detected ❌"
-    return "2D (No 3D Secure Found ✅)"
+            return "3D Secure Detected ✅"
+    return "2D (No 3D Secure Found ❌)"
 
 def detect_gateways(html: str):
     detected = [g for g in PAYMENT_GATEWAYS if re.search(g, html, re.IGNORECASE)]
