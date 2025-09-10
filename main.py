@@ -3796,7 +3796,15 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     current_time = time.time()
 
-    # --- Cooldown check ---
+    # --- Check if card args are provided ---
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: `/b3 cc|mm|yyyy|cvv`",
+            parse_mode="Markdown"
+        )
+        return  # ❌ no cooldown if no args
+
+    # --- Cooldown check (only for valid usage) ---
     if user_id in user_last_command_time:
         elapsed = current_time - user_last_command_time[user_id]
         if elapsed < COOLDOWN_SECONDS:
@@ -3806,14 +3814,9 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode=ParseMode.HTML
             )
             return
-    user_last_command_time[user_id] = current_time
 
-    if not context.args:
-        await update.message.reply_text(
-            "Usage: `/b3 cc|mm|yyyy|cvv`",
-            parse_mode="Markdown"
-        )
-        return
+    # ✅ Set cooldown only after proper usage
+    user_last_command_time[user_id] = current_time
 
     cc_input = context.args[0]
     full_card = cc_input
@@ -3834,8 +3837,9 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-    # 🔥 Run check in background (non-blocking)
+    # 🔥 Run check in background
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
+
 
 
 # --- Background Task ---
@@ -3903,7 +3907,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     final_msg = (
         f"◇━━〔 {stylish_status} 〕━━◇\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Braintree Premium Auth\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝒆𝒆 𝑷𝒓𝒆𝒎𝒊𝒖𝒎 𝑨𝒖𝒕𝒉\n"
         f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{escape(response)}</i>\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
