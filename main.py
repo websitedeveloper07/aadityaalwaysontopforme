@@ -3797,6 +3797,7 @@ cfzs_google-analytics_v4=%7B%22uoEf_pageviewCounter%22%3A%7B%22v%22%3A%229%22%7D
 _ga_D1Q49TMJ2C=GS2.1.s1757491263$o10$g1$t1757491354$j30$l0$h0;
 sbjs_session=pgs%3D9%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fadd-payment-method'''
 ]
+cookie_index = 0
 
 # --- Cooldown tracker (per-user) ---
 user_last_command_time = {}
