@@ -3770,11 +3770,32 @@ sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7
 sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36'''
 
 
+import time
 from html import escape
 from telegram.constants import ParseMode
 
+# Dictionary to track user cooldowns
+user_last_command_time = {}
+COOLDOWN_SECONDS = 20
+
 # --- Braintree Command ---
 async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_id = user.id
+    current_time = time.time()
+
+    # --- Cooldown check ---
+    if user_id in user_last_command_time:
+        elapsed = current_time - user_last_command_time[user_id]
+        if elapsed < COOLDOWN_SECONDS:
+            remaining = round(COOLDOWN_SECONDS - elapsed, 1)
+            await update.message.reply_text(
+                f"⏳ Please wait <b>{remaining}s</b> before using /b3 again.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+    user_last_command_time[user_id] = current_time
+
     if not context.args:
         await update.message.reply_text(
             "Usage: `/b3 cc|mm|yyyy|cvv`",
@@ -3782,7 +3803,6 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    user = update.effective_user
     cc_input = context.args[0]
     full_card = cc_input
 
@@ -3825,7 +3845,13 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Step 3: Extract response ---
     cc = data.get("cc", cc_input)
     response = data.get("response", "No response")
-    status = data.get("status", "UNKNOWN")
+    status = data.get("status", "UNKNOWN").upper()
+
+    # --- Stylish status ---
+    if status == "APPROVED":
+        stylish_status = "✅ <b>𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱</b>"
+    else:
+        stylish_status = "❌ <b>𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱</b>"
 
     # --- BIN lookup ---
     try:
@@ -3851,7 +3877,7 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Final formatted message ---
     final_msg = (
-        f"◇━━〔 <b>BRAINTREE</b> 〕━━◇\n"
+        f"◇━━〔 {stylish_status} 〕━━◇\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Braintree Premium Auth\n"
         f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{escape(response)}</i>\n"
@@ -3877,6 +3903,7 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
