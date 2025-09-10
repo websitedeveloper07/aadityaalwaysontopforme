@@ -4081,7 +4081,18 @@ PAYMENT_GATEWAYS = [
     "Vipps", "Swish", "MobilePay"
 ]
 
+from urllib.parse import urlparse
+import aiohttp
+
 async def fetch_site(url: str):
+    # Ensure the URL has a scheme
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    # Extract domain for headers
+    parsed = urlparse(url)
+    domain = parsed.netloc
+
     headers = {
         "authority": domain,
         "scheme": "https",
@@ -4102,6 +4113,7 @@ async def fetch_site(url: str):
             "Chrome/140.0.0.0 Mobile Safari/537.36"
         ),
     }
+
     async with aiohttp.ClientSession(headers=headers) as session:
         try:
             async with session.get(url, timeout=15) as resp:
@@ -4109,6 +4121,7 @@ async def fetch_site(url: str):
                 return resp.status, text
         except Exception:
             return None, None
+
 
 def detect_cms(html: str):
     for cms, pattern in CMS_PATTERNS.items():
