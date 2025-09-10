@@ -4081,12 +4081,20 @@ PAYMENT_GATEWAYS = [
     "Vipps", "Swish", "MobilePay"
 ]
 
+from urllib.parse import urlparse
+import re
+import aiohttp
+import asyncio
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
+
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
+# --- Fetch site ---
 async def fetch_site(url: str):
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
-
     parsed = urlparse(url)
     domain = parsed.netloc
 
@@ -4119,8 +4127,7 @@ async def fetch_site(url: str):
         except Exception:
             return None, None
 
-
-# --- Detection functions (same as before) ---
+# --- Detection functions ---
 def detect_cms(html: str):
     for cms, pattern in CMS_PATTERNS.items():
         if re.search(pattern, html, re.IGNORECASE):
@@ -4152,22 +4159,13 @@ def detect_cloudflare(html: str):
         return "Cloudflare Detected ✅"
     return "None"
 
-
-# --- Actual gate processing in background ---
-async def gate_worker(update: Update, url: str):
-    user = update.effective_user
-    full_name = user.first_name
-    requester = f'<a href="tg://user?id={user.id}">{full_name}</a>'
-    developer_clickable = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
-    # Send initial processing message
-    msg = await update.message.reply_text("⏳ Processing...", parse_mode="HTML")
-    await asyncio.sleep(3)  # optional scanning delay
-
+# --- Worker for background scanning ---
+async def gate_worker(update: Update, url: str, msg):
+    await asyncio.sleep(2)  # small delay for realism
     status, html = await fetch_site(url)
+
     if not html:
-        await msg.edit_text(f"❌ Error: Cannot access <code>{url}</code>", parse_mode="HTML")
+        await msg.edit_text(escape_markdown(f"❌ Error: Cannot access {url}", version=2), parse_mode="MarkdownV2")
         return
 
     cms = detect_cms(html)
@@ -4176,33 +4174,52 @@ async def gate_worker(update: Update, url: str):
     captcha = detect_captcha(html)
     cloudflare = detect_cloudflare(html)
 
-    message = f"""
-◇━━〔 Lookup Results✅ 〕━━◇
-{bullet_link} Site ➵ <code>{url}</code>
-{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲s ➵ <code>{gateways}</code>
-{bullet_link} 𝐂𝐌𝐒 ➵ <code>{cms}</code>
-――――――――――――――――
-{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ <code>{captcha}</code>
-{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ <code>{cloudflare}</code>
-{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ <code>{security}</code>
-――――――――――――――――
-{bullet_link} 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ <code>Not Detected</code>
-{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬 ➵ <code>{status}</code>
-――――――――――――――――
-{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}
-{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}
-"""
-    await msg.edit_text(message, parse_mode="HTML")
+    user = update.effective_user
+    full_name = user.first_name
+    requester = escape_markdown(full_name, version=2)
+    developer_clickable = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
+    bullet = "[⌇]"
+    bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
 
+    # Construct final results message
+    results = (
+        f"◇━━〔 Lookup Results 〕━━◇\n"
+        f"{bullet_link} Site ➵ `{escape_markdown(url, version=2)}`\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲s ➵ `{escape_markdown(gateways, version=2)}`\n"
+        f"{bullet_link} 𝐂𝐌𝐒 ➵ `{escape_markdown(cms, version=2)}`\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{escape_markdown(captcha, version=2)}`\n"
+        f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ `{escape_markdown(cloudflare, version=2)}`\n"
+        f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `{escape_markdown(security, version=2)}`\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `Not Detected`\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬 ➵ `Completed ✅`\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
+    )
 
-# --- Command handler ---
+    await msg.edit_text(results, parse_mode="MarkdownV2")
+
+# --- /gate command ---
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /gate <site_url>")
         return
     url = context.args[0]
-    # Run the worker in the background so it doesn't block other commands
-    asyncio.create_task(gate_worker(update, url))
+
+    # Prepare processing message
+    status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
+    bullet = "[⌇]"
+    bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
+    processing_text = f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```" + "\n" + f"{bullet_link} {status_text}\n"
+
+    # Send processing message
+    msg = await update.message.reply_text(processing_text, parse_mode="MarkdownV2")
+
+    # Run the scan in background
+    asyncio.create_task(gate_worker(update, url, msg))
+
 
 
 
