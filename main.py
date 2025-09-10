@@ -3973,45 +3973,20 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 import re
 import time
 import requests
+import tempfile
 from bs4 import BeautifulSoup
 from telegram import Update
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, CommandHandler
 
-# For Selenium fallback
+# Selenium fallback
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 
-# 🌍 Comprehensive Payment Gateway List
+
+# 🌍 Global Payment Gateways (your list)
 PAYMENT_GATEWAYS = [
-    # --- Global ---
-    "stripe", "paypal", "braintree", "adyen", "checkout.com", "worldpay",
-    "skrill", "square", "authorize.net", "cybersource", "2checkout",
-    "klarna", "afterpay", "affirm", "sezzle", "zip pay",
-    "amazon pay", "apple pay", "google pay", "samsung pay",
-
-    # --- Asia ---
-    "razorpay", "paytm", "ccavenue", "payu", "instamojo", "cashfree", "billdesk",
-    "alipay", "wechat pay", "unionpay", "line pay", "rakuten pay", "konbini",
-    "tenpay", "paymaya", "gcash", "dragonpay", "momo wallet", "grabpay",
-
-    # --- Europe ---
-    "giropay", "sofort", "ideal", "bancontact", "multibanco", "trustly",
-    "paysafecard", "eps", "postepay", "blik", "przelewy24", "mb way",
-
-    # --- Middle East & Africa ---
-    "fawry", "payfort", "tap payments", "mada", "stc pay", "qpay",
-    "mpesa", "pesapal", "flutterwave", "dpo group", "cellulant", "interswitch",
-
-    # --- Americas ---
-    "venmo", "zelle", "plaid", "chase pay", "paypal zettle",
-    "mercadopago", "pagseguro", "ebanx", "boleto bancario", "oxxo pay",
-    "pse pagos", "todito cash", "cabal", "redpagos",
-
-    # --- Russia & CIS ---
-    "qiwi", "yandex money", "webmoney", "tinkoff pay", "sberpay",
-
-    # --- Crypto ---
-    "bitpay", "coinpayments", "coingate", "cryptopay", "moonpay", "ramp network"
+    # Major Global & Popular Gateways
     "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
     "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
     "Checkout.com", "Bolt", "Eway", "PayFlow", "Payeezy",
@@ -4080,125 +4055,203 @@ PAYMENT_GATEWAYS = [
     "Primer", "TrueLayer", "GoCardless", "Modulr", "Currencycloud",
     "Volt", "Form3", "Banking Circle", "Mangopay", "Checkout Finland",
     "Vipps", "Swish", "MobilePay"
-]
+]  # paste your full list here
 
+CMS_PATTERNS = {
+    'Shopify': r'cdn\.shopify\.com|shopify\.js',
+    'BigCommerce': r'cdn\.bigcommerce\.com|bigcommerce\.com',
+    'Wix': r'static\.parastorage\.com|wix\.com',
+    'Squarespace': r'static1\.squarespace\.com|squarespace-cdn\.com',
+    'WooCommerce': r'wp-content/plugins/woocommerce/',
+    'Magento': r'static/version\d+/frontend/|magento/',
+    'PrestaShop': r'prestashop\.js|prestashop/',
+    'OpenCart': r'catalog/view/theme|opencart/',
+    'Shopify Plus': r'shopify-plus|cdn\.shopifycdn\.net/',
+    'Salesforce Commerce Cloud': r'demandware\.edgesuite\.net/',
+    'WordPress': r'wp-content|wp-includes/',
+    'Joomla': r'media/jui|joomla\.js',
+    'Drupal': r'sites/all/modules|drupal\.js/',
+    'Joomla': r'media/system/js|joomla\.javascript/',
+    'Drupal': r'sites/default/files|drupal\.settings\.js/',
+    'TYPO3': r'typo3temp|typo3/',
+    'Concrete5': r'concrete/js|concrete5/',
+    'Umbraco': r'umbraco/|umbraco\.config/',
+    'Sitecore': r'sitecore/content|sitecore\.js/',
+    'Kentico': r'cms/getresource\.ashx|kentico\.js/',
+    'Episerver': r'episerver/|episerver\.js/',
+    'Custom CMS': r'(?:<meta name="generator" content="([^"]+)")'
+}       # your CMS dict
+CARD_PATTERNS = {
+    'Visa': r'visa[^a-z]|cc-visa|vi-?card',
+    'Mastercard': r'master[ -]?card|mc-?card',
+    'Amex': r'amex|american.?express',
+    'Discover': r'discover/',
+    'JCB': r'jcb/',
+    'Maestro': r'maestro/',
+    'UnionPay': r'union.?pay/',
+    'Diners Club': r'diners.?club/',
+    'CVV': r'cvv|cvc|card.?verification.?value',
+    'Card Number': r'card.?number|cc.?number|credit.?card.?number',
+    'Expiry Date': r'expiry.?date|exp.?date|card.?expiration',
+    'Cardholder Name': r'cardholder.?name|name.?on.?card',
+    '3D Secure': r'3d.?secure|3.?d.?secure|verified.?by.?visa|mastercard.?securecode|secure.?code|3ds|three.?d.?secure',
+    'Credit Card Number': r'credit.?card.?number|ccn',
+    'Card Code': r'card.?code|security.?code',
+    'Card Verification Code': r'card.?verification.?code|cvc2',
+    'Card Identification Number': r'card.?identification.?number|cid',
+    'Card Issue Number': r'card.?issue.?number|issue.?number',
+    'Card Start Date': r'card.?start.?date|start.?date',
+    'Card Type': r'card.?type|credit|debit',
+    'Card Brand': r'card.?brand|visa|mastercard|amex|discover|jcb|maestro|unionpay|diners',
+    'Card Token': r'card.?token|payment.?token',
+    'Card Bin': r'card.?bin|bin.?number',
+    'Card Last Four Digits': r'last.?four.?digits|last4',
+    'Card Expiry Month': r'expiry.?month|exp.?month',
+    'Card Expiry Year': r'expiry.?year|exp.?year',
+}      # your Card dict
+SECURITY_PATTERNS = {
+    'GraphQL': r'graphql|__schema|query\s*{',
+    'GraphQL Endpoint': r'\/graphql|\/api\/graphql'
+}  # your Security dict
 CLOUD_SERVICES = ["cloudflare", "akamai", "imperva", "incapsula", "sucuri", "fastly"]
 
 
-def fetch_html(url: str) -> tuple[str, dict, str]:
-    """Try requests first, if fails use Selenium"""
+def get_driver():
+    """Start headless Chrome with unique profile (avoid session clash)."""
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+
+    temp_user_data = tempfile.mkdtemp()
+    chrome_options.add_argument(f"--user-data-dir={temp_user_data}")
+
+    service = Service("/usr/local/bin/chromedriver")  # adjust path if needed
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    return driver
+
+
+def fetch_site(url: str) -> str:
+    """Try requests first, fallback to Selenium if blocked."""
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
         resp = requests.get(url, headers=headers, timeout=12)
         resp.raise_for_status()
-        return resp.text, resp.headers, str(resp.status_code)
+        return resp.text
     except Exception:
-        # 🚀 Fallback to Selenium
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.set_page_load_timeout(20)
+        # fallback with selenium
+        driver = get_driver()
         driver.get(url)
         html = driver.page_source
         driver.quit()
-        return html, {}, "200 (Selenium)"
+        return html
 
 
-async def detect_features(url: str) -> dict:
-    result = {
-        "payment_gateways": [],
-        "captcha": "No captcha detected",
-        "cvv_fields": "Unknown",
-        "cloud_protection": "None",
-        "status": "Unknown",
-        "security": "2D (No 3D Secure Found)",
-        "inbuilt_system": "Not Detected",
-        "time_taken": 0.0,
-    }
-
-    start_time = time.time()
-    try:
-        html, headers, status = fetch_html(url)
-        soup = BeautifulSoup(html, "html.parser")
-        result["status"] = status
-    except Exception as e:
-        result["status"] = "Error"
-        result["error"] = str(e)
-        return result
-
-    # --- Payment Gateways ---
+def detect_payment_gateways(html: str):
+    found = []
     for g in PAYMENT_GATEWAYS:
         if re.search(rf"\b{re.escape(g)}\b", html, re.I):
-            result["payment_gateways"].append(g.capitalize())
+            found.append(g)
+    return list(set(found))
 
-    # --- Captcha ---
-    if (
-        soup.find("div", {"class": re.compile(r"captcha", re.I)}) or
-        soup.find("iframe", {"src": re.compile(r"captcha", re.I)}) or
-        "g-recaptcha" in html or "hcaptcha" in html
-    ):
-        result["captcha"] = "Detected"
 
-    # --- CVV ---
-    if (
-        soup.find("input", {"name": re.compile(r"cvv|cvc|security", re.I)}) or
-        soup.find("input", {"id": re.compile(r"cvv|cvc|security", re.I)})
-    ):
-        result["cvv_fields"] = "Present"
+def detect_cms(html: str):
+    found = []
+    for cms, pattern in CMS_PATTERNS.items():
+        if re.search(pattern, html, re.I):
+            found.append(cms)
+    return found or ["Unknown"]
 
-    # --- Cloud Protection ---
+
+def detect_card_security(html: str):
+    found = []
+    for name, pattern in CARD_PATTERNS.items():
+        if re.search(pattern, html, re.I):
+            found.append(name)
+    return found
+
+
+def detect_additional_security(html: str):
+    found = []
+    for name, pattern in SECURITY_PATTERNS.items():
+        if re.search(pattern, html, re.I):
+            found.append(name)
+    return found
+
+
+def detect_cloud(html: str, headers: dict):
     for c in CLOUD_SERVICES:
         if re.search(c, html, re.I):
-            result["cloud_protection"] = c.capitalize()
-            break
+            return c
+    server_header = headers.get("server", "")
     for c in CLOUD_SERVICES:
-        if headers and c.lower() in str(headers).lower():
-            result["cloud_protection"] = c.capitalize()
-            break
-
-    result["time_taken"] = round(time.time() - start_time, 2)
-    return result
+        if c.lower() in server_header.lower():
+            return c
+    return None
 
 
-# 🚀 Telegram /gate Command
 async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) == 0:
-        await update.message.reply_text("⚠️ Usage:\n`/gate https://example.com`", parse_mode="Markdown")
+        await update.message.reply_text("⚠️ Usage:\n`/gate https://example.com`", parse_mode="MarkdownV2")
         return
 
     url = context.args[0]
-    msg = await update.message.reply_text("`Processing site scan... 🔎`", parse_mode="Markdown")
+    start_time = time.time()
 
-    results = await detect_features(url)
+    msg = await update.message.reply_text("```\nProcessing site scan... 🔎\n```", parse_mode="MarkdownV2", disable_web_page_preview=True)
 
-    if "error" in results:
-        await msg.edit_text(f"❌ Error: {results['error']}", parse_mode="Markdown")
-        return
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        try:
+            resp = requests.get(url, headers=headers, timeout=12)
+            status_code = resp.status_code
+            html = resp.text
+        except Exception:
+            html = fetch_site(url)
+            status_code = 200
 
-    gateways = ", ".join(results["payment_gateways"]) if results["payment_gateways"] else "None"
+        soup = BeautifulSoup(html, "html.parser")
 
-    # ✨ Fancy Formatted Output
-    final_report = f"""
+        # --- Detections ---
+        gateways = detect_payment_gateways(html)
+        cms = detect_cms(html)
+        card = detect_card_security(html)
+        extra_sec = detect_additional_security(html)
+        cloud = detect_cloud(html, resp.headers if 'resp' in locals() else {})
+
+        # 2D/3D Secure check
+        security_status = "3D Secure Detected ✅" if any("3D Secure" in c for c in card) else "2D (No 3D Secure Found ❌)"
+
+        process_time = time.time() - start_time
+
+        # Format Output (monospace + no link preview)
+        final_report = f"""
 ┏━━━━━━━⍟
 ┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ✅
 ┗━━━━━━━━━━━⊛
 
-[⸙] 𝐒𝐢𝐭𝐞 ➳ {url}
-[⸙] 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ {gateways}
-[⸙] 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➳ {results['captcha']}
-[⸙] 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➳ {results['cloud_protection']}
+[⸙] 𝐒𝐢𝐭𝐞 ➳ `{url}`
+[⸙] 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ `{", ".join(gateways) if gateways else "None"}`
+[⸙] 𝐂𝐌𝐒 ➳ `{", ".join(cms)}`
+[⸙] 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➳ `{"Detected" if "captcha" in html.lower() else "No captcha detected"}`
+[⸙] 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➳ `{cloud if cloud else "None"}`
 ──────── ⸙ ─────────
-[⸙] 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ {results['security']}
-[⸙] 𝐂𝐕𝐕/𝐂𝐕𝐂 ➳ {results['cvv_fields']}
-[⸙] 𝐈𝐧𝐛𝐮𝐢𝐥𝐭 𝐒𝐲𝐬𝐭𝐞𝐦 ➳ {results['inbuilt_system']}
-[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ {results['status']}
+[⸙] 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ `{security_status}`
+[⸙] 𝐂𝐚𝐫𝐝 𝐃𝐞𝐭𝐚𝐢𝐥𝐬 ➳ `{", ".join(card) if card else "Unknown"}`
+[⸙] 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ `{", ".join(extra_sec) if extra_sec else "Not Detected"}`
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ `{status_code}`
 ──────── ⸙ ─────────
-[⸙] 𝗧𝗶𝗺𝗲 ⌁ {results['time_taken']} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬
+[⸙] 𝐑𝐞𝐪 𝐁𝐲 ⌁ `{update.effective_user.first_name}`
+[⸙] 𝐃𝐞𝐯 ⌁ ⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
+[⸙] 𝗧𝗶𝗺𝗲 ⌁ `{round(process_time,2)} seconds`
 """
 
-    await msg.edit_text(final_report, parse_mode="Markdown")
+        await msg.edit_text(final_report, parse_mode="MarkdownV2", disable_web_page_preview=True)
+
+    except Exception as e:
+        await msg.edit_text(f"❌ Error: `{str(e)}`", parse_mode="MarkdownV2", disable_web_page_preview=True)
+
 
 
 
