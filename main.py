@@ -4081,15 +4081,12 @@ PAYMENT_GATEWAYS = [
     "Vipps", "Swish", "MobilePay"
 ]
 
-from urllib.parse import urlparse
-import aiohttp
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 async def fetch_site(url: str):
-    # Ensure the URL has a scheme
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
-    # Extract domain for headers
     parsed = urlparse(url)
     domain = parsed.netloc
 
@@ -4123,6 +4120,7 @@ async def fetch_site(url: str):
             return None, None
 
 
+# --- Detection functions (same as before) ---
 def detect_cms(html: str):
     for cms, pattern in CMS_PATTERNS.items():
         if re.search(pattern, html, re.IGNORECASE):
@@ -4130,7 +4128,7 @@ def detect_cms(html: str):
     return "Unknown"
 
 def detect_security(html: str):
-    for name, pattern in SECURITY_PATTERNS.items():
+    for _, pattern in SECURITY_PATTERNS.items():
         if re.search(pattern, html, re.IGNORECASE):
             return "3D Secure Detected ✅"
     return "2D (No 3D Secure Found ❌)"
@@ -4154,16 +4152,22 @@ def detect_cloudflare(html: str):
         return "Cloudflare Detected ✅"
     return "None"
 
-async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("Usage: /gate <site_url>")
-        return
-    
-    url = context.args[0]
-    status, html = await fetch_site(url)
 
+# --- Actual gate processing in background ---
+async def gate_worker(update: Update, url: str):
+    user = update.effective_user
+    full_name = user.first_name
+    requester = f'<a href="tg://user?id={user.id}">{full_name}</a>'
+    developer_clickable = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+    # Send initial processing message
+    msg = await update.message.reply_text("⏳ Processing...", parse_mode="HTML")
+    await asyncio.sleep(3)  # optional scanning delay
+
+    status, html = await fetch_site(url)
     if not html:
-        await update.message.reply_text(f"❌ Error: Cannot access `{url}`")
+        await msg.edit_text(f"❌ Error: Cannot access <code>{url}</code>", parse_mode="HTML")
         return
 
     cms = detect_cms(html)
@@ -4172,31 +4176,33 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     captcha = detect_captcha(html)
     cloudflare = detect_cloudflare(html)
 
-    # Telegram-friendly output with monospace for values
     message = f"""
-◇━━〔 Lookup Results 〕━━◇
-[⌇] Site ➵ `{url}`
-[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲s ➵ `{gateways}`
-[⌇] 𝐂𝐌𝐒 ➵ `{cms}`
+◇━━〔 Lookup Results✅ 〕━━◇
+{bullet_link} Site ➵ <code>{url}</code>
+{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲s ➵ <code>{gateways}</code>
+{bullet_link} 𝐂𝐌𝐒 ➵ <code>{cms}</code>
 ――――――――――――――――
-[⌇] 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{captcha}`
-[⌇] 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ `{cloudflare}`
-[⌇] 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `{security}`
+{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ <code>{captcha}</code>
+{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ <code>{cloudflare}</code>
+{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ <code>{security}</code>
 ――――――――――――――――
-[⌇] 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `Not Detected`
-[⌇] 𝐒𝐭𝐚𝐭𝐮𝐬 ➵ `{status}`
+{bullet_link} 𝐄𝐱𝐭𝐫𝐚 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ <code>Not Detected</code>
+{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬 ➵ <code>{status}</code>
 ――――――――――――――――
-[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ `{update.effective_user.first_name}`
-[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ `kคli liຖนxx`
+{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}
+{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}
 """
-    await update.message.reply_text(message, parse_mode="MarkdownV2")
-
-# To register the command in your bot
-# application.add_handler(CommandHandler("gate", gate_command))
+    await msg.edit_text(message, parse_mode="HTML")
 
 
-
-
+# --- Command handler ---
+async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Usage: /gate <site_url>")
+        return
+    url = context.args[0]
+    # Run the worker in the background so it doesn't block other commands
+    asyncio.create_task(gate_worker(update, url))
 
 
 
