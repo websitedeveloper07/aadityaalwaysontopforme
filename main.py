@@ -4900,7 +4900,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("fk", force_join(fk_command)))
     application.add_handler(CommandHandler("vbv", force_join(vbv)))
     application.add_handler(CommandHandler("b3", b3))
-    application.add_handler(CommandHandler("gate", gate_command))
+    application.add_handler(CommandHandler("gate", gate))
     application.add_handler(CommandHandler("fl", force_join(fl_command)))
     application.add_handler(CommandHandler("status", force_join(status_command)))
     application.add_handler(CommandHandler("redeem", force_join(redeem_command)))
