@@ -4079,6 +4079,19 @@ from db import get_user, update_user
 
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
+# --- Shared aiohttp session ---
+session: aiohttp.ClientSession = None
+
+async def init_session():
+    global session
+    if session is None or session.closed:
+        session = aiohttp.ClientSession()
+
+async def close_session():
+    global session
+    if session and not session.closed:
+        await session.close()
+
 # --- Credit consumption ---
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
@@ -4089,6 +4102,7 @@ async def consume_credit(user_id: int) -> bool:
 
 # --- Fetch site ---
 async def fetch_site(url: str):
+    await init_session()
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
     domain = urlparse(url).netloc
@@ -4112,13 +4126,12 @@ async def fetch_site(url: str):
                       "Chrome/140.0.0.0 Mobile Safari/537.36",
     }
 
-    async with aiohttp.ClientSession(headers=headers) as session:
-        try:
-            async with session.get(url, timeout=15) as resp:
-                text = await resp.text()
-                return resp.status, text, resp.headers
-        except Exception:
-            return None, None, None
+    try:
+        async with session.get(url, headers=headers, timeout=15) as resp:
+            text = await resp.text()
+            return resp.status, text, resp.headers
+    except Exception:
+        return None, None, None
 
 # --- Detection functions ---
 def detect_cms(html: str):
@@ -4168,21 +4181,30 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
         )
         return
 
-    await asyncio.sleep(2)  # small delay for realism
+    # small delay for realism & yielding
+    await asyncio.sleep(0)
+
     status, html, headers = await fetch_site(url)
+    await asyncio.sleep(0)  # yield after fetch
+
     if not html:
         await msg.edit_text(
-            escape_markdown(f"❌ Error: Cannot access {url}", version=2),
+            escape_markdown(f"❌ Cannot access {url}", version=2),
             parse_mode="MarkdownV2",
             disable_web_page_preview=True
         )
         return
 
     cms = detect_cms(html)
+    await asyncio.sleep(0)
     security = detect_security(html)
+    await asyncio.sleep(0)
     gateways = detect_gateways(html)
+    await asyncio.sleep(0)
     captcha = detect_captcha(html)
+    await asyncio.sleep(0)
     cloudflare = detect_cloudflare(html, headers=headers)
+    await asyncio.sleep(0)
 
     user = update.effective_user
     requester_clickable = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
@@ -4229,7 +4251,9 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
+    # Launch worker in background (non-blocking)
     asyncio.create_task(gate_worker(update, url, msg, user_id))
+
 
 
 
