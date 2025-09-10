@@ -4045,7 +4045,7 @@ PAYMENT_GATEWAYS = [
     "iPay88", "KakaoPay", "Toss Payments", "NaverPay", "OVO", "GCash",
     "Bizum", "Culqi", "Pagar.me", "Rapyd", "PayKun", "Instamojo",
     "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "Atom", "BillDesk",
-    "Citrus Pay", "RazorpayX", "Cashfree", "PayUbiz", "EBS",
+    "Citrus Pay", "RazorpayX", "Cashfree", "PayUbiz", 
 
     # Buy Now Pay Later
     "Klarna", "Affirm", "Afterpay", "Zip", "Sezzle",
@@ -4096,8 +4096,7 @@ BULLET_GROUP_LINK = "https://t.me/CARDER33"
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
-        await update_user(user_id, credits=new_credits)
+        await update_user(user_id, credits=user_data["credits"] - 1)
         return True
     return False
 
@@ -4105,8 +4104,7 @@ async def consume_credit(user_id: int) -> bool:
 async def fetch_site(url: str):
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
-    parsed = urlparse(url)
-    domain = parsed.netloc
+    domain = urlparse(url).netloc
 
     headers = {
         "authority": domain,
@@ -4122,18 +4120,15 @@ async def fetch_site(url: str):
         "sec-fetch-site": "none",
         "sec-fetch-user": "?1",
         "upgrade-insecure-requests": "1",
-        "user-agent": (
-            "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/140.0.0.0 Mobile Safari/537.36"
-        ),
+        "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/140.0.0.0 Mobile Safari/537.36",
     }
 
     async with aiohttp.ClientSession(headers=headers) as session:
         try:
             async with session.get(url, timeout=15) as resp:
-                text = await resp.text()
-                return resp.status, text
+                return resp.status, await resp.text()
         except Exception:
             return None, None
 
@@ -4145,35 +4140,33 @@ def detect_cms(html: str):
     return "Unknown"
 
 def detect_security(html: str):
-    for _, pattern in SECURITY_PATTERNS.items():
+    """
+    Detects whether 3D Secure is implemented.
+    Returns '3D Secure Detected ✅' or '2D (No 3D Secure Found ❌)'
+    """
+    # Common keywords for 3DS pages
+    patterns_3ds = [
+        r'3ds', r'verify', r'authentication', r'dsv', r'securecode', r'pareq', r'acs'
+    ]
+    for pattern in patterns_3ds:
         if re.search(pattern, html, re.IGNORECASE):
-            return "3D Secure Detected ❌"
-    return "2D (No 3D Secure Found ✅)"
+            return "3D Secure Detected ✅"
+    return "2D (No 3D Secure Found ❌)"
 
 def detect_gateways(html: str):
-    detected = []
-    for gateway in PAYMENT_GATEWAYS:
-        if re.search(gateway, html, re.IGNORECASE):
-            detected.append(gateway)
-    if not detected:
-        return "None Detected"
-    return ", ".join(detected)
+    detected = [g for g in PAYMENT_GATEWAYS if re.search(g, html, re.IGNORECASE)]
+    return ", ".join(detected) if detected else "None Detected"
 
 def detect_captcha(html: str):
-    if re.search(r'captcha|recaptcha', html, re.IGNORECASE):
-        return "Captcha Detected ✅"
-    return "No captcha detected"
+    return "Captcha Detected ✅" if re.search(r'captcha|recaptcha', html, re.IGNORECASE) else "No captcha detected"
 
 def detect_cloudflare(html: str):
-    if "cloudflare" in html.lower():
-        return "Cloudflare Detected ✅"
-    return "None"
+    return "Cloudflare Detected ✅" if "cloudflare" in html.lower() else "None"
 
 # --- Worker for background scanning ---
 async def gate_worker(update: Update, url: str, msg, user_id: int):
-    # Check credits before scanning
-    has_credits = await consume_credit(user_id)
-    if not has_credits:
+    # Credit check
+    if not await consume_credit(user_id):
         await msg.edit_text(
             escape_markdown("❌ You don't have enough credits to perform this scan.", version=2),
             parse_mode="MarkdownV2",
@@ -4183,7 +4176,6 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
 
     await asyncio.sleep(2)  # small delay for realism
     status, html = await fetch_site(url)
-
     if not html:
         await msg.edit_text(
             escape_markdown(f"❌ Error: Cannot access {url}", version=2),
@@ -4199,17 +4191,15 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
     cloudflare = detect_cloudflare(html)
 
     user = update.effective_user
-    requester_name = escape_markdown(user.first_name, version=2)
-    requester_clickable = f"[{requester_name}](tg://user?id={user.id})"
+    requester_clickable = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
     developer_clickable = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
 
-    # Construct final results message
     results = (
         f"◇━━〔 𝑳𝒐𝒐𝒌𝒖𝒑 𝑹𝒆𝒔𝒖𝒍𝒕𝒔 〕━━◇\n"
         f"{bullet_link} 𝐒𝐢𝐭𝐞 ➵ `{escape_markdown(url, version=2)}`\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ _{escape_markdown(gateways, version=2)}_\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ `{escape_markdown(gateways, version=2)}`\n"
         f"{bullet_link} 𝐂𝐌𝐒 ➵ `{escape_markdown(cms, version=2)}`\n"
         f"――――――――――――――――\n"
         f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{escape_markdown(captcha, version=2)}`\n"
@@ -4237,17 +4227,17 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...", version=2)
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
-    processing_text = f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```" + "\n" + f"{bullet_link} {status_text}\n"
+    processing_text = f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n{bullet_link} {status_text}\n"
 
-    # Send processing message (link preview disabled)
     msg = await update.message.reply_text(
         processing_text,
         parse_mode="MarkdownV2",
         disable_web_page_preview=True
     )
 
-    # Run the scan in background with credit check
+    # Run worker
     asyncio.create_task(gate_worker(update, url, msg, user_id))
+
 
 
 
