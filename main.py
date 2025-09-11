@@ -3754,54 +3754,45 @@ logger = logging.getLogger(__name__)
 BASE_COOLDOWN = 20  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
-SITE = "https://apluscollectibles.com"
+SITE = "https://disciplinedfinancialmanagement.com"
 
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
     # Cookie 1
-    '''_ga_D1Q49TMJ2C=GS2.1.s1757220818$o7$g0$t1757220818$j60$l0$h0;
-wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b=xcrasjwiiwjwr663%7C1758272921%7CBPf39ptFyvGAQ34Dn1nIXF1fvcY5spDCUhlsfKA1Wp4%7C301e75542869a8a7dbbcf88f245dddf67e40a88c925b8b137785ca10d8f0c986;
+    '''uncode_privacy[consent_types]=%5B%5D;
+nfd-enable-cf-opt=63a6825d27cab0f204d3b602;
+sbjs_migrations=1418474375998%3D1;
+sbjs_current_add=fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_first_add=fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29;
 sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-cfz_google-analytics_v4=%7B"uoEf_engagementDuration"%3A%7B"v"%3A"0"%2C"e"%3A1788756819052%7D%2C"uoEf_engagementStart"%3A%7B"v"%3A"1757220819052"%2C"e"%3A1788756819052%7D%2C"uoEf_counter"%3A%7B"v"%3A"43"%2C"e"%3A1788756819052%7D%2C"uoEf_session_counter"%3A%7B"v"%3A"8"%2C"e"%3A1788756819052%7D%2C"uoEf_ga4"%3A%7B"v"%3A"0486ee08-be8c-416f-a2a9-e6cc9b586a2c"%2C"e"%3A1788756819052%7D%2C"uoEf__z_ga_audiences"%3A%7B"v"%3A"0486ee08-be8c-416f-a2a9-e6cc9b586a2c"%2C"e"%3A1788099028638%7D%2C"uoEf_let"%3A%7B"v"%3A"1757220819052"%2C"e"%3A1788756819052%7D%2C"uoEf_ga4sid"%3A%7B"v"%3A"1807422450"%2C"e"%3A1757222619052%7D%7D;
-wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f=9023%7Cother%7Cread%7C5ad6eca7c2a7a49651f38d465011c7ae8f8529e64b49ffad8bc1527e1540360d;
-sbjs_session=pgs%3D1%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;
-mailchimp_user_email=xcrasjwiiwjwr663%40gmail.com;
-sbjs_migrations=1418474375998%3D1;
-mailchimp_user_previous_email=xcrasjwiiwjwr663%40gmail.com;
-Subscribe=true;
-sbjs_first_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
-_ga=GA1.1.1082691390.1756563029;
-_gcl_au=1.1.1821381797.1756563029;
-breeze_folder_name=6bae3cd94ddbfe28435ae88815e64956a5198266;
-cfzs_google-analytics_v4=%7B"uoEf_pageviewCounter"%3A%7B"v"%3A"1"%7D%7D;
-dfehc_user=f9046e64c7ce9c01a633953b208018fe;
-mailchimp_landing_site=https%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;
-sbjs_current_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36''',
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
+cf_clearance=9Xl.6jV8IIGgJU5U7lkJ638ow0bcakUN4h0B7ePoG6U-1757569707-1.2.1.1-pzKbkAthbP0fZZqhymqVvW33TUBX1ex0F6MerEFkIgllFBZXZFucjs5id0nuc8Dur6ODzASl7WIeGPwtm4goVWxQD_7fozcWcquuc886IfnBAdvAcFSZIhPhPqNTLLYAu9xo8d.nQiRVVNM2QLsvolzMGvMIW3my4_rp3Vzqycf39rhxXMhYOSIex.EQYOv1O7WEn9TqN7cK3huP.5FRH37nXjtlqltXWN4JmVZDhIA;
+woocommerce_recently_viewed=791;
+wordpress_test_cookie=WP%20Cookie%20check;
+wordpress_logged_in_6b955d6741219a026f9334193744bea4=rocky%7C1757742548%7C5UtX3PFCzuWdOrZdpnPG0aW4eB9qM4IotSCFuaIP7Ie%7Cdbe45f6e1aa6a1585261bf4bd0a0557ed9b04b12e3663c7585bd2797bcf3d2d2;
+sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fmyaccount;
+aiovg_rand_seed=4192834720;
+__cf_bm=RkeB6uLz9f_0hitVWVcPDQAFGg1cXAOEY.UcIQ7llzI-1757569841-1.0.1.1-MDSe2.exNnF9BOVoQoN7z7tNPOAQxrSGB8ZIUfwwyUd5JuQmVfvtn8hXLKWUxWF1OPqH4Go8z.nslwbRwT.Ni3QYJGYIAMh_rvFkLKKwjlQ;
+_cfuvid=6Phe5p.P1aqP50zjKBR2Wk9aLGwVR0A2n_4AX3BmWjc-1757569841304-0.0.1.1-604800000''',
 
-
-    # Cookie 2 (converted to raw string)
-    '''_ga=GA1.1.333862603.1756374247;
-_gcl_au=1.1.1881747356.1756374247;
-mailchimp_landing_site=https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV;
-dfehc_user=cbb3a19283b1fa013098d308fc9643ae;
+    # Cookie 2
+    '''uncode_privacy[consent_types]=%5B%5D;
+nfd-enable-cf-opt=63a6825d27cab0f204d3b602;
 sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-10%2007%3A31%3A03%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoqD-funxvPkYkgom1EBxAXl88itxJndWUjeE3rjPIqNCFqTAAfO%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F;
-sbjs_first_add=fd%3D2025-09-10%2007%3A31%3A03%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoqD-funxvPkYkgom1EBxAXl88itxJndWUjeE3rjPIqNCFqTAAfO%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F;
-sbjs_current=typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_first=typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Safari%2F537.36;
-Subscribe=true;
-mailchimp.cart.current_email=maihujiyan@gmail.com;
-mailchimp_user_previous_email=maihujiyan%40gmail.com;
-mailchimp_user_email=maihujiyan%40gmail.com;
-breeze_folder_name=6bae3cd94ddbfe28435ae88815e64956a5198266;
-wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b=maihujiyan%7C1758700897%7CxK4lY1UHm6sxwxw3XIDDtUhvbfTyVpCm1sMVrqhSHBU%7Ca9cb414769c030ac993c3b41bedc11db8b9b53fe7940719a35c5e5543d958c43;
-wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f=9043%7Cother%7Cread%7C73e129a8c5b2c2224a65315f993e96448b8948c8090c76ce36fed065511e9da5;
-cfzs_google-analytics_v4=%7B%22uoEf_pageviewCounter%22%3A%7B%22v%22%3A%229%22%7D%7D;
-_ga_D1Q49TMJ2C=GS2.1.s1757491263$o10$g1$t1757491354$j30$l0$h0;
-sbjs_session=pgs%3D9%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fadd-payment-method'''
+sbjs_current_add=fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_first_add=fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+woocommerce_recently_viewed=791;
+wordpress_test_cookie=WP%20Cookie%20check;
+wordpress_logged_in_6b955d6741219a026f9334193744bea4=baap%7C1757743324%7CyPvVGobS3bvHOBoyF8ic2c7YkpudkPm5nApTmMtgdgt%7Cddea88c40448598b4ed3c1e3f9e5ac0fd4e7d27b7d4de343a7255359c4046894;
+__cf_bm=2tkHjwj_jM__v1rTK7Lq6eViVykxqrmen1vuDk1ZVHs-1757570594-1.0.1.1-H_fnMwrKfDgOKkITPzGuhIP3xnmnD5EnNqxmI13WlimWOfM7YWJjeLZwOjV.nOh1qD7xSAiICbcYXE6OjMLeWe67SqaP14u35GONzhm0t48;
+_cfuvid=43RYnEAic6j096khQjsm0VsweKqsmp3bV.EjsZT0AiQ-1757570594594-0.0.1.1-604800000;
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
+cf_clearance=xGyvtMEeqHB6ZklWkiocIIYN7qj5CZS.s_S5OWkCdQQ-1757570598-1.2.1.1-TSCY.9cUrhN6K9Cya1VLaJZi4X_dAoDn4Vx4cSOl6uE2QIbUW15Hv272IEUtqYY1c7kKlKTgI1NA6MgtM.85hXaB8gC1gvGfEfWlhbDyAVTVitpF9E1GORjYhFsqETUgPNQD;
+sbjs_session=pgs%3D13%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fmy-account%2Fedit-address%2F;
+aiovg_rand_seed=2821333190'''
 ]
 
 
