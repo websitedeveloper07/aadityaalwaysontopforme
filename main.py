@@ -3753,6 +3753,7 @@ BASE_COOLDOWN = 20  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
 SITE = "https://disciplinedfinancialmanagement.com"
+
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
     # Cookie set 1
@@ -3796,13 +3797,12 @@ COOKIES_LIST = [
     }
 ]
 
-
-
+# --- Cookie rotation index ---
 cookie_index = 0
 
 # --- Cooldown tracker (per-user) ---
 user_last_command_time = {}
-COOLDOWN_SECONDS = BASE_COOLDOWN // len(COOKIES_LIST)  # e.g., 3 cookies → ~6s cooldown
+COOLDOWN_SECONDS = BASE_COOLDOWN // len(COOKIES_LIST)  # e.g., 2 cookies → cooldown halved
 
 # --- Rotate cookies ---
 def get_next_cookie():
@@ -3810,6 +3810,7 @@ def get_next_cookie():
     cookie = COOKIES_LIST[cookie_index]
     cookie_index = (cookie_index + 1) % len(COOKIES_LIST)  # rotate
     return cookie
+
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
