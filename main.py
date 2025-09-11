@@ -3754,7 +3754,7 @@ logger = logging.getLogger(__name__)
 BASE_COOLDOWN = 20  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
-SITE = "https://disciplinedfinancialmanagement.com"
+SITE = "https://apluscollectibles.com"
 
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
@@ -3899,7 +3899,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     }
 
     try:
-        timeout = aiohttp.ClientTimeout(total=20)
+        timeout = aiohttp.ClientTimeout(total=50)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(API_URL, params=params) as resp:
                 if resp.status != 200:
