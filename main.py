@@ -3797,6 +3797,7 @@ COOKIES_LIST = [
 ]
 
 
+
 cookie_index = 0
 
 # --- Cooldown tracker (per-user) ---
