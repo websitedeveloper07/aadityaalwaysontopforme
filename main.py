@@ -3064,6 +3064,9 @@ async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
 async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
     """Fetch a site and return structured result."""
     try:
+        if not site.startswith("http"):
+            site = "https://" + site
+
         async with session.get(site, timeout=15) as resp:
             if resp.status == 200:
                 # Example: mark as working with dummy price
@@ -3173,6 +3176,7 @@ async def run_msite_check(sites: list[str], msg):
             except TelegramError:
                 pass
 
+
 # --- /msite command handler ---
 async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -3229,7 +3233,6 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ An unexpected error occurred. Please try again later or contact the owner."
         )
         print(f"[ERROR] /msite command failed: {e}")
-
 
 
 
