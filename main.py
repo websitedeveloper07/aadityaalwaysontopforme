@@ -3060,7 +3060,10 @@ async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
         return {"site": site, "status": "dead", "price": 0.0}
 
 
-async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
+async def fetch_site(session, site):
+    async with session.get(site) as resp:
+        return await resp.text()
+
     """Fetch a site and return structured result."""
     try:
         if not site.startswith("http"):
