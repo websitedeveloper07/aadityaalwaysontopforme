@@ -3004,8 +3004,12 @@ def normalize_site(site: str) -> str:
         site = "https://" + site
     return site
 
-# --- Fetch site info ---
-async def fetch_site(session, site_url: str):
+# --- Fetch site info (single correct version) ---
+async def fetch_site_info(session, site_url: str):
+    """
+    Fetch site info using API_TEMPLATE and return a structured result.
+    Always returns a dict with keys: site, price, status, response, gateway.
+    """
     normalized_url = normalize_site(site_url)
     api_url = API_TEMPLATE.format(site_url=normalized_url)
 
@@ -3013,12 +3017,14 @@ async def fetch_site(session, site_url: str):
         async with session.get(api_url, timeout=60) as resp:
             raw_text = await resp.text()
 
+        # Strip HTML tags (if any)
         clean_text = re.sub(r"<[^>]+>", "", raw_text).strip()
         json_start = clean_text.find("{")
         if json_start != -1:
             clean_text = clean_text[json_start:]
 
         data = json.loads(clean_text)
+
         response = data.get("Response", "Unknown")
         gateway = data.get("Gateway", "Shopify")
         try:
@@ -3044,29 +3050,7 @@ async def fetch_site(session, site_url: str):
         }
 
 
-async def fetch_site(session, site):
-    async with session.get(site) as resp:
-        return await resp.text()
-
-    """Fetch a site and return structured result."""
-    try:
-        if not site.startswith("http"):
-            site = "https://" + site
-
-        async with session.get(site, timeout=55) as resp:
-            if resp.status == 200:
-                # Example: mark as working with dummy price
-                return {
-                    "site": site,
-                    "status": "working",
-                    "price": 10.0,  # TODO: replace with your logic
-                }
-            else:
-                return {"site": site, "status": "dead", "price": 0.0}
-    except Exception:
-        return {"site": site, "status": "dead", "price": 0.0}
-
-
+# --- Mass site checker ---
 async def run_msite_check(sites: list[str], msg):
     total = len(sites)
     results = [None] * total
@@ -3077,7 +3061,7 @@ async def run_msite_check(sites: list[str], msg):
 
         async def worker(idx, site):
             async with semaphore:
-                res = await fetch_site(session, site)
+                res = await fetch_site_info(session, site)  # ✅ unified call
                 results[idx] = res
                 counters["checked"] += 1
                 if res["status"] == "working":
@@ -3112,7 +3096,8 @@ async def run_msite_check(sites: list[str], msg):
                         .replace("www.", "")
                     )
                     site_lines.append(
-                        f"✅ <code>{escape(display_site)}</code>\n   ↳ 💲{r['price']:.1f}"
+                        f"✅ <code>{escape(display_site)}</code>\n"
+                        f"   ↳ 💲{r['price']:.1f} | {r['gateway']}"
                     )
 
                 details = "\n".join(site_lines)
@@ -3160,6 +3145,7 @@ async def run_msite_check(sites: list[str], msg):
                 )
             except TelegramError:
                 pass
+
 
 
 # --- /msite command handler ---
