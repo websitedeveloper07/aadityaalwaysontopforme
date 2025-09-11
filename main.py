@@ -3043,22 +3043,6 @@ async def fetch_site(session, site_url: str):
             "gateway": "N/A",
         }
 
-async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
-    """Fetch a site and return its status + data."""
-    try:
-        async with session.get(site, timeout=15) as resp:
-            if resp.status == 200:
-                # --- Example logic: mark as working with a dummy price ---
-                return {
-                    "site": site,
-                    "status": "working",
-                    "price": 10.0,  # TODO: replace with real extraction logic
-                }
-            else:
-                return {"site": site, "status": "dead", "price": 0.0}
-    except Exception:
-        return {"site": site, "status": "dead", "price": 0.0}
-
 
 async def fetch_site(session, site):
     async with session.get(site) as resp:
@@ -3069,7 +3053,7 @@ async def fetch_site(session, site):
         if not site.startswith("http"):
             site = "https://" + site
 
-        async with session.get(site, timeout=15) as resp:
+        async with session.get(site, timeout=55) as resp:
             if resp.status == 200:
                 # Example: mark as working with dummy price
                 return {
