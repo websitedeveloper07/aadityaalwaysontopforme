@@ -3756,11 +3756,46 @@ SITE = "https://disciplinedfinancialmanagement.com"
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
     # Cookie set 1
-    r"uncode_privacy[consent_types]=%5B%5D; nfd-enable-cf-opt=63a6825d27cab0f204d3b602; sbjs_migrations=1418474375998%3D1; sbjs_current_add=fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29; sbjs_first_add=fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29; sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29; sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29; sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36; cf_clearance=9Xl.6jV8IIGgJU5U7lkJ638ow0bcakUN4h0B7ePoG6U-1757569707-1.2.1.1-pzKbkAthbP0fZZqhymqVvW33TUBX1ex0F6MerEFkIgllFBZXZFucjs5id0nuc8Dur6ODzASl7WIeGPwtm4goVWxQD_7fozcWcquuc886IfnBAdvAcFSZIhPhPqNTLLYAu9xo8d.nQiRVVNM2QLsvolzMGvMIW3my4_rp3Vzqycf39rhxXMhYOSIex.EQYOv1O7WEn9TqN7cK3huP.5FRH37nXjtlqltXWN4JmVZDhIA; woocommerce_recently_viewed=791; wordpress_test_cookie=WP%20Cookie%20check; wordpress_logged_in_6b955d6741219a026f9334193744bea4=rocky%7C1757742548%7C5UtX3PFCzuWdOrZdpnPG0aW4eB9qM4IotSCFuaIP7Ie%7Cdbe45f6e1aa6a1585261bf4bd0a0557ed9b04b12e3663c7585bd2797bcf3d2d2; sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fmyaccount; aiovg_rand_seed=4192834720; __cf_bm=RkeB6uLz9f_0hitVWVcPDQAFGg1cXAOEY.UcIQ7llzI-1757569841-1.0.1.1-MDSe2.exNnF9BOVoQoN7z7tNPOAQxrSGB8ZIUfwwyUd5JuQmVfvtn8hXLKWUxWF1OPqH4Go8z.nslwbRwT.Ni3QYJGYIAMh_rvFkLKKwjlQ; _cfuvid=6Phe5p.P1aqP50zjKBR2Wk9aLGwVR0A2n_4AX3BmWjc-1757569841304-0.0.1.1-604800000",
+    {
+        "uncode_privacy[consent_types]": "%5B%5D",
+        "nfd-enable-cf-opt": "63a6825d27cab0f204d3b602",
+        "sbjs_migrations": "1418474375998%3D1",
+        "sbjs_current_add": "fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29",
+        "sbjs_first_add": "fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29",
+        "sbjs_current": "typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29",
+        "sbjs_first": "typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29",
+        "sbjs_udata": "vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36",
+        "cf_clearance": "9Xl.6jV8IIGgJU5U7lkJ638ow0bcakUN4h0B7ePoG6U-1757569707-1.2.1.1-pzKbkAthbP0fZZqhymqVvW33TUBX1ex0F6MerEFkIgllFBZXZFucjs5id0nuc8Dur6ODzASl7WIeGPwtm4goVWxQD_7fozcWcquuc886IfnBAdvAcFSZIhPhPqNTLLYAu9xo8d.nQiRVVNM2QLsvolzMGvMIW3my4_rp3Vzqycf39rhxXMhYOSIex.EQYOv1O7WEn9TqN7cK3huP.5FRH37nXjtlqltXWN4JmVZDhIA",
+        "woocommerce_recently_viewed": "791",
+        "wordpress_test_cookie": "WP%20Cookie%20check",
+        "wordpress_logged_in_6b955d6741219a026f9334193744bea4": "rocky%7C1757742548%7C5UtX3PFCzuWdOrZdpnPG0aW4eB9qM4IotSCFuaIP7Ie%7Cdbe45f6e1aa6a1585261bf4bd0a0557ed9b04b12e3663c7585bd2797bcf3d2d2",
+        "sbjs_session": "pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fmyaccount",
+        "aiovg_rand_seed": "4192834720",
+        "__cf_bm": "RkeB6uLz9f_0hitVWVcPDQAFGg1cXAOEY.UcIQ7llzI-1757569841-1.0.1.1-MDSe2.exNnF9BOVoQoN7z7tNPOAQxrSGB8ZIUfwwyUd5JuQmVfvtn8hXLKWUxWF1OPqH4Go8z.nslwbRwT.Ni3QYJGYIAMh_rvFkLKKwjlQ",
+        "_cfuvid": "6Phe5p.P1aqP50zjKBR2Wk9aLGwVR0A2n_4AX3BmWjc-1757569841304-0.0.1.1-604800000"
+    },
 
     # Cookie set 2
-    r"uncode_privacy[consent_types]=%5B%5D; nfd-enable-cf-opt=63a6825d27cab0f204d3b602; sbjs_migrations=1418474375998%3D1; sbjs_current_add=fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29; sbjs_first_add=fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29; sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29; sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29; woocommerce_recently_viewed=791; wordpress_test_cookie=WP%20Cookie%20check; wordpress_logged_in_6b955d6741219a026f9334193744bea4=baap%7C1757743324%7CyPvVGobS3bvHOBoyF8ic2c7YkpudkPm5nApTmMtgdgt%7Cddea88c40448598b4ed3c1e3f9e5ac0fd4e7d27b7d4de343a7255359c4046894; __cf_bm=2tkHjwj_jM__v1rTK7Lq6eViVykxqrmen1vuDk1ZVHs-1757570594-1.0.1.1-H_fnMwrKfDgOKkITPzGuhIP3xnmnD5EnNqxmI13WlimWOfM7YWJjeLZwOjV.nOh1qD7xSAiICbcYXE6OjMLeWe67SqaP14u35GONzhm0t48; _cfuvid=43RYnEAic6j096khQjsm0VsweKqsmp3bV.EjsZT0AiQ-1757570594594-0.0.1.1-604800000; sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36; cf_clearance=xGyvtMEeqHB6ZklWkiocIIYN7qj5CZS.s_S5OWkCdQQ-1757570598-1.2.1.1-TSCY.9cUrhN6K9Cya1VLaJZi4X_dAoDn4Vx4cSOl6uE2QIbUW15Hv272IEUtqYY1c7kKlKTgI1NA6MgtM.85hXaB8gC1gvGfEfWlhbDyAVTVitpF9E1GORjYhFsqETUgPNQD.nUKW.lqyBvTDmcmDhMicbjkZVd7T.ByS52.itwQvfZeigsVuX_BA2o1krzbdqyzphPjcItHS31wEVvKf0BpDLzVVhr_Qv5WqpzGDW0; sbjs_session=pgs%3D13%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fmy-account%2Fedit-address%2F; aiovg_rand_seed=2821333190"
+    {
+        "uncode_privacy[consent_types]": "%5B%5D",
+        "nfd-enable-cf-opt": "63a6825d27cab0f204d3b602",
+        "sbjs_migrations": "1418474375998%3D1",
+        "sbjs_current_add": "fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29",
+        "sbjs_first_add": "fd%3D2025-09-11%2005%3A18%3A21%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F%7C%7C%7Crf%3D%28none%29",
+        "sbjs_current": "typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29",
+        "sbjs_first": "typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29",
+        "woocommerce_recently_viewed": "791",
+        "wordpress_test_cookie": "WP%20Cookie%20check",
+        "wordpress_logged_in_6b955d6741219a026f9334193744bea4": "baap%7C1757743324%7CyPvVGobS3bvHOBoyF8ic2c7YkpudkPm5nApTmMtgdgt%7Cddea88c40448598b4ed3c1e3f9e5ac0fd4e7d27b7d4de343a7255359c4046894",
+        "__cf_bm": "2tkHjwj_jM__v1rTK7Lq6eViVykxqrmen1vuDk1ZVHs-1757570594-1.0.1.1-H_fnMwrKfDgOKkITPzGuhIP3xnmnD5EnNqxmI13WlimWOfM7YWJjeLZwOjV.nOh1qD7xSAiICbcYXE6OjMLeWe67SqaP14u35GONzhm0t48",
+        "_cfuvid": "43RYnEAic6j096khQjsm0VsweKqsmp3bV.EjsZT0AiQ-1757570594594-0.0.1.1-604800000",
+        "sbjs_udata": "vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36",
+        "cf_clearance": "xGyvtMEeqHB6ZklWkiocIIYN7qj5CZS.s_S5OWkCdQQ-1757570598-1.2.1.1-TSCY.9cUrhN6K9Cya1VLaJZi4X_dAoDn4Vx4cSOl6uE2QIbUW15Hv272IEUtqYY1c7kKlKTgI1NA6MgtM.85hXaB8gC1gvGfEfWlhbDyAVTVitpF9E1GORjYhFsqETUgPNQD.nUKW.lqyBvTDmcmDhMicbjkZVd7T.ByS52.itwQvfZeigsVuX_BA2o1krzbdqyzphPjcItHS31wEVvKf0BpDLzVVhr_Qv5WqpzGDW0",
+        "sbjs_session": "pgs%3D13%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fmy-account%2Fedit-address%2F",
+        "aiovg_rand_seed": "2821333190"
+    }
 ]
+
 
 cookie_index = 0
 
