@@ -3060,7 +3060,6 @@ async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
         return {"site": site, "status": "dead", "price": 0.0}
 
 
-# --- Mass Site Checker ---
 async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
     """Fetch a site and return structured result."""
     try:
@@ -3081,7 +3080,6 @@ async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
         return {"site": site, "status": "dead", "price": 0.0}
 
 
-# --- Mass Site Checker ---
 async def run_msite_check(sites: list[str], msg):
     total = len(sites)
     results = [None] * total
