@@ -3747,7 +3747,9 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from db import get_user, update_user  # credit system
-
+import urllib.parse
+import aiohttp
+import asyncio
 logger = logging.getLogger(__name__)
 BASE_COOLDOWN = 20  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
@@ -3796,6 +3798,13 @@ COOKIES_LIST = [
         "aiovg_rand_seed": "2821333190"
     }
 ]
+
+
+# --- Helper: Convert dict → string (URL encoded) ---
+def cookies_dict_to_string(cookies: dict) -> str:
+    raw_cookie = "; ".join([f"{k}={v}" for k, v in cookies.items()])
+    return urllib.parse.quote(raw_cookie, safe="")
+
 
 # --- Cookie rotation index ---
 cookie_index = 0
