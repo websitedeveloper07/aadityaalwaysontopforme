@@ -3061,6 +3061,24 @@ async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
 
 
 # --- Mass Site Checker ---
+async def fetch_site(session: aiohttp.ClientSession, site: str) -> dict:
+    """Fetch a site and return structured result."""
+    try:
+        async with session.get(site, timeout=15) as resp:
+            if resp.status == 200:
+                # Example: mark as working with dummy price
+                return {
+                    "site": site,
+                    "status": "working",
+                    "price": 10.0,  # TODO: replace with your logic
+                }
+            else:
+                return {"site": site, "status": "dead", "price": 0.0}
+    except Exception:
+        return {"site": site, "status": "dead", "price": 0.0}
+
+
+# --- Mass Site Checker ---
 async def run_msite_check(sites: list[str], msg):
     total = len(sites)
     results = [None] * total
