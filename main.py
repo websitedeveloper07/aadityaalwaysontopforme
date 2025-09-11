@@ -3882,15 +3882,20 @@ async def b3(update: Update, context):
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
 
 # --- Background Task ---
+# --- Background Task ---
 async def run_braintree_check(user, cc_input, full_card, processing_msg):
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+    # --- Pick and stringify cookie ---
+    cookie_dict = get_next_cookie()
+    cookies_string = cookies_dict_to_string(cookie_dict)  # <-- ✅ convert dict → str
 
     # --- API request ---
     params = {
         "key": API_KEY,
         "site": SITE,
-        "cookies": get_next_cookie(),
+        "cookies": cookies_string,   # <-- ✅ now string, not dict
         "cc": cc_input
     }
 
