@@ -3780,17 +3780,16 @@ sbjs_migrations=1418474375998%3D1;
 sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 uncode_privacy[consent_types]=%5B%5D;
 wordpress_test_cookie=WP%20Cookie%20check;
-sbjs_first_add=fd%3D2025-09-11%2010%3A17%3A46%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Flogin%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fregister%2F;
-aiovg_rand_seed=1457416861;
+sbjs_first_add=fd%3D2025-09-11%2010%3A28%3A46%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Flogin%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F;
+aiovg_rand_seed=4249418581;
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36;
-__cf_bm=5EIs56WPVpC._mjWUycr_Acv4k3MB44kethzAzaNOGM-1757587657-1.0.1.1-y82GG6j8Ls8hwDhtVlAJyG9ri_YbbQFLQ3uB5k0kCeu1B5v0cJ7qL1fYBmijFMTrGr59ZofOAyBn7r39pdOtV_Ry9oFt7PRyCfGnJwDrAOY;
-_cfuvid=Gspe10ALXswcKEBZcWl8MdkbSBd6CZIXQQ1HmIYjZpY-1757587657574-0.0.1.1-604800000;
-sbjs_current_add=fd%3D2025-09-11%2010%3A17%3A46%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Flogin%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fregister%2F;
-sbjs_session=pgs%3D2%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fmyaccount;
-wordpress_logged_in_6b955d6741219a026f9334193744bea4=rocky%7C1757760594%7CyMn8Qy5nEFNYtx4X2CW5EDopcX4OUVM4s26CJlH80N4%7C8ad8b743309ac1c96968c60b0e8703dcb3bffd32b01c27abcc46c138f7cf65e0'''
+__cf_bm=iRifpZwA2TLxR.PZ.5pAwOAMVg.Dta6eLM1npVHn88U-1757588435-1.0.1.1-9FaK6NhwxM_BDJqe0BsI4QLAbEg9f.k_6Y6aXHMXajYWo0p4gHiQbv8TG_dECF3T7JKQP7htlpcSZBuav6hfBlH8EaBzuKS_EjmyJAJfQ6l6bduna2ujwtsS5DjcWbIB;
+_cfuvid=4CYTGTHrbYQHY8lqj8cub6nKQ6kMy5XvIk7igu_SaCA-1757588321734-0.0.1.1-604800000;
+sbjs_current_add=fd%3D2025-09-11%2010%3A28%3A46%7C%7C%7Cep%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Flogin%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2F;
+sbjs_session=pgs%3D7%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdisciplinedfinancialmanagement.com%2Fmyaccount;
+wordpress_logged_in_6b955d6741219a026f9334193744bea4=Xcracker72%7C1757761232%7C4R5XxJlr9UzpvODQMP1UK0E9Hi2b9QYGBDN9fEZo8rh%7C936e38167307a741845452fe1659f2fd651968d38c4149b06181f9bff9476e02'''
 ]
-
 
 
 # --- Helper: Convert dict → raw cookie string (NO extra encoding) ---
