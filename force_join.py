@@ -4,17 +4,21 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-GROUP_ID = -1002554243871   # numeric group ID (used only for membership check)
-GROUP_USERNAME = "CARDER33"  # used for join button
-CHANNEL_USERNAME = "+EFlLesETogM3M2Q1"         # used for join button (optional)
+GROUP_ID = -1002554243871       # numeric group ID (required)
+GROUP_USERNAME = "CARDER33"     # for join button (@username only)
+
+CHANNEL_ID = -1002967799582     # numeric channel ID (required)
+CHANNEL_USERNAME = "+YCpdRKkETatlNGJl"  # for join button (no '+' sign)
+
 FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
 
 logger = logging.getLogger("force_join")
 logger.setLevel(logging.INFO)
 
+
 # --- Helper: Safe membership check ---
-async def safe_get_member(bot, chat_id: int, user_id: int):
-    """Safely check if a user is in a group, handles API errors."""
+async def safe_get_member(bot, chat_id, user_id: int):
+    """Safely check if a user is in a group/channel, handles API errors."""
     try:
         member = await bot.get_chat_member(chat_id, user_id)
         logger.info(f"[DEBUG] User {user_id} in {chat_id}: {member.status}")
@@ -23,21 +27,30 @@ async def safe_get_member(bot, chat_id: int, user_id: int):
         logger.warning(f"[SAFE CHECK] Failed to get member {user_id} in {chat_id}: {e}")
         return None
 
-async def is_user_joined(bot, user_id: int) -> bool:
-    """Check if user has joined the group only."""
-    valid_statuses = ["member", "administrator", "creator"]
-    group_status = await safe_get_member(bot, GROUP_ID, user_id)
 
+async def is_user_joined(bot, user_id: int) -> bool:
+    """Check if user has joined BOTH group and channel."""
+    valid_statuses = ["member", "administrator", "creator"]
+
+    # --- Check group ---
+    group_status = await safe_get_member(bot, GROUP_ID, user_id)
     if group_status not in valid_statuses:
         logger.warning(f"User {user_id} NOT in group ({group_status})")
         return False
 
-    logger.info(f"User {user_id} is in group ✅")
+    # --- Check channel ---
+    channel_status = await safe_get_member(bot, CHANNEL_ID, user_id)
+    if channel_status not in valid_statuses:
+        logger.warning(f"User {user_id} NOT in channel ({channel_status})")
+        return False
+
+    logger.info(f"User {user_id} is in group & channel ✅")
     return True
+
 
 # --- Force Join Decorator ---
 def force_join(func):
-    """Decorator to enforce group join before using a command."""
+    """Decorator to enforce group + channel join before using a command."""
     @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
         user_id = update.effective_user.id
@@ -71,6 +84,7 @@ def force_join(func):
 
     return wrapper
 
+
 # --- Callback for "✅ I have joined" button ---
 async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Re-check membership when user clicks 'I have joined'."""
@@ -86,4 +100,4 @@ async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.edit_message_caption("✨ 𝗪𝗲𝗹𝗰𝗼𝗺𝗲! 𝗕𝗼𝘁 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗮𝗿𝗲 𝗻𝗼𝘄 𝗮𝘃𝗮𝗶𝗹𝗮𝗯𝗹𝗲 𝗳𝗼𝗿 𝘆𝗼𝘂 𝗶𝗻 𝗽𝗿𝗶𝘃𝗮𝘁𝗲 𝗰𝗵𝗮𝘁𝘀 𝗮𝗻𝗱 𝗴𝗿𝗼𝘂𝗽𝘀.")
     else:
         await query.answer("❌ 𝗔𝗰𝗰𝗲𝘀𝘀 𝗱𝗲𝗻𝗶𝗲𝗱 – 𝘆𝗼𝘂 𝘀𝘁𝗶𝗹𝗹 𝗻𝗲𝗲𝗱 𝘁𝗼 𝗷𝗼𝗶𝗻!", show_alert=True)
-        logger.info(f"User {user_id} clicked 'I have joined' but is still not in the group.")
+        logger.info(f"User {user_id} clicked 'I have joined' but is still missing membership.")
