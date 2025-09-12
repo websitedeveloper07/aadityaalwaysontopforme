@@ -2726,6 +2726,16 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===== Worker =====
+import aiohttp
+import re
+import json
+import html
+import asyncio
+import logging
+from telegram.constants import ParseMode
+
+logger = logging.getLogger(__name__)
+
 async def process_card_check(user, card_input, custom_url, msg):
     try:
         cc = card_input.split("|")[0]
@@ -2738,7 +2748,7 @@ async def process_card_check(user, card_input, custom_url, msg):
             brand = (bin_details.get("scheme") or "N/A").title()
             issuer = bin_details.get("bank") or "N/A"
             country_name = bin_details.get("country") or "Unknown"
-            country_flag = bin_details.get("country_emoji", "")
+            country_flag = bin_details.get("country_emoji") or "🏳️"
             card_type = bin_details.get("type", "N/A")
             card_level = bin_details.get("brand", "N/A")
             card_length = bin_details.get("length", "N/A")
@@ -2749,20 +2759,18 @@ async def process_card_check(user, card_input, custom_url, msg):
             logger.warning(f"BIN lookup failed for {bin_number}: {e}")
             brand = issuer = card_type = card_level = card_length = luhn_check = bank_phone = bank_url = "N/A"
             country_name = "Unknown"
-            country_flag = ""
+            country_flag = "🏳️"
 
         # --- API call ---
         api_url = API_CHECK_TEMPLATE.format(card=card_input, site=custom_url)
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=120) as resp:
+            async with session.get(api_url, timeout=30) as resp:
                 api_text = await resp.text()
 
         # Detect bad responses
         if '<!DOCTYPE html>' in api_text or '<html' in api_text:
-            await msg.edit_text(
-                "❌ API endpoint is offline or returned HTML.",
-                parse_mode=ParseMode.HTML
-            )
+            await msg.edit_text("❌ API endpoint is offline or returned HTML.",
+                                parse_mode=ParseMode.HTML)
             return
 
         # Strip junk and find JSON
@@ -2775,7 +2783,7 @@ async def process_card_check(user, card_input, custom_url, msg):
             data = json.loads(clean_text)
         except json.JSONDecodeError:
             await msg.edit_text(
-                f"❌ Invalid API response:\n<pre>{escape(api_text[:500])}</pre>",
+                f"❌ Invalid API response:\n<pre>{html.escape(api_text[:500])}</pre>",
                 parse_mode=ParseMode.HTML
             )
             return
@@ -2784,18 +2792,26 @@ async def process_card_check(user, card_input, custom_url, msg):
         response_text = data.get("Response", "Unknown")
         price = f"{data.get('Price', '0')}$"
         gateway = data.get("Gateway", "Shopify")
-        # Make the user's full name clickable
+
         full_name = " ".join(filter(None, [user.first_name, user.last_name]))
-        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
+        requester = f'<a href="tg://user?id={user.id}">{html.escape(full_name)}</a>'
 
+        # 🔥 Enhance Response with icons
+        display_response = html.escape(response_text)
 
-        # 🔥 Enhance Response if success
-        display_response = escape(response_text)
-        success_keywords = ["thank you", "approved", "charged", "success"]
-        if any(word in response_text.lower() for word in success_keywords):
-            display_response = f"{escape(response_text)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+        # Success
+        if re.search(r"\b(thank you|approved|charged|success)\b", response_text, re.I):
+            display_response = f"{html.escape(response_text)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
 
-        # Developer/branding
+        # 3D Authentication
+        elif "3D_AUTHENTICATION" in response_text.upper():
+            display_response = f"{html.escape(response_text)} 🔒"
+
+        # Declined
+        elif "CARD_DECLINED" in response_text.upper():
+            display_response = f"{html.escape(response_text)} ❌"
+
+        # Branding
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
@@ -2803,36 +2819,33 @@ async def process_card_check(user, card_input, custom_url, msg):
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-        formatted_msg = (
-            "◇━━〔 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚 〕━━◇\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝       ➵ <code>{card_input}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➵ <i>{escape(gateway)}</i>\n"
-            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➵ {price} 💸\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ <i>{display_response}</i>\n"
-            "――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➵ <code>{brand}</code>\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤       ➵ <code>{issuer}</code>\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➵ <code>{country_flag} {country_name}</code>\n"
-            "――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "――――――――――――――――"
-        )
+        formatted_msg = f"""
+◇━━〔 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚 〕━━◇
+{bullet_link} 𝐂𝐚𝐫𝐝       ➵ <code>{card_input}</code>
+{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➵ <i>{html.escape(gateway)}</i>
+{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➵ {price} 💸
+{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ <i>{display_response}</i>
+――――――――――――――――
+{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➵ <code>{brand}</code>
+{bullet_link} 𝐁𝐚𝐧𝐤       ➵ <code>{issuer}</code>
+{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➵ <code>{country_flag} {country_name}</code>
+――――――――――――――――
+{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}
+{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}
+――――――――――――――――
+"""
 
-        await msg.edit_text(
-            formatted_msg,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True
-        )
+        await msg.edit_text(formatted_msg.strip(),
+                            parse_mode=ParseMode.HTML,
+                            disable_web_page_preview=True)
 
     except asyncio.TimeoutError:
         await msg.edit_text("❌ Error: API request timed out.", parse_mode=ParseMode.HTML)
     except Exception as e:
         logger.exception("Error in process_card_check")
-        await msg.edit_text(
-            f"❌ Error: <code>{escape(str(e))}</code>",
-            parse_mode=ParseMode.HTML
-        )
+        await msg.edit_text(f"❌ Error: <code>{html.escape(str(e))}</code>",
+                            parse_mode=ParseMode.HTML)
+
 
 
 
