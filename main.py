@@ -3286,64 +3286,101 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     site_price = None
     gateway_used = "Self Shopify"
     results = []
-    sem = asyncio.Semaphore(10)  # parallelism (adjust as per VPS power)
-    lock = asyncio.Lock()  # prevent race on message editing
+    sem = asyncio.Semaphore(10)
+    lock = asyncio.Lock()
+
+    # Priority map for best response selection
+    PRIORITY = {
+        "CHARGED": 4,
+        "THANK YOU": 4,
+        "SUCCESS": 4,
+        "INSUFFICIENT_FUNDS": 4,
+        "3D_AUTHENTICATION": 3,
+        "APPROVED": 3,
+        "DECLINED": 2,
+        "CARD_DECLINED": 2,
+        "INCORRECT_NUMBER": 2,
+        "FRAUD_SUSPECTED": 2,
+        "EXPIRE_CARD": 2,
+        "EXPIRED_CARD": 2,
+        "ERROR": 1,
+        "UNKNOWN": 0,
+    }
 
     success_keywords = ["thank you", "approved", "charged", "success", "insufficient funds"]
 
     async with httpx.AsyncClient() as session:
-        async def worker(card, site):
-            nonlocal approved, declined, errors, checked, site_price, gateway_used, results
+
+        async def check_one(card, site):
+            """Run check for a card on one site"""
+            card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
+            card_str = card_str.replace(" ", "")
+
+            resp, status, price, gateway = await check_card(session, base_url, site, card_str)
+            resp_str = str(resp).strip()
+            resp_upper = resp_str.upper()
+
+            # set site price only once
+            nonlocal site_price, gateway_used
+            if site_price is None:
+                try:
+                    site_price = float(price)
+                except:
+                    site_price = 0.0
+            if gateway and gateway != "N/A":
+                gateway_used = gateway
+
+            # score the response
+            score = 0
+            for key, val in PRIORITY.items():
+                if key in resp_upper:
+                    score = val
+                    break
+
+            return resp_str, score
+
+        async def worker(card):
+            nonlocal approved, declined, errors, checked, results
 
             async with sem:
-                card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
-                card_str = card_str.replace(" ", "")
+                # Run all sites for this card
+                tasks = [check_one(card, site) for site in sites]
+                responses = await asyncio.gather(*tasks)
 
-                resp, status, price, gateway = await check_card(session, base_url, site, card_str)
-                resp = str(resp)
-                resp_upper = resp.upper().strip()
-
-                # Save price from first request
-                if site_price is None:
-                    try:
-                        site_price = float(price)
-                    except:
-                        site_price = 0.0
-
-                if gateway and gateway != "N/A":
-                    gateway_used = gateway
+                # Pick best response
+                best_resp, best_score = "Unknown", 0
+                for resp, score in responses:
+                    if score > best_score:
+                        best_resp, best_score = resp, score
 
                 # Classification
-                if "R4 TOKEN EMPTY" in resp_upper:
-                    errors += 1
-                    status_icon = "⚠️"
-                elif resp_upper in ["INCORRECT_NUMBER", "FRAUD_SUSPECTED", "CARD_DECLINED", "EXPIRE_CARD", "EXPIRED_CARD"]:
+                if best_score >= 4:
+                    approved += 1
+                    status_icon = "✅"
+                    display_resp = f"{escape(best_resp)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+                elif best_score == 3:
+                    approved += 1
+                    status_icon = "✅"
+                    display_resp = f"{escape(best_resp)} 🔒"
+                elif best_score == 2:
                     declined += 1
                     status_icon = "❌"
-                elif resp_upper in ["3D_AUTHENTICATION", "APPROVED", "SUCCESS", "INSUFFICIENT_FUNDS"]:
-                    approved += 1
-                    status_icon = "✅"
-                elif status.lower() == "true" and resp_upper not in ["CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED"]:
-                    approved += 1
-                    status_icon = "✅"
+                    display_resp = escape(best_resp)
+                elif best_score == 1:
+                    errors += 1
+                    status_icon = "⚠️"
+                    display_resp = escape(best_resp)
                 else:
                     errors += 1
                     status_icon = "⚠️"
+                    display_resp = escape(best_resp)
 
                 checked += 1
 
-                display_resp = escape(resp)
-                if any(word in resp_upper.lower() for word in success_keywords):
-                    display_resp = f"{escape(resp)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
-
-                result_line = (
-                    f"{status_icon} <code>{escape(card_str)}</code>\n"
-                    f" ↳ <i>{display_resp}</i>\n"
-                    f" 🌍 Site: {site}"
-                )
+                result_line = f"{status_icon} <code>{escape(card)}</code>\n ↳ <i>{display_resp}</i>"
                 results.append(result_line)
 
-                # Update message safely
+                # Update summary
                 async with lock:
                     summary_text = (
                         "<pre><code>"
@@ -3353,7 +3390,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                         f"✅ 𝑨𝒑𝐩𝐫𝐨𝐯𝐞𝐝 : {approved}\n"
                         f"❌ 𝑫𝐞𝐜𝐥𝐢𝐧𝐞𝐝 : {declined}\n"
                         f"⚠️ 𝑬𝐫𝐫𝐨𝐫 : {errors}\n"
-                        f"🔄 𝑪𝐡𝐞𝐜𝐤𝐞𝐝 : {checked} / {len(cards) * len(sites)}\n"
+                        f"🔄 𝑪𝐡𝐞𝐜𝐤𝐞𝐝 : {checked} / {len(cards)}\n"
                         f"💲 𝑺𝐢𝐭𝐞 𝑷𝐫𝐢𝐜𝐞 : ${site_price if site_price else '0.00'}\n"
                         f"🏬 𝑮𝐚𝐭𝐞𝐰𝐚𝐲 : {gateway_used}\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -3361,31 +3398,25 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                         f"#𝑨𝒖𝒕𝒐𝒔𝐡𝐨𝐩𝐢𝐟𝐲𝒄𝐡𝐞𝐜𝐤𝒔\n"
                         f"────────────────\n"
                     )
-                    final_text = summary_text + "\n".join(results[-20:])  # only show last 20 to avoid flooding
+                    final_text = summary_text + "\n".join(results[-20:])  # only last 20 lines
                     try:
-                        await msg.edit_text(final_text, parse_mode="HTML")
+                        await msg.edit_text(final_text, parse_mode="HTML", disable_web_page_preview=True)
                     except:
                         pass
+                    await asyncio.sleep(0.2)
 
-        # Launch all tasks: every card × every site
-        tasks = []
-        for card in cards:
-            for site in sites:
-                tasks.append(worker(card, site))
+        await asyncio.gather(*(worker(card) for card in cards))
 
-        await asyncio.gather(*tasks)
 
 # /msp command
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
 
-    # Cooldown 5s
     if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
         return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
     last_msp_usage[user_id] = now
 
-    # Collect cards
     raw_input = None
     if context.args:
         raw_input = " ".join(context.args)
@@ -3402,28 +3433,25 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
-
     if len(cards) > 50:
         cards = cards[:50]
 
-    # DB fetch
     user_data = await get_user(user_id)
     if not user_data:
         return await update.message.reply_text("❌ No user data found in DB.")
-
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.")
 
     base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
-    sites = user_data.get("custom_urls", [])  # ✅ now supports multiple sites
+    sites = user_data.get("custom_urls", [])
 
     if not sites:
-        return await update.message.reply_text("❌ No sites found in your account (custom_urls empty).")
+        return await update.message.reply_text("❌ No sites found in your account.")
 
     msg = await update.message.reply_text("💳 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤…")
 
-    # Run in background
     asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
+
 
 
 
