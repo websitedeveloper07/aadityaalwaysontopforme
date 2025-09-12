@@ -842,8 +842,8 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_data = await get_user(user.id)
 
-    # Define the bullet point with the hyperlink
-    bullet_text = escape_markdown_v2("⌇")
+    # Define the bullet point with the hyperlink (full [⌇] visible & clickable)
+    bullet_text = "\[⌇\]"
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Escape all dynamic values
@@ -862,7 +862,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "━━━━━━━━━━━━━━\n"
         f"{bullet_link}  𝙁𝙞𝙧𝙨𝙩 𝙉𝙖𝙢𝙚: `{first_name}`\n"
         f"{bullet_link}  𝙄𝘿: `{user_id}`\n"
-        f"{bullet_link}  𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: @{username}\n\n"
+        f"{bullet_link}  𝙐𝙨𝙚𝙧𝙣𝙖𝙢𝙚: {username}\n\n"
         f"{bullet_link}  𝙎𝙩𝙖𝙩𝙪𝙨: `{status}`\n"
         f"{bullet_link}  𝘾𝙧𝙚𝙙𝙞𝙩: `{credits}`\n"
         f"{bullet_link}  𝙋𝙡𝙖𝙣: `{plan}`\n"
@@ -876,6 +876,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
@@ -1346,9 +1347,9 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /credits command, showing user info and credits."""
     user = update.effective_user
     user_data = await get_user(user.id)
-    
-    # Define the bullet point with the hyperlink
-    bullet_text = escape_markdown_v2("⌇")
+
+    # Make the bullet [⌇] fully clickable and visible
+    bullet_text = "\[⌇\]"   # Escaped so [] stay visible in MarkdownV2
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     credits = str(user_data.get('credits', 0))
@@ -1375,6 +1376,7 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
@@ -3688,7 +3690,6 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 from faker import Faker
 from telegram import Update
 from telegram.constants import ParseMode
@@ -3705,8 +3706,8 @@ def escape_markdown_v2(text: str) -> str:
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
 
-    # Define the bullet point with the hyperlink
-    bullet_text = escape_markdown_v2("⌇")
+    # Define the bullet point with the hyperlink ([⌇] fully visible & clickable)
+    bullet_text = r"\[\⌇\]"  # escape both brackets and the symbol
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
     
     # Cooldown check
@@ -3717,13 +3718,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
 
     # Deduct 1 credit if available
-    if user_data['credits'] <= 0:
-        return await update.effective_message.reply_text(
-            "❌ You have no credits left\\. Please get a subscription to use this command\\.",
-            parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True
-        )
-    if not await consume_credit(user_id):
+    if user_data['credits'] <= 0 or not await consume_credit(user_id):
         return await update.effective_message.reply_text(
             "❌ You have no credits left\\. Please get a subscription to use this command\\.",
             parse_mode=ParseMode.MARKDOWN_V2,
@@ -3736,7 +3731,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         fake = Faker('en_US')
 
-    # Generate and escape values
+    # Generate and escape all fake values
     name = escape_markdown_v2(fake.name())
     dob = escape_markdown_v2(fake.date_of_birth().strftime('%Y-%m-%d'))
     ssn = escape_markdown_v2(fake.ssn())
