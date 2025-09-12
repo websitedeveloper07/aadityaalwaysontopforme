@@ -4606,6 +4606,12 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     available_memory = memory.available / (1024 ** 3)
     memory_percent = memory.percent
 
+    # Swap info
+    swap = psutil.swap_memory()
+    total_swap = swap.total / (1024 ** 3)
+    used_swap = swap.used / (1024 ** 3)
+    swap_percent = swap.percent
+
     # Disk info
     disk = psutil.disk_usage("/")
     total_disk = disk.total / (1024 ** 3)  # GB
@@ -4638,6 +4644,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{BULLET_LINK} 𝐂𝐏𝐔 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{cpu_usage:.1f}% ({cpu_count} cores)</code>\n"
         f"{BULLET_LINK} 𝐑𝐀𝐌 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{used_memory:.2f}GB / {total_memory:.2f}GB ({memory_percent:.1f}%)</code>\n"
         f"{BULLET_LINK} 𝐑𝐀𝐌 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 ➳ <code>{available_memory:.2f}GB</code>\n"
+        f"{BULLET_LINK} 𝐒𝐰𝐚𝐩 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{used_swap:.2f}GB / {total_swap:.2f}GB ({swap_percent:.1f}%)</code>\n"
         f"{BULLET_LINK} 𝐃𝐢𝐬𝐤 𝐔𝐬𝐚𝐠𝐞 ➳ <code>{used_disk:.2f}GB / {total_disk:.2f}GB ({disk_percent:.1f}%)</code>\n"
         f"{BULLET_LINK} 𝐃𝐢𝐬𝐤 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 ➳ <code>{free_disk:.2f}GB</code>\n"
         "――――――――――――――――\n"
