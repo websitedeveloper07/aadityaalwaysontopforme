@@ -3406,7 +3406,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not sites:
         return await update.message.reply_text("❌ No sites found in your account.")
 
-    msg = await update.message.reply_text("💳 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤…")
+    msg = await update.message.reply_text("💳 𝗠𝗮𝘀𝘀 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 𝗖𝗵𝗲𝗰𝗸 𝗦𝘁𝗮𝗿𝘁𝗲𝗱…")
     asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
 
 
@@ -3663,7 +3663,6 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_msg = (
                 f"✅ 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥𝐥𝐲 𝐚𝐝𝐝𝐞𝐝 {len(new_sites)} 𝐬𝐢𝐭𝐞(s)!\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🌐 𝐀𝐝𝐝𝐞𝐝 𝐒𝐢𝐭𝐞𝐬:\n<code>{escape(' '.join(new_sites))}</code>\n"
                 f"🌐 𝐓𝐨𝐭𝐚𝐥 𝐒𝐢𝐭𝐞𝐬: {len(updated_sites)} / 20\n"
                 f"💲 𝐂𝐫𝐞𝐝𝐢𝐭 𝐔𝐬𝐞𝐝: 1"
             )
