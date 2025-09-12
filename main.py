@@ -2725,6 +2725,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===== Worker =====
+# ===== Worker =====
 async def process_card_check(user, card_input, custom_urls, msg):
     try:
         cc = card_input.split("|")[0]
@@ -2750,6 +2751,10 @@ async def process_card_check(user, card_input, custom_urls, msg):
 
         async def check_site(site):
             nonlocal best_result
+            # Ensure HTTPS
+            if not site.startswith("http://") and not site.startswith("https://"):
+                site = "https://" + site
+
             api_url = API_CHECK_TEMPLATE.format(card=card_input, site=site)
             async with aiohttp.ClientSession() as session:
                 try:
@@ -2783,6 +2788,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
                    ("3D_AUTHENTICATION" in resp_text and prev_resp not in ["CHARGED", "APPROVED"]):
                     best_result = {**data, "site": site}
 
+        # Run checks in parallel
         await asyncio.gather(*(check_site(site) for site in custom_urls))
 
         if not best_result:
@@ -2844,6 +2850,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
         logger.exception("Error in process_card_check")
         await msg.edit_text(f"❌ Error: <code>{escape(str(e))}</code>",
                             parse_mode=ParseMode.HTML)
+
 
 
 
@@ -3597,7 +3604,6 @@ async def rsite(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(remove_site_bg())
 
 
-
 import asyncio
 from html import escape
 from telegram import Update
@@ -3618,8 +3624,15 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML
         )
 
-    # --- Clean URLs ---
-    sites_to_add_initial = [site.strip() for site in context.args if site.strip()]
+    # --- Clean and normalize URLs ---
+    sites_to_add_initial = []
+    for site in context.args:
+        site = site.strip()
+        if site:
+            if not site.startswith("http://") and not site.startswith("https://"):
+                site = "https://" + site
+            sites_to_add_initial.append(site)
+
     if not sites_to_add_initial:
         return await update.message.reply_text(
             "❌ 𝐍𝐨 𝐯𝐚𝐥𝐢𝐝 𝐬𝐢𝐭𝐞 𝐔𝐑𝐋𝐬 𝐩𝐫𝐨𝐯𝐢𝐝𝐞𝐝.\n"
@@ -3709,6 +3722,7 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Run in background ---
     asyncio.create_task(add_urls_bg(sites_to_add_initial))
+
 
 
 
