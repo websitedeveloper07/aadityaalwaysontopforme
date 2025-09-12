@@ -2453,7 +2453,6 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 import aiohttp
 import json
-import re
 from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
@@ -2464,13 +2463,11 @@ from db import get_user, update_user, init_db
 asyncio.get_event_loop().run_until_complete(init_db())
 
 
-
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Telegram command: /seturl <site_url>"""
     user = update.effective_user
     user_id = user.id
 
-    # --- Check arguments ---
     if not context.args:
         await update.message.reply_text(
             "❌ 𝙐𝙨𝙖𝙜𝙚: /𝙨𝙚𝙩𝙪𝙧𝙡 {𝙨𝙞𝙩𝙚_𝙪𝙧𝙡}",
@@ -2482,20 +2479,11 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not site_input.startswith(("http://", "https://")):
         site_input = f"https://{site_input}"
 
-    # --- Get current user data ---
-    user_data = await get_user(user_id)
-
-    # --- Automatically remove existing custom URL ---
-    if user_data.get("custom_url"):
-        await update_user(user_id, custom_url=None)
-
-    # --- Send initial processing message ---
     processing_msg = await update.message.reply_text(
         f"⏳ 𝓐𝓭𝓭𝓲𝓷𝓰 𝓤𝓡𝐋: <code>{escape(site_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
-    # --- Launch background worker ---
     asyncio.create_task(
         process_seturl(user, user_id, site_input, processing_msg)
     )
@@ -2516,7 +2504,6 @@ async def process_seturl(user, user_id, site_input, processing_msg):
             async with session.get(api_url, timeout=50) as resp:
                 raw_text = await resp.text()
 
-        # --- Parse JSON safely ---
         try:
             data = json.loads(raw_text)
         except json.JSONDecodeError:
@@ -2526,16 +2513,22 @@ async def process_seturl(user, user_id, site_input, processing_msg):
             )
             return
 
-        # --- Extract fields ---
         response = data.get("Response", "Unknown")
         status = data.get("Status", "Unknown")
         price = data.get("Price", "0.0")
         gateway = data.get("Gateway", "N/A")
 
-        # --- Update user DB ---
-        await update_user(user_id, custom_url=site_input)
+        # --- Fetch existing sites from DB ---
+        user_data = await get_user(user_id)
+        current_sites = user_data.get("custom_urls", []) or []
 
-        # --- Format response ---
+        # Append new site if not already present
+        if site_input not in current_sites:
+            current_sites.append(site_input)
+
+        # Save updated list back to DB
+        await update_user(user_id, custom_urls=current_sites)
+
         requester = f"@{user.username}" if user.username else str(user.id)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
@@ -2550,13 +2543,14 @@ async def process_seturl(user, user_id, site_input, processing_msg):
         formatted_msg = (
             f"◇━━〔 <b>{site_status}</b> 〕━━◇\n"
             f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➵ <code>{escape(site_input)}</code>\n"
+            f"{bullet_link} <b>𝐓𝐨𝐭𝐚𝐥 𝐒𝐢𝐭𝐞𝐬</b> ➵ {len(current_sites)}\n"
             f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➵ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙉𝙤𝙧𝙢𝙖𝙡\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➵ <i>{escape(response)}</i>\n"
             f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➵ {escape(price)}$ 💸\n"
-            f"――――――――――――――――\n"
+            "――――――――――――――――\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➵ {requester}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➵ {developer_clickable}\n"
-            f"――――――――――――――――"
+            "――――――――――――――――"
         )
 
         await processing_msg.edit_text(
@@ -2586,6 +2580,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
 
 
 
+
 from telegram import Update
 from telegram.ext import ContextTypes
 from html import escape
@@ -2596,15 +2591,15 @@ async def mysites(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
 
-    sites = user_data.get("custom_url")
-    if not sites:
-        await update.message.reply_text("❌ You have not added any sites yet.\nUse /seturl <site_url> to add one.")
-        return
+    # Get multiple sites (list) or fallback to empty
+    sites = user_data.get("custom_urls", [])
 
-    # If you later allow multiple sites, you can store them as a list
-    # For now, 'custom_url' is a single URL, so wrap in list
-    if isinstance(sites, str):
-        sites = [sites]
+    if not sites:
+        await update.message.reply_text(
+            "❌ You have not added any sites yet.\nUse <b>/seturl &lt;site_url&gt;</b> to add one.",
+            parse_mode="HTML"
+        )
+        return
 
     # Format message
     formatted_sites = "📄 <b>Your Added Sites</b>\n"
