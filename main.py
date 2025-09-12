@@ -305,27 +305,11 @@ def command_with_check(handler_func, command_name):
 
 from datetime import datetime
 import logging
-import pytz
-import re
-
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-from db import get_user  # your db user fetch
-
-# Links
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
-OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
-DEV_LINK = "https://t.me/Kalinuxxx"
-
-logger = logging.getLogger(__name__)
-
-# ---------- Utilities ----------
-import logging
 import re
 import pytz
-from datetime import datetime
+import requests
+from io import BytesIO
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
@@ -347,8 +331,6 @@ logger = logging.getLogger(__name__)
 # --------------------
 # Utility Functions
 # --------------------
-import re
-
 def escape_all_markdown(text: str) -> str:
     """
     Escapes all MarkdownV2 special characters to prevent formatting issues
@@ -359,27 +341,25 @@ def escape_all_markdown(text: str) -> str:
 
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     """
-    Constructs the final profile card text for the welcome message.
+    Constructs the final profile card text for the welcome message using HTML.
     """
     uname = f"@{username}" if username else "N/A"
-
-    # Properly escaped clickable bullet with brackets
-    bullet_text = escape_all_markdown("[⌇]")
-    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+    
+    # HTML-formatted clickable bullet with brackets
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>&#x2b06;</a>"
 
     return (
         "✦━━━━━━━━━━━━━━✦\n"
-        "     ⚡ 𝑾𝒆𝒍𝒄𝒐𝒎𝒆\n"
+        "     ⚡ <b>Welcome</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet_link} ID       : `{escape_all_markdown(str(user_id))}`\n"
-        f"{bullet_link} Username : `{escape_all_markdown(uname)}`\n"
-        f"{bullet_link} Credits  : `{escape_all_markdown(str(credits))}`\n"
-        f"{bullet_link} Plan     : `{escape_all_markdown(plan)}`\n"
-        f"{bullet_link} Date     : `{escape_all_markdown(date_str)}`\n"
-        f"{bullet_link} Time     : `{escape_all_markdown(time_str)}`\n\n"
-        "⮞ 𝗣𝗹𝗲𝗮𝘀𝗲 𝗰𝗹𝗶𝗰𝗸 𝘁𝗵𝗲 𝗯𝘂𝘁𝘁𝗼𝗻𝘀 𝗯𝗲𝗹𝗼𝘄 𝘁𝗼 𝗽𝗿𝗼𝗰𝗲𝗲𝗱 👇"
+        f"{bullet_link} ID       : <code>{user_id}</code>\n"
+        f"{bullet_link} Username : <code>{uname}</code>\n"
+        f"{bullet_link} Credits  : <code>{credits}</code>\n"
+        f"{bullet_link} Plan     : <code>{plan}</code>\n"
+        f"{bullet_link} Date     : <code>{date_str}</code>\n"
+        f"{bullet_link} Time     : <code>{time_str}</code>\n\n"
+        "➤ <b>Please click the buttons below to proceed</b> 👇"
     )
-
 
 async def get_user_cached(user_id, context):
     """
@@ -392,19 +372,14 @@ async def get_user_cached(user_id, context):
     context.user_data["profile"] = user_data
     return user_data
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-
 def get_main_keyboard() -> InlineKeyboardMarkup:
     """
-    Creates and returns the main inline keyboard with updated layout:
-    - 2 buttons in the first row
-    - 2 buttons in the second row
-    - 1 button in the third row
+    Creates and returns the main inline keyboard.
     """
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("🚪 𝐆𝐚𝐭𝐞𝐬", callback_data="gates_menu"),
-            InlineKeyboardButton("⌨️ 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬", callback_data="tools_menu")
+            InlineKeyboardButton("🚪 Gates", callback_data="gates_menu"),
+            InlineKeyboardButton("⌨️ Commands", callback_data="tools_menu")
         ],
         [
             InlineKeyboardButton("💎 Owner", url=DEV_LINK),
@@ -441,19 +416,38 @@ async def build_start_message(user, context) -> tuple[str, InlineKeyboardMarkup]
 # Command and Callback Handlers
 # --------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles the /start command, sending a welcome photo and message.
+    """
     user = update.effective_user
     logger.info(f"/start by {user.id} (@{user.username})")
     text, keyboard = await build_start_message(user, context)
     msg = update.message or update.effective_message
 
+    image_url = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
+    try:
+        # Fetch the image content directly to avoid Telegram's URL validation issues
+        response = requests.get(image_url)
+        response.raise_for_status()
+        photo_bytes = BytesIO(response.content)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to fetch image from URL: {e}")
+        await msg.reply_text(
+            text=f"⚠️ An error occurred while loading the welcome image.\n\n{text}",
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+        return
+
     await msg.reply_photo(
-        photo="https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png",
+        photo=photo_bytes,
         caption=text,
         parse_mode=ParseMode.HTML,
         reply_markup=keyboard
     )
 
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler to go back to the main menu."""
     q = update.callback_query
     await q.answer()
     text, keyboard = await build_start_message(q.from_user, context)
@@ -463,59 +457,53 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=keyboard
     )
 
-
-
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
     await q.answer()
 
-    BULLET_GROUP_LINK = "https://t.me/CARDER33"
-    bullet_text = "[⌇]"
-    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>{bullet_text}</a>"
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>&#x2b06;</a>"
 
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "     ⚡ 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 ⚡\n"
+        "     ⚡ <b>Available Commands</b> ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet_link} <code>/start</code> – Welcome message\n"
-        f"{bullet_link} <code>/cmds</code> – Shows all commands\n"
-        f"{bullet_link} <code>/gen [bin] [no. of cards]</code> – Generate cards\n"
-        f"{bullet_link} <code>/bin &lt;bin&gt;</code> – BIN lookup\n"
-        f"{bullet_link} <code>/vbv</code> – 3DS Lookup\n"
-        f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> – Braintree Premium Auth\n"
-        f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> – Stripe Auth\n"
-        f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$\n"
-        f"{bullet_link} <code>/mass</code> – Mass Stripe Auth 2\n"
-        f"{bullet_link} <code>/gate site url</code> – Payment Gateway Checker\n"
-        f"{bullet_link} <code>/sh</code> – Shopify 1.0$\n"
-        f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set a Shopify site\n"
-        f"{bullet_link} <code>/mysites</code> – View your added site\n"
-        f"{bullet_link} <code>/sp</code> – Auto Shopify Checker\n"
-        f"{bullet_link} <code>/msp</code> – Mass Auto Shopify\n"
-        f"{bullet_link} <code>/site</code> – Check Shopify site\n"
-        f"{bullet_link} <code>/msite</code> – Mass Shopify site Checking\n"
-        f"{bullet_link} <code>/fk</code> – Generate fake identity info\n"
-        f"{bullet_link} <code>/fl &lt;dump&gt;</code> – Fetch CCs from dump\n"
-        f"{bullet_link} <code>/open</code> – Extract cards from a file\n"
-        f"{bullet_link} <code>/status</code> – Bot system status info\n"
-        f"{bullet_link} <code>/credits</code> – Check remaining credits\n"
-        f"{bullet_link} <code>/info</code> – Show your user info\n\n"
+        f"{bullet_link} <code>/start</code> - Welcome message\n"
+        f"{bullet_link} <code>/cmds</code> - Shows all commands\n"
+        f"{bullet_link} <code>/gen [bin] [no. of cards]</code> - Generate cards\n"
+        f"{bullet_link} <code>/bin &lt;bin&gt;</code> - BIN lookup\n"
+        f"{bullet_link} <code>/vbv</code> - 3DS Lookup\n"
+        f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> - Braintree Premium Auth\n"
+        f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> - Stripe Auth\n"
+        f"{bullet_link} <code>/st cc|mm|yy|cvv</code> - Stripe 1$\n"
+        f"{bullet_link} <code>/mass</code> - Mass Stripe Auth 2\n"
+        f"{bullet_link} <code>/gate site url</code> - Payment Gateway Checker\n"
+        f"{bullet_link} <code>/sh</code> - Shopify 1.0$\n"
+        f"{bullet_link} <code>/seturl &lt;site url&gt;</code> - Set a Shopify site\n"
+        f"{bullet_link} <code>/mysites</code> - View your added site\n"
+        f"{bullet_link} <code>/sp</code> - Auto Shopify Checker\n"
+        f"{bullet_link} <code>/msp</code> - Mass Auto Shopify\n"
+        f"{bullet_link} <code>/site</code> - Check Shopify site\n"
+        f"{bullet_link} <code>/msite</code> - Mass Shopify site Checking\n"
+        f"{bullet_link} <code>/fk</code> - Generate fake identity info\n"
+        f"{bullet_link} <code>/fl &lt;dump&gt;</code> - Fetch CCs from dump\n"
+        f"{bullet_link} <code>/open</code> - Extract cards from a file\n"
+        f"{bullet_link} <code>/status</code> - Bot system status info\n"
+        f"{bullet_link} <code>/credits</code> - Check remaining credits\n"
+        f"{bullet_link} <code>/info</code> - Show your user info\n\n"
     )
 
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ]
 
     try:
-        # Use edit_message_caption because original message is a photo
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
     except Exception as e:
-        # Fallback: send a new message if editing fails
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
@@ -523,29 +511,26 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         logger.warning(f"Failed to edit caption: {e}")
 
-
-
-
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Gates' button."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "     🚪 𝐆𝐚𝐭𝐞𝐬 𝗠𝗲𝗻𝘂\n"
+        "     🚪 <b>Gates Menu</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Please select a feature below:"
     )
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("⚡ 𝐀𝐮𝐭𝐡", callback_data="auth_sub_menu"),
-            InlineKeyboardButton("💳 𝐂𝐡𝐚𝐫𝐠𝐞", callback_data="charge_sub_menu")
+            InlineKeyboardButton("⚡ Auth", callback_data="auth_sub_menu"),
+            InlineKeyboardButton("💳 Charge", callback_data="charge_sub_menu")
         ],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁o 𝗠𝗲𝗻𝘂", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ])
     await q.edit_message_caption(
         text,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
         reply_markup=keyboard,
     )
 
@@ -555,103 +540,92 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      🚪 𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞\n"
+        "      🚪 <b>Auth Gate</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Select a platform below:"
     )
     keyboard = [
-        [InlineKeyboardButton("💳 𝗦𝗧𝗥𝗜𝗣𝗘 𝗔𝗨𝗧𝗛", callback_data="stripe_examples")],
-        [InlineKeyboardButton("💎 𝗕𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲 𝗣𝗿𝗲𝗺𝗶𝘂𝗺", callback_data="braintree_examples")],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
+        [InlineKeyboardButton("💳 STRIPE AUTH", callback_data="stripe_examples")],
+        [InlineKeyboardButton("💎 Braintree Premium", callback_data="braintree_examples")],
+        [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
     ]
     await q.edit_message_caption(
         text,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-# === Stripe Examples Handler ===
 async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Stripe Auth' button."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      💳 𝐒𝐭𝐫𝐢𝐩𝐞 𝐀𝐮𝐭𝐡\n"
+        "      💳 <b>Stripe Auth</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/chk` \\- *Check a single card*\n"
+        "• <code>/chk</code> - <i>Check a single card</i>\n"
         "  Example:\n"
-        "  `/chk 1234567890123456\\|12\\|24\\|123`\n\n"
-        "• `/mass` \\- *Check up to 30 cards at once*\n"
+        "  <code>/chk 1234567890123456|12|24|123</code>\n\n"
+        "• <code>/mass</code> - <i>Check up to 30 cards at once</i>\n"
         "  Example:\n"
-        "  `/mass <cards>`\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+        "  <code>/mass &lt;cards&gt;</code>\n\n"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗔𝗨𝗧𝗛 𝗠𝗘𝗡𝗨", callback_data="auth_sub_menu")],
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ Back to Auth Menu", callback_data="auth_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
         text,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-
-# === Braintree Premium Examples Handler ===
 async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for 'Braintree Premium'."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      💎 𝐁𝐫𝐚𝐢𝐧𝐭𝐫𝐞𝐞 𝐏𝐫𝐞𝐦𝐢𝐮𝗺\n"
+        "      💎 <b>Braintree Premium</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/b3` \\- *Check a single Braintree card*\n"
+        "• <code>/b3</code> - <i>Check a single Braintree card</i>\n"
         "  Example:\n"
-        "  `/b3 1234567890123456\\|12\\|24\\|123`\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+        "  <code>/b3 1234567890123456|12|24|123</code>\n\n"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗔𝗨𝗧𝗛 𝗠𝗘𝗡𝗨", callback_data="auth_sub_menu")],
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ Back to Auth Menu", callback_data="auth_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
         text,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-# --- Charge Sub Menu ---
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Charge' button."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      ⚡ 𝐂𝐡𝐚𝐫𝐠𝐞 𝐆𝐚𝐭𝐞 ⚡\n"
+        "     ⚡ <b>Charge Gate</b> ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Select a charge gate below:"
     )
     keyboard = [
-        [InlineKeyboardButton("💸 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 2.5$", callback_data="shopify_gate")],
-        [InlineKeyboardButton("⚡ 𝗔𝘂𝘁𝗼 𝗦𝗵𝗼𝗽𝗶𝗳𝘆", callback_data="autoshopify_gate")],
-        [InlineKeyboardButton("💳 𝗦𝘁𝗿𝗶𝗽𝗲 1$", callback_data="stripe_gate")],
-        [InlineKeyboardButton("◀️ 𝗕𝗮𝗰𝗸 𝘁𝗼 𝗚𝗮𝘁𝗲 𝗠𝗲𝗻𝘂", callback_data="gates_menu")]
+        [InlineKeyboardButton("💸 Shopify 2.5$", callback_data="shopify_gate")],
+        [InlineKeyboardButton("⚡ Auto Shopify", callback_data="autoshopify_gate")],
+        [InlineKeyboardButton("💳 Stripe 1$", callback_data="stripe_gate")],
+        [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
     ]
     await q.edit_message_caption(
         text,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-
-# --- Shopify Gate ---
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Shopify 5$' button."""
     q = update.callback_query
@@ -664,23 +638,17 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "  Example:\n"
         "  <code>/sh 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits.\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
         text,
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
-
-
-# --- Auto Shopify Gate ---
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
 
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Auto Shopify' button."""
@@ -689,22 +657,22 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
 
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "    ⚡ 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲\n"
+        "     ⚡ <b>Auto Shopify</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "<code>/sp</code>    - <b>Auto Shopify Checker</b>\n"
+        "<code>/sp</code>  - <b>Auto Shopify Checker</b>\n"
         "Example: <code>/sp 1234567890123456|12|2026|123</code>\n\n"
-        "<code>/msp</code>   - <b>Mass Auto Shopify Checker</b>\n"
+        "<code>/msp</code>  - <b>Mass Auto Shopify Checker</b>\n"
         "Example: <code>/msp 1234567890123456|12|2026|123</code>\n\n"
         "<code>/seturl &lt;shopify site&gt;</code> - <b>Set your custom Shopify site</b>\n"
         "Example: <code>/seturl https://yourshopify.com</code>\n\n"
         "✨ First set your preferred Shopify site using <code>/seturl</code>.\n"
         "Then run <code>/sp</code> to automatically check cards on that site 🚀\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
     )
 
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
 
     await q.edit_message_caption(
@@ -713,9 +681,6 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-
-
-# --- Stripe 1$ Gate ---
 async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Stripe 1$' button."""
     q = update.callback_query
@@ -728,11 +693,11 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         "  Example:\n"
         "  <code>/st 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Each check deducts credits.\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 – 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗖𝗛𝗔𝗥𝗚𝗘 𝗠𝗘𝗡𝗨", callback_data="charge_sub_menu")],
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
         text,
@@ -740,33 +705,29 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-
-
 async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the '3DS Lookup' button."""
     q = update.callback_query
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "   🔐 𝟑𝐃𝐒 𝐋𝐨𝐨𝐤𝐮𝐩\n"
+        "    🔐 <b>3DS Lookup</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• `/vbv` `<card|mm|yy|cvv>`\n"
+        "• <code>/vbv</code> <code>&lt;card|mm|yy|cvv&gt;</code>\n"
         "  Example:\n"
-        "  `/vbv 4111111111111111|12|2026|123`\n\n"
-        "👉 Checks whether the card is *VBV \\(Verified by Visa\\)* or *NON\\-VBV*\\.\n"
-        "⚠️ Ensure you enter the card details in the correct format\\.\n\n"
-        "✨ 𝗦𝘁𝗮𝘁𝘂𝘀 \\- 𝑨𝒄𝒕𝒊𝒗𝒆 ✅"
+        "  <code>/vbv 4111111111111111|12|2026|123</code>\n\n"
+        "➤ Checks whether the card is <i>VBV (Verified by Visa)</i> or <i>NON-VBV</i>.\n"
+        "⚠️ Ensure you enter the card details in the correct format.\n\n"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
     )
     keyboard = [
-        [InlineKeyboardButton("◀️ 𝗕𝗔𝗖𝗞 𝗧𝗢 𝗠𝗔𝗜𝗡 𝗠𝗘𝗡𝗨", callback_data="back_to_start")]
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     await q.edit_message_caption(
         text,
-        parse_mode=ParseMode.MARKDOWN_V2,
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
-
-
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -789,7 +750,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await shopify_gate_handler(update, context)
     elif data == "autoshopify_gate":
         await autoshopify_gate_handler(update, context)
-    elif data == "stripe_gate":   # ✅ Added Stripe handler
+    elif data == "stripe_gate":
         await stripe_gate_handler(update, context)
     elif data == "stripe_examples":
         await stripe_examples_handler(update, context)
@@ -801,6 +762,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
