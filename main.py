@@ -3598,6 +3598,111 @@ async def rsite(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import asyncio
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+from db import get_user, update_user  # your DB functions
+
+# ===== /adurls command =====
+async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    # Usage check
+    if not context.args:
+        return await update.message.reply_text(
+            "❌ 𝐔𝐬𝐚𝐠𝐞:\n<code>/adurls <site1> <site2> ...</code>\n"
+            "⚠️ Maximum 20 sites per user.",
+            parse_mode=ParseMode.HTML
+        )
+
+    sites_to_add = [site.strip() for site in context.args if site.strip()]
+    if not sites_to_add:
+        return await update.message.reply_text(
+            "❌ 𝐍𝐨 𝐯𝐚𝐥𝐢𝐝 𝐬𝐢𝐭𝐞 𝐔𝐑𝐋𝐬 𝐩𝐫𝐨𝐯𝐢𝐝𝐞𝐝.\n"
+            "Usage: <code>/adurls <site1> <site2> ...</code>",
+            parse_mode=ParseMode.HTML
+        )
+
+    # Initial stylish processing message
+    processing_msg = await update.message.reply_text(
+        f"⏳ 𝐏𝐫𝐨𝐜𝐞𝐬𝐬𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞𝐬…\n"
+        f"<code>{escape(' '.join(sites_to_add))}</code>",
+        parse_mode=ParseMode.HTML
+    )
+
+    async def add_urls_bg():
+        try:
+            user_data = await get_user(user_id)
+            if not user_data:
+                await processing_msg.edit_text(
+                    "❌ 𝐔𝐬𝐞𝐫 𝐝𝐚𝐭𝐚 𝐧𝐨𝐭 𝐟𝐨𝐮𝐧𝐝.",
+                    parse_mode=ParseMode.HTML
+                )
+                return
+
+            # Check credit
+            credits = user_data.get("credits", 0)
+            if credits < 1:
+                await processing_msg.edit_text(
+                    "❌ 𝐘𝐨𝐮 𝐡𝐚𝐯𝐞 𝐧𝐨 𝐜𝐫𝐞𝐝𝐢𝐭𝐬 𝐥𝐞𝐟𝐭.",
+                    parse_mode=ParseMode.HTML
+                )
+                return
+
+            # Consume 1 credit
+            await update_user(user_id, credits=credits - 1)
+
+            # Current sites
+            current_sites = user_data.get("custom_urls", [])
+
+            # Check max 20 sites
+            allowed_to_add = 20 - len(current_sites)
+            if allowed_to_add <= 0:
+                await processing_msg.edit_text(
+                    "⚠️ 𝐘𝐨𝐮 𝐚𝐥𝐫𝐞𝐚𝐝𝐲 𝐡𝐚𝐯𝐞 20 𝐬𝐢𝐭𝐞𝐬. Remove some first using /rsite or /removeall.",
+                    parse_mode=ParseMode.HTML
+                )
+                return
+
+            if len(sites_to_add) > allowed_to_add:
+                sites_to_add = sites_to_add[:allowed_to_add]
+                await processing_msg.edit_text(
+                    f"⚠️ Only {allowed_to_add} site(s) will be added to respect the 20-sites limit.",
+                    parse_mode=ParseMode.HTML
+                )
+                await asyncio.sleep(2)  # let user see the warning
+
+            # Add sites
+            updated_sites = current_sites + sites_to_add
+            await update_user(user_id, custom_urls=updated_sites)
+
+            # Final stylish message
+            final_msg = (
+                f"✅ 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥𝐥𝐲 𝐚𝐝𝐝𝐞𝐝 {len(sites_to_add)} 𝐬𝐢𝐭𝐞(s)!\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🌐 𝐀𝐝𝐝𝐞𝐝 𝐒𝐢𝐭𝐞𝐬:\n<code>{escape(' '.join(sites_to_add))}</code>\n"
+                f"🌐 𝐓𝐨𝐭𝐚𝐥 𝐒𝐢𝐭𝐞𝐬: {len(updated_sites)} / 20\n"
+                f"💲 𝐂𝐫𝐞𝐝𝐢𝐭 𝐔𝐬𝐞𝐝: 1"
+            )
+
+            await processing_msg.edit_text(final_msg, parse_mode=ParseMode.HTML)
+
+        except Exception:
+            await processing_msg.edit_text(
+                "⚠️ 𝐀𝐧 𝐞𝐫𝐫𝐨𝐫 𝐨𝐜𝐜𝐮𝐫𝐫𝐞𝐝 𝐰𝐡𝐢𝐥𝐞 𝐚𝐝𝐝𝐢𝐧𝐠 𝐬𝐢𝐭𝐞𝐬.",
+                parse_mode=ParseMode.HTML
+            )
+
+    # Run in background
+    asyncio.create_task(add_urls_bg())
+
+
+
+
+
 from faker import Faker
 from telegram import Update
 from telegram.constants import ParseMode
@@ -5166,6 +5271,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("msp", force_join(msp)))
     application.add_handler(CommandHandler("removeall", force_join(removeall)))
     application.add_handler(CommandHandler("rsite", force_join(rsite)))
+    application.add_handler(CommandHandler("adurls", force_join(adurls)))
     application.add_handler(CommandHandler("sp", force_join(sp)))
     application.add_handler(CommandHandler("site", force_join(site)))
     application.add_handler(CommandHandler("msite", force_join(msite_command)))
