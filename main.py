@@ -3747,7 +3747,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ua = escape_markdown_v2(fake.user_agent())
 
     # Only escape the content inside the brackets, keep brackets literal
-    bullet_text = escape_markdown_v2("⌇")
+    bullet_text = "\[⌇\]"   # Escaped so [] stay visible in MarkdownV2
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
 
