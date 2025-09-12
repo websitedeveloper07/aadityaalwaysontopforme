@@ -337,8 +337,8 @@ def build_final_card(*, user_id: int, username: str | None, credits: int, plan: 
     """
     uname = f"@{username}" if username else "N/A"
     
-    # HTML-formatted clickable bullet with the ⌇ character
-    bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
+    # HTML-formatted clickable bullet with the ⌇ character and brackets
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     return (
         "✦━━━━━━━━━━━━━━✦\n"
@@ -454,7 +454,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
 
-    bullet_link = f"[<a href='{BULLET_GROUP_LINK}'>⌇</a>]"
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
@@ -754,6 +754,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_start_handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
