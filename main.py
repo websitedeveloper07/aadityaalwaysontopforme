@@ -416,7 +416,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text, keyboard = await build_start_message(user, context)
     msg = update.message or update.effective_message
 
-    image_url = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
+    image_url = "https://i.ibb.co/YFDvs5fr/6190727515442629298.jpg"
     try:
         # Fetch the image content directly to avoid Telegram's URL validation issues
         response = requests.get(image_url)
