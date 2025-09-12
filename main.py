@@ -3746,8 +3746,10 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ip = escape_markdown_v2(fake.ipv4_public())
     ua = escape_markdown_v2(fake.user_agent())
 
-    # Only the content inside brackets is escaped, brackets stay literal
-    bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
+    # Only escape the content inside the brackets, keep brackets literal
+    bullet_text = escape_markdown_v2("⌇")
+    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
+
 
     output = (
         "━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━\n"
