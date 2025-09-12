@@ -2657,12 +2657,17 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Initial processing message
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+    # Initial processing message
     processing_text = (
-        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n{escape(card_input)}</code></pre>"
-    )
+        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+        f"<pre><code>{escape(card_input)}</code></pre>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
+     )
+
 
     msg = await update.message.reply_text(
         processing_text,
