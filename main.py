@@ -2283,6 +2283,7 @@ from html import escape
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -2370,19 +2371,31 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             country_name = "Unknown"
             country_flag = ""
 
-        requester = f"@{user.username}" if user.username else str(user.id)
+        # --- Requester ---
+        full_name = " ".join(filter(None, [user.first_name, user.last_name]))
+        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
 
+        # --- Developer Branding ---
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
-        full_name = " ".join(filter(None, [user.first_name, user.last_name]))
-        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
+
+        # --- Enhance response with emojis ---
+        display_response = escape(response)
+
+        if re.search(r"\b(thank you|approved|charged|success)\b", response, re.I):
+            display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+        elif "3D_AUTHENTICATION" in response.upper():
+            display_response = f"{escape(response)} 🔒"
+        elif "CARD_DECLINED" in response.upper():
+            display_response = f"{escape(response)} ❌"
+
         # --- Final formatted message ---
         final_msg = (
             f"◇━━〔 <b>SHOPIFY</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟏.𝟎$\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{escape(response)}</i>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ <i>{escape(gateway)} {price}$</i>\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{escape(issuer)}</code>\n"
