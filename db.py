@@ -28,7 +28,8 @@ async def init_db():
             plan_expiry TEXT DEFAULT '{DEFAULT_PLAN_EXPIRY}',
             keys_redeemed INT DEFAULT {DEFAULT_KEYS_REDEEMED},
             registered_at TEXT,
-            custom_url TEXT DEFAULT NULL
+            -- store multiple sites as JSONB array
+            custom_urls JSONB DEFAULT '[]'
         );
     """)
     await conn.close()
@@ -39,13 +40,24 @@ async def get_user(user_id):
     row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
     if row:
         await conn.close()
-        return dict(row)
+        user_data = dict(row)
+        # ensure custom_urls is always a list
+        if isinstance(user_data.get("custom_urls"), str):
+            # in case DB stored as string accidentally
+            import json
+            try:
+                user_data["custom_urls"] = json.loads(user_data["custom_urls"])
+            except Exception:
+                user_data["custom_urls"] = []
+        elif user_data.get("custom_urls") is None:
+            user_data["custom_urls"] = []
+        return user_data
     else:
         now = datetime.now().strftime('%d-%m-%Y')
         await conn.execute(
             """
-            INSERT INTO users (id, credits, plan, status, plan_expiry, keys_redeemed, registered_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO users (id, credits, plan, status, plan_expiry, keys_redeemed, registered_at, custom_urls)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             """,
             user_id,
             DEFAULT_FREE_CREDITS,
@@ -53,7 +65,8 @@ async def get_user(user_id):
             DEFAULT_STATUS,
             DEFAULT_PLAN_EXPIRY,
             DEFAULT_KEYS_REDEEMED,
-            now
+            now,
+            []
         )
         row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
         await conn.close()
@@ -80,10 +93,23 @@ async def update_user(user_id, **kwargs):
 # === Get all users ===
 async def get_all_users():
     conn = await connect()
-    rows = await conn.fetch("SELECT id, plan, custom_url FROM users")
+    rows = await conn.fetch("SELECT id, plan, custom_urls FROM users")
     await conn.close()
     print(f"[DEBUG] Fetched {len(rows)} users from DB")
-    return [dict(row) for row in rows]
+    # ensure all rows have proper list type for custom_urls
+    result = []
+    for row in rows:
+        r = dict(row)
+        if isinstance(r.get("custom_urls"), str):
+            import json
+            try:
+                r["custom_urls"] = json.loads(r["custom_urls"])
+            except Exception:
+                r["custom_urls"] = []
+        elif r.get("custom_urls") is None:
+            r["custom_urls"] = []
+        result.append(r)
+    return result
 
 # === Get total user count ===
 async def get_user_count():
