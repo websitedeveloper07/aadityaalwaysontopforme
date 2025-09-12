@@ -795,9 +795,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/site &lt;url&gt;</code> – Check if Shopify site is live\n"
         f"{bullet_link} <code>/msite &lt;urls&gt;</code> – Mass Shopify site check\n"
         f"{bullet_link} <code>/mysites</code> – Check your added sites\n\n"
-        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 shopify sites\n"
-        f"{bullet_link} <code>/removeall</code> - Remove all added sites\n"
-        f"{bullet_link} <code>/rmsite</code> - Remove specific sites from added\n"
+
 
         "🔹 <b>𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨</b>\n"
         f"{bullet_link} <code>/gen [bin] [no. of cards]</code> – Generate cards from BIN\n"
