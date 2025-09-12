@@ -825,7 +825,6 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
@@ -842,9 +841,9 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows the user's detailed information."""
     user = update.effective_user
     user_data = await get_user(user.id)
-    
+
     # Define the bullet point with the hyperlink
-    bullet_text = escape_all_markdown("[⌇]")
+    bullet_text = escape_markdown_v2("⌇")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     # Escape all dynamic values
@@ -877,6 +876,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
@@ -1348,14 +1348,15 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user.id)
     
     # Define the bullet point with the hyperlink
-    bullet_text = escape_all_markdown("[⌇]")
+    bullet_text = escape_markdown_v2("⌇")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
 
     credits = str(user_data.get('credits', 0))
     plan = user_data.get('plan', 'N/A')
 
     # Escape user inputs
-    escaped_username = escape_markdown_v2(user.username or 'N/A')
+    username = f"@{user.username}" if user.username else "N/A"
+    escaped_username = escape_markdown_v2(username)
     escaped_user_id = escape_markdown_v2(str(user.id))
     escaped_plan = escape_markdown_v2(plan)
     escaped_credits = escape_markdown_v2(credits)
@@ -1363,7 +1364,7 @@ async def credits_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credit_message = (
         f"💳 *Your Credit Info* 💳\n"
         f"✦━━━━━━━━━━━━━━✦\n"
-        f"{bullet_link} Username: @{escaped_username}\n"
+        f"{bullet_link} Username: {escaped_username}\n"
         f"{bullet_link} User ID: `{escaped_user_id}`\n"
         f"{bullet_link} Plan: `{escaped_plan}`\n"
         f"{bullet_link} Credits: `{escaped_credits}`\n"
@@ -3705,7 +3706,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
 
     # Define the bullet point with the hyperlink
-    bullet_text = escape_all_markdown("[⌇]")
+    bullet_text = escape_markdown_v2("⌇")
     bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
     
     # Cooldown check
@@ -3735,6 +3736,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         fake = Faker('en_US')
 
+    # Generate and escape values
     name = escape_markdown_v2(fake.name())
     dob = escape_markdown_v2(fake.date_of_birth().strftime('%Y-%m-%d'))
     ssn = escape_markdown_v2(fake.ssn())
@@ -3778,6 +3780,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
