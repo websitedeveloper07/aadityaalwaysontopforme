@@ -3701,15 +3701,12 @@ BULLET_GROUP_LINK = "https://t.me/CARDER33"
 def escape_markdown_v2(text: str) -> str:
     """Escapes special characters for Telegram MarkdownV2."""
     import re
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+    return re.sub(r'([_*\(\)~`>#+\-=|{}.!\\])', r'\\\1', str(text))
+    # Notice: [ and ] are NOT escaped
 
 async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates fake identity info."""
 
-    # Define the bullet point with the hyperlink ([⌇] fully visible & clickable)
-    bullet_text = r"\[\⌇\]"  # escape both brackets and the symbol
-    bullet_link = f"[{bullet_text}]({BULLET_GROUP_LINK})"
-    
     # Cooldown check
     if not await enforce_cooldown(update.effective_user.id, update):
         return
@@ -3731,7 +3728,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         fake = Faker('en_US')
 
-    # Generate and escape all fake values
+    # Generate and escape values
     name = escape_markdown_v2(fake.name())
     dob = escape_markdown_v2(fake.date_of_birth().strftime('%Y-%m-%d'))
     ssn = escape_markdown_v2(fake.ssn())
@@ -3748,6 +3745,9 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     country = escape_markdown_v2(fake.country())
     ip = escape_markdown_v2(fake.ipv4_public())
     ua = escape_markdown_v2(fake.user_agent())
+
+    # Only the content inside brackets is escaped, brackets stay literal
+    bullet_link = f"[⌇]({BULLET_GROUP_LINK})"
 
     output = (
         "━━━[ 🧑‍💻 𝙁𝙖𝙠𝙚 𝙄𝙣𝙛𝙤 ]━\n"
@@ -3775,6 +3775,7 @@ async def fk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
 
 
 
