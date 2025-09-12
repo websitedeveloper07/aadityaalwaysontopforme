@@ -472,6 +472,9 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/gate site url</code> - Payment Gateway Checker\n"
         f"{bullet_link} <code>/sh</code> - Shopify 1.0$\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> - Set a Shopify site\n"
+        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 shopify sites\n"
+        f"{bullet_link} <code>/removeall</code> - Remove all added sites\n"
+        f"{bullet_link} <code>/rmsite</code> - Remove specific sites from added\n"
         f"{bullet_link} <code>/mysites</code> - View your added site\n"
         f"{bullet_link} <code>/sp</code> - Auto Shopify Checker\n"
         f"{bullet_link} <code>/msp</code> - Mass Auto Shopify\n"
@@ -792,6 +795,9 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/site &lt;url&gt;</code> – Check if Shopify site is live\n"
         f"{bullet_link} <code>/msite &lt;urls&gt;</code> – Mass Shopify site check\n"
         f"{bullet_link} <code>/mysites</code> – Check your added sites\n\n"
+        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 shopify sites\n"
+        f"{bullet_link} <code>/removeall</code> - Remove all added sites\n"
+        f"{bullet_link} <code>/rmsite</code> - Remove specific sites from added\n"
 
         "🔹 <b>𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨</b>\n"
         f"{bullet_link} <code>/gen [bin] [no. of cards]</code> – Generate cards from BIN\n"
@@ -3493,11 +3499,15 @@ async def rsite(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         return await update.message.reply_text(
             "❌ Usage: <code>/rsite &lt;site_url&gt;</code>\n"
-            "Example: <code>/rsite https://example.com</code>",
+            "Example: <code>/rsite example.com</code>",
             parse_mode="HTML"
         )
 
     site_to_remove = context.args[0].strip()
+
+    # Automatically add https:// if not provided
+    if not site_to_remove.startswith(("http://", "https://")):
+        site_to_remove = "https://" + site_to_remove
 
     # Send initial stylish "removing" message
     msg = await update.message.reply_text(
@@ -3540,7 +3550,7 @@ async def rsite(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await msg.edit_text(final_text, parse_mode="HTML")
         except Exception:
-            # silently handle errors so nothing shows in chat
+            # Silently handle errors
             await msg.edit_text(
                 "⚠️ 𝐀𝐧 𝐞𝐫𝐫𝐨𝐫 𝐨𝐜𝐜𝐮𝐫𝐫𝐞𝐝 𝐰𝐡𝐢𝐥𝐞 𝐫𝐞𝐦𝐨𝐯𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞.",
                 parse_mode="HTML"
