@@ -3534,18 +3534,20 @@ from db import get_user, update_user
 
 async def rsite(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Remove a single site from the user's custom_urls list."""
+
     user_id = update.effective_user.id
 
-    # Check if site URL is provided
+    # ✅ Check if site URL is provided
     if not context.args:
         return await update.message.reply_text(
-            "❌ Usage: /rsite <site url>\nExample: /rsite https://example.com",
+            "❌ Usage: <code>/rsite &lt;site_url&gt;</code>\n"
+            "Example: <code>/rsite https://example.com</code>",
             parse_mode="HTML"
         )
 
     site_to_remove = context.args[0].strip()
 
-    # Send initial stylish removing message
+    # Send initial stylish "removing" message
     msg = await update.message.reply_text(
         f"🗑 𝐑𝐞𝐦𝐨𝐯𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞…\n<code>{escape(site_to_remove)}</code>",
         parse_mode="HTML"
@@ -3565,7 +3567,8 @@ async def rsite(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if site_to_remove not in sites:
                 await msg.edit_text(
-                    f"❌ 𝐓𝐡𝐞 𝐬𝐢𝐭𝐞 <code>{escape(site_to_remove)}</code> 𝐰𝐚𝐬 𝐧𝐨𝐭 𝐟𝐨𝐮𝐧𝐝 𝐢𝐧 𝐲𝐨𝐮𝐫 𝐚𝐝𝐝𝐞𝐝 𝐬𝐢𝐭𝐞𝐬.",
+                    f"❌ 𝐓𝐡𝐞 𝐬𝐢𝐭𝐞 <code>{escape(site_to_remove)}</code> "
+                    f"𝐰𝐚𝐬 𝐧𝐨𝐭 𝐟𝐨𝐮𝐧𝐝 𝐢𝐧 𝐲𝐨𝐮𝐫 𝐚𝐝𝐝𝐞𝐝 𝐬𝐢𝐭𝐞𝐬.",
                     parse_mode="HTML"
                 )
                 return
@@ -3585,7 +3588,7 @@ async def rsite(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await msg.edit_text(final_text, parse_mode="HTML")
         except Exception:
-            # silently handle errors
+            # silently handle errors so nothing shows in chat
             await msg.edit_text(
                 "⚠️ 𝐀𝐧 𝐞𝐫𝐫𝐨𝐫 𝐨𝐜𝐜𝐮𝐫𝐫𝐞𝐝 𝐰𝐡𝐢𝐥𝐞 𝐫𝐞𝐦𝐨𝐯𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞.",
                 parse_mode="HTML"
