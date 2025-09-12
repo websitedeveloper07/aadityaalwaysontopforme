@@ -3610,7 +3610,7 @@ from db import get_user, update_user  # your DB functions
 async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    # Usage check
+    # --- Usage check ---
     if not context.args:
         return await update.message.reply_text(
             "❌ 𝐔𝐬𝐚𝐠𝐞:\n<code>/adurls <site1> <site2> ...</code>\n"
@@ -3618,6 +3618,7 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML
         )
 
+    # --- Clean and validate URLs ---
     sites_to_add = [site.strip() for site in context.args if site.strip()]
     if not sites_to_add:
         return await update.message.reply_text(
@@ -3626,11 +3627,11 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML
         )
 
-    # Initial stylish processing message
+    # --- Initial processing message ---
     processing_msg = await update.message.reply_text(
-        f"⏳ 𝐏𝐫𝐨𝐜𝐞𝐬𝐬𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞𝐬…\n"
-        f"<code>{escape(' '.join(sites_to_add))}</code>",
-        parse_mode=ParseMode.HTML
+        f"⏳ 𝐏𝐫𝐨𝐜𝐞𝐬𝐬𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞𝐬…\n<code>{escape(' '.join(sites_to_add))}</code>",
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
     )
 
     async def add_urls_bg():
@@ -3643,7 +3644,7 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return
 
-            # Check credit
+            # --- Credit check ---
             credits = user_data.get("credits", 0)
             if credits < 1:
                 await processing_msg.edit_text(
@@ -3652,13 +3653,13 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return
 
-            # Consume 1 credit
+            # --- Consume 1 credit ---
             await update_user(user_id, credits=credits - 1)
 
-            # Current sites
+            # --- Current sites ---
             current_sites = user_data.get("custom_urls", [])
 
-            # Check max 20 sites
+            # --- Max 20 sites logic ---
             allowed_to_add = 20 - len(current_sites)
             if allowed_to_add <= 0:
                 await processing_msg.edit_text(
@@ -3673,13 +3674,13 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"⚠️ Only {allowed_to_add} site(s) will be added to respect the 20-sites limit.",
                     parse_mode=ParseMode.HTML
                 )
-                await asyncio.sleep(2)  # let user see the warning
+                await asyncio.sleep(2)  # allow user to read the warning
 
-            # Add sites
+            # --- Add sites ---
             updated_sites = current_sites + sites_to_add
             await update_user(user_id, custom_urls=updated_sites)
 
-            # Final stylish message
+            # --- Final stylish message ---
             final_msg = (
                 f"✅ 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥𝐥𝐲 𝐚𝐝𝐝𝐞𝐝 {len(sites_to_add)} 𝐬𝐢𝐭𝐞(s)!\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -3690,14 +3691,15 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await processing_msg.edit_text(final_msg, parse_mode=ParseMode.HTML)
 
-        except Exception:
+        except Exception as e:
             await processing_msg.edit_text(
-                "⚠️ 𝐀𝐧 𝐞𝐫𝐫𝐨𝐫 𝐨𝐜𝐜𝐮𝐫𝐫𝐞𝐝 𝐰𝐡𝐢𝐥𝐞 𝐚𝐝𝐝𝐢𝐧𝐠 𝐬𝐢𝐭𝐞𝐬.",
+                f"⚠️ 𝐀𝐧 𝐞𝐫𝐫𝐨𝐫 𝐨𝐜𝐜𝐮𝐫𝐫𝐞𝐝 𝐰𝐡𝐢𝐥𝐞 𝐚𝐝𝐝𝐢𝐧𝐠 𝐬𝐢𝐭𝐞𝐬:\n<code>{escape(str(e))}</code>",
                 parse_mode=ParseMode.HTML
             )
 
-    # Run in background
+    # --- Run in background ---
     asyncio.create_task(add_urls_bg())
+
 
 
 
