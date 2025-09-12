@@ -3618,7 +3618,7 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML
         )
 
-    # --- Clean and validate URLs ---
+    # --- Clean URLs ---
     sites_to_add_initial = [site.strip() for site in context.args if site.strip()]
     if not sites_to_add_initial:
         return await update.message.reply_text(
@@ -3659,6 +3659,16 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # --- Current sites ---
             current_sites = user_data.get("custom_urls", [])
 
+            # --- Filter out duplicates ---
+            new_sites = [site for site in sites_to_add if site not in current_sites]
+
+            if not new_sites:
+                await processing_msg.edit_text(
+                    "⚠️ All provided sites are already added. No new sites to add.",
+                    parse_mode=ParseMode.HTML
+                )
+                return
+
             # --- Max 20 sites logic ---
             allowed_to_add = 20 - len(current_sites)
             if allowed_to_add <= 0:
@@ -3668,23 +3678,23 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return
 
-            if len(sites_to_add) > allowed_to_add:
-                sites_to_add = sites_to_add[:allowed_to_add]
+            if len(new_sites) > allowed_to_add:
+                new_sites = new_sites[:allowed_to_add]
                 await processing_msg.edit_text(
                     f"⚠️ Only {allowed_to_add} site(s) will be added to respect the 20-sites limit.",
                     parse_mode=ParseMode.HTML
                 )
                 await asyncio.sleep(2)  # allow user to read the warning
 
-            # --- Add sites ---
-            updated_sites = current_sites + sites_to_add
+            # --- Add new sites ---
+            updated_sites = current_sites + new_sites
             await update_user(user_id, custom_urls=updated_sites)
 
             # --- Final stylish message ---
             final_msg = (
-                f"✅ 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥𝐥𝐲 𝐚𝐝𝐝𝐞𝐝 {len(sites_to_add)} 𝐬𝐢𝐭𝐞(s)!\n"
+                f"✅ 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥𝐥𝐲 𝐚𝐝𝐝𝐞𝐝 {len(new_sites)} 𝐬𝐢𝐭𝐞(s)!\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🌐 𝐀𝐝𝐝𝐞𝐝 𝐒𝐢𝐭𝐞𝐬:\n<code>{escape(' '.join(sites_to_add))}</code>\n"
+                f"🌐 𝐀𝐝𝐝𝐞𝐝 𝐒𝐢𝐭𝐞𝐬:\n<code>{escape(' '.join(new_sites))}</code>\n"
                 f"🌐 𝐓𝐨𝐭𝐚𝐥 𝐒𝐢𝐭𝐞𝐬: {len(updated_sites)} / 20\n"
                 f"💲 𝐂𝐫𝐞𝐝𝐢𝐭 𝐔𝐬𝐞𝐝: 1"
             )
