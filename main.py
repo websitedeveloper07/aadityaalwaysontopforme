@@ -3526,6 +3526,73 @@ async def _process_removeall(user_id: int, processing_msg):
             pass
 
 
+from telegram import Update
+from telegram.ext import ContextTypes
+import asyncio
+from html import escape
+from db import get_user, update_user
+
+async def rsite(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Remove a single site from the user's custom_urls list."""
+    user_id = update.effective_user.id
+
+    # Check if site URL is provided
+    if not context.args:
+        return await update.message.reply_text(
+            "❌ Usage: /rsite <site url>\nExample: /rsite https://example.com",
+            parse_mode="HTML"
+        )
+
+    site_to_remove = context.args[0].strip()
+
+    # Send initial stylish removing message
+    msg = await update.message.reply_text(
+        f"🗑 𝐑𝐞𝐦𝐨𝐯𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞…\n<code>{escape(site_to_remove)}</code>",
+        parse_mode="HTML"
+    )
+
+    async def remove_site_bg():
+        try:
+            user_data = await get_user(user_id)
+            if not user_data:
+                await msg.edit_text(
+                    "❌ 𝐔𝐬𝐞𝐫 𝐝𝐚𝐭𝐚 𝐧𝐨𝐭 𝐟𝐨𝐮𝐧𝐝.",
+                    parse_mode="HTML"
+                )
+                return
+
+            sites = user_data.get("custom_urls", [])
+
+            if site_to_remove not in sites:
+                await msg.edit_text(
+                    f"❌ 𝐓𝐡𝐞 𝐬𝐢𝐭𝐞 <code>{escape(site_to_remove)}</code> 𝐰𝐚𝐬 𝐧𝐨𝐭 𝐟𝐨𝐮𝐧𝐝 𝐢𝐧 𝐲𝐨𝐮𝐫 𝐚𝐝𝐝𝐞𝐝 𝐬𝐢𝐭𝐞𝐬.",
+                    parse_mode="HTML"
+                )
+                return
+
+            # Remove the site
+            sites.remove(site_to_remove)
+            await update_user(user_id, custom_urls=sites)
+
+            # Final stylish message
+            final_text = (
+                f"✅ 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥𝐥𝐲 𝐫𝐞𝐦𝐨𝐯𝐞𝐝 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞!\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"🌐 <code>{escape(site_to_remove)}</code>\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"📄 𝐑𝐞𝐦𝐚𝐢𝐧𝐢𝐧𝐠 𝐒𝐢𝐭𝐞𝐬: {len(sites)}"
+            )
+
+            await msg.edit_text(final_text, parse_mode="HTML")
+        except Exception:
+            # silently handle errors
+            await msg.edit_text(
+                "⚠️ 𝐀𝐧 𝐞𝐫𝐫𝐨𝐫 𝐨𝐜𝐜𝐮𝐫𝐫𝐞𝐝 𝐰𝐡𝐢𝐥𝐞 𝐫𝐞𝐦𝐨𝐯𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞.",
+                parse_mode="HTML"
+            )
+
+    # Run in background (non-blocking)
+    asyncio.create_task(remove_site_bg())
 
 
 
@@ -5096,6 +5163,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("mysites", force_join(mysites)))
     application.add_handler(CommandHandler("msp", force_join(msp)))
     application.add_handler(CommandHandler("removeall", force_join(removeall)))
+    application.add_handler(CommandHandler("rsite", force_join(rsite)))
     application.add_handler(CommandHandler("sp", force_join(sp)))
     application.add_handler(CommandHandler("site", force_join(site)))
     application.add_handler(CommandHandler("msite", force_join(msite_command)))
