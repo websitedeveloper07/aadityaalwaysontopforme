@@ -2336,7 +2336,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- Enhance response with emojis ---
         display_response = escape(response)
 
-        if re.search(r"\b(thank you|approved|charged|success)\b", response, re.I):
+        if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
             display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
@@ -2764,7 +2764,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
 
         # Enhance Response
         display_response = escape(response_text)
-        if re.search(r"\b(thank you|approved|charged|success)\b", response_text, re.I):
+        if re.search(r"\b(Thank You|approved|charged|success)\b", response_text, re.I):
             display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
         elif "3D_AUTHENTICATION" in response_text.upper():
             display_response += " 🔒"
