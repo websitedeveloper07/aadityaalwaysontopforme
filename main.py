@@ -3613,28 +3613,28 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Usage check ---
     if not context.args:
         return await update.message.reply_text(
-            "❌ 𝐔𝐬𝐚𝐠𝐞:\n<code>/adurls <site1> <site2> ...</code>\n"
+            "❌ 𝐔𝐬𝐚𝐠𝐞:\n<code>/adurls &lt;site1&gt; &lt;site2&gt; ...</code>\n"
             "⚠️ Maximum 20 sites per user.",
             parse_mode=ParseMode.HTML
         )
 
     # --- Clean and validate URLs ---
-    sites_to_add = [site.strip() for site in context.args if site.strip()]
-    if not sites_to_add:
+    sites_to_add_initial = [site.strip() for site in context.args if site.strip()]
+    if not sites_to_add_initial:
         return await update.message.reply_text(
             "❌ 𝐍𝐨 𝐯𝐚𝐥𝐢𝐝 𝐬𝐢𝐭𝐞 𝐔𝐑𝐋𝐬 𝐩𝐫𝐨𝐯𝐢𝐝𝐞𝐝.\n"
-            "Usage: <code>/adurls <site1> <site2> ...</code>",
+            "Usage: <code>/adurls &lt;site1&gt; &lt;site2&gt; ...</code>",
             parse_mode=ParseMode.HTML
         )
 
     # --- Initial processing message ---
     processing_msg = await update.message.reply_text(
-        f"⏳ 𝐏𝐫𝐨𝐜𝐞𝐬𝐬𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞𝐬…\n<code>{escape(' '.join(sites_to_add))}</code>",
+        f"⏳ 𝐏𝐫𝐨𝐜𝐞𝐬𝐬𝐢𝐧𝐠 𝐲𝐨𝐮𝐫 𝐬𝐢𝐭𝐞𝐬…\n<code>{escape(' '.join(sites_to_add_initial))}</code>",
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
 
-    async def add_urls_bg():
+    async def add_urls_bg(sites_to_add):
         try:
             user_data = await get_user(user_id)
             if not user_data:
@@ -3698,8 +3698,7 @@ async def adurls(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
     # --- Run in background ---
-    asyncio.create_task(add_urls_bg())
-
+    asyncio.create_task(add_urls_bg(sites_to_add_initial))
 
 
 
