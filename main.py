@@ -3427,6 +3427,75 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import asyncio
+from html import escape
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+
+from db import get_user, update_user
+
+# /removeall command - runs DB update in background and edits the same message
+async def removeall(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    # Send initial "processing" message right away (stylish)
+    processing_msg = await update.message.reply_text(
+        "◇━━〔 ⏳ 𝑹𝒆𝒎𝒐𝒗𝒊𝒏𝒈 𝒀𝒐𝒖𝒓 𝑺𝒊𝒕𝒆𝒔... 〕━━◇\n"
+        "🔹 𝑷𝒍𝒆𝒂𝒔𝒆 𝒘𝒂𝒊𝒕 — this runs in the background.",
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+
+    # Launch background task to do the actual removal and edit the message when done
+    asyncio.create_task(_process_removeall(user_id, processing_msg))
+
+
+async def _process_removeall(user_id: int, processing_msg):
+    """
+    Background worker: clears user's custom_urls and updates the original message.
+    All errors are caught and not shown to end users.
+    """
+    try:
+        # Verify user exists
+        user_data = await get_user(user_id)
+        if not user_data:
+            await processing_msg.edit_text(
+                "◇━━〔 ❌ 𝑼𝒔𝒆𝒓 𝑫𝒂𝒕𝒂 𝑵𝒐𝒕 𝑭𝒐𝒖𝒏𝒅 〕━━◇\n"
+                "🔹 𝑵𝒐 𝒂𝒄𝒄𝒐𝒖𝒏𝒕 𝒅𝒂𝒕𝒂 𝒄𝒐𝒖𝒍𝒅 𝒃𝒆 𝒍𝒐𝒂𝒅𝒆𝒅.",
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
+            )
+            return
+
+        # Perform DB update: clear the array (won't block other handlers)
+        await update_user(user_id, custom_urls=[])
+
+        # Optional small delay to make UX feel smooth (non-blocking)
+        # await asyncio.sleep(0.4)
+
+        # Final success message (stylish)
+        await processing_msg.edit_text(
+            "◇━━〔 ✅ 𝑺𝒊𝒕𝒆𝒔 𝑹𝒆𝒎𝒐𝒗𝒆𝒅 〕━━◇\n"
+            "🔹 𝑨𝒍𝒍 𝒚𝒐𝒖𝒓 𝒔𝒂𝒗𝒆𝒅 𝒔𝒊𝒕𝒆𝒔 𝒉𝒂𝒗𝒆 𝒃𝒆𝒆𝒏 𝒄𝒍𝒆𝒂𝒓𝒆𝒅.\n"
+            "🔹 𝒖𝒔𝒆 <code>/seturl &lt;site&gt;</code> 𝒕𝒐 𝒂𝒅𝒅 𝒏𝒆𝒘 𝒐𝒏𝒆𝒔.",
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+    except Exception:
+        # Generic friendly failure message; do not reveal internals
+        try:
+            await processing_msg.edit_text(
+                "◇━━〔 ⚠️ 𝑬𝒓𝒓𝒐𝒓 〕━━◇\n"
+                "🔹 𝑾𝒆 𝒄𝒐𝒖𝒍𝒅𝒏'𝒕 𝒓𝒆𝒎𝒐𝒗𝒆 𝒚𝒐𝒖𝒓 𝒔𝒊𝒕𝒆𝒔 𝒂𝒕 𝒕𝒉𝒊𝒔 𝒎𝒐𝒎𝒆𝒏𝒕.\n"
+                "🔹 𝑻𝒓𝒚 𝒂𝒈𝒂𝒊𝒏 𝒍𝒂𝒕𝒆𝒓.",
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
+            )
+        except Exception:
+            # If editing fails, silently pass (we must not crash or leak)
+            pass
 
 
 
@@ -4998,6 +5067,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("seturl", force_join(seturl)))
     application.add_handler(CommandHandler("mysites", force_join(mysites)))
     application.add_handler(CommandHandler("msp", force_join(msp)))
+    application.add_handler(CommandHandler("removeall", force_join(removeall)))
     application.add_handler(CommandHandler("sp", force_join(sp)))
     application.add_handler(CommandHandler("site", force_join(site)))
     application.add_handler(CommandHandler("msite", force_join(msite_command)))
