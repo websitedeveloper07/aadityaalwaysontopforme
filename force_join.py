@@ -10,7 +10,8 @@ GROUP_USERNAME = "CARDER33"     # for join button (@username only)
 CHANNEL_ID = -1003048152931     # numeric channel ID (required)
 CHANNEL_USERNAME = "+EFlLesETogM3M2Q1"  # for join button (no '+' sign)
 
-FORCE_JOIN_IMAGE = "https://i.postimg.cc/hjNQNyP1/1ea64ac8-ad6a-42f2-89b1-3de4a0d8e447.png"
+# ✅ Updated permanent image link from ImgBB
+FORCE_JOIN_IMAGE = "https://i.ibb.co/YFDvs5fr/6190727515442629298.jpg"
 
 logger = logging.getLogger("force_join")
 logger.setLevel(logging.INFO)
@@ -69,7 +70,7 @@ def force_join(func):
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            caption_text = "❌𝗨𝗻𝗹𝗼𝗰𝗸 𝗮𝗰𝗰𝗲𝘀𝘀 𝘁𝗼 𝘁𝗵𝗲 𝗯𝗼𝘁 𝗯𝘆 𝗷𝗼𝗶𝗻𝗶𝗻𝗴 𝗼𝘂𝗿 𝗰𝗵𝗮𝗻𝗻𝗲𝗹 𝗮𝗻𝗱 𝗴𝗿𝗼𝘂𝗽 𝘁𝗼𝗱𝗮𝘆!👇"
+            caption_text = "❌ 𝗨𝗻𝗹𝗼𝗰𝗸 𝗮𝗰𝗰𝗲𝘀𝘀 𝘁𝗼 𝘁𝗵𝗲 𝗯𝗼𝘁 𝗯𝘆 𝗷𝗼𝗶𝗻𝗶𝗻𝗴 𝗼𝘂𝗿 𝗰𝗵𝗮𝗻𝗻𝗲𝗹 𝗮𝗻𝗱 𝗴𝗿𝗼𝘂𝗽 𝘁𝗼𝗱𝗮𝘆!👇"
 
             target = update.message or update.callback_query.message
             await target.reply_photo(
