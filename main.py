@@ -331,22 +331,14 @@ logger = logging.getLogger(__name__)
 # --------------------
 # Utility Functions
 # --------------------
-def escape_all_markdown(text: str) -> str:
-    """
-    Escapes all MarkdownV2 special characters to prevent formatting issues
-    when sending text with ParseMode.MARKDOWN_V2.
-    """
-    special_chars = r"[_*\[\]()~`>#+-=|{}.!%]"
-    return re.sub(special_chars, r"\\\g<0>", str(text))
-
 def build_final_card(*, user_id: int, username: str | None, credits: int, plan: str, date_str: str, time_str: str) -> str:
     """
     Constructs the final profile card text for the welcome message using HTML.
     """
     uname = f"@{username}" if username else "N/A"
     
-    # HTML-formatted clickable bullet with brackets
-    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>&#x2b06;</a>"
+    # HTML-formatted clickable bullet with the ⌇ character
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>⌇</a>"
 
     return (
         "✦━━━━━━━━━━━━━━✦\n"
@@ -462,7 +454,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
 
-    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>&#x2b06;</a>"
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>⌇</a>"
 
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
