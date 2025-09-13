@@ -4058,25 +4058,45 @@ logger = logging.getLogger(__name__)
 BASE_COOLDOWN = 20  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
-SITE = "https://iditarod.com"
+SITE = "https://dpequip.net/"
 
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
     # --- Cookie 1 ---
-    '''PHPSESSID=qftvknrnpks4u241irano91gbs;
+    '''apbct_site_landing_ts=1757752709;
+apbct_site_referer=0;
+ct_sfw_ip_wl=165bf0eb684ea67523e3714136e0361c;
+ct_checkjs=1106556902;
 sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
-sbjs_first_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
+sbjs_current_add=fd%3D2025-09-13%2008%3A15%3A41%7C%7C%7Cep%3Dhttps%3A%2F%2Fdpequip.net%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_first_add=fd%3D2025-09-13%2008%3A15%3A41%7C%7C%7Cep%3Dhttps%3A%2F%2Fdpequip.net%2F%7C%7C%7Crf%3D%28none%29;
 sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
-_ga=GA1.1.41997297.1757748816;
-_fbp=fb.1.1757748816501.35526249204946697;
-wordpress_logged_in_8fb226385f454fe1b19f20c68cef99ad=_aaditya07r_%7C1758958437%7CK9XOlTGiEQwl320Zgp80vLD4hRLpOerfqzAGx7vRa8C%7C381a72fabd1295bca6efa996f821bd98672178761c725691cce3fa1b1505083b;
-sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%3Fpassword-reset%3Dtrue;
-cookieconsent_status=dismiss;
-mailpoet_page_view=%7B%22timestamp%22%3A1757749022%7D;
-_ga_GEWJ0CGSS2=GS2.1.s1757748816$o1$g1$t1757749035$j52$l0$h316575648''',
+ct_timezone=5.5;
+apbct_headless=false;
+_ga=GA1.1.918349927.1757753142;
+ct_mouse_moved=true;
+ct_sfw_pass_key=8dc3ccb21985b4a65f38bf78535be8b00;
+ct_has_input_focused=true;
+ct_has_key_up=true;
+mailchimp.cart.current_email=zerotracehacked@gmail.com;
+mailchimp_user_email=zerotracehacked%40gmail.com;
+wordpress_logged_in_0c654e48af7e6ad73fbad3fddbd73a1c=zerotracehacked%7C1758962753%7CHyaKEOX7KtBCcDBKn2ZC1p3zsN563fYErVd3Sa3MnXh%7C167243b048324ba9114e11fb68edee227683677494ee882ed119290f2165081c;
+ct_checked_emails=0;
+ct_has_scrolled=true;
+apbct_timestamp=1757753301;
+apbct_prev_referer=https%3A%2F%2Fdpequip.net%2Fmy-account%2Fedit-address%2F;
+apbct_cookies_test=%257B%2522cookies_names%2522%253A%255B%2522apbct_timestamp%2522%252C%2522apbct_prev_referer%2522%255D%252C%2522check_value%2522%253A%252208ecb2d4b6cb5ee75e52cf8884710696%2522%257D;
+apbct_page_hits=14;
+__cf_bm=9a6_tE0C5ro0pq3dzs2OZf_1fOg1nhNFKC9X5231Aos-1757753303-1.0.1.1-zLYRb.7YKkkZiJYFycb.zS6GE9CIZuVDV_nx59O9EoGo7BaamQlNfYlxxnandwEZxEY6wjhiUyIbpkOYYb4z7d3Fa0gonOo.h_ACKDAjzeM;
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%206.0%3B%20Nexus%205%20Build%2FMRA58N%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Mobile%20Safari%2F537.36;
+sbjs_session=pgs%3D13%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdpequip.net%2Fmy-account%2Fpayment-methods%2F;
+ct_ps_timestamp=1757753308;
+ct_screen_info=%7B%22fullWidth%22%3A1440%2C%22fullHeight%22%3A1315%2C%22visibleWidth%22%3A1440%2C%22visibleHeight%22%3A1315%7D;
+ct_pointer_data=%5B%5D;
+cf_clearance=rbrQnA_Of25sshjy_ZSTmAtJLlpyLmxBe7JPUIVfDts-1757753304-1.2.1.1-lqF7bI4NAGW..mQn3X.7rdNJiB9p.qsYjzUfBaxTRGu7bBRkrT6wQvihcexjcBHK60vh2WxM2.EbDSPtRm3Ls6yAilJhWoNyI0XA3CjCO_MH3fLIJj.t46eobR8oeKMYIno1RkOR7BsYnXDu7g.suwFGjKtb2kfdTf9PHXGNq4ZIWDzK8o62zsIDs27hPzYLfQKF.nVXjm9nMr3K.TBWHYVv1457nNRE6SkMrgAv3hs;
+_ga_4L3DTMRV9H=GS2.1.s1757753141$o1$g1$t1757753309$j31$l0$h0;
+ct_fkp_timestamp=1757753312''',
 
     # --- Cookie 2 ---
     '''PHPSESSID=6id9435okaa4ro85vp8s72vng3;
