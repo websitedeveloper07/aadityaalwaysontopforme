@@ -610,7 +610,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         "✨ Select a charge gate below:"
     )
     keyboard = [
-        [InlineKeyboardButton("💸 Shopify 2.5$", callback_data="shopify_gate")],
+        [InlineKeyboardButton("💸 Shopify 1.0$", callback_data="shopify_gate")],
         [InlineKeyboardButton("⚡ Auto Shopify", callback_data="autoshopify_gate")],
         [InlineKeyboardButton("💳 Stripe 1$", callback_data="stripe_gate")],
         [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
@@ -688,7 +688,7 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         "  Example:\n"
         "  <code>/st 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Each check deducts credits.\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✨ <b>Status</b> - <i>OFF</i> ❌"
     )
     keyboard = [
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
@@ -1727,7 +1727,8 @@ async def st_worker(update: Update, card: str, status_msg):
     card_type = bin_details.get("type", "N/A")
 
     # Bullet link
-    bullet_link = '<a href="https://t.me/CARDER33">⌇</a>'
+    BULLET_GROUP_LINK = "https://t.me/CARDER33"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
     # Developer
     developer = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
@@ -1804,18 +1805,20 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     yy = yy[-2:] if len(yy) == 4 else yy
     cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
 
-    bullet_link = '<a href="https://t.me/CARDER33">⌇</a>'
-    gateway_text = "𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ Stripe Charged"
-    status_text = "𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
+    # Dynamic text for message (code block does NOT need escaping)
+    BULLET_GROUP_LINK = "https://t.me/CARDER33"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
+    # Initial processing message
     processing_text = (
-        "𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳\n"
-        f"<code>{html.escape(cc_normalized)}</code>\n\n"
-        f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} {status_text}\n"
-    )
+        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+        f"<pre><code>{escape(card_input)}</code></pre>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ STRIPE AUTH\n"
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
+     )
 
-    status_msg = await update.effective_message.reply_text(
+
+    msg = await update.message.reply_text(
         processing_text,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
