@@ -1817,7 +1817,6 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 import time
 import aiofiles
 import asyncio
@@ -1892,19 +1891,17 @@ async def mst_worker(update, cards, status_msg, is_file=False):
         # Escape text for MarkdownV2
         cc_escaped = escape_markdown(cc_normalized, version=2)
         resp_escaped = escape_markdown(f"{status_emoji} {response_text}", version=2)
-
-        # Italicize response
         resp_italic = f"_{resp_escaped}_"
 
         # Append current card result
         card_result = f"```{cc_escaped}```\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ {resp_italic}\n──────── ⸙ ─────────"
         results.append(card_result)
 
-        # Update message **each card** if file check, otherwise skip live updates
+        # Update message live if file or single card
         if is_file or len(cards) == 1:
             try:
                 progress_text = (
-                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #Stripe1$ Charge\n"
+                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝗮𝘄𝗮𝘆 ➵ #Stripe1$ Charge\n"
                     f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total_cards}\n"
                     f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
                     f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
@@ -1913,7 +1910,7 @@ async def mst_worker(update, cards, status_msg, is_file=False):
                 )
                 await status_msg.edit_text(progress_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
             except:
-                pass
+                pass  # skip update errors
 
     total_time = round(time.time() - start_time, 2)
 
@@ -1924,7 +1921,7 @@ async def mst_worker(update, cards, status_msg, is_file=False):
             await f.write("\n".join(results))
         await update.message.reply_document(InputFile(output_path))
     else:
-        # Final update already handled during iteration
+        # For single card, final update already done
         pass
 
 # -------------------- /mst Command --------------------
@@ -1987,6 +1984,7 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run worker in background
     asyncio.create_task(mst_worker(update, cards, status_msg, is_file))
+
 
 
 
