@@ -1829,6 +1829,19 @@ from telegram.helpers import escape_markdown
 from stripe import stripe_check  # your existing stripe.py function
 from db import get_user, update_user
 
+import random
+
+# Load proxies once
+with open("mstproxies.txt", "r") as f:
+    PROXIES = [line.strip() for line in f if line.strip()]
+
+def get_random_proxy():
+    """Return a random proxy formatted for aiohttp"""
+    line = random.choice(PROXIES)
+    host, port, user, password = line.split(":")
+    return f"http://{user}:{password}@{host}:{port}"
+
+
 CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 user_cooldowns = {}
 BASE_COOLDOWN = 5  # seconds
