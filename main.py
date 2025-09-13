@@ -1840,10 +1840,8 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
     now = time.time()
     if now - last_run < cooldown_seconds:
         remaining = round(cooldown_seconds - (now - last_run), 2)
-        msg = f"⏳ Cooldown in effect. Please wait {remaining} seconds."
-        await update.effective_message.reply_text(
-            escape_markdown(msg, version=2), parse_mode=ParseMode.MARKDOWN_V2
-        )
+        msg = f"⏳ Cooldown in effect\. Please wait {remaining} seconds\."
+        await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
         return False
     user_cooldowns[user_id] = now
     return True
@@ -1872,8 +1870,7 @@ async def mst_worker(update, cards, status_msg, is_file=False):
 
         # Run stripe check
         status, response_text = await stripe_check(cc_normalized)
-        response_text_escaped = escape_markdown(response_text, version=2)
-
+        
         # Track counts
         if status.upper() == "APPROVED":
             approved += 1
@@ -1882,17 +1879,20 @@ async def mst_worker(update, cards, status_msg, is_file=False):
         else:
             error += 1
 
+        # Escape special characters in the response text before adding to results
+        response_text_escaped = escape_markdown(response_text, version=2)
+        
         # Save result
         results.append(f"{cc_normalized}\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ {response_text_escaped}\n──────── ⸙ ─────────")
 
         # Update live progress for file checking
         if is_file:
-            progress_text = (
-                f"[⌇] 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ \\#Stripe1$ Charge\n"
+            progress_text = escape_markdown(
+                f"[⌇] 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #Stripe1$ Charge\n"
                 f"[⌇] 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total_cards}\n"
                 f"[⌇] 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
                 f"[⌇] 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
-                f"[⌇] 𝗘𝗿𝗿𝗼𝗿 ➵ {error}\n"
+                f"[⌇] 𝗘𝗿𝗿𝗼𝗿 ➵ {error}\n", version=2
             )
             try:
                 await status_msg.edit_text(progress_text, parse_mode=ParseMode.MARKDOWN_V2)
@@ -1902,16 +1902,18 @@ async def mst_worker(update, cards, status_msg, is_file=False):
     total_time = round(time.time() - start_time, 2)
 
     # Final stylish message
-    final_text = (
-        f"[⌇] 𝗚𝗮𝘁𝗲𝗮𝘄𝗮𝘆 ➵ \\#Stripe1$ Charge\n"
+    final_text_base = (
+        f"[⌇] 𝗚𝗮𝘁𝗲𝗮𝘄𝗮𝘆 ➵ #Stripe1$ Charge\n"
         f"[⌇] 𝗧𝗼𝘁𝗮𝗹 ➵ {total_cards}/{total_cards}\n"
         f"[⌇] 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
         f"[⌇] 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
         f"[⌇] 𝗘𝗿𝗿𝗼𝗿 ➵ {error}\n"
         f"[⌇] 𝗧𝗶𝗺𝗲 ➵ {total_time} Sec\n"
         "──────── ⸙ ─────────\n"
-        + "\n".join(results)
     )
+
+    final_text_results = "\n".join(results)
+    final_text = escape_markdown(final_text_base, version=2) + "\n" + final_text_results
 
     if is_file:
         output_path = f"/tmp/checked_cards_{int(time.time())}.txt"
@@ -1927,8 +1929,9 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not await enforce_cooldown(user_id, update):
         return
+    
     if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("❌ You have no credits left\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     cards = []
@@ -1948,35 +1951,37 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw_text = " ".join(context.args)
         matches = CARD_PATTERN.findall(raw_text)
         if not matches:
-            await update.message.reply_text("🚫 Provide a valid card or .txt file.", parse_mode=ParseMode.MARKDOWN_V2)
+            # FIXED: Escape the period in ".txt"
+            await update.message.reply_text("🚫 Provide a valid card or \.txt file\.", parse_mode=ParseMode.MARKDOWN_V2)
             return
         cards = ["|".join(m) for m in matches]
 
     if not cards:
-        await update.message.reply_text("🚫 No valid cards found.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("🚫 No valid cards found\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     # Show processing message
     if not is_file:
         cc_normalized = cards[0]
-        gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ \\#Stripe 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
-        status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
-        bullet = "[⌇]"
-        bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
+        # Escape the parts of the string that need it
+        gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #Stripe 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
+        status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎\.\.\.", version=2)
+        
         processing_text = (
-            "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+            f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
             f"```{cc_normalized}```\n\n"
-            f"{bullet_link} {gateway_text}\n"
-            f"{bullet_link} {status_text}\n"
+            f"\[⌇\] {gateway_text}\n"
+            f"\[⌇\] {status_text}\n"
         )
         status_msg = await update.effective_message.reply_text(
             processing_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True
         )
     else:
-        status_msg = await update.message.reply_text("⏳ Starting file check...", parse_mode=ParseMode.HTML)
+        status_msg = await update.message.reply_text("⏳ Starting file check\.\.\.", parse_mode=ParseMode.MARKDOWN_V2)
 
     # Run worker in background
     asyncio.create_task(mst_worker(update, cards, status_msg, is_file))
+
 
 
 
