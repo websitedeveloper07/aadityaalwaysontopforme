@@ -1665,22 +1665,18 @@ import re
 import logging
 import asyncio
 from datetime import datetime
-
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-
-from stripe import stripe_check  # your existing stripe.py
+from stripe import stripe_check  # your existing stripe.py function
 from db import get_user, update_user
 from bin import get_bin_info
 
 logger = logging.getLogger(__name__)
-
 user_cooldowns = {}
 
 CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
-
 
 # -------------------- Cooldown --------------------
 async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
@@ -1690,12 +1686,12 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
         remaining = round(cooldown_seconds - (now - last_run), 2)
         msg = f"⏳ Cooldown in effect. Please wait {remaining} seconds."
         await update.effective_message.reply_text(
-            escape_markdown(msg, version=2), parse_mode=ParseMode.MARKDOWN_V2
+            escape_markdown(msg, version=2),
+            parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
     user_cooldowns[user_id] = now
     return True
-
 
 # -------------------- Credits --------------------
 async def consume_credit(user_id: int) -> bool:
@@ -1706,23 +1702,12 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-
 # -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
     # Run stripe check
     status, response_text = await stripe_check(card)
-
-    # Ensure response is not empty
-    response_text = response_text.strip() if response_text.strip() else "No response from gateway"
-
-    # Try pretty-printing JSON if possible
-    try:
-        parsed_json = json.loads(response_text)
-        response_text = json.dumps(parsed_json, indent=2)
-    except:
-        pass
 
     # Map status to emoji
     emoji_map = {
@@ -1736,46 +1721,37 @@ async def st_worker(update: Update, card: str, status_msg):
     # BIN lookup
     bin_number = card.split("|")[0][:6]
     bin_details = await get_bin_info(bin_number)
-
-    # Escape dynamic content for Markdown V2
-    def safe(text: str) -> str:
-        return escape_markdown(str(text), version=2)
-
-    card_escaped = safe(card)
-    response_escaped = safe(response_text)
-    brand = safe(bin_details.get("scheme", "N/A").title())
-    issuer = safe(bin_details.get("bank", "UNKNOWN"))
-    country_name = safe(bin_details.get("country", "N/A"))
+    brand = (bin_details.get("scheme") or "N/A").title()
+    issuer = bin_details.get("bank") or "UNKNOWN"
+    country_name = bin_details.get("country") or "N/A"
     country_flag = bin_details.get("country_emoji", "")
-    card_type = safe(bin_details.get("type", "N/A"))
+    card_type = bin_details.get("type", "N/A")
 
+    # Clickable bullet + links
     bullet = "[⌇]"
-    bullet_link = f"[{safe(bullet)}](https://t.me/CARDER33)"
-    requested_by = f"[{safe(user.first_name)}](tg://user?id={user.id})"
+    bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
     developer = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
+    requested_by = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
 
-    # Final result message
+    response_text = escape_markdown(response_text, version=2)
+
+    # Final result
     result_text = (
         f"*◇━━〔 {status}{status_emoji} 〕━━◇*\n"
-        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* ```{card_escaped}```\n"
+        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* {card}\n"
         f"{bullet_link} *𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
-        f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* ```{response_escaped}```\n"
+        f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* _{response_text}_\n"
         "――――――――――――――――\n"
-        f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝 ➵* `{brand}`\n"
-        f"{bullet_link} *𝐁𝐚𝐧𝐤 ➵* `{issuer}`\n"
-        f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵* `{country_name} {country_flag}`\n"
+        f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝 ➵* {brand}\n"
+        f"{bullet_link} *𝐁𝐚𝐧𝐤 ➵* {issuer}\n"
+        f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵* {country_name} {country_flag}\n"
         "――――――――――――――――\n"
         f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵* {requested_by}\n"
         f"{bullet_link} *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵* {developer}\n"
         "――――――――――――――――"
     )
 
-    await status_msg.edit_text(
-        result_text,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True
-    )
-
+    await status_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
 
 # -------------------- Command --------------------
 async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1788,21 +1764,24 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await consume_credit(user_id):
         msg = "❌ You have no credits left."
         return await update.message.reply_text(
-            escape_markdown(msg, version=2), parse_mode=ParseMode.MARKDOWN_V2
+            escape_markdown(msg, version=2),
+            parse_mode=ParseMode.MARKDOWN_V2
         )
 
     if not context.args:
-        usage_text = "🚫 Usage: /st `cc|mm|yy|cvv`"
+        usage_text = "🚫 Usage: /st cc|mm|yy|cvv"
         return await update.message.reply_text(
-            escape_markdown(usage_text, version=2), parse_mode=ParseMode.MARKDOWN_V2
+            usage_text,
+            parse_mode=ParseMode.MARKDOWN_V2
         )
 
     raw_text = " ".join(context.args)
     match = CARD_PATTERN.search(raw_text)
     if not match:
-        usage_text = "🚫 Usage: /st `cc|mm|yy|cvv`"
+        usage_text = "🚫 Usage: /st cc|mm|yy|cvv"
         return await update.message.reply_text(
-            escape_markdown(usage_text, version=2), parse_mode=ParseMode.MARKDOWN_V2
+            usage_text,
+            parse_mode=ParseMode.MARKDOWN_V2
         )
 
     card_input = match.group(0)
@@ -1815,22 +1794,24 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
     status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
-
     bullet = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
 
     processing_text = (
-        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
-        f"```{escape_markdown(cc_normalized, version=2)}```\n\n"
+        "𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n"
+        f"{cc_normalized}\n\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
 
     status_msg = await update.effective_message.reply_text(
-        processing_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True
+        processing_text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
     )
 
     asyncio.create_task(st_worker(update, cc_normalized, status_msg))
+
 
 
 
