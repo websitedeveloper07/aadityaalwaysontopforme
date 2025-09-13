@@ -1826,13 +1826,36 @@ from telegram import Update, InputFile
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from stripe import stripe_check  # your existing stripe.py function
+from stripe import stripe_check  # Your existing stripe.py function
 from db import get_user, update_user
 
-# -------------------- Proxy Handling --------------------
-PROXY_FILE = "mstproxies.txt"
+# -------------------- Configuration --------------------
+CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
+user_cooldowns = {}
+BASE_COOLDOWN = 5  # seconds
 
-async def load_proxies(file_path=PROXY_FILE):
+# -------------------- Cooldown --------------------
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = BASE_COOLDOWN) -> bool:
+    last_run = user_cooldowns.get(user_id, 0)
+    now = time.time()
+    if now - last_run < cooldown_seconds:
+        remaining = round(cooldown_seconds - (now - last_run), 2)
+        msg = f"⏳ Cooldown in effect\\. Please wait {remaining} seconds\\."
+        await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+# -------------------- Credit --------------------
+async def consume_credit(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        await update_user(user_id, credits=user_data["credits"] - 1)
+        return True
+    return False
+
+# -------------------- Load proxies --------------------
+async def load_proxies(file_path="mstproxies.txt"):
     proxies = []
     async with aiofiles.open(file_path, "r") as f:
         async for line in f:
@@ -1842,35 +1865,11 @@ async def load_proxies(file_path=PROXY_FILE):
     return proxies
 
 def format_proxy(proxy_line: str):
-    """Return proxy in aiohttp format"""
-    host, port, user, password = proxy_line.split(":")
-    return f"http://{user}:{password}@{host}:{port}"
-
-# -------------------- Card Regex --------------------
-CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
-
-# -------------------- Cooldowns & Credits --------------------
-user_cooldowns = {}
-BASE_COOLDOWN = 5  # seconds
-
-async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = BASE_COOLDOWN) -> bool:
-    last_run = user_cooldowns.get(user_id, 0)
-    now = time.time()
-    if now - last_run < cooldown_seconds:
-        remaining = round(cooldown_seconds - (now - last_run), 2)
-        await update.effective_message.reply_text(
-            f"⏳ Cooldown in effect. Please wait {remaining} seconds.", parse_mode=ParseMode.MARKDOWN_V2
-        )
-        return False
-    user_cooldowns[user_id] = now
-    return True
-
-async def consume_credit(user_id: int) -> bool:
-    user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) > 0:
-        await update_user(user_id, credits=user_data["credits"] - 1)
-        return True
-    return False
+    try:
+        host, port, user, password = proxy_line.strip().split(":")
+        return f"http://{user}:{password}@{host}:{port}"
+    except ValueError:
+        return None
 
 # -------------------- MST Worker --------------------
 async def mst_worker(update, cards, status_msg, is_file=False):
@@ -1885,18 +1884,27 @@ async def mst_worker(update, cards, status_msg, is_file=False):
 
     for idx, card in enumerate(cards, start=1):
         try:
+            # Normalize card
             cc, mm, yy, cvv = card.split("|")
             mm = mm.zfill(2)
             yy = yy[-2:] if len(yy) == 4 else yy
             cc_normalized = f"{cc}|{mm}|{yy}|{cvv}"
 
-            proxy = format_proxy(random.choice(proxies)) if proxies else None
+            # Pick random proxy
+            proxy_line = random.choice(proxies) if proxies else None
+            proxy = format_proxy(proxy_line) if proxy_line else None
 
+            # Run stripe check with proxy
             status, response_text = await stripe_check(cc_normalized, proxy=proxy)
 
             # Emoji mapping
-            status_emoji = {"APPROVED": "✅", "DECLINED": "❌", "ERROR": "⚠️"}.get(status.upper(), "❓")
+            status_emoji = {
+                "APPROVED": "✅",
+                "DECLINED": "❌",
+                "ERROR": "⚠️"
+            }.get(status.upper(), "❓")
 
+            # Track counts
             if status.upper() == "APPROVED":
                 approved += 1
             elif status.upper() == "DECLINED":
@@ -1904,13 +1912,16 @@ async def mst_worker(update, cards, status_msg, is_file=False):
             else:
                 error += 1
 
+            # Escape text for MarkdownV2
             cc_escaped = escape_markdown(cc_normalized, version=2)
             resp_escaped = escape_markdown(f"{status_emoji} {response_text}", version=2)
             resp_italic = f"_{resp_escaped}_"
 
+            # Append current card result
             card_result = f"```{cc_escaped}```\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ {resp_italic}\n──────── ⸙ ─────────"
             results.append(card_result)
 
+            # Update live progress
             progress_text = (
                 f"{bullet_link} 𝗚𝗮𝘁𝗲𝗮𝘄𝗮𝘆 ➵ \\#Stripe1\\$ Charge\n"
                 f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total_cards}\n"
@@ -1927,7 +1938,8 @@ async def mst_worker(update, cards, status_msg, is_file=False):
             await asyncio.sleep(0.5)  # prevent flood
 
         except Exception as e:
-            results.append(f"⚠️ Card processing error: {str(e)}")
+            error += 1
+            results.append(f"⚠️ Error processing card {card}: {str(e)}")
 
     total_time = round(time.time() - start_time, 2)
     final_summary_text = (
@@ -1952,6 +1964,7 @@ async def mst_worker(update, cards, status_msg, is_file=False):
         final_text = escape_markdown(final_summary_text, version=2) + "\n" + "\n".join(results)
         await status_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
 
+
 # -------------------- /mst Command --------------------
 async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -1959,7 +1972,7 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
     if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("❌ You have no credits left\\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     cards = []
@@ -1983,12 +1996,12 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw_text = " ".join(context.args)
         matches = CARD_PATTERN.findall(raw_text)
         if not matches:
-            await update.message.reply_text("🚫 Provide a valid card or .txt file.", parse_mode=ParseMode.MARKDOWN_V2)
+            await update.message.reply_text("🚫 Provide a valid card or \.txt file\\.", parse_mode=ParseMode.MARKDOWN_V2)
             return
         cards = ["|".join(m) for m in matches]
 
     if not cards:
-        await update.message.reply_text("🚫 No valid cards found.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("🚫 No valid cards found\\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     # Initial processing message
@@ -2011,6 +2024,7 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     asyncio.create_task(mst_worker(update, cards, status_msg, is_file))
+
 
 
 
