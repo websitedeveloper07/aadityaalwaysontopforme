@@ -4058,65 +4058,40 @@ logger = logging.getLogger(__name__)
 BASE_COOLDOWN = 20  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
-SITE = "https://diabeticoutlet.com"
+SITE = "https://iditarod.com"
 
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
     # --- Cookie 1 ---
-    '''sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-13%2016%3A02%3A04%7C%7C%7Cep%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2F;
-sbjs_first_add=fd%3D2025-09-13%2016%3A02%3A04%7C%7C%7Cep%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2F;
+    '''PHPSESSID=6id9435okaa4ro85vp8s72vng3;
+_ga=GA1.1.1348851683.1757748688;
+sbjs_migrations=1418474375998%3D1;
+sbjs_current_add=fd%3D2025-09-13%2007%3A01%3A28%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_first_add=fd%3D2025-09-13%2007%3A01%3A28%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
 sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-_gid=GA1.2.1461227601.1757781131;
-_gcl_au=1.1.1948695937.1757781134;
-breeze_folder_name=63e3b8e10caf6398f04068ee1196eb135ab8112b;
-wordpress_logged_in_b99eae5dc0c34b1916765c3526e318ef=zerotracehacked%7C1758990752%7CHyWa6oiy8GnjUmU3NMsLeV5HpZPdKJLJEjOiaLz3wZp%7Ca1f19cc8dddde7fda63f539110386d5bdf7794687afd66686f548b664d6ffd20;
-_gat_gtag_UA_64522209_1=1;
-__cf_bm=z9gTi01pyVFDUVyl31fWinMdGPPeY0PvH_YLsOUMcb0-1757781371-1.0.1.1-e1b13QKxs0A6tvjEpOyGzyIpRKgwDvY5T_1XkUd1G1ul6flvfU3iDei4E7KXUQ4tz7UuXbYhZ5ABHapZgpf9Rqq30dQ1AF4IpvfWRigkHkQ;
-sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%206.0%3B%20Nexus%205%20Build%2FMRA58N%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Mobile%20Safari%2F537.36;
-sbjs_session=pgs%3D7%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2Fmy-account%2Fpayment-methods%2F;
-_uetsid=3d85e2c090bf11f089cb91650c477055;
-_uetvid=3d86525090bf11f085f9237869021059;
-_ga=GA1.1.609707536.1757781131;
-_ga_NZ9BZZ5PN7=GS2.1.s1757781138$o1$g1$t1757781384$j32$l0$h0;''',
+_fbp=fb.1.1757748688643.911751162166436883;
+wordpress_logged_in_8fb226385f454fe1b19f20c68cef99ad=_aaditya07r%7C1758962016%7CAnncsejn12RZ4ZJHqyUG0bPOACfZ2gBxlM6Ldb9QNTM%7Cd0e0bebae43eba02ce3d36961c65d45a5d8a7135200736b023d3f5c19b4e866f;
+mailpoet_page_view=%7B%22timestamp%22%3A1757752417%7D;
+sbjs_udata=vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%206.0%3B%20Nexus%205%20Build%2FMRA58N%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Mobile%20Safari%2F537.36;
+sbjs_session=pgs%3D13%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Fpayment-methods%2F;
+_ga_GEWJ0CGSS2=GS2.1.s1757752336$o2$g1$t1757752459$j14$l0$h2070871103;'''
 
     # --- Cookie 2 ---
-    '''_gcl_au=1.1.1679230107.1757781657;
-_gid=GA1.2.1705658830.1757781657;
+    '''PHPSESSID=qftvknrnpks4u241irano91gbs;
 sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-13%2016%3A11%3A05%7C%7C%7Cep%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
-sbjs_first_add=fd%3D2025-09-13%2016%3A11%3A05%7C%7C%7Cep%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
-sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-breeze_folder_name=63e3b8e10caf6398f04068ee1196eb135ab8112b;
-wordpress_logged_in_b99eae5dc0c34b1916765c3526e318ef=payalhu%7C1758991282%7CMOMY7q9nBtBjObh5WsmYf0Gdip6WTCBFCWBkkGWgLcO%7Cf93ea923b6ce6ba45fdcab62f22743c254b1b973d010342f59211dd70fb00434;
-_gat_gtag_UA_64522209_1=1;
-__cf_bm=RDx2y5n8P3L4dQAhWeCDmreX0InI_F9sPZ8sldvw5k0-1757781793-1.0.1.1-vjS5OApxvekIe.4FDMtkbaNyitbN7Qvn79aZ49pULCR0pn5KAy1emxUG.r__TEiSUvj0YJHcZpYfJdKGpq3Biz0Hfdpzmirahv6abcygbkc;
-sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%206.0%3B%20Nexus%205%20Build%2FMRA58N%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Mobile%20Safari%2F537.36;
-sbjs_session=pgs%3D8%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2Fmy-account%2Fpayment-methods%2F;
-_ga=GA1.1.4998255.1757781657;
-_ga_NZ9BZZ5PN7=GS2.1.s1757781656$o1$g1$t1757781801$j44$l0$h0;
-_uetsid=721f55a090c011f0a0d1e1cd4588b707;
-_uetvid=721f88a090c011f0b23fd709730fe5ae;'''
-
-    # --- Cookie 2 ---
-    '''__cf_bm=l5Oum.MGxFbioWkZtMCbhe.hZAV.G3Y1.AGMeXzdbMs-1757782022-1.0.1.1-EF48m8GAlnmz23IoLCvdSJfvZILyapo5UlhcM2eDhTPumZXmORnupoV71Ip1L6c5V8yq2GVa2ezYtVxo2Ax3Yqvxi7gxR3TyXMRso.Eausw;
-sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-13%2016%3A18%3A36%7C%7C%7Cep%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2F;
-sbjs_first_add=fd%3D2025-09-13%2016%3A18%3A36%7C%7C%7Cep%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2F;
+sbjs_current_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
+sbjs_first_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
 sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
-_gid=GA1.2.1562336491.1757782117;
-_gcl_au=1.1.2065777130.1757782118;
-breeze_folder_name=63e3b8e10caf6398f04068ee1196eb135ab8112b;
-wordpress_logged_in_b99eae5dc0c34b1916765c3526e318ef=maihujiyan%7C1758991775%7CtqgIbUn4YOTyMG8MRY9DPqyYD39E0XjdnUNLjEzYUwS%7Cac647d7fa971b52572983685addd2e53d69b62f2098a642f2cc34cd83eec5386;
-sbjs_session=pgs%3D9%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fdiabeticoutlet.com%2Fmy-account%2Fpayment-methods%2F;
-_uetsid=8a9d52a090c111f0ae561ddede634b48;
-_uetvid=8a9d6ce090c111f0914a435220ce166f;
-_ga_NZ9BZZ5PN7=GS2.1.s1757782117$o1$g1$t1757782357$j1$l0$h0;
-_ga=GA1.1.24247698.1757782117;'''
+_ga=GA1.1.41997297.1757748816;
+_fbp=fb.1.1757748816501.35526249204946697;
+wordpress_logged_in_8fb226385f454fe1b19f20c68cef99ad=_aaditya07r_%7C1758958437%7CK9XOlTGiEQwl320Zgp80vLD4hRLpOerfqzAGx7vRa8C%7C381a72fabd1295bca6efa996f821bd98672178761c725691cce3fa1b1505083b;
+sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%3Fpassword-reset%3Dtrue;
+cookieconsent_status=dismiss;
+mailpoet_page_view=%7B%22timestamp%22%3A1757749022%7D;
+_ga_GEWJ0CGSS2=GS2.1.s1757748816$o1$g1$t1757749035$j52$l0$h316575648;'''
 
 ]
 
