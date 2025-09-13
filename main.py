@@ -1703,6 +1703,9 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # -------------------- Worker --------------------
+# ... (your existing imports and functions) ...
+
+# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
@@ -1727,18 +1730,25 @@ async def st_worker(update: Update, card: str, status_msg):
     country_flag = bin_details.get("country_emoji", "")
     card_type = bin_details.get("type", "N/A")
 
+    # Correctly escape the card string for MarkdownV2
+    escaped_card = escape_markdown(card, version=2)
+
     # Clickable bullet + links
-    bullet = "[⌇]"
+    bullet = "⌇"
     bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
     developer = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
     requested_by = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
 
+    # Escape the response text
     response_text = escape_markdown(response_text, version=2)
+    
+    # Escape the status string to prevent issues if it contains special characters.
+    status = escape_markdown(status, version=2)
 
     # Final result
     result_text = (
         f"*◇━━〔 {status}{status_emoji} 〕━━◇*\n"
-        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* {card}\n"
+        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* {escaped_card}\n" # Use the escaped card here
         f"{bullet_link} *𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
         f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* _{response_text}_\n"
         "――――――――――――――――\n"
@@ -1792,14 +1802,17 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     yy = yy[-2:] if len(yy) == 4 else yy
     cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
 
+    # Escape the normalized card input here for the processing message
+    escaped_cc_normalized = escape_markdown(cc_normalized, version=2)
+
     gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
     status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
-    bullet = "[⌇]"
+    bullet = "⌇"
     bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
 
     processing_text = (
         "𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n"
-        f"{cc_normalized}\n\n"
+        f"{escaped_cc_normalized}\n\n" # Use the escaped card here
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
@@ -1811,7 +1824,6 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(st_worker(update, cc_normalized, status_msg))
-
 
 
 
