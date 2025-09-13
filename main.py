@@ -1703,6 +1703,7 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # -------------------- Worker --------------------
+# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
@@ -1748,12 +1749,13 @@ async def st_worker(update: Update, card: str, status_msg):
     escaped_country_name = escape_markdown(country_name, version=2)
     
     # Final result string. Each part is already escaped.
-    # Note: Underscores in "response_text" are now handled by escape_markdown.
     result_text = (
         f"*◇━━\[ {escaped_status}{status_emoji} \]━━◇*\n"
         f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* {escaped_card}\n"
         f"{bullet_link} *𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
-        f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* \_{escaped_response_text}_\n"
+        # The key fix is here: using an escaped string inside an italic block.
+        # This prevents the parser from getting confused by any underscores in the response text.
+        f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* _{escaped_response_text}_\n"
         f"――――――――――――――――\n"
         f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝 ➵* {escaped_brand}\n"
         f"{bullet_link} *𝐁𝐚𝐧𝐤 ➵* {escaped_issuer}\n"
