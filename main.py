@@ -1805,26 +1805,27 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     yy = yy[-2:] if len(yy) == 4 else yy
     cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
 
-    # Dynamic text for message (code block does NOT need escaping)
+    # Dynamic text for message
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-    # Initial processing message
     processing_text = (
-        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-        f"<pre><code>{escape(card_input)}</code></pre>\n"
+        f"<b>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳</b>\n"
+        f"<code>{html.escape(card_input)}</code>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ STRIPE AUTH\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
-     )
+    )
 
-
-    msg = await update.message.reply_text(
+    # Save reference to message
+    status_msg = await update.message.reply_text(
         processing_text,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
 
+    # Pass the correct variable
     asyncio.create_task(st_worker(update, cc_normalized, status_msg))
+
 
 
 
