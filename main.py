@@ -1913,6 +1913,9 @@ async def mst_worker(update, cards, status_msg, is_file=False):
         except:
             pass  # skip update errors
 
+        # Add a delay to prevent flood errors
+        await asyncio.sleep(0.8)
+
     total_time = round(time.time() - start_time, 2)
 
     # Final stylish message with summary
@@ -2005,7 +2008,6 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run worker in background
     asyncio.create_task(mst_worker(update, cards, status_msg, is_file))
-
 
 
 
