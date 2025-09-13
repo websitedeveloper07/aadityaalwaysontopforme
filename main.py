@@ -1826,7 +1826,8 @@ from telegram import Update, InputFile
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from stripe import stripe_check  # Your existing stripe.py function
+
+from stripe import stripe_check  # your existing stripe.py function
 from db import get_user, update_user
 
 # -------------------- Configuration --------------------
@@ -1840,7 +1841,7 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
     now = time.time()
     if now - last_run < cooldown_seconds:
         remaining = round(cooldown_seconds - (now - last_run), 2)
-        msg = f"⏳ Cooldown in effect\\. Please wait {remaining} seconds\\."
+        msg = f"⏳ Cooldown in effect\. Please wait {remaining} seconds\."
         await update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
         return False
     user_cooldowns[user_id] = now
@@ -1857,11 +1858,14 @@ async def consume_credit(user_id: int) -> bool:
 # -------------------- Load proxies --------------------
 async def load_proxies(file_path="mstproxies.txt"):
     proxies = []
-    async with aiofiles.open(file_path, "r") as f:
-        async for line in f:
-            line = line.strip()
-            if line:
-                proxies.append(line)
+    try:
+        async with aiofiles.open(file_path, "r") as f:
+            async for line in f:
+                line = line.strip()
+                if line:
+                    proxies.append(line)
+    except FileNotFoundError:
+        print(f"Proxy file not found at {file_path}. Continuing without proxies.")
     return proxies
 
 def format_proxy(proxy_line: str):
@@ -1972,7 +1976,7 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
     if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You have no credits left\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("❌ You have no credits left\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     cards = []
@@ -1996,18 +2000,18 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw_text = " ".join(context.args)
         matches = CARD_PATTERN.findall(raw_text)
         if not matches:
-            await update.message.reply_text("🚫 Provide a valid card or \.txt file\\.", parse_mode=ParseMode.MARKDOWN_V2)
+            await update.message.reply_text("🚫 Provide a valid card or \.txt file\.", parse_mode=ParseMode.MARKDOWN_V2)
             return
         cards = ["|".join(m) for m in matches]
 
     if not cards:
-        await update.message.reply_text("🚫 No valid cards found\\.", parse_mode=ParseMode.MARKDOWN_V2)
+        await update.message.reply_text("🚫 No valid cards found\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
 
     # Initial processing message
     if not is_file:
         cc_normalized = cards[0]
-        gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #Stripe1$ Charge", version=2)
+        gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝗮𝘄𝗮𝘆 ➵ #Stripe1$ Charge", version=2)
         status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
         processing_text = (
             f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
