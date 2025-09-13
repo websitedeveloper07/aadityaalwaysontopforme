@@ -1671,7 +1671,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
 
-from stripe import stripe_check   # your existing stripe.py function
+from stripe import stripe_check  # your existing stripe.py
 from db import get_user, update_user
 from bin import get_bin_info
 
@@ -1708,23 +1708,36 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # -------------------- Worker --------------------
-# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
     # Run stripe check
     status, response_text = await stripe_check(card)
-    response_text = response_text or "No response from gateway"  # fallback
+
+    # Ensure response is not empty
+    response_text = response_text.strip() if response_text.strip() else "No response from gateway"
+
+    # Try pretty-printing JSON if possible
+    try:
+        parsed_json = json.loads(response_text)
+        response_text = json.dumps(parsed_json, indent=2)
+    except:
+        pass
 
     # Map status to emoji
-    emoji_map = {"APPROVED": "✅", "DECLINED": "❌", "CCN": "⚠️", "ERROR": "⚠️"}
+    emoji_map = {
+        "APPROVED": "✅",
+        "DECLINED": "❌",
+        "CCN": "⚠️",
+        "ERROR": "⚠️"
+    }
     status_emoji = emoji_map.get(status, "❓")
 
     # BIN lookup
     bin_number = card.split("|")[0][:6]
     bin_details = await get_bin_info(bin_number)
 
-    # Helper to escape for Markdown V2
+    # Escape dynamic content for Markdown V2
     def safe(text: str) -> str:
         return escape_markdown(str(text), version=2)
 
@@ -1741,7 +1754,7 @@ async def st_worker(update: Update, card: str, status_msg):
     requested_by = f"[{safe(user.first_name)}](tg://user?id={user.id})"
     developer = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
 
-    # Construct message using triple backticks for code blocks
+    # Final result message
     result_text = (
         f"*◇━━〔 {status}{status_emoji} 〕━━◇*\n"
         f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* ```{card_escaped}```\n"
