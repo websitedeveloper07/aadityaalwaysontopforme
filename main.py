@@ -1879,11 +1879,12 @@ async def mst_worker(update, cards, status_msg, is_file=False):
         else:
             error += 1
 
-        # Escape special characters in the response text before adding to results
+        # Escape special characters in the card and the response text before adding to results
+        cc_normalized_escaped = escape_markdown(cc_normalized, version=2)
         response_text_escaped = escape_markdown(response_text, version=2)
         
         # Save result
-        results.append(f"{cc_normalized}\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ {response_text_escaped}\n──────── ⸙ ─────────")
+        results.append(f"{cc_normalized_escaped}\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ {response_text_escaped}\n──────── ⸙ ─────────")
 
         # Update live progress for file checking
         if is_file:
@@ -1981,6 +1982,7 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run worker in background
     asyncio.create_task(mst_worker(update, cards, status_msg, is_file))
+
 
 
 
