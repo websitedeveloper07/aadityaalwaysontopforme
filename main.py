@@ -1727,27 +1727,28 @@ async def st_worker(update: Update, card: str, status_msg):
     bin_number = card.split("|")[0][:6]
     bin_details = await get_bin_info(bin_number)
 
-    brand = escape_markdown((bin_details.get("scheme") or "N/A").title(), version=2)
-    issuer = escape_markdown(bin_details.get("bank") or "UNKNOWN", version=2)
-    country_name = escape_markdown(bin_details.get("country") or "N/A", version=2)
+    # Escape dynamic content for Markdown V2
+    def safe(text: str) -> str:
+        return escape_markdown(str(text), version=2)
+
+    card_escaped = safe(card)
+    response_escaped = safe(response_text)
+    brand = safe(bin_details.get("scheme", "N/A").title())
+    issuer = safe(bin_details.get("bank", "UNKNOWN"))
+    country_name = safe(bin_details.get("country", "N/A"))
     country_flag = bin_details.get("country_emoji", "")
-    card_type = escape_markdown(bin_details.get("type", "N/A"), version=2)
-
-    # Clickable bullet + links
+    card_type = safe(bin_details.get("type", "N/A"))
     bullet = "[⌇]"
-    bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
+    bullet_link = f"[{safe(bullet)}](https://t.me/CARDER33)"
+    requested_by = f"[{safe(user.first_name)}](tg://user?id={user.id})"
     developer = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
-    requested_by = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
 
-    response_text = escape_markdown(response_text, version=2)
-    card_escaped = escape_markdown(card, version=2)
-
-    # Final result
+    # Use triple backticks for code blocks to avoid Markdown parsing errors
     result_text = (
-        f"*◇━━〔 {status}{status_emoji}  〕━━◇*\n"
-        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* `{card_escaped}`\n"
+        f"*◇━━〔 {status}{status_emoji} 〕━━◇*\n"
+        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* ```{card_escaped}```\n"
         f"{bullet_link} *𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
-        f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* _{response_text}_\n"
+        f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* ```{response_escaped}```\n"
         "――――――――――――――――\n"
         f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝 ➵* `{brand}`\n"
         f"{bullet_link} *𝐁𝐚𝐧𝐤 ➵* `{issuer}`\n"
@@ -1758,7 +1759,12 @@ async def st_worker(update: Update, card: str, status_msg):
         "――――――――――――――――"
     )
 
-    await status_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
+    await status_msg.edit_text(
+        result_text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
+    )
+
 
 
 # -------------------- Command --------------------
