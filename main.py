@@ -1713,21 +1713,17 @@ async def st_worker(update: Update, card: str, status_msg):
 
     # Run stripe check
     status, response_text = await stripe_check(card)
+    response_text = response_text or "N/A"
 
     # Map status to emoji
-    emoji_map = {
-        "APPROVED": "✅",
-        "DECLINED": "❌",
-        "CCN": "⚠️",
-        "ERROR": "⚠️"
-    }
+    emoji_map = {"APPROVED": "✅", "DECLINED": "❌", "CCN": "⚠️", "ERROR": "⚠️"}
     status_emoji = emoji_map.get(status, "❓")
 
     # BIN lookup
     bin_number = card.split("|")[0][:6]
     bin_details = await get_bin_info(bin_number)
 
-    # Escape dynamic content for Markdown V2
+    # Escape dynamic content
     def safe(text: str) -> str:
         return escape_markdown(str(text), version=2)
 
@@ -1738,12 +1734,13 @@ async def st_worker(update: Update, card: str, status_msg):
     country_name = safe(bin_details.get("country", "N/A"))
     country_flag = bin_details.get("country_emoji", "")
     card_type = safe(bin_details.get("type", "N/A"))
+
     bullet = "[⌇]"
     bullet_link = f"[{safe(bullet)}](https://t.me/CARDER33)"
     requested_by = f"[{safe(user.first_name)}](tg://user?id={user.id})"
     developer = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
 
-    # Use triple backticks for code blocks to avoid Markdown parsing errors
+    # Construct message using triple backticks for code blocks
     result_text = (
         f"*◇━━〔 {status}{status_emoji} 〕━━◇*\n"
         f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* ```{card_escaped}```\n"
@@ -1764,7 +1761,6 @@ async def st_worker(update: Update, card: str, status_msg):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
-
 
 
 # -------------------- Command --------------------
@@ -1821,6 +1817,7 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(st_worker(update, cc_normalized, status_msg))
+
 
 
 
