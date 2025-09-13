@@ -1727,11 +1727,11 @@ async def st_worker(update: Update, card: str, status_msg):
     bin_number = card.split("|")[0][:6]
     bin_details = await get_bin_info(bin_number)
 
-    brand = (bin_details.get("scheme") or "N/A").title()
-    issuer = bin_details.get("bank") or "UNKNOWN"
-    country_name = bin_details.get("country") or "N/A"
+    brand = escape_markdown((bin_details.get("scheme") or "N/A").title(), version=2)
+    issuer = escape_markdown(bin_details.get("bank") or "UNKNOWN", version=2)
+    country_name = escape_markdown(bin_details.get("country") or "N/A", version=2)
     country_flag = bin_details.get("country_emoji", "")
-    card_type = bin_details.get("type", "N/A")
+    card_type = escape_markdown(bin_details.get("type", "N/A"), version=2)
 
     # Clickable bullet + links
     bullet = "[⌇]"
@@ -1740,11 +1740,12 @@ async def st_worker(update: Update, card: str, status_msg):
     requested_by = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
 
     response_text = escape_markdown(response_text, version=2)
+    card_escaped = escape_markdown(card, version=2)
 
     # Final result
     result_text = (
         f"*◇━━〔 {status}{status_emoji}  〕━━◇*\n"
-        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* `{card}`\n"
+        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* `{card_escaped}`\n"
         f"{bullet_link} *𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
         f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* _{response_text}_\n"
         "――――――――――――――――\n"
@@ -1777,7 +1778,7 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         usage_text = "🚫 Usage: /st `cc|mm|yy|cvv`"
         return await update.message.reply_text(
-            usage_text, parse_mode=ParseMode.MARKDOWN_V2
+            escape_markdown(usage_text, version=2), parse_mode=ParseMode.MARKDOWN_V2
         )
 
     raw_text = " ".join(context.args)
@@ -1785,7 +1786,7 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not match:
         usage_text = "🚫 Usage: /st `cc|mm|yy|cvv`"
         return await update.message.reply_text(
-            usage_text, parse_mode=ParseMode.MARKDOWN_V2
+            escape_markdown(usage_text, version=2), parse_mode=ParseMode.MARKDOWN_V2
         )
 
     card_input = match.group(0)
@@ -1803,8 +1804,8 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
 
     processing_text = (
-        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```" + "\n"
-        f"```{cc_normalized}```" + "\n\n"
+        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+        f"```{escape_markdown(cc_normalized, version=2)}```\n\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
