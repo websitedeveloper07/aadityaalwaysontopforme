@@ -1706,9 +1706,6 @@ async def consume_credit(user_id: int) -> bool:
 # ... (your existing imports and functions) ...
 
 # -------------------- Worker --------------------
-# ... (your existing imports and functions) ...
-
-# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
@@ -1771,6 +1768,65 @@ async def st_worker(update: Update, card: str, status_msg):
     )
 
     await status_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
+# -------------------- Command --------------------
+async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_id = user.id
+
+    if not await enforce_cooldown(user_id, update):
+        return
+
+    if not await consume_credit(user_id):
+        msg = "❌ You have no credits left."
+        return await update.message.reply_text(
+            escape_markdown(msg, version=2),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    if not context.args:
+        usage_text = "🚫 Usage: /st cc|mm|yy|cvv"
+        return await update.message.reply_text(
+            usage_text,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    raw_text = " ".join(context.args)
+    match = CARD_PATTERN.search(raw_text)
+    if not match:
+        usage_text = "🚫 Usage: /st cc|mm|yy|cvv"
+        return await update.message.reply_text(
+            usage_text,
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+    card_input = match.group(0)
+
+    # Normalize month/year
+    card, mm, yy, cvv = card_input.split("|")
+    mm = mm.zfill(2)
+    yy = yy[-2:] if len(yy) == 4 else yy
+    cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
+
+    gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
+    status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
+    bullet = "[⌇]"
+    bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
+
+    processing_text = (
+        "𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n"
+        f"{cc_normalized}\n\n"
+        f"{bullet_link} {gateway_text}\n"
+        f"{bullet_link} {status_text}\n"
+    )
+
+    status_msg = await update.effective_message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
+    )
+
+    asyncio.create_task(st_worker(update, cc_normalized, status_msg))
+
 
 
 
