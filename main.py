@@ -1818,38 +1818,37 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import re
+import time
 import aiofiles
 import asyncio
-import time
-from datetime import datetime
 from telegram import Update, InputFile
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from html import escape
 from telegram.helpers import escape_markdown
 
-from stripe import stripe_check  # your existing function
+from stripe import stripe_check  # your existing stripe.py function
 from db import get_user, update_user
+import re
 
 CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 user_cooldowns = {}
+BASE_COOLDOWN = 5  # seconds
 
 # -------------------- Cooldown --------------------
-async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = BASE_COOLDOWN) -> bool:
     last_run = user_cooldowns.get(user_id, 0)
-    now = datetime.now().timestamp()
+    now = time.time()
     if now - last_run < cooldown_seconds:
         remaining = round(cooldown_seconds - (now - last_run), 2)
+        msg = f"⏳ Cooldown in effect. Please wait {remaining} seconds."
         await update.effective_message.reply_text(
-            f"⏳ Cooldown in effect. Wait {remaining}s.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            escape_markdown(msg, version=2), parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
     user_cooldowns[user_id] = now
     return True
 
-# -------------------- Credits --------------------
+# -------------------- Credit --------------------
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
@@ -1861,21 +1860,20 @@ async def consume_credit(user_id: int) -> bool:
 async def mst_worker(update, cards, status_msg, is_file=False):
     total_cards = len(cards)
     start_time = time.time()
-    
     results = []
     approved = declined = error = 0
-    
+
     for idx, card in enumerate(cards, start=1):
         # Normalize card
         cc, mm, yy, cvv = card.split("|")
         mm = mm.zfill(2)
         yy = yy[-2:] if len(yy) == 4 else yy
         cc_normalized = f"{cc}|{mm}|{yy}|{cvv}"
-        
+
         # Run stripe check
         status, response_text = await stripe_check(cc_normalized)
         response_text_escaped = escape_markdown(response_text, version=2)
-        
+
         # Track counts
         if status.upper() == "APPROVED":
             approved += 1
@@ -1883,26 +1881,29 @@ async def mst_worker(update, cards, status_msg, is_file=False):
             declined += 1
         else:
             error += 1
-        
+
         # Save result
         results.append(f"{cc_normalized}\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ {response_text_escaped}\n──────── ⸙ ─────────")
-        
-        # Update live message only for file checking
+
+        # Update live progress for file checking
         if is_file:
             progress_text = (
-                f"[⌇] 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #Stripe1$ Charge\n"
+                f"[⌇] 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ \\#Stripe1$ Charge\n"
                 f"[⌇] 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total_cards}\n"
                 f"[⌇] 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
                 f"[⌇] 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
                 f"[⌇] 𝗘𝗿𝗿𝗼𝗿 ➵ {error}\n"
             )
-            await status_msg.edit_text(progress_text, parse_mode=ParseMode.HTML)
-    
+            try:
+                await status_msg.edit_text(progress_text, parse_mode=ParseMode.MARKDOWN_V2)
+            except:
+                pass  # skip errors if message update fails
+
     total_time = round(time.time() - start_time, 2)
-    
+
     # Final stylish message
     final_text = (
-        f"[⌇] 𝗚𝗮𝘁𝗲𝗮𝘄𝗮𝘆 ➵ #Stripe1$ Charge\n"
+        f"[⌇] 𝗚𝗮𝘁𝗲𝗮𝘄𝗮𝘆 ➵ \\#Stripe1$ Charge\n"
         f"[⌇] 𝗧𝗼𝘁𝗮𝗹 ➵ {total_cards}/{total_cards}\n"
         f"[⌇] 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
         f"[⌇] 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
@@ -1911,7 +1912,7 @@ async def mst_worker(update, cards, status_msg, is_file=False):
         "──────── ⸙ ─────────\n"
         + "\n".join(results)
     )
-    
+
     if is_file:
         output_path = f"/tmp/checked_cards_{int(time.time())}.txt"
         async with aiofiles.open(output_path, "w") as f:
@@ -1919,7 +1920,6 @@ async def mst_worker(update, cards, status_msg, is_file=False):
         await update.message.reply_document(InputFile(output_path))
     else:
         await status_msg.edit_text(final_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
-
 
 # -------------------- /mst Command --------------------
 async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1958,9 +1958,8 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Show processing message
     if not is_file:
-        # For normal card(s) input, just show a fixed processing message
         cc_normalized = cards[0]
-        gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
+        gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ \\#Stripe 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
         status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
         bullet = "[⌇]"
         bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
@@ -1974,11 +1973,11 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
             processing_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True
         )
     else:
-        # For file, show initial progress message
         status_msg = await update.message.reply_text("⏳ Starting file check...", parse_mode=ParseMode.HTML)
 
     # Run worker in background
     asyncio.create_task(mst_worker(update, cards, status_msg, is_file))
+
 
 
 
