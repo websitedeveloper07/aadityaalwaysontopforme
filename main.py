@@ -5474,6 +5474,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("credits", force_join(credits_command)))
     application.add_handler(CommandHandler("chk", force_join(chk_command)))
     application.add_handler(CommandHandler("st", force_join(st)))
+    application.add_handler(CommandHandler("mst", force_join(mst)))
     application.add_handler(CommandHandler("mass", force_join(mass_handler)))
     application.add_handler(CommandHandler("sh", force_join(sh_command)))
     application.add_handler(CommandHandler("seturl", force_join(seturl)))
