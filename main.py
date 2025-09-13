@@ -1660,7 +1660,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 import re
 import logging
 import asyncio
@@ -1669,13 +1668,14 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from stripe import stripe_check  # your existing stripe.py function
+from stripe import stripe_check # your existing stripe.py function
 from db import get_user, update_user
 from bin import get_bin_info
 
 logger = logging.getLogger(__name__)
 user_cooldowns = {}
 
+# The regex pattern needs to be used on the raw input, not on an escaped string.
 CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
 # -------------------- Cooldown --------------------
@@ -1684,9 +1684,9 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
     now = datetime.now().timestamp()
     if now - last_run < cooldown_seconds:
         remaining = round(cooldown_seconds - (now - last_run), 2)
-        msg = f"⏳ Cooldown in effect. Please wait {remaining} seconds."
+        msg = f"⏳ Cooldown in effect\. Please wait {remaining} seconds\."
         await update.effective_message.reply_text(
-            escape_markdown(msg, version=2),
+            msg, # No need to re-escape a manually escaped string
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
@@ -1701,9 +1701,6 @@ async def consume_credit(user_id: int) -> bool:
         await update_user(user_id, credits=new_credits)
         return True
     return False
-
-# -------------------- Worker --------------------
-# ... (your existing imports and functions) ...
 
 # -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
@@ -1730,44 +1727,45 @@ async def st_worker(update: Update, card: str, status_msg):
     country_flag = bin_details.get("country_emoji", "")
     card_type = bin_details.get("type", "N/A")
 
-    # The bullet text needs to be escaped before being put into the link
+    # Correctly escape the bullet and other text
     bullet = "⌇"
     escaped_bullet = escape_markdown(bullet, version=2)
-    
-    # The clickable link's text must be escaped
-    bullet_link = f"[{escaped_bullet}](https://t.me/CARDER33)"
+    bullet_link = f"[{escaped_bullet}](https://t\.me/CARDER33)"
 
-    # The developer's name also needs to be correctly escaped
+    # Escape the developer name and wrap in a link
     developer_name = "kคli liຖนxx"
-    developer = f"[{escape_markdown(developer_name, version=2)}](https://t.me/Kalinuxxx)"
+    developer = f"[{escape_markdown(developer_name, version=2)}](https://t\.me/Kalinuxxx)"
 
-    # The user's name needs to be escaped
+    # Escape the user's name
     requested_by = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
     
-    # Correctly escape the card string and all other variable text for MarkdownV2
+    # Escape all variable parts of the message before combining them
+    escaped_status = escape_markdown(status, version=2)
     escaped_card = escape_markdown(card, version=2)
     escaped_response_text = escape_markdown(response_text, version=2)
     escaped_brand = escape_markdown(brand, version=2)
     escaped_issuer = escape_markdown(issuer, version=2)
     escaped_country_name = escape_markdown(country_name, version=2)
     
-    # Final result
+    # Final result string. Each part is already escaped.
+    # Note: Underscores in "response_text" are now handled by escape_markdown.
     result_text = (
-        f"*◇━━〔 {status}{status_emoji} 〕━━◇*\n"
+        f"*◇━━\[ {escaped_status}{status_emoji} \]━━◇*\n"
         f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* {escaped_card}\n"
         f"{bullet_link} *𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
-        f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* _{escaped_response_text}_\n"
-        "――――――――――――――――\n"
+        f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* \_{escaped_response_text}_\n"
+        f"――――――――――――――――\n"
         f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝 ➵* {escaped_brand}\n"
         f"{bullet_link} *𝐁𝐚𝐧𝐤 ➵* {escaped_issuer}\n"
         f"{bullet_link} *𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵* {escaped_country_name} {country_flag}\n"
-        "――――――――――――――――\n"
+        f"――――――――――――――――\n"
         f"{bullet_link} *𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵* {requested_by}\n"
         f"{bullet_link} *𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵* {developer}\n"
-        "――――――――――――――――"
+        f"――――――――――――――――"
     )
 
     await status_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True)
+
 # -------------------- Command --------------------
 async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1777,14 +1775,14 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not await consume_credit(user_id):
-        msg = "❌ You have no credits left."
+        msg = "❌ You have no credits left\."
         return await update.message.reply_text(
-            escape_markdown(msg, version=2),
+            msg,
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
     if not context.args:
-        usage_text = "🚫 Usage: /st cc|mm|yy|cvv"
+        usage_text = "🚫 Usage: `/st cc|mm|yy|cvv`"
         return await update.message.reply_text(
             usage_text,
             parse_mode=ParseMode.MARKDOWN_V2
@@ -1793,7 +1791,7 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raw_text = " ".join(context.args)
     match = CARD_PATTERN.search(raw_text)
     if not match:
-        usage_text = "🚫 Usage: /st cc|mm|yy|cvv"
+        usage_text = "🚫 Usage: `/st cc|mm|yy|cvv`"
         return await update.message.reply_text(
             usage_text,
             parse_mode=ParseMode.MARKDOWN_V2
@@ -1808,13 +1806,17 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
 
     gateway_text = escape_markdown("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
-    status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...", version=2)
-    bullet = "[⌇]"
-    bullet_link = f"[{escape_markdown(bullet, version=2)}](https://t.me/CARDER33)"
+    status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎\.\.\.", version=2)
+    bullet = "⌇"
+    escaped_bullet = escape_markdown(bullet, version=2)
+    bullet_link = f"[{escaped_bullet}](https://t\.me/CARDER33)"
+    
+    # Escape the normalized card input for the processing message
+    escaped_cc_normalized = escape_markdown(cc_normalized, version=2)
 
     processing_text = (
         "𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳\n"
-        f"{cc_normalized}\n\n"
+        f"`{escaped_cc_normalized}`\n\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}\n"
     )
