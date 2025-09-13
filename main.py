@@ -1668,14 +1668,13 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram.helpers import escape_markdown
-from stripe import stripe_check # your existing stripe.py function
+from stripe import stripe_check
 from db import get_user, update_user
 from bin import get_bin_info
 
 logger = logging.getLogger(__name__)
 user_cooldowns = {}
 
-# The regex pattern needs to be used on the raw input, not on an escaped string.
 CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
 
 # -------------------- Cooldown --------------------
@@ -1686,7 +1685,7 @@ async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int =
         remaining = round(cooldown_seconds - (now - last_run), 2)
         msg = f"⏳ Cooldown in effect\. Please wait {remaining} seconds\."
         await update.effective_message.reply_text(
-            msg, # No need to re-escape a manually escaped string
+            msg,
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return False
@@ -1702,7 +1701,6 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# -------------------- Worker --------------------
 # -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
@@ -1751,10 +1749,8 @@ async def st_worker(update: Update, card: str, status_msg):
     # Final result string. Each part is already escaped.
     result_text = (
         f"*◇━━\[ {escaped_status}{status_emoji} \]━━◇*\n"
-        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* {escaped_card}\n"
+        f"{bullet_link} *𝐂𝐚𝐫𝐝 ➵* `{escaped_card}`\n"
         f"{bullet_link} *𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵* 𝗦𝘁𝗿𝗶𝗽𝗲 𝟏$ 💎\n"
-        # The key fix is here: using an escaped string inside an italic block.
-        # This prevents the parser from getting confused by any underscores in the response text.
         f"{bullet_link} *𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵* _{escaped_response_text}_\n"
         f"――――――――――――――――\n"
         f"{bullet_link} *𝐁𝐫𝐚𝐧𝐝 ➵* {escaped_brand}\n"
@@ -1830,7 +1826,6 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(st_worker(update, cc_normalized, status_msg))
-
 
 
 
