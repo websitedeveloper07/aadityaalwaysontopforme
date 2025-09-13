@@ -1708,12 +1708,13 @@ async def consume_credit(user_id: int) -> bool:
 
 
 # -------------------- Worker --------------------
+# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
     # Run stripe check
     status, response_text = await stripe_check(card)
-    response_text = response_text or "N/A"
+    response_text = response_text or "No response from gateway"  # fallback
 
     # Map status to emoji
     emoji_map = {"APPROVED": "✅", "DECLINED": "❌", "CCN": "⚠️", "ERROR": "⚠️"}
@@ -1723,7 +1724,7 @@ async def st_worker(update: Update, card: str, status_msg):
     bin_number = card.split("|")[0][:6]
     bin_details = await get_bin_info(bin_number)
 
-    # Escape dynamic content
+    # Helper to escape for Markdown V2
     def safe(text: str) -> str:
         return escape_markdown(str(text), version=2)
 
