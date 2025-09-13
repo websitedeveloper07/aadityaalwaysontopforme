@@ -4054,6 +4054,35 @@ from db import get_user, update_user  # credit system
 import urllib.parse
 import aiohttp
 import asyncio
+
+
+# --- Load proxies ---
+PROXIES_FILE = "proxies.txt"
+with open(PROXIES_FILE, "r") as f:
+    PROXIES_LIST = [line.strip() for line in f if line.strip()]
+
+proxy_index = 0
+proxy_lock = asyncio.Lock()
+
+async def get_next_proxy():
+    global proxy_index
+    async with proxy_lock:
+        if not PROXIES_LIST:
+            return None
+        proxy_str = PROXIES_LIST[proxy_index]
+        proxy_index = (proxy_index + 1) % len(PROXIES_LIST)
+
+    parts = proxy_str.split(":")
+    if len(parts) == 4:
+        host, port, user, password = parts
+        return f"http://{user}:{password}@{host}:{port}"
+    elif len(parts) == 2:
+        host, port = parts
+        return f"http://{host}:{port}"
+    else:
+        raise ValueError(f"Invalid proxy format: {proxy_str}")
+
+
 logger = logging.getLogger(__name__)
 BASE_COOLDOWN = 20  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
@@ -4177,42 +4206,62 @@ async def b3(update: Update, context):
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
 
 # --- Background Task ---
+# --- Background Task: Cookie + Proxy rotation integrated ---
 async def run_braintree_check(user, cc_input, full_card, processing_msg):
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-    # --- API request ---
+    # --- Prepare API request ---
     params = {
         "key": API_KEY,
         "site": SITE,
-        "cookies": get_next_cookie(),
+        "cookies": get_next_cookie(),  # rotate cookie
         "cc": cc_input
     }
 
     try:
         timeout = aiohttp.ClientTimeout(total=50)
+
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(API_URL, params=params) as resp:
-                if resp.status != 200:
-                    await processing_msg.edit_text(
-                        f"❌ API returned HTTP {resp.status}",
-                        parse_mode=ParseMode.HTML
-                    )
-                    return
-                try:
-                    data = await resp.json(content_type=None)
-                except Exception:
-                    text = await resp.text()
-                    await processing_msg.edit_text(
-                        f"❌ Failed parsing API response:\n<code>{escape(text)}</code>",
-                        parse_mode=ParseMode.HTML
-                    )
-                    return
+            proxy_url = await get_next_proxy()  # rotate proxy
+            logger.info(f"[DEBUG] Using proxy: {proxy_url}")
+            try:
+                async with session.get(API_URL, params=params, proxy=proxy_url) as resp:
+                    if resp.status != 200:
+                        await processing_msg.edit_text(
+                            f"❌ API returned HTTP {resp.status} via proxy {proxy_url}",
+                            parse_mode=ParseMode.HTML
+                        )
+                        return
+
+                    try:
+                        data = await resp.json(content_type=None)
+                    except Exception:
+                        text = await resp.text()
+                        await processing_msg.edit_text(
+                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>\nProxy: {proxy_url}",
+                            parse_mode=ParseMode.HTML
+                        )
+                        return
+
+            except Exception as e:
+                await processing_msg.edit_text(
+                    f"❌ Request error:\n<code>{escape(str(e))}</code>\nProxy: {proxy_url}",
+                    parse_mode=ParseMode.HTML
+                )
+                return
+
     except asyncio.TimeoutError:
-        await processing_msg.edit_text("❌ Request timed out after 20 seconds.", parse_mode=ParseMode.HTML)
+        await processing_msg.edit_text(
+            "❌ Request timed out after 50 seconds.",
+            parse_mode=ParseMode.HTML
+        )
         return
     except Exception as e:
-        await processing_msg.edit_text(f"❌ Network/API error:\n<code>{escape(str(e))}</code>", parse_mode=ParseMode.HTML)
+        await processing_msg.edit_text(
+            f"❌ Network/API error:\n<code>{escape(str(e))}</code>",
+            parse_mode=ParseMode.HTML
+        )
         return
 
     # --- API response ---
