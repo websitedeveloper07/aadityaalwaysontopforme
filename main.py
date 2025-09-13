@@ -1869,6 +1869,10 @@ async def load_proxies(file_path="mstproxies.txt"):
     return proxies
 
 def format_proxy(proxy_line: str):
+    """
+    Parses a proxy string in the format 'host:port:username:password'
+    and returns it as a formatted URL string.
+    """
     try:
         host, port, user, password = proxy_line.strip().split(":")
         return f"http://{user}:{password}@{host}:{port}"
@@ -1895,8 +1899,10 @@ async def mst_worker(update, cards, status_msg, is_file=False):
             cc_normalized = f"{cc}|{mm}|{yy}|{cvv}"
 
             # Pick random proxy
-            proxy_line = random.choice(proxies) if proxies else None
-            proxy = format_proxy(proxy_line) if proxy_line else None
+            proxy = None
+            if proxies:
+                proxy_line = random.choice(proxies)
+                proxy = format_proxy(proxy_line)
 
             # Run stripe check with proxy
             status, response_text = await stripe_check(cc_normalized, proxy=proxy)
@@ -2028,9 +2034,6 @@ async def mst(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     asyncio.create_task(mst_worker(update, cards, status_msg, is_file))
-
-
-
 
 
 
