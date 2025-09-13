@@ -1810,8 +1810,8 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
     processing_text = (
-        f"<b>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 ⏳</b>\n"
-        f"<code>{html.escape(card_input)}</code>\n"
+        "<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+        f"<pre><code>{card_input}</code></pre>\n\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ STRIPE AUTH\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
     )
