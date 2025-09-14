@@ -436,8 +436,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo=photo_bytes,
         caption=text,
         parse_mode=ParseMode.HTML,
-        reply_markup=keyboard,
-        disable_web_page_preview=True
+        reply_markup=keyboard
     )
 
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -449,8 +448,7 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=keyboard,
-            disable_web_page_preview=True
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit caption, sending new message: {e}")
@@ -458,8 +456,7 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
             photo="https://i.ibb.co/YFDvs5fr/6190727515442629298.jpg", # Re-send the image
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=keyboard,
-            disable_web_page_preview=True
+            reply_markup=keyboard
         )
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -509,8 +506,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -542,8 +538,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=keyboard,
-            disable_web_page_preview=True
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -573,8 +568,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -609,8 +603,7 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -642,8 +635,7 @@ async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAU
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -664,18 +656,19 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Select a charge gate below:"
     )
-    keyboard = [
-        [InlineKeyboardButton("💸 Shopify 1.0$", callback_data="shopify_gate")],
-        [InlineKeyboardButton("⚡ Auto Shopify", callback_data="autoshopify_gate")],
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("💸 Shopify 1.0$", callback_data="shopify_gate"),
+            InlineKeyboardButton("⚡ Auto Shopify", callback_data="autoshopify_gate")
+        ],
         [InlineKeyboardButton("💳 Stripe 1$", callback_data="stripe_gate")],
         [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
-    ]
+    ])
     try:
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=keyboard,
-            disable_web_page_preview=True
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -708,8 +701,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -749,8 +741,7 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -786,8 +777,7 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -820,8 +810,7 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -861,7 +850,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
-
 
 
 
