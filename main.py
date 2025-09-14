@@ -4367,7 +4367,8 @@ proxy_lock = asyncio.Lock()
 async def get_next_proxy():
     """
     Rotate proxies from file.
-    Returns proxy_api → user:pass@host:port (for API param only)
+    Input format in proxies.txt = host:port:user:pass
+    Output format for API       = user:pass:host:port
     """
     global proxy_index
     async with proxy_lock:
@@ -4378,8 +4379,8 @@ async def get_next_proxy():
 
         parts = proxy_str.split(":")
         if len(parts) == 4:
-            user, password, host, port = parts
-            proxy_api = f"{user}:{password}@{host}:{port}"  # only API format
+            host, port, user, password = parts
+            proxy_api = f"{user}:{password}:{host}:{port}"  # reorder for API
             return proxy_api
         else:
             raise ValueError(f"Invalid proxy format: {proxy_str}")
