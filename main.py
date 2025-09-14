@@ -466,6 +466,12 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
         logger.warning(f"Failed to edit message text: {e}")
 
 
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
@@ -525,6 +531,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True
         )
         logger.warning(f"Failed to edit message text: {e}")
+
 
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
