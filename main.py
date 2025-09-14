@@ -4417,8 +4417,11 @@ COOLDOWN_SECONDS = BASE_COOLDOWN // len(COOKIES_LIST)  # e.g., 2 cookies → coo
 def get_next_cookie():
     global cookie_index
     cookie = COOKIES_LIST[cookie_index]
-    cookie_index = (cookie_index + 1) % len(COOKIES_LIST)  # rotate cookies
+    cookie_index = (cookie_index + 1) % len(COOKIES_LIST)
+    # Flatten cookie
+    cookie = "; ".join(line.strip() for line in cookie.splitlines() if line.strip())
     return cookie
+
 
 
 # --- Load proxies ---
@@ -4430,6 +4433,9 @@ proxy_index = 0
 proxy_lock = asyncio.Lock()
 
 # --- Rotate proxies ---
+proxy_index = 0
+proxy_lock = asyncio.Lock()
+
 async def get_next_proxy():
     global proxy_index
     async with proxy_lock:
@@ -4438,6 +4444,7 @@ async def get_next_proxy():
         proxy = PROXIES_LIST[proxy_index]
         proxy_index = (proxy_index + 1) % len(PROXIES_LIST)
         return proxy
+
 
 
 
