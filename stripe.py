@@ -176,65 +176,62 @@ async def ppc(card):
     except Exception as e:
         return json.dumps({"error": {"message": f"Processing error: {str(e)}", "code": "processing_error"}})
 
+# -------------------- Stripe Result Parser --------------------
 def parse_result(result):
+    """
+    Parses raw response from the site and returns a tuple:
+    (status, raw_response)
+    """
     try:
-        # First try to parse as JSON
+        # Try parsing as JSON
         try:
             data = json.loads(result)
-            
             if "error" in data:
                 error_msg = data["error"]
                 if isinstance(error_msg, dict):
                     message = error_msg.get("message", "Unknown error")
-                    code = error_msg.get("code", "unknown")
                 else:
                     message = str(error_msg)
-                    code = "unknown"
-                
-                # Only check for CCN if it's specifically CVV/CVC related
-                message_lower = message.lower()
-                if any(pattern.lower() in message_lower for pattern in CCN_patterns):
-                    return "CCN", message
+
+                # Detect CVV/CCN issues
+                if any(pattern.lower() in message.lower() for pattern in CCN_patterns):
+                    return "CCN", result
                 else:
-                    # Return DECLINED with exact message for all other errors
-                    return "DECLINED", message
-                    
-            # Check for success indicators
+                    return "DECLINED", result
+
             if data.get("success") or data.get("status") == "succeeded":
-                return "APPROVED", "Payment successful"
-                
-            # If no error but also no clear success, return the raw response
-            return "DECLINED", str(data)
-            
+                return "APPROVED", result
+
+            # No clear error or success: treat as DECLINED
+            return "DECLINED", result
+
         except json.JSONDecodeError:
-            # If not JSON, treat as plain text and return as is
+            # Not JSON, treat as plain text
             result_lower = result.lower()
-            
-            # Only check for CCN if specifically CVV related
             if any(pattern.lower() in result_lower for pattern in CCN_patterns):
                 return "CCN", result
-            # Check for success patterns
             elif any(word in result_lower for word in ["success", "approved", "completed", "thank you"]):
                 return "APPROVED", result
             else:
-                # Return as DECLINED with exact message
                 return "DECLINED", result
-                
+
     except Exception as e:
         return "ERROR", f"Parse error: {str(e)}"
 
-
+# -------------------- Stripe Check --------------------
 async def stripe_check(card: str):
     """
-    Check a card via ppc() and return:
-    - status (APPROVED / DECLINED / CCN / ERROR)
-    - raw_response (exact text from site)
+    Checks a card and returns:
+    - status: APPROVED / DECLINED / CCN / ERROR
+    - raw_response: exact text returned by the site
     """
-    raw_response = await ppc(card)  # the site response (JSON or text)
-    
-    # Determine status only, but do not alter response_text
+    raw_response = await ppc(card)  # get actual response from the site
+    if not raw_response:
+        return "DECLINED", "No message returned"
+
+    # Determine status without modifying the raw response
     try:
-        # Try parsing JSON to detect success or CCN
+        # Attempt JSON parsing
         data = json.loads(raw_response)
         if "success" in data or data.get("status") == "succeeded":
             status = "APPROVED"
@@ -244,19 +241,17 @@ async def stripe_check(card: str):
                 msg = error_msg.get("message", "")
             else:
                 msg = str(error_msg)
-            # Only mark as CCN if CVV-related
-            if any(pattern.lower() in msg.lower() for pattern in CCN_patterns):
-                status = "CCN"
-            else:
-                status = "DECLINED"
+            status = "CCN" if any(pattern.lower() in msg.lower() for pattern in CCN_patterns) else "DECLINED"
         else:
             status = "DECLINED"
     except Exception:
-        # If not JSON, try checking for keywords in plain text
-        resp_lower = str(raw_response).lower()
-        if any(word in resp_lower for word in ["success", "approved", "completed", "thank you"]):
+        # Plain text parsing
+        raw_lower = str(raw_response).lower()
+        if any(word in raw_lower for word in ["success", "approved", "completed", "thank you"]):
             status = "APPROVED"
+        elif any(pattern.lower() in raw_lower for pattern in CCN_patterns):
+            status = "CCN"
         else:
             status = "DECLINED"
-    
+
     return status, raw_response
