@@ -467,7 +467,6 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
         )
         logger.warning(f"Failed to edit message caption: {e}")
 
-
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
@@ -512,13 +511,14 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ]
 
-    try:
-        await q.edit_message_caption(
-            caption=text,  # <-- edit caption for photo message
-            parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
-        )
+    # IMPORTANT: Always use edit_message_caption, never edit_message_text or reply_text
+    await q.edit_message_caption(
+        caption=text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        disable_web_page_preview=True
+    )
+
     except Exception as e:
         await q.message.reply_text(
             text=text,
