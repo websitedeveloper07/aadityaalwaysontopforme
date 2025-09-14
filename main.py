@@ -1975,15 +1975,15 @@ import asyncio
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user, update_user  # ✅ import your credit function
+from db import get_user, update_user  # import your credit functions
 
-# Cooldown tracker
+# -------------------- Cooldowns --------------------
 mst_cooldowns = {}
 
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
-# Regex to match card format: 12-19 digits | MM | YY or YYYY | CVV
-CARD_PATTERN = re.compile(r"^\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}$")
+# Regex for valid card: 12-19 digits | MM(01-12) | YY(00-99) | CVV 3-4 digits
+CARD_PATTERN = re.compile(r"^\d{12,19}\|(0[1-9]|1[0-2])\|\d{2,4}\|\d{3,4}$")
 
 def mdv2_escape(text: str) -> str:
     escape_chars = r"_*[]()~`>#+-=|{}.!"
@@ -1999,16 +1999,8 @@ async def consume_credit(user_id: int) -> bool:
 
 async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    now = time.time()
 
-    # Cooldown check (5s per user)
-    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 5:
-        remaining = int(5 - (now - mst_cooldowns[user_id]))
-        await update.message.reply_text(f"⏳ Please wait {remaining}s before using /mst again.")
-        return
-    mst_cooldowns[user_id] = now
-
-    # Extract cards (reply or args)
+    # Extract cards (from reply or args)
     if update.message.reply_to_message:
         card_text = update.message.reply_to_message.text
     else:
@@ -2017,7 +2009,7 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         card_text = " ".join(context.args)
 
-    # ✅ Filter only valid card patterns
+    # Filter only valid cards
     cards = [
         c.strip()
         for c in card_text.splitlines()
@@ -2028,7 +2020,15 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ No valid cards found.")
         return
 
-    # ✅ Deduct 1 credit per /mst (not per card)
+    # ✅ Apply cooldown only if valid cards exist
+    now = time.time()
+    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 5:
+        remaining = int(5 - (now - mst_cooldowns[user_id]))
+        await update.message.reply_text(f"⏳ Please wait {remaining}s before using /mst again.")
+        return
+    mst_cooldowns[user_id] = now
+
+    # ✅ Deduct 1 credit per /mst
     has_credit = await consume_credit(user_id)
     if not has_credit:
         await update.message.reply_text("⚠️ You don’t have enough credits to use /mst.")
@@ -2038,7 +2038,7 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$")
-    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
