@@ -438,21 +438,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
-
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler to go back to the main menu."""
     q = update.callback_query
     await q.answer()
     text, keyboard = await build_start_message(q.from_user, context)
-    await q.edit_message_caption(
-        caption=text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=keyboard
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit caption, sending new message: {e}")
+        await q.message.reply_photo(
+            photo="https://i.ibb.co/YFDvs5fr/6190727515442629298.jpg", # Re-send the image
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
@@ -496,7 +500,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ]
-
+    
     try:
         await q.edit_message_caption(
             caption=text,
@@ -504,13 +508,12 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
     except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
-        logger.warning(f"Failed to edit caption: {e}")
-
 
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -530,11 +533,20 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ],
         [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ])
-    await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=keyboard,
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+
 
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Auth' button."""
@@ -551,11 +563,20 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("💎 Braintree Premium", callback_data="braintree_examples")],
         [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
     ]
-    await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
 
 async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Stripe Auth' button."""
@@ -577,11 +598,20 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("◀️ Back to Auth Menu", callback_data="auth_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
-    await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
 
 async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for 'Braintree Premium'."""
@@ -600,11 +630,20 @@ async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAU
         [InlineKeyboardButton("◀️ Back to Auth Menu", callback_data="auth_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
-    await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
 
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Charge' button."""
@@ -622,11 +661,20 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("💳 Stripe 1$", callback_data="stripe_gate")],
         [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
     ]
-    await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+
 
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Shopify 5$' button."""
@@ -646,11 +694,20 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
-    await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
 
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Auto Shopify' button."""
@@ -677,11 +734,20 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
 
-    await q.edit_message_caption(
-        caption=text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
 
 async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Stripe 1$' button."""
@@ -704,11 +770,20 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
-    await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
 
 async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the '3DS Lookup' button."""
@@ -716,7 +791,7 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "    🔐 <b>3DS Lookup</b>\n"
+        "      🔐 <b>3DS Lookup</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "• <code>/vbv</code> <code>&lt;card|mm|yy|cvv&gt;</code>\n"
         "  Example:\n"
@@ -728,11 +803,20 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
     keyboard = [
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
-    await q.edit_message_caption(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -743,30 +827,27 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     data = q.data
 
-    if data == "tools_menu":
-        await show_tools_menu(update, context)
-    elif data == "gates_menu":
-        await gates_menu_handler(update, context)
-    elif data == "auth_sub_menu":
-        await auth_sub_menu_handler(update, context)
-    elif data == "charge_sub_menu":
-        await charge_sub_menu_handler(update, context)
-    elif data == "shopify_gate":
-        await shopify_gate_handler(update, context)
-    elif data == "autoshopify_gate":
-        await autoshopify_gate_handler(update, context)
-    elif data == "stripe_gate":
-        await stripe_gate_handler(update, context)
-    elif data == "stripe_examples":
-        await stripe_examples_handler(update, context)
-    elif data == "braintree_examples":
-        await braintree_examples_handler(update, context)
-    elif data == "ds_lookup":
-        await ds_lookup_menu_handler(update, context)
-    elif data == "back_to_start":
-        await back_to_start_handler(update, context)
+    # Map callback data to the handler functions
+    handlers = {
+        "tools_menu": show_tools_menu,
+        "gates_menu": gates_menu_handler,
+        "auth_sub_menu": auth_sub_menu_handler,
+        "charge_sub_menu": charge_sub_menu_handler,
+        "shopify_gate": shopify_gate_handler,
+        "autoshopify_gate": autoshopify_gate_handler,
+        "stripe_gate": stripe_gate_handler,
+        "stripe_examples": stripe_examples_handler,
+        "braintree_examples": braintree_examples_handler,
+        "ds_lookup": ds_lookup_menu_handler,
+        "back_to_start": back_to_start_handler
+    }
+
+    handler = handlers.get(data)
+    if handler:
+        await handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
