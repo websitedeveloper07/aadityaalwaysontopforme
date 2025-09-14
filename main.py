@@ -468,6 +468,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> - Braintree Premium Auth\n"
         f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> - Stripe Auth\n"
         f"{bullet_link} <code>/st cc|mm|yy|cvv</code> - Stripe 1$\n"
+        f"{bullet_link} <code>/mst cc|mm|yy|cvv</code> – Mass x30 Stripe 1$\n"
         f"{bullet_link} <code>/mass</code> - Mass Stripe Auth 2\n"
         f"{bullet_link} <code>/gate site url</code> - Payment Gateway Checker\n"
         f"{bullet_link} <code>/sh</code> - Shopify 1.0$\n"
@@ -687,6 +688,9 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         "• <code>/st</code> - <i>Check a single card on Stripe $1</i>\n"
         "  Example:\n"
         "  <code>/st 1234567890123456|12|2026|123</code>\n\n"
+        "• <code>/mst</code> - <i>Check 30 cards on Stripe $1</i>\n"
+        "  Example:\n"
+        "  <code>/mst x30 cards</code>\n\n"
         "⚡ Each check deducts credits.\n\n"
         "✨ <b>Status</b> - <i>Active</i> ✅"
     )
@@ -781,6 +785,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔹 <b>𝙎𝙩𝙧𝙞𝙥𝙚</b>\n"
         f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> – Single Stripe Auth\n"
         f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$\n"
+        f"{bullet_link} <code>/mst cc|mm|yy|cvv</code> – Mass x30 Stripe 1$\n"
         f"{bullet_link} <code>/mass</code> – Mass x30 Stripe Auth 2\n\n"
 
         "🔹 <b>𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲</b>\n"
@@ -1978,7 +1983,7 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ✅ Enforce max 30 cards per /mst
     if len(cards) > 30:
-        await update.message.reply_text("⚠️ You can only check up to 30 cards at a time.")
+        await update.message.reply_text("⚠️ You can only check up to 30 cards at a time. checking firt 30 now.")
         cards = cards[:30]  # optional: trim the list to first 30 cards
 
     # ✅ Apply cooldown only if cards exist
@@ -5509,7 +5514,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("credits", force_join(credits_command)))
     application.add_handler(CommandHandler("chk", force_join(chk_command)))
     application.add_handler(CommandHandler("st", force_join(st)))
-    application.add_handler(CommandHandler("mst", mst_command))
+    application.add_handler(CommandHandler("mst", force_join(mst_command)))
     application.add_handler(CommandHandler("mass", force_join(mass_handler)))
     application.add_handler(CommandHandler("sh", force_join(sh_command)))
     application.add_handler(CommandHandler("seturl", force_join(seturl)))
