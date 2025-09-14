@@ -181,7 +181,7 @@ def parse_result(result):
         # First try to parse as JSON
         try:
             data = json.loads(result)
-            
+
             if "error" in data:
                 error_msg = data["error"]
                 if isinstance(error_msg, dict):
@@ -190,44 +190,52 @@ def parse_result(result):
                 else:
                     message = str(error_msg)
                     code = "unknown"
-                
+
                 # Only check for CCN if it's specifically CVV/CVC related
                 message_lower = message.lower()
                 if any(pattern.lower() in message_lower for pattern in CCN_patterns):
-                    return "CCN", message
+                    return "CCN", message, data
                 else:
                     # Return DECLINED with exact message for all other errors
-                    return "DECLINED", message
-                    
+                    return "DECLINED", message, data
+
             # Check for success indicators
             if data.get("success") or data.get("status") == "succeeded":
-                return "APPROVED", "Payment successful"
-                
+                return "APPROVED", "Payment successful", data
+
             # If no error but also no clear success, return the raw response
-            return "DECLINED", str(data)
-            
+            return "DECLINED", str(data), data
+
         except json.JSONDecodeError:
             # If not JSON, treat as plain text and return as is
             result_lower = result.lower()
-            
+
             # Only check for CCN if specifically CVV related
             if any(pattern.lower() in result_lower for pattern in CCN_patterns):
-                return "CCN", result
+                return "CCN", result, result
             # Check for success patterns
             elif any(word in result_lower for word in ["success", "approved", "completed", "thank you"]):
-                return "APPROVED", result
+                return "APPROVED", result, result
             else:
                 # Return as DECLINED with exact message
-                return "DECLINED", result
-                
-    except Exception as e:
-        return "ERROR", f"Parse error: {str(e)}"
+                return "DECLINED", result, result
 
-async def main(card):
-    result = await ppc(card)
-    return parse_result(result)
-    
+    except Exception as e:
+        return "ERROR", f"Parse error: {str(e)}", result
+
+
 async def stripe_check(card: str):
     """Main entry point to check a card from the bot."""
-    result = await ppc(card)
-    return parse_result(result)
+    try:
+        result = await ppc(card)
+        status, message, raw = parse_result(result)
+
+        # Log in console
+        logger.info("[StripeCheck] Card: %s | Status: %s | Message: %s", card, status, message)
+        logger.debug("[StripeCheck] Raw: %s", raw)
+
+        return status, message, raw
+
+    except Exception as e:
+        logger.error("Stripe check failed for card %s: %s", card, e, exc_info=True)
+        return "ERROR", str(e), None
