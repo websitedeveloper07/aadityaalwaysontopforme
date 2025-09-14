@@ -1,14 +1,10 @@
+
 import aiohttp
 import asyncio
 import sys
 import json
 import re
 import time
-import json
-import logging
-
-
-# Initialize logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # DEBUG shows raw responses too
 # --- Card Checker Config ---
@@ -186,7 +182,7 @@ def parse_result(result):
         # First try to parse as JSON
         try:
             data = json.loads(result)
-
+            
             if "error" in data:
                 error_msg = data["error"]
                 if isinstance(error_msg, dict):
@@ -195,38 +191,53 @@ def parse_result(result):
                 else:
                     message = str(error_msg)
                     code = "unknown"
-
+                
                 # Only check for CCN if it's specifically CVV/CVC related
                 message_lower = message.lower()
                 if any(pattern.lower() in message_lower for pattern in CCN_patterns):
-                    return "CCN", message, data
+                    return "CCN", message
                 else:
                     # Return DECLINED with exact message for all other errors
-                    return "DECLINED", message, data
-
+                    return "DECLINED", message
+                    
             # Check for success indicators
             if data.get("success") or data.get("status") == "succeeded":
-                return "APPROVED", "Payment successful", data
-
+                return "APPROVED", "Payment successful"
+                
             # If no error but also no clear success, return the raw response
-            return "DECLINED", str(data), data
-
+            return "DECLINED", str(data)
+            
         except json.JSONDecodeError:
             # If not JSON, treat as plain text and return as is
             result_lower = result.lower()
-
+            
             # Only check for CCN if specifically CVV related
             if any(pattern.lower() in result_lower for pattern in CCN_patterns):
-                return "CCN", result, result
+                return "CCN", result
             # Check for success patterns
             elif any(word in result_lower for word in ["success", "approved", "completed", "thank you"]):
-                return "APPROVED", result, result
+                return "APPROVED", result
             else:
                 # Return as DECLINED with exact message
-                return "DECLINED", result, result
-
+                return "DECLINED", result
+                
     except Exception as e:
-        return "ERROR", f"Parse error: {str(e)}", result
+        return "ERROR", f"Parse error: {str(e)}"
+
+async def main(card):
+    result = await ppc(card)
+    return parse_result(result)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("ERROR|Missing card argument")
+        sys.exit(1)
+        
+    card = sys.argv[1]
+    status, message = asyncio.run(main(card))
+    print(f"{status}|{message}")
+
+
 
 
 async def stripe_check(card: str):
