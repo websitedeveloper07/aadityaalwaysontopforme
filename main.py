@@ -4391,41 +4391,53 @@ logger = logging.getLogger(__name__)
 BASE_COOLDOWN = 10  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
-SITE = "https://iditarod.com"
+SITE = "https://apluscollectibles.com"
 
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
     # --- Cookie 1 ---
-    '''PHPSESSID=6id9435okaa4ro85vp8s72vng3;
-_ga=GA1.1.1348851683.1757748688;
-sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-13%2007%3A01%3A28%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
-sbjs_first_add=fd%3D2025-09-13%2007%3A01%3A28%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
+    '''_ga_D1Q49TMJ2C=GS2.1.s1757220818$o7$g0$t1757220818$j60$l0$h0;
+wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b=xcrasjwiiwjwr663%7C1758272921%7CBPf39ptFyvGAQ34Dn1nIXF1fvcY5spDCUhlsfKA1Wp4%7C301e75542869a8a7dbbcf88f245dddf67e40a88c925b8b137785ca10d8f0c986;
 sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+cfz_google-analytics_v4=%7B%22uoEf_engagementDuration%22%3A%7B%22v%22%3A%220%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_engagementStart%22%3A%7B%22v%22%3A%221757220819052%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_counter%22%3A%7B%22v%22%3A%2243%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_session_counter%22%3A%7B%22v%22%3A%228%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_ga4%22%3A%7B%22v%22%3A%220486ee08-be8c-416f-a2a9-e6cc9b586a2c%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf__z_ga_audiences%22%3A%7B%22v%22%3A%220486ee08-be8c-416f-a2a9-e6cc9b586a2c%22%2C%22e%22%3A1788099028638%7D%2C%22uoEf_let%22%3A%7B%22v%22%3A%221757220819052%22%2C%22e%22%3A1788756819052%7D%2C%22uoEf_ga4sid%22%3A%7B%22v%22%3A%221807422450%22%2C%22e%22%3A1757222619052%7D%7D;
+wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f=9023%7Cother%7Cread%7C5ad6eca7c2a7a49651f38d465011c7ae8f8529e64b49ffad8bc1527e1540360d;
+sbjs_session=pgs%3D1%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;
+mailchimp_user_email=xcrasjwiiwjwr663%40gmail.com;
+sbjs_migrations=1418474375998%3D1;
+mailchimp_user_previous_email=xcrasjwiiwjwr663%40gmail.com;
+Subscribe=true;
+sbjs_first_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
+_ga=GA1.1.1082691390.1756563029;
+_gcl_au=1.1.1821381797.1756563029;
+breeze_folder_name=6bae3cd94ddbfe28435ae88815e64956a5198266;
+cfzs_google-analytics_v4=%7B%22uoEf_pageviewCounter%22%3A%7B%22v%22%3A%221%22%7D%7D;
+dfehc_user=f9046e64c7ce9c01a633953b208018fe;
+mailchimp_landing_site=https%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F;
+sbjs_current_add=fd%3D2025-09-07%2004%3A23%3A38%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-_fbp=fb.1.1757748688643.911751162166436883;
-wordpress_logged_in_8fb226385f454fe1b19f20c68cef99ad=_aaditya07r%7C1758962016%7CAnncsejn12RZ4ZJHqyUG0bPOACfZ2gBxlM6Ldb9QNTM%7Cd0e0bebae43eba02ce3d36961c65d45a5d8a7135200736b023d3f5c19b4e866f;
-mailpoet_page_view=%7B%22timestamp%22%3A1757752417%7D;
-sbjs_udata=vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%206.0%3B%20Nexus%205%20Build%2FMRA58N%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Mobile%20Safari%2F537.36;
-sbjs_session=pgs%3D13%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Fpayment-methods%2F;
-_ga_GEWJ0CGSS2=GS2.1.s1757752336$o2$g1$t1757752459$j14$l0$h2070871103;'''
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F130.0.0.0%20Mobile%20Safari%2F537.36;'''
 
     
     # --- Cookie 2 ---
-    '''PHPSESSID=qftvknrnpks4u241irano91gbs;
+    '''_ga=GA1.1.333862603.1756374247;
+_gcl_au=1.1.1881747356.1756374247;
+mailchimp_landing_site=https%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOoq8FJ6vCoYvJ09H23EDOT6KZUY9kpjaAgQiQSptUqge3sfo4zuV;
+mailchimp_user_previous_email=maihujiyan%40gmail.com;
+mailchimp_user_email=maihujiyan%40gmail.com;
+breeze_folder_name=6bae3cd94ddbfe28435ae88815e64956a5198266;
+wordpress_logged_in_9af923add3e33fe261964563a4eb5c9b=maihujiyan%7C1758700897%7CxK4lY1UHm6sxwxw3XIDDtUhvbfTyVpCm1sMVrqhSHBU%7Ca9cb414769c030ac993c3b41bedc11db8b9b53fe7940719a35c5e5543d958c43;
+wfwaf-authcookie-428ce1eeac9307d8349369ddc6c2bb5f=9043%7Cother%7Cread%7C5db311d5e7d749d20c6352925c56bb6c50d655f7c0e21d18240be96ef81fd800;
+dfehc_user=cdf85f16416750cf8eedf63cc5214e64;
 sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
-sbjs_first_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
-sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_current_add=fd%3D2025-09-13%2006%3A42%3A57%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOordn4LSlsbOpe1VCa4TZHrGqthL4EcPCR5QPdKc6Yav0UloFkaY%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F;
+sbjs_first_add=fd%3D2025-09-13%2006%3A42%3A57%7C%7C%7Cep%3Dhttps%3A%2F%2Fapluscollectibles.com%2F%3Fsrsltid%3DAfmBOordn4LSlsbOpe1VCa4TZHrGqthL4EcPCR5QPdKc6Yav0UloFkaY%7C%7C%7Crf%3Dhttps%3A%2F%2Fwww.google.com%2F;
+sbjs_current=typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_first=typ%3Dorganic%7C%7C%7Csrc%3Dgoogle%7C%7C%7Cmdm%3Dorganic%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
-_ga=GA1.1.41997297.1757748816;
-_fbp=fb.1.1757748816501.35526249204946697;
-wordpress_logged_in_8fb226385f454fe1b19f20c68cef99ad=_aaditya07r_%7C1758958437%7CK9XOlTGiEQwl320Zgp80vLD4hRLpOerfqzAGx7vRa8C%7C381a72fabd1295bca6efa996f821bd98672178761c725691cce3fa1b1505083b;
-sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%3Fpassword-reset%3Dtrue;
-cookieconsent_status=dismiss;
-mailpoet_page_view=%7B%22timestamp%22%3A1757749022%7D;
-_ga_GEWJ0CGSS2=GS2.1.s1757748816$o1$g1$t1757749035$j52$l0$h316575648;'''
+cfzs_google-analytics_v4=%7B%22uoEf_pageviewCounter%22%3A%7B%22v%22%3A%223%22%7D%7D;
+cfz_google-analytics_v4=%7B%22uoEf_engagementDuration%22%3A%7B%22v%22%3A%220%22%2C%22e%22%3A1789283611898%7D%2C%22uoEf_engagementStart%22%3A%7B%22v%22%3A%221757747611898%22%2C%22e%22%3A1789283611898%7D%2C%22uoEf_counter%22%3A%7B%22v%22%3A%22232%22%2C%22e%22%3A1789283611898%7D%2C%22uoEf_session_counter%22%3A%7B%22v%22%3A%2210%22%2C%22e%22%3A1789283611898%7D%2C%22uoEf_ga4%22%3A%7B%22v%22%3A%226d94b6c7-8ebe-4002-b4c6-d90aedcc23c4%22%2C%22e%22%3A1789283611898%7D%2C%22uoEf__z_ga_audiences%22%3A%7B%22v%22%3A%226d94b6c7-8ebe-4002-b4c6-d90aedcc23c4%22%2C%22e%22%3A1787910244633%7D%2C%22uoEf_let%22%3A%7B%22v%22%3A%221757747611898%22%2C%22e%22%3A1789283611898%7D%2C%22uoEf_ga4sid%22%3A%7B%22v%22%3A%22777286614%22%2C%22e%22%3A1757749411898%7D%7D;
+_ga_D1Q49TMJ2C=GS2.1.s1757747576$o11$g1$t1757747616$j20$l0$h0;
+sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fapluscollectibles.com%2Fmy-account%2Fedit-address%2F;'''
 ]
 
 # --- Helper: Convert dict → raw cookie string (NO extra encoding) ---
