@@ -1,11 +1,16 @@
-
 import aiohttp
 import asyncio
 import sys
 import json
 import re
 import time
+import json
+import logging
 
+
+# Initialize logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # DEBUG shows raw responses too
 # --- Card Checker Config ---
 DOMAIN = "https://www.charitywater.org"
 PK = "pk_live_51049Hm4QFaGycgRKpWt6KEA9QxP8gjo8sbC6f2qvl4OnzKUZ7W0l00vlzcuhJBjX5wyQaAJxSPZ5k72ZONiXf2Za00Y1jRrMhU"
