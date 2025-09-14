@@ -1708,19 +1708,8 @@ async def st_worker(update: Update, card: str, status_msg):
 
     try:
         # Run stripe check
-        status, response_text, raw_response = await stripe_check(card)
+        status, response_text = await stripe_check(card)
 
-        # Log everything to console
-        logger.info("Stripe check result for user %s (%s):", user.id, user.first_name)
-        logger.info("Card: %s", card)
-        logger.info("Status: %s", status)
-        logger.info("Response Text: %s", response_text)
-        logger.debug("Raw Response: %s", raw_response)
-
-    except Exception as e:
-        # Log error
-        logger.error("Stripe check failed for card %s: %s", card, e, exc_info=True)
-        status, response_text, raw_response = "ERROR", str(e), ""
 
     # Map status to emoji
     emoji_map = {
