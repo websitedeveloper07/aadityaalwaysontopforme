@@ -1706,10 +1706,10 @@ async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
     # Run Stripe check
-    status, response_text, raw_response = await stripe_check(card)
+    status, raw_response = await stripe_check(card)
 
-    # Ensure strings (avoid tuple errors)
-    response_text = str(response_text or "No message returned")
+    # Ensure string (avoid tuple errors)
+    response_text = str(raw_response or "No message returned")
     raw_response = str(raw_response or "No raw response")
 
     # Status emojis
@@ -1771,7 +1771,6 @@ async def st_worker(update: Update, card: str, status_msg):
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
-
 
 # -------------------- Command --------------------
 async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
