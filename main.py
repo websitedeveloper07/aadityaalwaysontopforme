@@ -1956,6 +1956,7 @@ async def mst_worker(status_msg, cards: list):
 
 
 # -------------------- /mst Command --------------------
+# -------------------- /mst Command --------------------
 async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -1974,6 +1975,11 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not cards:
         await update.message.reply_text("⚠️ No valid cards found.")
         return
+
+    # ✅ Enforce max 30 cards per /mst
+    if len(cards) > 30:
+        await update.message.reply_text("⚠️ You can only check up to 30 cards at a time.")
+        cards = cards[:30]  # optional: trim the list to first 30 cards
 
     # ✅ Apply cooldown only if cards exist
     now = time.time()
