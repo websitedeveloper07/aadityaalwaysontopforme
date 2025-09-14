@@ -1702,21 +1702,16 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # -------------------- Worker --------------------
-# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
-    # stripe_check returns a single string like "APPROVED|Message"
-    result = await stripe_check(card)
+    # stripe_check now returns (status, response_text, raw_response)
+    status, response_text, raw_response = await stripe_check(card)
 
-    if "|" in result:
-        status, response_text = result.split("|", 1)
-        response_text = response_text.strip() or "No message returned"
-    else:
-        status, response_text = "ERROR", result or "No message returned"
-
-    # raw response is just the same as result for now
-    raw_response = result or "No raw response"
+    # Fallbacks for safety
+    status = status or "ERROR"
+    response_text = response_text.strip() or "No message returned"
+    raw_response = raw_response or "No raw response"
 
     # Map status to emoji
     emoji_map = {
@@ -1777,7 +1772,6 @@ async def st_worker(update: Update, card: str, status_msg):
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
-
 
 
 # -------------------- Command --------------------
