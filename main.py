@@ -1990,7 +1990,7 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     now = time.time()
 
     # Cooldown check (5s per user)
-    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 30:
+    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 5:
         remaining = int(5 - (now - mst_cooldowns[user_id]))
         await update.message.reply_text(f"⏳ Please wait {remaining}s before using /mst again.")
         return
