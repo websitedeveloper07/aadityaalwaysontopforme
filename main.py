@@ -428,6 +428,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=f"⚠️ An error occurred while loading the welcome image.\n\n{text}",
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
+            disable_web_page_preview=True
         )
         return
 
@@ -435,7 +436,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo=photo_bytes,
         caption=text,
         parse_mode=ParseMode.HTML,
-        reply_markup=keyboard
+        reply_markup=keyboard,
+        disable_web_page_preview=True
     )
 
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -447,7 +449,8 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=keyboard
+            reply_markup=keyboard,
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit caption, sending new message: {e}")
@@ -456,6 +459,7 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
+            disable_web_page_preview=True
         )
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -506,6 +510,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -513,8 +518,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
-
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Gates' button."""
@@ -538,6 +543,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -545,8 +551,8 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
+            disable_web_page_preview=True
         )
-
 
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Auth' button."""
@@ -568,6 +574,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -575,8 +582,8 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
-
 
 async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Stripe Auth' button."""
@@ -603,6 +610,7 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -610,8 +618,8 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
-
 
 async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for 'Braintree Premium'."""
@@ -635,6 +643,7 @@ async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAU
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -642,8 +651,8 @@ async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAU
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
-
 
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Charge' button."""
@@ -666,6 +675,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -673,8 +683,8 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
+            disable_web_page_preview=True
         )
-
 
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Shopify 5$' button."""
@@ -699,6 +709,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -706,8 +717,8 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
-
 
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Auto Shopify' button."""
@@ -739,6 +750,7 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -746,8 +758,8 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
-
 
 async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Stripe 1$' button."""
@@ -775,6 +787,7 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -782,8 +795,8 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
-
 
 async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the '3DS Lookup' button."""
@@ -808,6 +821,7 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -815,8 +829,8 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
-
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
