@@ -1702,6 +1702,7 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # -------------------- Worker --------------------
+# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
@@ -1710,11 +1711,12 @@ async def st_worker(update: Update, card: str, status_msg):
 
     if "|" in result:
         status, response_text = result.split("|", 1)
+        response_text = response_text.strip() or "No message returned"
     else:
-        status, response_text = "ERROR", result
+        status, response_text = "ERROR", result or "No message returned"
 
     # raw response is just the same as result for now
-    raw_response = result
+    raw_response = result or "No raw response"
 
     # Map status to emoji
     emoji_map = {
