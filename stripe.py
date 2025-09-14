@@ -282,6 +282,16 @@ if __name__ == "__main__":
 
 
 async def stripe_check(card: str):
-    """Main entry point to check a card from the bot."""
-    result = await ppc(card)
-    return parse_result(result)
+    """
+    Main entry point to check a card from the bot.
+    Returns: (status, message, raw_response)
+    """
+    raw_response = await ppc(card)            # actual response text
+    parsed = parse_result(raw_response)       # formatted into STATUS|Message
+
+    if "|" in parsed:
+        status, message = parsed.split("|", 1)
+    else:
+        status, message = "ERROR", parsed
+
+    return status, message, raw_response
