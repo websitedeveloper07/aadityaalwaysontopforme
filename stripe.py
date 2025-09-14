@@ -226,15 +226,37 @@ def parse_result(result):
 
 async def stripe_check(card: str):
     """
-    Main entry point to check a card from the bot.
-    Returns: (status, message, raw_response)
+    Check a card via ppc() and return:
+    - status (APPROVED / DECLINED / CCN / ERROR)
+    - raw_response (exact text from site)
     """
-    raw_response = await ppc(card)            # actual response text
-    parsed = parse_result(raw_response)       # formatted into STATUS|Message
-
-    if "|" in parsed:
-        status, message = parsed.split("|", 1)
-    else:
-        status, message = "ERROR", parsed
-
-    return status, message, raw_response
+    raw_response = await ppc(card)  # the site response (JSON or text)
+    
+    # Determine status only, but do not alter response_text
+    try:
+        # Try parsing JSON to detect success or CCN
+        data = json.loads(raw_response)
+        if "success" in data or data.get("status") == "succeeded":
+            status = "APPROVED"
+        elif "error" in data:
+            error_msg = data["error"]
+            if isinstance(error_msg, dict):
+                msg = error_msg.get("message", "")
+            else:
+                msg = str(error_msg)
+            # Only mark as CCN if CVV-related
+            if any(pattern.lower() in msg.lower() for pattern in CCN_patterns):
+                status = "CCN"
+            else:
+                status = "DECLINED"
+        else:
+            status = "DECLINED"
+    except Exception:
+        # If not JSON, try checking for keywords in plain text
+        resp_lower = str(raw_response).lower()
+        if any(word in resp_lower for word in ["success", "approved", "completed", "thank you"]):
+            status = "APPROVED"
+        else:
+            status = "DECLINED"
+    
+    return status, raw_response
