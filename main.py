@@ -4365,21 +4365,25 @@ proxy_index = 0
 proxy_lock = asyncio.Lock()
 
 async def get_next_proxy():
+    """
+    Rotate proxies from file.
+    Returns proxy_api → user:pass@host:port (for API param only)
+    """
     global proxy_index
     async with proxy_lock:
         if not PROXIES_LIST:
             return None
         proxy_str = PROXIES_LIST[proxy_index]
         proxy_index = (proxy_index + 1) % len(PROXIES_LIST)
+
         parts = proxy_str.split(":")
         if len(parts) == 4:
-            user, password, host, port = parts  # reorder parsing
-            return f"{user}:{password}@{host}:{port}"
-        elif len(parts) == 2:
-            host, port = parts
-            return f"{host}:{port}"
+            user, password, host, port = parts
+            proxy_api = f"{user}:{password}@{host}:{port}"  # only API format
+            return proxy_api
         else:
             raise ValueError(f"Invalid proxy format: {proxy_str}")
+
 
 
 logger = logging.getLogger(__name__)
@@ -4499,51 +4503,53 @@ async def b3(update: Update, context):
     # --- Run in background ---
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
 
-# --- Background Task: Cookie + Proxy rotation integrated ---
-# --- Background Task: Cookie + Proxy rotation integrated ---
 async def run_braintree_check(user, cc_input, full_card, processing_msg):
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-    # --- Rotate cookie + proxy first ---
-    cookie_value = get_next_cookie()
-    proxy_url = await get_next_proxy()
-
-    # --- Prepare API request params ---
-    params = {
-        "key": API_KEY,
-        "site": SITE,
-        "cookies": cookie_value,
-        "cc": cc_input,
-        "proxy": proxy_url
-    }
-
-    # --- Build & log full API request with proxy ---
-    from urllib.parse import urlencode
-    query_string = urlencode(params)
-    full_api_url = f"{API_URL}{query_string}&proxy={proxy_url}"
-    logger.info(f"[FULL API REQUEST] {full_api_url}")
-    print(f"[FULL API REQUEST] {full_api_url}")  # also prints to console
-
     try:
         timeout = aiohttp.ClientTimeout(total=50)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(API_URL, params=params, proxy=proxy_url) as resp:
-                if resp.status != 200:
-                    await processing_msg.edit_text(
-                        f"❌ API returned HTTP {resp.status} via proxy {proxy_url}",
-                        parse_mode=ParseMode.HTML
-                    )
-                    return
-                try:
-                    data = await resp.json(content_type=None)
-                except Exception:
-                    text = await resp.text()
-                    await processing_msg.edit_text(
-                        f"❌ Failed parsing API response:\n<code>{escape(text)}</code>\nProxy: {proxy_url}",
-                        parse_mode=ParseMode.HTML
-                    )
-                    return
+            proxy_api = await get_next_proxy()  # only API usage
+            logger.info(f"[DEBUG] API proxy: {proxy_api}")
+
+            # --- Prepare API request ---
+            params = {
+                "key": API_KEY,
+                "site": SITE,
+                "cookies": get_next_cookie(),
+                "cc": cc_input,
+                "proxy": proxy_api  # pass only to API
+            }
+
+            # log the full API URL
+            full_api_url = str(session._build_url(API_URL).with_query(params))
+            logger.info(f"[FULL API] {full_api_url}")
+            print(f"[FULL API] {full_api_url}")
+
+            try:
+                async with session.get(API_URL, params=params) as resp:  # removed proxy=
+                    if resp.status != 200:
+                        await processing_msg.edit_text(
+                            f"❌ API returned HTTP {resp.status}",
+                            parse_mode=ParseMode.HTML
+                        )
+                        return
+                    try:
+                        data = await resp.json(content_type=None)
+                    except Exception:
+                        text = await resp.text()
+                        await processing_msg.edit_text(
+                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>",
+                            parse_mode=ParseMode.HTML
+                        )
+                        return
+            except Exception as e:
+                await processing_msg.edit_text(
+                    f"❌ Request error:\n<code>{escape(str(e))}</code>",
+                    parse_mode=ParseMode.HTML
+                )
+                return
     except asyncio.TimeoutError:
         await processing_msg.edit_text(
             "❌ Request timed out after 50 seconds.",
