@@ -470,7 +470,6 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✦━━━━━━━━━━━━━━✦\n"
         "     ⚡ <b>Available Commands</b> ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet_link} <code>/start</code> - Welcome message\n"
         f"{bullet_link} <code>/cmds</code> - Shows all commands\n"
         f"{bullet_link} <code>/gen [bin] [no. of cards]</code> - Generate cards\n"
         f"{bullet_link} <code>/bin &lt;bin&gt;</code> - BIN lookup\n"
@@ -492,11 +491,6 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/site</code> - Check Shopify site\n"
         f"{bullet_link} <code>/msite</code> - Mass Shopify site Checking\n"
         f"{bullet_link} <code>/fk</code> - Generate fake identity info\n"
-        f"{bullet_link} <code>/fl &lt;dump&gt;</code> - Fetch CCs from dump\n"
-        f"{bullet_link} <code>/open</code> - Extract cards from a file\n"
-        f"{bullet_link} <code>/status</code> - Bot system status info\n"
-        f"{bullet_link} <code>/credits</code> - Check remaining credits\n"
-        f"{bullet_link} <code>/info</code> - Show your user info\n\n"
     )
 
     keyboard = [
