@@ -511,15 +511,16 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ]
 
-    # IMPORTANT: Always use edit_message_caption, never edit_message_text or reply_text
-    await q.edit_message_caption(
-        caption=text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        disable_web_page_preview=True
-    )
-
+    try:
+        # Edit the caption of the original /start photo
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
+        )
     except Exception as e:
+        # Fallback only if edit fails (rare)
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
