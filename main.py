@@ -1702,13 +1702,11 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # -------------------- Worker --------------------
-# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
-
-    status, response_text = await stripe_check(card)
-
+    # Expect 3 values from stripe_check
+    status, response_text, raw_response = await stripe_check(card)
 
     # Map status to emoji
     emoji_map = {
@@ -1746,7 +1744,7 @@ async def st_worker(update: Update, card: str, status_msg):
     escaped_issuer = html.escape(issuer)
     escaped_country_name = html.escape(country_name)
 
-    # Final result text (added raw response section)
+    # Final result text
     result_text = (
         f"<b>◇━━[ {escaped_status}{status_emoji} ]━━◇</b>\n"
         f"{bullet_link} <b>𝐂𝐚𝐫𝐝 ➵</b> <code>{escaped_card}</code>\n"
@@ -1757,7 +1755,7 @@ async def st_worker(update: Update, card: str, status_msg):
         f"{bullet_link} <b>𝐁𝐚𝐧𝐤 ➵</b> {escaped_issuer}\n"
         f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵</b> {escaped_country_name} {country_flag}\n"
         f"――――――――――――――――\n"
-        f"{bullet_link} <b>𝐑𝐚𝐰 ➵</b> <code>{html.escape(str(raw_response)[:500])}</code>\n"  # show first 500 chars
+        f"{bullet_link} <b>𝐑𝐚𝐰 ➵</b> <code>{html.escape(str(raw_response)[:500])}</code>\n"
         f"――――――――――――――――\n"
         f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵</b> {requested_by}\n"
         f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵</b> {developer}\n"
