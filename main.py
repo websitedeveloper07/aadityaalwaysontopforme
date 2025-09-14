@@ -1705,14 +1705,14 @@ async def consume_credit(user_id: int) -> bool:
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
-    # stripe_check now returns a tuple: (status, message, raw_response)
+    # Call your stripe.py check
     status, response_text, raw_response = await stripe_check(card)
 
-    # Fallback messages if empty
-    response_text = response_text.strip() or "No message returned"
+    # Fallback if empty
+    response_text = response_text or "No message returned"
     raw_response = raw_response or "No raw response"
 
-    # Map status to emoji
+    # Status emojis
     emoji_map = {
         "APPROVED": "✅",
         "DECLINED": "❌",
@@ -1721,36 +1721,31 @@ async def st_worker(update: Update, card: str, status_msg):
     }
     status_emoji = emoji_map.get(status, "❓")
 
-    # BIN lookup
+    # BIN info
     bin_number = card.split("|")[0][:6]
-    bin_details = await get_bin_info(bin_number)
+    bin_details = await get_bin_info(bin_number) if callable(get_bin_info) else {}
     brand = (bin_details.get("scheme") or "N/A").title()
     issuer = bin_details.get("bank") or "UNKNOWN"
     country_name = bin_details.get("country") or "N/A"
     country_flag = bin_details.get("country_emoji", "")
     card_type = bin_details.get("type", "N/A")
 
-    # Bullet link
+    # Links
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
-    # Developer
     developer = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
-
-    # User mention
     requested_by = f'<a href="tg://user?id={user.id}">{html.escape(user.first_name)}</a>'
 
     # Escape dynamic values
-    escaped_status = html.escape(status)
     escaped_card = html.escape(card)
     escaped_response_text = html.escape(response_text)
     escaped_brand = html.escape(brand)
     escaped_issuer = html.escape(issuer)
     escaped_country_name = html.escape(country_name)
 
-    # Final result text
+    # Build final result
     result_text = (
-        f"<b>◇━━[ {escaped_status}{status_emoji} ]━━◇</b>\n"
+        f"<b>◇━━[ {status}{status_emoji} ]━━◇</b>\n"
         f"{bullet_link} <b>𝐂𝐚𝐫𝐝 ➵</b> <code>{escaped_card}</code>\n"
         f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵</b> Stripe $1 💎\n"
         f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵</b> <i>{escaped_response_text}</i>\n"
