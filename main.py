@@ -1959,7 +1959,6 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from .mst_worker import mst_worker   # import your worker
 
 # Cooldown tracker
 mst_cooldowns = {}
