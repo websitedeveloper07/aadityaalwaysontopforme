@@ -438,16 +438,33 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
+from telegram.ext import ContextTypes
+
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler to go back to the main menu."""
     q = update.callback_query
     await q.answer()
     text, keyboard = await build_start_message(q.from_user, context)
-    await q.edit_message_caption(
-        caption=text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=keyboard
-    )
+    
+    try:
+        await q.edit_message_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+            disable_web_page_preview=True
+        )
+    except Exception as e:
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+            disable_web_page_preview=True
+        )
+        logger.warning(f"Failed to edit message text: {e}")
+
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
@@ -473,7 +490,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/gate site url</code> - Payment Gateway Checker\n"
         f"{bullet_link} <code>/sh</code> - Shopify 1.0$\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> - Set a Shopify site\n"
-        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 shopify sites\n"
+        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 Shopify sites\n"
         f"{bullet_link} <code>/removeall</code> - Remove all added sites\n"
         f"{bullet_link} <code>/rmsite</code> - Remove specific sites from added\n"
         f"{bullet_link} <code>/mysites</code> - View your added site\n"
@@ -494,18 +511,21 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     try:
-        await q.edit_message_caption(
-            caption=text,
+        await q.edit_message_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
     except Exception as e:
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
         )
-        logger.warning(f"Failed to edit caption: {e}")
+        logger.warning(f"Failed to edit message text: {e}")
+
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Gates' button."""
