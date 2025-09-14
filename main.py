@@ -1708,7 +1708,7 @@ async def st_worker(update: Update, card: str, status_msg):
 
     try:
         # Run stripe check
-        status, response_text = await stripe_check(card)
+    status, response_text = await stripe_check(card)
 
 
     # Map status to emoji
