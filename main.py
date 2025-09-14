@@ -1706,8 +1706,7 @@ async def consume_credit(user_id: int) -> bool:
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
-    try:
-        # Run stripe check
+
     status, response_text = await stripe_check(card)
 
 
