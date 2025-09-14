@@ -229,16 +229,6 @@ async def main(card):
     result = await ppc(card)
     return parse_result(result)
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("ERROR|Missing card argument")
-        sys.exit(1)
-        
-    card = sys.argv[1]
-    status, message = asyncio.run(main(card))
-    print(f"{status}|{message}")
-
-
 
 
 async def stripe_check(card: str):
