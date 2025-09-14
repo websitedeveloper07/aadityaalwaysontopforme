@@ -178,6 +178,8 @@ async def ppc(card):
     except Exception as e:
         return json.dumps({"error": {"message": f"Processing error: {str(e)}", "code": "processing_error"}})
 
+import json
+
 def parse_result(result):
     try:
         # First try to parse as JSON
@@ -196,34 +198,31 @@ def parse_result(result):
                 # Only check for CCN if it's specifically CVV/CVC related
                 message_lower = message.lower()
                 if any(pattern.lower() in message_lower for pattern in CCN_patterns):
-                    return "CCN", message
+                    return "CCN", message, result
                 else:
-                    # Return DECLINED with exact message for all other errors
-                    return "DECLINED", message
+                    return "DECLINED", message, result
                     
             # Check for success indicators
             if data.get("success") or data.get("status") == "succeeded":
-                return "APPROVED", "Payment successful"
+                return "APPROVED", "Payment successful", result
                 
-            # If no error but also no clear success, return the raw response
-            return "DECLINED", str(data)
+            # If no error but also no clear success
+            return "DECLINED", str(data), result
             
         except json.JSONDecodeError:
-            # If not JSON, treat as plain text and return as is
+            # If not JSON, treat as plain text
             result_lower = result.lower()
             
-            # Only check for CCN if specifically CVV related
             if any(pattern.lower() in result_lower for pattern in CCN_patterns):
-                return "CCN", result
-            # Check for success patterns
+                return "CCN", result, result
             elif any(word in result_lower for word in ["success", "approved", "completed", "thank you"]):
-                return "APPROVED", result
+                return "APPROVED", result, result
             else:
-                # Return as DECLINED with exact message
-                return "DECLINED", result
+                return "DECLINED", result, result
                 
     except Exception as e:
-        return "ERROR", f"Parse error: {str(e)}"
+        return "ERROR", f"Parse error: {str(e)}", result
+
 
 async def main(card):
     result = await ppc(card)
