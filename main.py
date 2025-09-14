@@ -1701,15 +1701,11 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
-    # stripe_check now returns (status, response_text, raw_response)
+    # stripe_check now returns a tuple: (status, message, raw_response)
     status, response_text, raw_response = await stripe_check(card)
-
-    # Fallbacks for safety
-    status = status or "ERROR"
     response_text = response_text.strip() or "No message returned"
     raw_response = raw_response or "No raw response"
 
@@ -1731,17 +1727,13 @@ async def st_worker(update: Update, card: str, status_msg):
     country_flag = bin_details.get("country_emoji", "")
     card_type = bin_details.get("type", "N/A")
 
-    # Bullet link
+    # Links & mentions
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
-    # Developer
     developer = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
-
-    # User mention
     requested_by = f'<a href="tg://user?id={user.id}">{html.escape(user.first_name)}</a>'
 
-    # Escape dynamic values
+    # Escape text
     escaped_status = html.escape(status)
     escaped_card = html.escape(card)
     escaped_response_text = html.escape(response_text)
@@ -1749,7 +1741,7 @@ async def st_worker(update: Update, card: str, status_msg):
     escaped_issuer = html.escape(issuer)
     escaped_country_name = html.escape(country_name)
 
-    # Final result text
+    # Final message
     result_text = (
         f"<b>◇━━[ {escaped_status}{status_emoji} ]━━◇</b>\n"
         f"{bullet_link} <b>𝐂𝐚𝐫𝐝 ➵</b> <code>{escaped_card}</code>\n"
