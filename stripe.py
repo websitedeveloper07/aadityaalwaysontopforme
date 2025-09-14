@@ -6,7 +6,10 @@ import re
 import time
 import requests
 import random
-
+import json
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 DOMAIN = "https://www.charitywater.org"
 PK = "pk_live_51049Hm4QFaGycgRKpWt6KEA9QxP8gjo8sbC6f2qvl4OnzKUZ7W0l00vlzcuhJBjX5wyQaAJxSPZ5k72ZONiXf2Za00Y1jRrMhU"
 
