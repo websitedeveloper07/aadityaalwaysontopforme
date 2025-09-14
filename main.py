@@ -447,31 +447,17 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
     """Callback handler to go back to the main menu."""
     q = update.callback_query
     await q.answer()
-    
     text, keyboard = await build_start_message(q.from_user, context)
-    
-    try:
-        await q.edit_message_caption(
-            caption=text,  # <-- edit caption instead of text
-            parse_mode=ParseMode.HTML,
-            reply_markup=keyboard,
-            disable_web_page_preview=True
-        )
-    except Exception as e:
-        # fallback: send as a new message if editing fails
-        await q.message.reply_text(
-            text=text,
-            parse_mode=ParseMode.HTML,
-            reply_markup=keyboard,
-            disable_web_page_preview=True
-        )
-        logger.warning(f"Failed to edit message caption: {e}")
+    await q.edit_message_caption(
+        caption=text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=keyboard
+    )
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
     q = update.callback_query
     await q.answer()
-
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
@@ -491,7 +477,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/gate site url</code> - Payment Gateway Checker\n"
         f"{bullet_link} <code>/sh</code> - Shopify 1.0$\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> - Set a Shopify site\n"
-        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 Shopify sites\n"
+        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 shopify sites\n"
         f"{bullet_link} <code>/removeall</code> - Remove all added sites\n"
         f"{bullet_link} <code>/rmsite</code> - Remove specific sites from added\n"
         f"{bullet_link} <code>/mysites</code> - View your added site\n"
@@ -512,22 +498,18 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     try:
-        # Edit the caption of the original /start photo
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
         )
     except Exception as e:
-        # Fallback only if edit fails (rare)
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
         )
-        logger.warning(f"Failed to edit message caption: {e}")
+        logger.warning(f"Failed to edit caption: {e}")
 
 
 
