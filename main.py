@@ -445,6 +445,7 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
     await q.answer()
     text, keyboard = await build_start_message(q.from_user, context)
     try:
+        # This call correctly uses edit_message_caption because it's attached to the photo
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
@@ -503,8 +504,9 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -535,8 +537,9 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ])
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard
         )
@@ -565,8 +568,9 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
     ]
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -600,8 +604,9 @@ async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -632,8 +637,9 @@ async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAU
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -665,8 +671,9 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
     ])
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard
         )
@@ -698,8 +705,9 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -738,8 +746,9 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
     ]
 
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -774,8 +783,9 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -807,8 +817,9 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
     ]
     try:
-        await q.edit_message_caption(
-            caption=text,
+        # Use edit_message_text as this is a text-only menu
+        await q.message.edit_text(
+            text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -850,7 +861,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
-
 
 
 
