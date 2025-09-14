@@ -1909,7 +1909,7 @@ async def mst_worker(status_msg, cards: list):
                 # Build updated text (header + processed cards so far)
                 elapsed = time.time() - start_time
                 header = (
-                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵\n"
+                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$\n"
                     f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total}\n"
                     f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
                     f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
@@ -1936,7 +1936,7 @@ async def mst_worker(status_msg, cards: list):
     # Final update (ensures last card + total stats are locked in)
     elapsed = time.time() - start_time
     header = (
-        f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵\n"
+        f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$\n"
         f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {total}/{total}\n"
         f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
         f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
@@ -1973,9 +1973,9 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
 
-    # Cooldown check (30s per user)
+    # Cooldown check (5s per user)
     if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 30:
-        remaining = int(30 - (now - mst_cooldowns[user_id]))
+        remaining = int(5 - (now - mst_cooldowns[user_id]))
         await update.message.reply_text(f"⏳ Please wait {remaining}s before using /mst again.")
         return
     mst_cooldowns[user_id] = now
