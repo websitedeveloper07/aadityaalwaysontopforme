@@ -1851,6 +1851,23 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+
+import time
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# -------------------- Credits --------------------
+async def consume_credit(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+
 # -------------------- /mst Worker --------------------
 import aiohttp
 import asyncio
@@ -1906,7 +1923,7 @@ async def mst_worker(status_msg, cards: list):
                 # Build updated text (header + processed cards so far)
                 elapsed = time.time() - start_time
                 header = (
-                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$\n"
+                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
                     f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total}\n"
                     f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
                     f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
@@ -1934,7 +1951,7 @@ async def mst_worker(status_msg, cards: list):
     # Final update (lock in totals)
     elapsed = time.time() - start_time
     header = (
-        f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$\n"
+        f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
         f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {total}/{total}\n"
         f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
         f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
@@ -1952,12 +1969,12 @@ async def mst_worker(status_msg, cards: list):
 
 
 
-# -------------------- /mst Command --------------------
 import time
 import asyncio
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from db import consume_credit  # ✅ import your credit function
 
 # Cooldown tracker
 mst_cooldowns = {}
@@ -1973,14 +1990,13 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     now = time.time()
 
     # Cooldown check (30s per user)
-    cooldown_time = 30
-    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < cooldown_time:
-        remaining = int(cooldown_time - (now - mst_cooldowns[user_id]))
+    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 30:
+        remaining = int(30 - (now - mst_cooldowns[user_id]))
         await update.message.reply_text(f"⏳ Please wait {remaining}s before using /mst again.")
         return
     mst_cooldowns[user_id] = now
 
-    # Extract cards (from reply or args)
+    # Extract cards (reply or args)
     if update.message.reply_to_message:
         card_text = update.message.reply_to_message.text
     else:
@@ -1994,11 +2010,17 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ No valid cards found.")
         return
 
+    # ✅ Deduct 1 credit per /mst (not per card)
+    has_credit = await consume_credit(user_id)
+    if not has_credit:
+        await update.message.reply_text("⚠️ You don’t have enough credits to use /mst.")
+        return
+
     # Processing text
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$")
-    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
@@ -2006,9 +2028,7 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     status_msg = await update.message.reply_text(
-        initial_text,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True   # 🚫 prevents preview
+        initial_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True
     )
 
     # Run worker in background
