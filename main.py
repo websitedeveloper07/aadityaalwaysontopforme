@@ -4510,6 +4510,9 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     cookie = get_next_cookie()
     proxy = await get_next_proxy()
 
+    # --- Clean cookie: remove newlines and extra spaces ---
+    cookie = " ".join(line.strip() for line in cookie.splitlines() if line.strip())
+
     # --- Prepare API request params ---
     params = {
         "key": API_KEY,
@@ -4520,14 +4523,15 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     }
 
     # --- Log full API request URL ---
-    full_api_url = f"{API_URL}?{urllib.parse.urlencode(params)}"
+    encoded_params = urllib.parse.urlencode(params)
+    full_api_url = f"{API_URL}?{encoded_params}"
     logger.info(f"[DEBUG] Full API Request URL: {full_api_url}")
 
     try:
         timeout = aiohttp.ClientTimeout(total=50)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             try:
-                # Call API with params (proxy included in API URL)
+                # Call API (params are URL-encoded)
                 async with session.get(API_URL, params=params) as resp:
                     if resp.status != 200:
                         await processing_msg.edit_text(
@@ -4603,15 +4607,15 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     final_msg = (
         f"◇━━〔 {stylish_status} 〕━━◇\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝒆𝒆 𝑷𝒓𝒆𝒎𝒊𝒖𝒎 𝑨𝒖𝒕𝒉\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{escape(response)}</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝘄𝗮𝗒 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝗿𝗲𝗲 𝑷𝒓𝗲𝗺𝗶𝘂𝗺 𝑨𝒖𝒕𝗵\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝗼𝗻𝗌𝗲 ➵ <i>{escape(response)}</i>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
-        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{escape(issuer)}</code>\n"
-        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝗻𝗱 ➵ <code>{escape(brand)}</code>\n"
+        f"{bullet_link} 𝐁𝗮𝗻𝗸 ➵ <code>{escape(issuer)}</code>\n"
+        f"{bullet_link} 𝐂𝗼𝗎𝗻𝘁𝗿𝘆 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
-        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
+        f"{bullet_link} 𝐑𝐞𝗾𝘂𝗲𝘀𝘁 𝐁𝘆 ➵ {requester}\n"
+        f"{bullet_link} 𝐃𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗿 ➵ {developer_clickable}\n"
         "――――――――――――――――"
     )
 
