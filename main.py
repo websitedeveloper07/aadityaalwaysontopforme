@@ -1705,12 +1705,12 @@ async def consume_credit(user_id: int) -> bool:
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
-    # Call your stripe.py check
+    # Run Stripe check
     status, response_text, raw_response = await stripe_check(card)
 
-    # Fallback if empty
-    response_text = response_text or "No message returned"
-    raw_response = raw_response or "No raw response"
+    # Ensure strings (avoid tuple errors)
+    response_text = str(response_text or "No message returned")
+    raw_response = str(raw_response or "No raw response")
 
     # Status emojis
     emoji_map = {
@@ -1721,9 +1721,12 @@ async def st_worker(update: Update, card: str, status_msg):
     }
     status_emoji = emoji_map.get(status, "❓")
 
-    # BIN info
+    # BIN info (safely)
     bin_number = card.split("|")[0][:6]
-    bin_details = await get_bin_info(bin_number) if callable(get_bin_info) else {}
+    bin_details = {}
+    if callable(globals().get("get_bin_info")):
+        bin_details = await get_bin_info(bin_number)
+
     brand = (bin_details.get("scheme") or "N/A").title()
     issuer = bin_details.get("bank") or "UNKNOWN"
     country_name = bin_details.get("country") or "N/A"
@@ -1742,8 +1745,9 @@ async def st_worker(update: Update, card: str, status_msg):
     escaped_brand = html.escape(brand)
     escaped_issuer = html.escape(issuer)
     escaped_country_name = html.escape(country_name)
+    escaped_raw = html.escape(raw_response[:500])  # limit to first 500 chars
 
-    # Build final result
+    # Build final message
     result_text = (
         f"<b>◇━━[ {status}{status_emoji} ]━━◇</b>\n"
         f"{bullet_link} <b>𝐂𝐚𝐫𝐝 ➵</b> <code>{escaped_card}</code>\n"
@@ -1754,13 +1758,14 @@ async def st_worker(update: Update, card: str, status_msg):
         f"{bullet_link} <b>𝐁𝐚𝐧𝐤 ➵</b> {escaped_issuer}\n"
         f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵</b> {escaped_country_name} {country_flag}\n"
         f"――――――――――――――――\n"
-        f"{bullet_link} <b>𝐑𝐚𝐰 ➵</b> <code>{html.escape(str(raw_response)[:500])}</code>\n"
+        f"{bullet_link} <b>𝐑𝐚𝐰 ➵</b> <code>{escaped_raw}</code>\n"
         f"――――――――――――――――\n"
         f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵</b> {requested_by}\n"
         f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵</b> {developer}\n"
         f"――――――――――――――――"
     )
 
+    # Send to Telegram
     await status_msg.edit_text(
         result_text,
         parse_mode=ParseMode.HTML,
