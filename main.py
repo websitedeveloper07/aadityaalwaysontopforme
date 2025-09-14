@@ -4511,28 +4511,29 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     try:
         timeout = aiohttp.ClientTimeout(total=50)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            proxy_api = await get_next_proxy()  # only API usage
-            logger.info(f"[DEBUG] API proxy: {proxy_api}")
+            
+            # ✅ First rotate cookie + proxy
+            cookie_str = get_next_cookie()       # one cookie per req
+            proxy_url = await get_next_proxy()   # one proxy per req
 
-            # --- Prepare API request ---
+            # ✅ Now build params with those
             params = {
                 "key": API_KEY,
                 "site": SITE,
-                "cookies": get_next_cookie(),
+                "cookies": cookie_str,
                 "cc": cc_input,
-                "proxy": proxy_api  # pass only to API
+                "proxy": proxy_url
             }
 
-            # log the full API URL
-            full_api_url = str(session._build_url(API_URL).with_query(params))
-            logger.info(f"[FULL API] {full_api_url}")
-            print(f"[FULL API] {full_api_url}")
+            # ✅ Debug log full API call
+            query = "&".join([f"{k}={v}" for k, v in params.items()])
+            logger.info(f"[DEBUG] Full API URL: {API_URL}?{query}")
 
             try:
-                async with session.get(API_URL, params=params) as resp:  # removed proxy=
+                async with session.get(API_URL, params=params) as resp:  # 🚫 no proxy= here, only in API
                     if resp.status != 200:
                         await processing_msg.edit_text(
-                            f"❌ API returned HTTP {resp.status}",
+                            f"❌ API returned HTTP {resp.status} | Proxy: {proxy_url} | Cookie: {cookie_str}",
                             parse_mode=ParseMode.HTML
                         )
                         return
@@ -4541,13 +4542,13 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
                     except Exception:
                         text = await resp.text()
                         await processing_msg.edit_text(
-                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>",
+                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>\nProxy: {proxy_url}\nCookie: {cookie_str}",
                             parse_mode=ParseMode.HTML
                         )
                         return
             except Exception as e:
                 await processing_msg.edit_text(
-                    f"❌ Request error:\n<code>{escape(str(e))}</code>",
+                    f"❌ Request error:\n<code>{escape(str(e))}</code>\nProxy: {proxy_url}\nCookie: {cookie_str}",
                     parse_mode=ParseMode.HTML
                 )
                 return
@@ -4563,6 +4564,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
             parse_mode=ParseMode.HTML
         )
         return
+
 
 
     # --- API response ---
