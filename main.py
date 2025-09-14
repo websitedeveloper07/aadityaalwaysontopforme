@@ -441,34 +441,32 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 
-
-
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler to go back to the main menu."""
     q = update.callback_query
     await q.answer()
+    
     text, keyboard = await build_start_message(q.from_user, context)
     
     try:
-        await q.edit_message_text(
-            text=text,
+        await q.edit_message_caption(
+            caption=text,  # <-- edit caption instead of text
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
             disable_web_page_preview=True
         )
     except Exception as e:
+        # fallback: send as a new message if editing fails
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
             disable_web_page_preview=True
         )
-        logger.warning(f"Failed to edit message text: {e}")
+        logger.warning(f"Failed to edit message caption: {e}")
 
-
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Commands' button."""
@@ -515,8 +513,8 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     try:
-        await q.edit_message_text(
-            text=text,
+        await q.edit_message_caption(
+            caption=text,  # <-- edit caption for photo message
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
@@ -528,7 +526,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
-        logger.warning(f"Failed to edit message text: {e}")
+        logger.warning(f"Failed to edit message caption: {e}")
 
 
 
