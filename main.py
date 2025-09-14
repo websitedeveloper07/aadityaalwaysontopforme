@@ -1969,21 +1969,33 @@ async def mst_worker(status_msg, cards: list):
 
 
 
+import re
 import time
 import asyncio
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user, update_user # ✅ import your credit function
+from db import get_user, update_user  # ✅ import your credit function
 
 # Cooldown tracker
 mst_cooldowns = {}
 
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
+# Regex to match card format: 12-19 digits | MM | YY or YYYY | CVV
+CARD_PATTERN = re.compile(r"^\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}$")
+
 def mdv2_escape(text: str) -> str:
     escape_chars = r"_*[]()~`>#+-=|{}.!"
     return "".join("\\" + c if c in escape_chars else c for c in text)
+
+async def consume_credit(user_id: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
 
 async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -2005,7 +2017,13 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         card_text = " ".join(context.args)
 
-    cards = [c.strip() for c in card_text.splitlines() if "|" in c]
+    # ✅ Filter only valid card patterns
+    cards = [
+        c.strip()
+        for c in card_text.splitlines()
+        if CARD_PATTERN.match(c.strip())
+    ]
+
     if not cards:
         await update.message.reply_text("⚠️ No valid cards found.")
         return
@@ -2020,7 +2038,7 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$")
-    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
