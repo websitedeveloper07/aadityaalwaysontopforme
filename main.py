@@ -4514,7 +4514,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         "key": API_KEY,
         "site": SITE,
         "cookies": cookie_value,
-        "cc": cc_input
+        "cc": cc_input,
         "proxy": proxy_url
     }
 
