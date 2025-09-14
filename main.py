@@ -1974,7 +1974,7 @@ import asyncio
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import consume_credit  # ✅ import your credit function
+from db import get_user, update_user # ✅ import your credit function
 
 # Cooldown tracker
 mst_cooldowns = {}
