@@ -6,10 +6,7 @@ import re
 import time
 import requests
 import random
-import json
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+
 DOMAIN = "https://www.charitywater.org"
 PK = "pk_live_51049Hm4QFaGycgRKpWt6KEA9QxP8gjo8sbC6f2qvl4OnzKUZ7W0l00vlzcuhJBjX5wyQaAJxSPZ5k72ZONiXf2Za00Y1jRrMhU"
 
@@ -286,16 +283,5 @@ if __name__ == "__main__":
 
 async def stripe_check(card: str):
     """Main entry point to check a card from the bot."""
-    try:
-        result = await ppc(card)
-        status, message, raw = parse_result(result)
-
-        # Log in console
-        logger.info("[StripeCheck] Card: %s | Status: %s | Message: %s", card, status, message)
-        logger.debug("[StripeCheck] Raw: %s", raw)
-
-        return status, message, raw
-
-    except Exception as e:
-        logger.error("Stripe check failed for card %s: %s", card, e, exc_info=True)
-        return "ERROR", str(e), None
+    result = await ppc(card)
+    return parse_result(result)
