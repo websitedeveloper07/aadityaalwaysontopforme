@@ -1702,11 +1702,25 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # -------------------- Worker --------------------
+# -------------------- Worker --------------------
 async def st_worker(update: Update, card: str, status_msg):
     user = update.effective_user
 
-    # Run stripe check
-    status, response_text = await stripe_check(card)
+    try:
+        # Run stripe check
+        status, response_text, raw_response = await stripe_check(card)
+
+        # Log everything to console
+        logger.info("Stripe check result for user %s (%s):", user.id, user.first_name)
+        logger.info("Card: %s", card)
+        logger.info("Status: %s", status)
+        logger.info("Response Text: %s", response_text)
+        logger.debug("Raw Response: %s", raw_response)
+
+    except Exception as e:
+        # Log error
+        logger.error("Stripe check failed for card %s: %s", card, e, exc_info=True)
+        status, response_text, raw_response = "ERROR", str(e), ""
 
     # Map status to emoji
     emoji_map = {
@@ -1744,7 +1758,7 @@ async def st_worker(update: Update, card: str, status_msg):
     escaped_issuer = html.escape(issuer)
     escaped_country_name = html.escape(country_name)
 
-    # Final result text
+    # Final result text (added raw response section)
     result_text = (
         f"<b>◇━━[ {escaped_status}{status_emoji} ]━━◇</b>\n"
         f"{bullet_link} <b>𝐂𝐚𝐫𝐝 ➵</b> <code>{escaped_card}</code>\n"
@@ -1754,6 +1768,8 @@ async def st_worker(update: Update, card: str, status_msg):
         f"{bullet_link} <b>𝐁𝐫𝐚𝐧𝐝 ➵</b> {escaped_brand}\n"
         f"{bullet_link} <b>𝐁𝐚𝐧𝐤 ➵</b> {escaped_issuer}\n"
         f"{bullet_link} <b>𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵</b> {escaped_country_name} {country_flag}\n"
+        f"――――――――――――――――\n"
+        f"{bullet_link} <b>𝐑𝐚𝐰 ➵</b> <code>{html.escape(str(raw_response)[:500])}</code>\n"  # show first 500 chars
         f"――――――――――――――――\n"
         f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵</b> {requested_by}\n"
         f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵</b> {developer}\n"
@@ -1765,6 +1781,7 @@ async def st_worker(update: Update, card: str, status_msg):
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
+
 
 # -------------------- Command --------------------
 async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
