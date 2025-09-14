@@ -1856,13 +1856,11 @@ import aiohttp
 import asyncio
 import time
 from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown as mdv2_escape
 
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 
 async def mst_worker(status_msg, cards: list):
-    bullet = "[⌇]"
-    bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
     # Start timing
     start_time = time.time()
@@ -1876,7 +1874,6 @@ async def mst_worker(status_msg, cards: list):
     # Card results accumulator
     card_results = []
 
-    # Session for API calls
     async with aiohttp.ClientSession() as session:
         for idx, card in enumerate(cards, start=1):
             try:
@@ -1887,7 +1884,7 @@ async def mst_worker(status_msg, cards: list):
                 status = data.get("status", "ERROR").upper()
                 response = data.get("response", "No response")
 
-                # Counters
+                # Counters + emoji
                 if status == "APPROVED":
                     approved += 1
                     emoji = "✅"
@@ -1920,12 +1917,13 @@ async def mst_worker(status_msg, cards: list):
 
                 final_text = header + "\n".join(card_results)
 
-                # Edit message with new state
                 await status_msg.edit_text(
-                    final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+                    final_text,
+                    parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True,
                 )
 
-                await asyncio.sleep(1)  # small delay so it feels progressive
+                await asyncio.sleep(1)
 
             except Exception as e:
                 errors += 1
@@ -1933,7 +1931,7 @@ async def mst_worker(status_msg, cards: list):
                     f"<code>{card}</code>\n𝗦𝘁𝗮𝘁𝘂𝘀 ➵ ⚠️ <i>{str(e)}</i>\n──────── ⸙ ─────────"
                 )
 
-    # Final update (ensures last card + total stats are locked in)
+    # Final update (lock in totals)
     elapsed = time.time() - start_time
     header = (
         f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$\n"
@@ -1947,7 +1945,9 @@ async def mst_worker(status_msg, cards: list):
     final_text = header + "\n".join(card_results)
 
     await status_msg.edit_text(
-        final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+        final_text,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True,
     )
 
 
@@ -1958,7 +1958,6 @@ import asyncio
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-
 
 # Cooldown tracker
 mst_cooldowns = {}
@@ -1973,9 +1972,10 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
 
-    # Cooldown check (5s per user)
-    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 30:
-        remaining = int(5 - (now - mst_cooldowns[user_id]))
+    # Cooldown check (30s per user)
+    cooldown_time = 30
+    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < cooldown_time:
+        remaining = int(cooldown_time - (now - mst_cooldowns[user_id]))
         await update.message.reply_text(f"⏳ Please wait {remaining}s before using /mst again.")
         return
     mst_cooldowns[user_id] = now
@@ -1994,11 +1994,11 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ No valid cards found.")
         return
 
-    # Processing text (as you wanted)
+    # Processing text
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$")
-    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
     initial_text = (
         f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
         f"{bullet_link} {gateway_text}\n"
@@ -2006,11 +2006,14 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     status_msg = await update.message.reply_text(
-        initial_text, parse_mode=ParseMode.MARKDOWN_V2
+        initial_text,
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True   # 🚫 prevents preview
     )
 
     # Run worker in background
     asyncio.create_task(mst_worker(status_msg, cards))
+
 
 
 
