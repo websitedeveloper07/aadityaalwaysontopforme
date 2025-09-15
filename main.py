@@ -4543,7 +4543,7 @@ woocommerce_cart_hash=75b88f48dfeb6427cdde785ac24fd376;
 wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77493%7C1758476819%7C1757958419%7C%24generic%24RMnCm3Ah6JAXohWBgKXvI3MzRQnCdBqyrRrco7HS;
 sbjs_session=pgs%3D7%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fedit-address%2F;'''
 
-    # --- Cookie 2 ---
+    # --- Cookie 3 ---
     '''__ctmid=68c7b2210004f57a348a3d16;
 _gcl_au=1.1.880721484.1757917733.1998417398.1757921382.1757921542;
 _ga_T35FBK70QE=GS2.1.s1757920642$o2$g1$t1757921610$j60$l0$h2038405997;
@@ -4569,6 +4569,36 @@ woocommerce_items_in_cart=1;
 woocommerce_cart_hash=5ea189a74f48785ac338835bcf6cbc61;
 wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77523%7C1758526307%7C1758007907%7C%24generic%24KaVhY83oORoNy55B4lDoDoqx-SFuiQm1tBHV2WRN;
 _gauges_unique_hour=1;
+_uetsid=422cb0f091fd11f09d95478daf460df3;
+_uetvid=422d20b091fd11f0a830eb4c11814c3c;'''
+
+    # --- Cookie 4 ---
+    '''__ctmid=68c7b2210004f57a348a3d16;
+__ctmid=68c7b2210004f57a348a3d16;
+_gcl_au=1.1.880721484.1757917733.1998417398.1757921382.1757923396;
+_ga_T35FBK70QE=GS2.1.s1757920642$o2$g1$t1757923451$j60$l0$h2038405997;
+_ga=GA1.1.324457782.1757917735;
+_clck=1mbv5h6%5E2%5Efzc%5E0%5E2084;
+_clsk=1uklurw%5E1757923394841%5E18%5E1%5Eq.clarity.ms%2Fcollect;
+sbjs_migrations=1418474375998%3D1;
+sbjs_current_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
+sbjs_first_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
+sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_udata=vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%3B%20rv%3A142.0%29%20Gecko%2F20100101%20Firefox%2F142.0;
+_gauges_unique_day=1;
+_gauges_unique_month=1;
+_gauges_unique_year=1;
+_gauges_unique=1;
+cf_clearance=SexZEmhpS3KEOqkuSoRjrzC0b3QNhc4vEZA8BPux49U-1757923420-1.2.1.1-vHaIN5SHq2LSRsWcqlbnyLqJv2VI8F.mp7UrcFXdegpOActyvtkNoUabPaK4.lRJXRvzIMgYDhP8vukHUO.CgxaQJXUP.yeDB_qPwkutoTRGPyzSWSVPXqVbgu0gquaneRNYp2KF30mJQUsQ7a2sA07pNMaj4oe2jQIJ1YHPu5S4GbgfS6qRmQ33K_3fro3HaNRihIRgNi.H5oBzAh_RJO4BLgD0fV_AdDkWzZOp4ec;
+PHPSESSID=b4461cff9e4cff4be4dc06fbcf7e23a8;
+sbjs_session=pgs%3D11%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fcheckout%2F;
+_gauges_unique_hour=1;
+wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=rockyyog%7C1759132159%7Ci67tiMb1JDkUDrzaGum3BabiK2GKTLndFgMwFwOklsm%7C25ba775fbe7960f739c4d0c29c054a8688bdc3d54faefe97ddd4b05b6318034a;
+__kla_id=eyJjaWQiOiJOVEUyTm1GbE1qY3ROMlV3TkMwMFptTXhMV0ZoWVdRdE9UUXhaREEwT1dNM09HSXgiLCIkZXhjaGFuZ2VfaWQiOiJxdHE5X1dVek03TVlpZExaRUNzYTY1WlhlWEhHVG1nUTVyZlZfTlBDSDVZLlNOZkJnNyJ9;
+woocommerce_items_in_cart=1;
+woocommerce_cart_hash=33fce3a9c86df6e9b29111c8428d006f;
+wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77524%7C1758527715%7C1758009315%7C%24generic%24f-G_m_2Kzv6sgI-ukGY57OQRdsBjvOtli1GLyvTe;
 _uetsid=422cb0f091fd11f09d95478daf460df3;
 _uetvid=422d20b091fd11f0a830eb4c11814c3c;'''
 
@@ -5038,8 +5068,6 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
         f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{escape_markdown(captcha, version=2)}`\n"
         f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ `{escape_markdown(cloudflare, version=2)}`\n"
         f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `{escape_markdown(security, version=2)}`\n"
-        f"――――――――――――――――\n"
-        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬 ➵ `{status}`\n"
         f"――――――――――――――――\n"
         f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
         f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
