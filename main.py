@@ -4490,7 +4490,7 @@ async def get_next_proxy():
 
 
 logger = logging.getLogger(__name__)
-BASE_COOLDOWN = 10  # Base cooldown in seconds
+BASE_COOLDOWN = 13  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
 SITE = "https://highwayandheavyparts.com"
@@ -4498,6 +4498,63 @@ SITE = "https://highwayandheavyparts.com"
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
     # --- Cookie 1 ---
+    '''tk_or=%22%22;
+tk_r3d=%22%22;
+tk_lr=%22%22;
+_ga=GA1.1.584178995.1757784262;
+tk_ai=d4XUNC5zWUyYsgPbfHzSIiOh;
+__ctmid=68c5a8fb0004f57a29664819;
+__ctmid=68c5a8fb0004f57a29664819;
+_gauges_unique_month=1;
+_gauges_unique_year=1;
+_gauges_unique=1;
+cf_clearance=XjfNy6go0GZgexXGAv2T3QXhDcDv74EoTK2zKvrGqxw-1757785277-1.2.1.1-qgBfjnTwImJkyZo.YNm4qFohs0Zq2bHdgId4LE172lkfBXgJNv.0hBF9SzaVzoRtORR9tjwT9hUcEKi4rG6VgHdjh9zf0K2iDSjSw8NcAp5tvguepZT0PV_S6LnLLQL1oeJY1fAOAS3NAUQBdw5pvbK.Z.lRUDoGGJNdXZTWCayi28BwKeLIyWPDP3obA8amzaqv8c6pn0De52YHVRVvwzTXDKAiSOqiacThv9Ptguo;
+_clck=15cvop0%5E2%5Efzc%5E0%5E2082;
+sbjs_migrations=1418474375998%3D1;
+sbjs_current_add=fd%3D2025-09-15%2015%3A59%3A11%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
+sbjs_first_add=fd%3D2025-09-15%2015%3A59%3A11%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
+sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
+_gauges_unique_hour=1;
+_gauges_unique_day=1;
+_gcl_au=1.1.1719125921.1757784261.734744063.1757953775.1757953774;
+wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=pawanboss%7C1759163377%7CaTLliYEUpnnmcjNVE6PIAhzIeBvqUceqCeUWuVhHFcR%7Ce8e8831fa229e7772ec5e6fe7f1dfbbcc9ae6506e2e6df1eea661def70dcd50a;
+sbjs_session=pgs%3D2%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F;
+_ga_T35FBK70QE=GS2.1.s1757953737$o2$g1$t1757953788$j9$l0$h785637050;
+_uetsid=14707d90925111f0bd5ee75384cdcb1b;
+_uetvid=891ed20090c611f0b6a1f779aa3bffa2;
+_clsk=6a0xoq%5E1757953789109%5E3%5E1%5Ea.clarity.ms%2Fcollect;
+__kla_id=eyJjaWQiOiJaVEZqTWpVNVpESXRZekUxTmkwMFltWmpMV0ZoT0RZdE1HTTRZVEZsT0RJek5HVXgiLCIkZXhjaGFuZ2VfaWQiOiJyVjhLNEdYQTZjcXpDakhRVkRlZWZFM3RCR0lDcC15QWxiWDRENkVQNG1NLlNOZkJnNyJ9;'''
+
+    
+    # --- Cookie 2 ---
+    '''_ga=GA1.1.1954829047.1757872504;
+__ctmid=68c701780004f57a1565004b;
+__ctmid=68c701780004f57a1565004b;
+_gauges_unique_day=1;
+_gauges_unique_month=1;
+_gauges_unique_year=1;
+_gauges_unique=1;
+cf_clearance=mpnUzZstWvQXl5aVLlGpM6TFAFYu6.gVIU6ypIhyYbg-1757874573-1.2.1.1-.2LV_MhT42wZh2z0nnuMqcBuEQvEh1I8KmsEafG7U0uFfASa1w2Ye0IVxbbu1P6bDn9vpvzv_gRn_1qV7gqizsPbLEgLJ3DKW.2f58m0tW9jTWMqF5oqWkbAabVO48XdykjfqLCx0ZaWDE79IOCchQ1fw0Ls8EUtjlBXr59bvxXzxD3m7kf.wksLMKqQ6HoI1BqonOTNS_desaRnKR5mFDhQqmvqMPsPbLdHuQSwtTk;
+_clck=179hrve%5E2%5Efzc%5E0%5E2083;
+sbjs_migrations=1418474375998%3D1;
+sbjs_current_add=fd%3D2025-09-15%2015%3A51%3A06%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fadd-payment-method%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_first_add=fd%3D2025-09-15%2015%3A51%3A06%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fadd-payment-method%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+_gauges_unique_hour=1;
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
+_gcl_au=1.1.69780881.1757872504.939215149.1757953544.1757953543;
+wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=nikhilchoudhary%7C1759163147%7CaaXnA25DcDCpVcVPQjmuYEgTiy1DwRkU5J2DgTRyu2S%7C00313ff1293d4a627e5f64fee80477942cccd7c19aae890948d3e1d3d286d8b7;
+sbjs_session=pgs%3D4%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F;
+_ga_T35FBK70QE=GS2.1.s1757953228$o3$g1$t1757953558$j32$l0$h973532531;
+_uetsid=f13df0c0919311f0bd5ee75384cdcb1b;
+_uetvid=f13e1350919311f0b6a1f779aa3bffa2;
+_clsk=17rmqk8%5E1757953558886%5E5%5E1%5Ea.clarity.ms%2Fcollect;
+__kla_id=eyJjaWQiOiJZbUZtTWprMU5XVXROV05tWlMwMFlURm1MVGhrWVRJdFlURm1ZVFV4TVRReE4yUTAiLCIkZXhjaGFuZ2VfaWQiOiIxT1BJQm00eFBrTTJlQmhralhnckluTzZDa09TY3ZGX2RfcG9DU0Jya0ZEUUZtMTFNQWlhWk9ZekE3U1FwOEpOLlNOZkJnNyJ9;'''
+
+    # --- Cookie 3 ---
     '''_ga=GA1.1.1954829047.1757872504;
 __ctmid=68c701780004f57a1565004b;
 __ctmid=68c701780004f57a1565004b;
@@ -4517,52 +4574,6 @@ _ga_T35FBK70QE=GS2.1.s1757953228$o3$g0$t1757953228$j60$l0$h973532531;
 _uetsid=f13df0c0919311f0bd5ee75384cdcb1b;
 _uetvid=f13e1350919311f0b6a1f779aa3bffa2;
 _clsk=17rmqk8%5E1757953229662%5E1%5E1%5Ea.clarity.ms%2Fcollect;'''
-
-    
-    # --- Cookie 2 ---
-    '''sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-14%2017%3A12%3A53%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fadd-payment-method%2F%7C%7C%7Crf%3D%28none%29;
-sbjs_first_add=fd%3D2025-09-14%2017%3A12%3A53%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fadd-payment-method%2F%7C%7C%7Crf%3D%28none%29;
-sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
-__ctmid=68c6fe9e0004f57a2b8bef3e;
-_ga=GA1.1.836691727.1757871774;
-_gcl_au=1.1.1684708765.1757871774.264305573.1757871783.1757871975;
-wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=zerotracehacked%7C1759081617%7Crkei78OTBe4JMCdpSFPtvcz2XGJezBxrqfF1Zeye2Aa%7C520fb28d7044ddd9b5387e206b22041d827b7f69353fedfb6540162a16a2f131;
-woocommerce_items_in_cart=1;
-woocommerce_cart_hash=75b88f48dfeb6427cdde785ac24fd376;
-wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77493%7C1758476819%7C1757958419%7C%24generic%24RMnCm3Ah6JAXohWBgKXvI3MzRQnCdBqyrRrco7HS;
-sbjs_session=pgs%3D7%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fedit-address%2F;'''
-
-    # --- Cookie 3 ---
-    '''__ctmid=68c7b2210004f57a348a3d16;
-_gcl_au=1.1.880721484.1757917733.1998417398.1757921382.1757921542;
-_ga_T35FBK70QE=GS2.1.s1757920642$o2$g1$t1757921610$j60$l0$h2038405997;
-_ga=GA1.1.324457782.1757917735;
-_clck=1mbv5h6%5E2%5Efzc%5E0%5E2084;
-_clsk=1uklurw%5E1757921535209%5E7%5E1%5Eq.clarity.ms%2Fcollect;
-sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
-sbjs_first_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
-sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_udata=vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%3B%20rv%3A142.0%29%20Gecko%2F20100101%20Firefox%2F142.0;
-_gauges_unique_day=1;
-_gauges_unique_month=1;
-_gauges_unique_year=1;
-_gauges_unique=1;
-cf_clearance=1tYOZUaUwGUJCrvhKKPPtsc029.gvDQPFnSzjmJQllc-1757921624-1.2.1.1-wIxzRsc0suqHGwhTSDJ4tg08QWPg3Co31iMf__qTCLrybg0X2DKfbVipiLddsVXIVoTlgla.HRbNArUsIoq58OX1wFqOO9ayTQMMNbHYAaDALcnp393I_sZdxD7X9HDuzF7mopNAAYKEeVOaDGHQDI1enCmXkhfQ1U0A2KIpEGA9MvILW03hYQiflcaZmpCOhwOYDpsnVnDDfzeNIIFK_Rgcm325R_Jue1JDZICaUbU;
-PHPSESSID=b4461cff9e4cff4be4dc06fbcf7e23a8;
-sbjs_session=pgs%3D4%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fcheckout%2F;
-wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=officialmiakhalifa%7C1759130983%7CozST1tyxK4eWnc9pll5lvs8jWefvU6xm9mt24uCOobb%7Cbc45bdce3a9ea0beffc3dcabe6b93e1a5099d66a3d3d3ea2736f996ca7709595;
-__kla_id=eyJjaWQiOiJOVEUyTm1GbE1qY3ROMlV3TkMwMFptTXhMV0ZoWVdRdE9UUXhaREEwT1dNM09HSXgiLCIkZXhjaGFuZ2VfaWQiOiIxMDAweFpURElwa01tSjlWaUtGcHJxMHFCcENxUzY1RDBMMTRfS2NBUGh0Y3hRdUd3djVNSXBHWmFMTjI0VklCLlNOZkJnNyJ9;
-woocommerce_items_in_cart=1;
-woocommerce_cart_hash=5ea189a74f48785ac338835bcf6cbc61;
-wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77523%7C1758526307%7C1758007907%7C%24generic%24KaVhY83oORoNy55B4lDoDoqx-SFuiQm1tBHV2WRN;
-_gauges_unique_hour=1;
-_uetsid=422cb0f091fd11f09d95478daf460df3;
-_uetvid=422d20b091fd11f0a830eb4c11814c3c;'''
 
     # --- Cookie 4 ---
     '''__ctmid=68c7b2210004f57a348a3d16;
