@@ -2954,6 +2954,9 @@ API_CHECK_TEMPLATE = (
 import re
 from html import escape  # for escaping card_input safely in HTML
 
+# Global card regex pattern (assumes you've declared this elsewhere)
+CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -2968,9 +2971,9 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         card_input = context.args[0].strip()
 
-    # 2️⃣ Else check if this is a reply to a message containing a card pattern
+    # 2️⃣ Else check if this is a reply to a message containing a card pattern (anywhere in message)
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = re.search(r"^\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}$", update.message.reply_to_message.text.strip())
+        match = CARD_REGEX.search(update.message.reply_to_message.text.strip())
         if match:
             card_input = match.group().strip()
 
@@ -2983,8 +2986,8 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Validate card format (redundant if regex above, but keeping for safety)
-    if not re.match(r"^\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}$", card_input):
+    # Validate card format (redundant but safe)
+    if not CARD_REGEX.fullmatch(card_input):
         await update.message.reply_text(
             "❌ Invalid card format. Use: <code>card|mm|yy|cvv</code>",
             parse_mode=ParseMode.HTML
@@ -3027,6 +3030,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Run in background
     asyncio.create_task(process_card_check(user, card_input, custom_urls, msg))
+
 
 
 # ===== Worker =====
