@@ -4249,6 +4249,8 @@ CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 COOLDOWN_SECONDS = 2
 user_cooldowns = {}  # Global dictionary for cooldown tracking
 
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+
 # --- Dummy consume_credit (replace with your actual one) ---
 # async def consume_credit(user_id): ...
 
@@ -4297,12 +4299,30 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 4️⃣ Acknowledge and set cooldown
-    msg = await update.message.reply_text("<b>⏳ Processing your request...</b>", parse_mode="HTML")
+    # 4️⃣ Build bullet link HTML
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+    # 5️⃣ Compose stylish processing message
+    processing_text = (
+        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+        f"<pre><code>𝗩𝗕𝗩 𝗖𝗵𝗲𝗰𝗸 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽\n"
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
+    )
+
+    # 6️⃣ Send stylish processing message
+    msg = await update.message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+
+    # 7️⃣ Set cooldown
     user_cooldowns[user_id] = now.timestamp()
 
-    # 5️⃣ Run async background task
+    # 8️⃣ Run async background task
     asyncio.create_task(run_vbv_check(msg, update, card_data))
+
 
 # --- Background worker ---
 import aiohttp
