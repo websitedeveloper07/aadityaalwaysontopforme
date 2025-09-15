@@ -2696,6 +2696,11 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
 
 # --- Main /sh command ---
+import re
+
+# Assuming you have this regex pattern somewhere globally:
+CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+
 async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
@@ -2703,15 +2708,26 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
+    payload = None
+
     # --- Check arguments ---
-    if not context.args:
+    if context.args:
+        payload = " ".join(context.args).strip()
+
+    # --- If no args, check if this is a reply to a message containing card data ---
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        if match:
+            payload = match.group().strip()
+
+    # --- If still no payload, usage message ---
+    if not payload:
         await update.message.reply_text(
-            "⚠️ Usage: <code>/sh card|mm|yy|cvv</code>",
+            "⚠️ Usage: <code>/sh card|mm|yy|cvv</code>\n"
+            "Or reply to a message containing a card.",
             parse_mode=ParseMode.HTML
         )
         return
-
-    payload = " ".join(context.args).strip()
 
     # --- Run in background ---
     asyncio.create_task(process_sh(update, context, payload))
@@ -2935,6 +2951,9 @@ API_CHECK_TEMPLATE = (
 )
 
 # ===== Main Command =====
+import re
+from html import escape  # for escaping card_input safely in HTML
+
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -2943,17 +2962,28 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user_id, update):
         return
 
-    # Argument check
-    if not context.args:
+    card_input = None
+
+    # 1️⃣ Check if card info provided as argument
+    if context.args:
+        card_input = context.args[0].strip()
+
+    # 2️⃣ Else check if this is a reply to a message containing a card pattern
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = re.search(r"^\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}$", update.message.reply_to_message.text.strip())
+        if match:
+            card_input = match.group().strip()
+
+    # 3️⃣ If still no valid card input, send usage message
+    if not card_input:
         await update.message.reply_text(
-            "❌ Please provide card details. Example: <code>/sp card|mm|yy|cvv</code>",
+            "❌ Please provide card details. Example: <code>/sp card|mm|yy|cvv</code>\n"
+            "Or reply to a message containing card details.",
             parse_mode=ParseMode.HTML
         )
         return
 
-    card_input = context.args[0].strip()
-
-    # Validate card format
+    # Validate card format (redundant if regex above, but keeping for safety)
     if not re.match(r"^\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}$", card_input):
         await update.message.reply_text(
             "❌ Invalid card format. Use: <code>card|mm|yy|cvv</code>",
@@ -2987,8 +3017,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<pre><code>{escape(card_input)}</code></pre>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
-     )
-
+    )
 
     msg = await update.message.reply_text(
         processing_text,
@@ -4509,6 +4538,36 @@ woocommerce_items_in_cart=1;
 woocommerce_cart_hash=75b88f48dfeb6427cdde785ac24fd376;
 wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77493%7C1758476819%7C1757958419%7C%24generic%24RMnCm3Ah6JAXohWBgKXvI3MzRQnCdBqyrRrco7HS;
 sbjs_session=pgs%3D7%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fedit-address%2F;'''
+
+    # --- Cookie 2 ---
+    '''__ctmid=68c7b2210004f57a348a3d16;
+_gcl_au=1.1.880721484.1757917733.1998417398.1757921382.1757921542;
+_ga_T35FBK70QE=GS2.1.s1757920642$o2$g1$t1757921610$j60$l0$h2038405997;
+_ga=GA1.1.324457782.1757917735;
+_clck=1mbv5h6%5E2%5Efzc%5E0%5E2084;
+_clsk=1uklurw%5E1757921535209%5E7%5E1%5Eq.clarity.ms%2Fcollect;
+sbjs_migrations=1418474375998%3D1;
+sbjs_current_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
+sbjs_first_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
+sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_udata=vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%3B%20rv%3A142.0%29%20Gecko%2F20100101%20Firefox%2F142.0;
+_gauges_unique_day=1;
+_gauges_unique_month=1;
+_gauges_unique_year=1;
+_gauges_unique=1;
+cf_clearance=1tYOZUaUwGUJCrvhKKPPtsc029.gvDQPFnSzjmJQllc-1757921624-1.2.1.1-wIxzRsc0suqHGwhTSDJ4tg08QWPg3Co31iMf__qTCLrybg0X2DKfbVipiLddsVXIVoTlgla.HRbNArUsIoq58OX1wFqOO9ayTQMMNbHYAaDALcnp393I_sZdxD7X9HDuzF7mopNAAYKEeVOaDGHQDI1enCmXkhfQ1U0A2KIpEGA9MvILW03hYQiflcaZmpCOhwOYDpsnVnDDfzeNIIFK_Rgcm325R_Jue1JDZICaUbU;
+PHPSESSID=b4461cff9e4cff4be4dc06fbcf7e23a8;
+sbjs_session=pgs%3D4%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fcheckout%2F;
+wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=officialmiakhalifa%7C1759130983%7CozST1tyxK4eWnc9pll5lvs8jWefvU6xm9mt24uCOobb%7Cbc45bdce3a9ea0beffc3dcabe6b93e1a5099d66a3d3d3ea2736f996ca7709595;
+__kla_id=eyJjaWQiOiJOVEUyTm1GbE1qY3ROMlV3TkMwMFptTXhMV0ZoWVdRdE9UUXhaREEwT1dNM09HSXgiLCIkZXhjaGFuZ2VfaWQiOiIxMDAweFpURElwa01tSjlWaUtGcHJxMHFCcENxUzY1RDBMMTRfS2NBUGh0Y3hRdUd3djVNSXBHWmFMTjI0VklCLlNOZkJnNyJ9;
+woocommerce_items_in_cart=1;
+woocommerce_cart_hash=5ea189a74f48785ac338835bcf6cbc61;
+wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77523%7C1758526307%7C1758007907%7C%24generic%24KaVhY83oORoNy55B4lDoDoqx-SFuiQm1tBHV2WRN;
+_gauges_unique_hour=1;
+_uetsid=422cb0f091fd11f09d95478daf460df3;
+_uetvid=422d20b091fd11f0a830eb4c11814c3c;'''
+
     
 ]
 
