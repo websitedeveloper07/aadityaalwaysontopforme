@@ -3056,7 +3056,7 @@ async def process_rz1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ Razorpay Direct</b>\n"
+            f"{bullet_link} <b>Gateway ➵ 𝑹𝒂𝒛𝒐𝒓𝒑𝒂𝒚 𝑫𝒊𝒓𝒆𝒄𝒕</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
