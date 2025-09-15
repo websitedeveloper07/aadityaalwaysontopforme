@@ -3745,76 +3745,10 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Build bullet link HTML
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-    # Compose processing message
-    processing_text = (
-        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-        f"<pre><code>from telegram.constants import ParseMode
-
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
-
-async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    now = time.time()
-
-    # Cooldown check (5 seconds)
-    if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
-        return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
-    last_msp_usage[user_id] = now
-
-    # Extract input text from args or replied message
-    raw_input = None
-    if context.args:
-        raw_input = " ".join(context.args)
-    elif update.message.reply_to_message and update.message.reply_to_message.text:
-        raw_input = update.message.reply_to_message.text
-
-    if not raw_input:
-        return await update.message.reply_text(
-            "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
-            "Or reply to a message containing cards.",
-            parse_mode=ParseMode.HTML
-        )
-
-    # Extract cards using regex (make sure CARD_REGEX is defined)
-    cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
-    if not cards:
-        return await update.message.reply_text("❌ No valid cards found.")
-    if len(cards) > 50:
-        cards = cards[:50]
-
-    # Fetch user data and credits
-    user_data = await get_user(user_id)
-    if not user_data:
-        return await update.message.reply_text("❌ No user data found in DB.")
-    if not await consume_credit(user_id):
-        return await update.message.reply_text("❌ You have no credits left.")
-
-    base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
-    sites = user_data.get("custom_urls", [])
-    if not sites:
-        return await update.message.reply_text("❌ No sites found in your account.")
-
-    # Build bullet link HTML
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
-    # Compose processing message
+    # Compose processing message (stylish bold Mass Check Ongoing)
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
-        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
-    )
-
-    # Send fancy processing message
-    msg = await update.message.reply_text(
-        processing_text,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
-    )
-
-    # Start background task
-    asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
-</code></pre>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
     )
