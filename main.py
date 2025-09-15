@@ -2054,12 +2054,16 @@ async def mst_worker(status_msg, cards: list):
     )
 
 
-# -------------------- /mst Command --------------------
+import re
+
+# Strict card regex
+CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+
 # -------------------- /mst Command --------------------
 async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    # Extract cards from reply or args
+    # Extract text from reply or args
     if update.message.reply_to_message:
         card_text = update.message.reply_to_message.text
     else:
@@ -2068,19 +2072,21 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         card_text = " ".join(context.args)
 
-    # Any line with | is treated as a card
-    cards = [c.strip() for c in card_text.splitlines() if "|" in c]
+    # ✅ Extract only valid cards using regex
+    cards = CARD_REGEX.findall(card_text)
 
     if not cards:
-        await update.message.reply_text("⚠️ No valid cards found.")
+        await update.message.reply_text("⚠️ No valid cards found (format: number|MM|YY|CVV).")
         return
 
     # ✅ Enforce max 30 cards per /mst
     if len(cards) > 30:
-        await update.message.reply_text("⚠️ You can only check up to 30 cards at a time. checking firt 30 now.")
-        cards = cards[:30]  # optional: trim the list to first 30 cards
+        await update.message.reply_text(
+            f"⚠️ You sent {len(cards)} cards. Only the first 30 will be checked."
+        )
+        cards = cards[:30]
 
-    # ✅ Apply cooldown only if cards exist
+    # ✅ Apply cooldown
     now = time.time()
     if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 5:
         remaining = int(5 - (now - mst_cooldowns[user_id]))
@@ -2098,9 +2104,9 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet = "[⌇]"
     bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
     gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$")
-    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂s ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
+    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
     initial_text = (
-        f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n"
+        f"```{mdv2_escape('𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳')}```\n"
         f"{bullet_link} {gateway_text}\n"
         f"{bullet_link} {status_text}"
     )
@@ -2110,7 +2116,8 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Run worker in background
-    asyncio.create_task(mst_worker(status_msg, cards))
+    asyncio.create_task(mst_worker(status_msg, cards, user_id))
+
 
 
 
