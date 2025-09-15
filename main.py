@@ -4493,66 +4493,41 @@ logger = logging.getLogger(__name__)
 BASE_COOLDOWN = 13  # Base cooldown in seconds
 API_URL = "https://autob3cook.onrender.com/check?"
 API_KEY = "Xcracker911"
-SITE = "https://highwayandheavyparts.com"
+SITE = "https://iditarod.com"
 
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
     # --- Cookie 1 ---
-    '''tk_or=%22%22;
-tk_r3d=%22%22;
-tk_lr=%22%22;
-_ga=GA1.1.584178995.1757784262;
-tk_ai=d4XUNC5zWUyYsgPbfHzSIiOh;
-__ctmid=68c5a8fb0004f57a29664819;
-__ctmid=68c5a8fb0004f57a29664819;
-_gauges_unique_month=1;
-_gauges_unique_year=1;
-_gauges_unique=1;
-cf_clearance=XjfNy6go0GZgexXGAv2T3QXhDcDv74EoTK2zKvrGqxw-1757785277-1.2.1.1-qgBfjnTwImJkyZo.YNm4qFohs0Zq2bHdgId4LE172lkfBXgJNv.0hBF9SzaVzoRtORR9tjwT9hUcEKi4rG6VgHdjh9zf0K2iDSjSw8NcAp5tvguepZT0PV_S6LnLLQL1oeJY1fAOAS3NAUQBdw5pvbK.Z.lRUDoGGJNdXZTWCayi28BwKeLIyWPDP3obA8amzaqv8c6pn0De52YHVRVvwzTXDKAiSOqiacThv9Ptguo;
-_clck=15cvop0%5E2%5Efzc%5E0%5E2082;
+    '''PHPSESSID=qftvknrnpks4u241irano91gbs;
 sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-15%2015%3A59%3A11%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
-sbjs_first_add=fd%3D2025-09-15%2015%3A59%3A11%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
+sbjs_current_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
+sbjs_first_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
 sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
-_gauges_unique_hour=1;
-_gauges_unique_day=1;
-_gcl_au=1.1.1719125921.1757784261.734744063.1757953775.1757953774;
-wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=pawanboss%7C1759163377%7CaTLliYEUpnnmcjNVE6PIAhzIeBvqUceqCeUWuVhHFcR%7Ce8e8831fa229e7772ec5e6fe7f1dfbbcc9ae6506e2e6df1eea661def70dcd50a;
-sbjs_session=pgs%3D2%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F;
-_ga_T35FBK70QE=GS2.1.s1757953737$o2$g1$t1757953788$j9$l0$h785637050;
-_uetsid=14707d90925111f0bd5ee75384cdcb1b;
-_uetvid=891ed20090c611f0b6a1f779aa3bffa2;
-_clsk=6a0xoq%5E1757953789109%5E3%5E1%5Ea.clarity.ms%2Fcollect;
-__kla_id=eyJjaWQiOiJaVEZqTWpVNVpESXRZekUxTmkwMFltWmpMV0ZoT0RZdE1HTTRZVEZsT0RJek5HVXgiLCIkZXhjaGFuZ2VfaWQiOiJyVjhLNEdYQTZjcXpDakhRVkRlZWZFM3RCR0lDcC15QWxiWDRENkVQNG1NLlNOZkJnNyJ9;'''
+_ga=GA1.1.41997297.1757748816;
+_fbp=fb.1.1757748816501.35526249204946697;
+wordpress_logged_in_8fb226385f454fe1b19f20c68cef99ad=_aaditya07r_%7C1758958437%7CK9XOlTGiEQwl320Zgp80vLD4hRLpOerfqzAGx7vRa8C%7C381a72fabd1295bca6efa996f821bd98672178761c725691cce3fa1b1505083b;
+sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%3Fpassword-reset%3Dtrue;
+cookieconsent_status=dismiss;
+mailpoet_page_view=%7B%22timestamp%22%3A1757749022%7D;
+_ga_GEWJ0CGSS2=GS2.1.s1757748816$o1$g1$t1757749035$j52$l0$h316575648;'''
 
     
     # --- Cookie 2 ---
-    '''_ga=GA1.1.1954829047.1757872504;
-__ctmid=68c701780004f57a1565004b;
-__ctmid=68c701780004f57a1565004b;
-_gauges_unique_day=1;
-_gauges_unique_month=1;
-_gauges_unique_year=1;
-_gauges_unique=1;
-cf_clearance=mpnUzZstWvQXl5aVLlGpM6TFAFYu6.gVIU6ypIhyYbg-1757874573-1.2.1.1-.2LV_MhT42wZh2z0nnuMqcBuEQvEh1I8KmsEafG7U0uFfASa1w2Ye0IVxbbu1P6bDn9vpvzv_gRn_1qV7gqizsPbLEgLJ3DKW.2f58m0tW9jTWMqF5oqWkbAabVO48XdykjfqLCx0ZaWDE79IOCchQ1fw0Ls8EUtjlBXr59bvxXzxD3m7kf.wksLMKqQ6HoI1BqonOTNS_desaRnKR5mFDhQqmvqMPsPbLdHuQSwtTk;
-_clck=179hrve%5E2%5Efzc%5E0%5E2083;
+    '''PHPSESSID=6id9435okaa4ro85vp8s72vng3;
+_ga=GA1.1.1348851683.1757748688;
 sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-15%2015%3A51%3A06%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fadd-payment-method%2F%7C%7C%7Crf%3D%28none%29;
-sbjs_first_add=fd%3D2025-09-15%2015%3A51%3A06%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fadd-payment-method%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_current_add=fd%3D2025-09-13%2007%3A01%3A28%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
+sbjs_first_add=fd%3D2025-09-13%2007%3A01%3A28%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
 sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
 sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-_gauges_unique_hour=1;
-sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
-_gcl_au=1.1.69780881.1757872504.939215149.1757953544.1757953543;
-wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=nikhilchoudhary%7C1759163147%7CaaXnA25DcDCpVcVPQjmuYEgTiy1DwRkU5J2DgTRyu2S%7C00313ff1293d4a627e5f64fee80477942cccd7c19aae890948d3e1d3d286d8b7;
-sbjs_session=pgs%3D4%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F;
-_ga_T35FBK70QE=GS2.1.s1757953228$o3$g1$t1757953558$j32$l0$h973532531;
-_uetsid=f13df0c0919311f0bd5ee75384cdcb1b;
-_uetvid=f13e1350919311f0b6a1f779aa3bffa2;
-_clsk=17rmqk8%5E1757953558886%5E5%5E1%5Ea.clarity.ms%2Fcollect;
-__kla_id=eyJjaWQiOiJZbUZtTWprMU5XVXROV05tWlMwMFlURm1MVGhrWVRJdFlURm1ZVFV4TVRReE4yUTAiLCIkZXhjaGFuZ2VfaWQiOiIxT1BJQm00eFBrTTJlQmhralhnckluTzZDa09TY3ZGX2RfcG9DU0Jya0ZEUUZtMTFNQWlhWk9ZekE3U1FwOEpOLlNOZkJnNyJ9;'''
+_fbp=fb.1.1757748688643.911751162166436883;
+wordpress_logged_in_8fb226385f454fe1b19f20c68cef99ad=_aaditya07r%7C1758962016%7CAnncsejn12RZ4ZJHqyUG0bPOACfZ2gBxlM6Ldb9QNTM%7Cd0e0bebae43eba02ce3d36961c65d45a5d8a7135200736b023d3f5c19b4e866f;
+mailpoet_page_view=%7B%22timestamp%22%3A1757752417%7D;
+sbjs_udata=vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%206.0%3B%20Nexus%205%20Build%2FMRA58N%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Mobile%20Safari%2F537.36;
+sbjs_session=pgs%3D13%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Fpayment-methods%2F;
+_ga_GEWJ0CGSS2=GS2.1.s1757752336$o2$g1$t1757752459$j14$l0$h2070871103;'''
 
     # --- Cookie 3 ---
     '''_ga=GA1.1.1954829047.1757872504;
