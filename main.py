@@ -2116,7 +2116,7 @@ async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Run worker in background
-    asyncio.create_task(mst_worker(status_msg, cards, user_id))
+    asyncio.create_task(mst_worker(status_msg, cards))
 
 
 
