@@ -2893,7 +2893,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━〔 <b>HC</b> 〕━━◇\n"
+            f"◇━━〔 <b>𝑺𝒉𝒐𝒑𝒊𝒇𝒚</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟏𝟎$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
