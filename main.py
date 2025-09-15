@@ -1884,13 +1884,25 @@ async def st_worker(update: Update, card: str, status_msg):
 
 
 # -------------------- Command --------------------
+import re
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
+
+CARD_PATTERN = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+BULLET_GROUP_LINK = "https://t.me/CARDER33"  # Or your actual group
+
 async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
+    # ⏳ Cooldown
     if not await enforce_cooldown(user_id, update):
         return
 
+    # 🧾 Credit check
     if not await consume_credit(user_id):
         msg = "❌ You have no credits left."
         return await update.message.reply_text(
@@ -1898,53 +1910,50 @@ async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
-    if not context.args:
-        usage_text = "🚫 Usage: /st cc|mm|yy|cvv"
-        return await update.message.reply_text(
-            usage_text,
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
+    # 🎯 Try extracting card from args or reply
+    raw_text = " ".join(context.args).strip()
 
-    raw_text = " ".join(context.args)
+    if not raw_text and update.message.reply_to_message and update.message.reply_to_message.text:
+        raw_text = update.message.reply_to_message.text.strip()
+
     match = CARD_PATTERN.search(raw_text)
     if not match:
-        usage_text = "🚫 Usage: /st cc|mm|yy|cvv"
+        usage_text = "🚫 Usage: /st cc|mm|yy|cvv\nOr reply to a message containing a card."
         return await update.message.reply_text(
-            usage_text,
+            escape_markdown(usage_text, version=2),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
+    # ✅ Normalize card format
     card_input = match.group(0)
-
-    # Normalize month/year
     card, mm, yy, cvv = card_input.split("|")
     mm = mm.zfill(2)
     yy = yy[-2:] if len(yy) == 4 else yy
     cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
 
-    # Dynamic text for message (code block does NOT need escaping)
+    # 📤 Build and send processing message
     bullet_text = "[⌇]"
     bullet_link = f"[{escape_markdown(bullet_text, version=2)}]({BULLET_GROUP_LINK})"
 
-    # Static text
     gateway_text = escape_markdown("𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
     status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀  ➵ Checking 🔎...", version=2)
 
-    # Build processing message
     processing_text = (
-        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳ ```" + "\n"
-        f"```{cc_normalized}```" + "\n\n"
+        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳ ```\n"
+        f"```{cc_normalized}```\n\n"
         f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} {status_text}\n"
+        f"{bullet_link} {status_text}"
     )
 
-    # Send processing message
     status_msg = await update.effective_message.reply_text(
         processing_text,
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
+
+    # 🚀 Background worker
     asyncio.create_task(st_worker(update, cc_normalized, status_msg))
+
 
 
 
@@ -3687,33 +3696,41 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
 
 
 # ===== /msp command =====
+from telegram.constants import ParseMode
+
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
 
+    # Cooldown check (5 seconds)
     if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
         return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
     last_msp_usage[user_id] = now
 
+    # Extract input text from args or replied message
     raw_input = None
     if context.args:
         raw_input = " ".join(context.args)
-    elif update.message.reply_to_message:
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
         raw_input = update.message.reply_to_message.text
 
     if not raw_input:
         return await update.message.reply_text(
             "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
             "Or reply to a message containing cards.",
-            parse_mode="HTML"
+            parse_mode=ParseMode.HTML
         )
 
+    # Extract cards using regex (make sure CARD_REGEX is defined)
     cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
     if len(cards) > 50:
         cards = cards[:50]
 
+    # Fetch user data and credits
     user_data = await get_user(user_id)
     if not user_data:
         return await update.message.reply_text("❌ No user data found in DB.")
@@ -3725,8 +3742,93 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not sites:
         return await update.message.reply_text("❌ No sites found in your account.")
 
-    msg = await update.message.reply_text("💳 𝗠𝗮𝘀𝘀 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 𝗖𝗵𝗲𝗰𝗸 𝗦𝘁𝗮𝗿𝘁𝗲𝗱…")
+    # Build bullet link HTML
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+    # Compose processing message
+    processing_text = (
+        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+        f"<pre><code>from telegram.constants import ParseMode
+
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+
+async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    now = time.time()
+
+    # Cooldown check (5 seconds)
+    if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
+        return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
+    last_msp_usage[user_id] = now
+
+    # Extract input text from args or replied message
+    raw_input = None
+    if context.args:
+        raw_input = " ".join(context.args)
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        raw_input = update.message.reply_to_message.text
+
+    if not raw_input:
+        return await update.message.reply_text(
+            "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
+            "Or reply to a message containing cards.",
+            parse_mode=ParseMode.HTML
+        )
+
+    # Extract cards using regex (make sure CARD_REGEX is defined)
+    cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
+    if not cards:
+        return await update.message.reply_text("❌ No valid cards found.")
+    if len(cards) > 50:
+        cards = cards[:50]
+
+    # Fetch user data and credits
+    user_data = await get_user(user_id)
+    if not user_data:
+        return await update.message.reply_text("❌ No user data found in DB.")
+    if not await consume_credit(user_id):
+        return await update.message.reply_text("❌ You have no credits left.")
+
+    base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
+    sites = user_data.get("custom_urls", [])
+    if not sites:
+        return await update.message.reply_text("❌ No sites found in your account.")
+
+    # Build bullet link HTML
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+    # Compose processing message
+    processing_text = (
+        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+        f"<pre><code>𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
+    )
+
+    # Send fancy processing message
+    msg = await update.message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+
+    # Start background task
     asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
+</code></pre>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
+        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
+    )
+
+    # Send fancy processing message
+    msg = await update.message.reply_text(
+        processing_text,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+
+    # Start background task
+    asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
+
 
 
 
@@ -4184,9 +4286,7 @@ developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
 logger = logging.getLogger(__name__)
 
-# --- Cooldown tracking ---
-user_cooldowns = {}  # user_id: datetime of last command
-COOLDOWN_SECONDS = 5
+
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
@@ -4205,23 +4305,31 @@ import re
 import asyncio
 from datetime import datetime, timedelta, timezone
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+# Shared regex pattern
+CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 
-    # Current UTC time (timezone-aware)
+# Cooldown settings
+COOLDOWN_SECONDS = 2
+user_cooldowns = {}  # Global dictionary for cooldown tracking
+
+# --- Dummy consume_credit (replace with your actual one) ---
+# async def consume_credit(user_id): ...
+
+async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    user_id = user.id
     now = datetime.now(timezone.utc)
 
-    # Check cooldown
+    # 1️⃣ Cooldown check
     last_time = user_cooldowns.get(user_id)
     if last_time:
-        # Convert float timestamp to datetime if needed
-        if isinstance(last_time, float):
-            last_time_dt = datetime.fromtimestamp(last_time, tz=timezone.utc)
-        else:
-            last_time_dt = last_time
-
+        last_time_dt = (
+            datetime.fromtimestamp(last_time, tz=timezone.utc)
+            if isinstance(last_time, float) else last_time
+        )
         if now - last_time_dt < timedelta(seconds=COOLDOWN_SECONDS):
             remaining = COOLDOWN_SECONDS - int((now - last_time_dt).total_seconds())
             await update.message.reply_text(
@@ -4229,41 +4337,39 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # Check credits
+    # 2️⃣ Credit check
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You don’t have enough credits to use /vbv.")
         return
 
+    # 3️⃣ Card data extraction (arg or reply)
     card_data = None
 
-    # 1️⃣ Check if card is provided as argument
     if context.args:
-        card_data = context.args[0].strip()
-
-    # 2️⃣ Check if this is a reply to a message
+        card_candidate = context.args[0].strip()
+        if CARD_REGEX.fullmatch(card_candidate):
+            card_data = card_candidate
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        # Extract card-like pattern from reply
-        match = re.search(r"(\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4})", update.message.reply_to_message.text)
+        match = CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
-            card_data = match.group(1).strip()
+            card_data = match.group().strip()
 
     if not card_data:
         await update.message.reply_text(
-            "⚠️ Usage: <code>/vbv &lt;card|mm|yyyy|cvv&gt;</code>\n"
+            "⚠️ Usage:\n"
+            "<code>/vbv 1234123412341234|12|2025|123</code>\n"
             "Or reply to a message containing a card.",
             parse_mode=ParseMode.HTML
         )
         return
 
-
-    # Send processing message
+    # 4️⃣ Acknowledge and set cooldown
     msg = await update.message.reply_text("<b>⏳ Processing your request...</b>", parse_mode="HTML")
-
-    # Update cooldown (store as timestamp)
     user_cooldowns[user_id] = now.timestamp()
 
-    # Run background VBV check
+    # 5️⃣ Run async background task
     asyncio.create_task(run_vbv_check(msg, update, card_data))
+
 # --- Background worker ---
 import aiohttp
 import asyncio
@@ -4482,20 +4588,37 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # --- /b3 Command ---
+import re
+
+# Card regex
+CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+
 async def b3(update: Update, context):
     user = update.effective_user
     user_id = user.id
     current_time = time.time()
 
-    # --- Check card args ---
-    if not context.args:
+    # Get text from /b3 message or replied message
+    input_text = None
+
+    if context.args:
+        input_text = context.args[0]
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        if match:
+            input_text = match.group()
+
+    # If no card was found
+    if not input_text:
         await update.message.reply_text(
-            "Usage: /b3 cc|mm|yyyy|cvv",
+            "Usage:\n"
+            "`/b3 1234123412341234|12|2025|123`\n"
+            "Or reply to a message with the card in this format.",
             parse_mode=ParseMode.MARKDOWN
         )
-        return  # no cooldown
+        return
 
-    # --- Cooldown check ---
+    # Cooldown check
     if user_id in user_last_command_time:
         elapsed = current_time - user_last_command_time[user_id]
         if elapsed < COOLDOWN_SECONDS:
@@ -4506,27 +4629,29 @@ async def b3(update: Update, context):
             )
             return
 
-    # ✅ Set cooldown
+    # Set cooldown
     user_last_command_time[user_id] = current_time
-    cc_input = context.args[0]
+
+    cc_input = input_text.strip()
     full_card = cc_input
 
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-    # --- Initial processing message ---
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>{full_card}</code></pre>\n\n"
         f"{bullet_link} <b>𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝒆𝒆 𝑷𝒓𝒆𝒎𝒊𝒖𝒎 𝑨𝒖𝒕𝒉</b>\n"
         f"{bullet_link} <b>𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...</b>"
     )
+
     processing_msg = await update.message.reply_text(
         processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
     )
 
-    # --- Run in background ---
+    # Launch checker
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
+
 
 async def run_braintree_check(user, cc_input, full_card, processing_msg):
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
