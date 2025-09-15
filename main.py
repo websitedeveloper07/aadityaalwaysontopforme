@@ -4403,6 +4403,36 @@ SITE = "https://highwayandheavyparts.com"
 # --- Cookie rotation pool ---
 COOKIES_LIST = [
     # --- Cookie 1 ---
+    '''__ctmid=68c7b2210004f57a348a3d16;
+_gcl_au=1.1.880721484.1757917733.1118693911.1757917849.1757918009;
+_ga_T35FBK70QE=GS2.1.s1757917734$o1$g1$t1757918584$j60$l0$h1792389476;
+_ga=GA1.1.324457782.1757917735;
+_clck=1mbv5h6%5E2%5Efzc%5E0%5E2084;
+_clsk=1trj60c%5E1757917956275%5E6%5E1%5Ez.clarity.ms%2Fcollect;
+sbjs_migrations=1418474375998%3D1;
+sbjs_current_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
+sbjs_first_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
+sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
+sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%3B%20rv%3A142.0%29%20Gecko%2F20100101%20Firefox%2F142.0;
+sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fcheckout%2F;
+_gauges_unique_hour=1;
+_gauges_unique_day=1;
+_gauges_unique_month=1;
+_gauges_unique_year=1;
+_gauges_unique=1;
+__kla_id=eyJjaWQiOiJOVEUyTm1GbE1qY3ROMlV3TkMwMFptTXhMV0ZoWVdRdE9UUXhaREEwT1dNM09HSXgiLCIkZXhjaGFuZ2VfaWQiOiIwOGtqRVctUTdNS0R6OFpNSGtMSjlZdFJCbTdocWx3enZfTlRvbFBDZlVnLlNOZkJnNyJ9;
+wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=nikhilmoga63%7C1759127451%7CxQDkFHTiRrpop49b2Y8jYj61V3mAPeCcgg6aOi7FSzx%7Ca5492d35f0f45420dedf56056f3341db2773f9b9ce65d6abe1a45a48307909fc;
+woocommerce_items_in_cart=1;
+woocommerce_cart_hash=2bc427daf438396c721745cfa77a3d19;
+wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77522%7C1758522721%7C1758004321%7C%24generic%24Nd6OqM6r2_bfvQkM94nmaJ-o2oiu5bjGXdXD_Kln;
+_uetsid=422cb0f091fd11f09d95478daf460df3;
+_uetvid=422d20b091fd11f0a830eb4c11814c3c;
+cf_clearance=JSJOOKm8a39ZqLM9KhGc9zSdyW8ridclT_Te8J1KN1M-1757918604-1.2.1.1-PsMAr.jyWni91GYrsEMcqYkeFYC_Nu2sz.EQqkeziuIDespWu3._RCqcInBrn9ewd0FWsaZMhgjLarNwJYZNSIWm_Kds1BY6t0CW8Q8WpqVeq4h7138vaTAtBfNhz9eVdMlYyiD3JwTaTU0qP8STRoISUiBEUAuoDZs0jnuryqmkpxVMb6fwjupDbEn2T19R6MKip1aXfdZvqFXmicz6nQSjMEsUXAWr35d4_ul28yc;
+PHPSESSID=b4461cff9e4cff4be4dc06fbcf7e23a8;'''
+
+    
+    # --- Cookie 2 ---
     '''sbjs_migrations=1418474375998%3D1;
 sbjs_current_add=fd%3D2025-09-14%2017%3A12%3A53%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fadd-payment-method%2F%7C%7C%7Crf%3D%28none%29;
 sbjs_first_add=fd%3D2025-09-14%2017%3A12%3A53%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fadd-payment-method%2F%7C%7C%7Crf%3D%28none%29;
@@ -4417,9 +4447,7 @@ woocommerce_items_in_cart=1;
 woocommerce_cart_hash=75b88f48dfeb6427cdde785ac24fd376;
 wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77493%7C1758476819%7C1757958419%7C%24generic%24RMnCm3Ah6JAXohWBgKXvI3MzRQnCdBqyrRrco7HS;
 sbjs_session=pgs%3D7%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2Fedit-address%2F;'''
-
     
-    # --- Cookie 2 ---
 ]
 
 # --- Helper: Convert dict → raw cookie string (NO extra encoding) ---
