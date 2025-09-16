@@ -6291,14 +6291,16 @@ async def block_unauthorized(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "🔗 Official group: https://t.me/CARDER33"
     )
 
-# ✅ Restricted decorator
+# ✅ Restricted decorator (allow private chats + owner)
 def restricted(func):
     @wraps(func)
     async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
         chat_id = update.effective_chat.id
+        chat_type = update.effective_chat.type
         user_id = update.effective_user.id
 
-        if chat_id not in AUTHORIZED_CHATS and user_id != OWNER_ID:
+        # Allow owner, private chats, or authorized groups
+        if chat_type != "private" and chat_id not in AUTHORIZED_CHATS and user_id != OWNER_ID:
             await update.message.reply_text(
                 "🚫 This group is not authorized to use this bot.\n\n"
                 "📩 Contact @K4linuxx to get access.\n"
