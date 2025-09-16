@@ -969,9 +969,12 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> – Braintree Premium Auth\n"
         f"{bullet_link} <code>/vbv cc|mm|yy|cvv</code> – 3DS Lookup\n\n"
 
+        "🔹 <b>𝗔𝘂𝘁𝗵𝗻𝗲𝘁</b>\n"
+        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 17$ Charge\n"
+        
         "🔹 <b>𝙎𝙝𝙤𝙥𝙞𝙛𝙮</b>\n"
         f"{bullet_link} <code>/sh</code> – Shopify Charge $0.98\n"
-        f"{bullet_link} <code>/sh</code> – Shopify Charge $10\n"
+        f"{bullet_link} <code>/hc</code> – Shopify Charge $10\n"
         f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set your Shopify site\n"
         f"{bullet_link} <code>/sp</code> – Auto check on your saved Shopify site\n"
         f"{bullet_link} <code>/msp</code> – Mass Shopify Charged\n"
