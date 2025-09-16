@@ -6260,20 +6260,21 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 # === REGISTERING COMMANDS AND HANDLERS ===
 import os
 import logging
+from functools import wraps
+from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
-    MessageHandler,
     filters,
 )
 from db import init_db
-from force_join import force_join, check_joined_callback  # import the decorator & callback
+from force_join import force_join, check_joined_callback  # import decorator & callback
 
 # 🛡️ Security
-AUTHORIZED_CHATS = set()  # Groups you manually authorize
-OWNER_ID = 8493360284     # Replace with your Telegram user ID
+AUTHORIZED_CHATS = set([-1002554243871])  # Only this group
+OWNER_ID = 8493360284                     # Your Telegram user ID
 
 # 🔑 Bot token
 BOT_TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
@@ -6282,65 +6283,88 @@ BOT_TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🚫 Unauthorized firewall handler
-async def block_unauthorized(update, context: ContextTypes.DEFAULT_TYPE):
+# 🚫 Unauthorized handler
+async def block_unauthorized(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🚫 This group is not authorized to use this bot.\n\n"
         "📩 Contact @K4linuxx to get access.\n"
         "🔗 Official group: https://t.me/CARDER33"
     )
 
+# ✅ Restricted decorator
+def restricted(func):
+    @wraps(func)
+    async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        chat_id = update.effective_chat.id
+        user_id = update.effective_user.id
+
+        if chat_id not in AUTHORIZED_CHATS and user_id != OWNER_ID:
+            await update.message.reply_text(
+                "🚫 This group is not authorized to use this bot.\n\n"
+                "📩 Contact @K4linuxx to get access.\n"
+                "🔗 Official group: https://t.me/CARDER33"
+            )
+            return
+        return await func(update, context, *args, **kwargs)
+    return wrapped
+
 # 🧠 Database init
 async def post_init(application):
     await init_db()
     logger.info("✅ Database initialized")
 
-# 📌 Register force-join commands
-def register_force_join(application):
+# 📌 Register commands (restricted + force_join)
+def register_commands(application):
     # Callback for "✅ I have joined"
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
 
-    # Wrap all commands with force_join decorator
-    application.add_handler(CommandHandler("close", force_join(close_command)))
-    application.add_handler(CommandHandler("restart", force_join(restart_command)))
-    application.add_handler(CommandHandler("start", force_join(start)))
-    application.add_handler(CommandHandler("cmds", force_join(cmds_command)))
-    application.add_handler(CommandHandler("info", force_join(info)))
-    application.add_handler(CommandHandler("credits", force_join(credits_command)))
-    application.add_handler(CommandHandler("chk", force_join(chk_command)))
-    application.add_handler(CommandHandler("st", force_join(st)))
-    application.add_handler(CommandHandler("mst", force_join(mst_command)))
-    application.add_handler(CommandHandler("mass", force_join(mass_handler)))
-    application.add_handler(CommandHandler("sh", force_join(sh_command)))
-    application.add_handler(CommandHandler("hc", force_join(hc_command)))
-    application.add_handler(CommandHandler("at", force_join(at_command)))
-    application.add_handler(CommandHandler("seturl", force_join(seturl)))
-    application.add_handler(CommandHandler("mysites", force_join(mysites)))
-    application.add_handler(CommandHandler("msp", force_join(msp)))
-    application.add_handler(CommandHandler("removeall", force_join(removeall)))
-    application.add_handler(CommandHandler("rsite", force_join(rsite)))
-    application.add_handler(CommandHandler("adurls", force_join(adurls)))
-    application.add_handler(CommandHandler("sp", force_join(sp)))
-    application.add_handler(CommandHandler("site", force_join(site)))
-    application.add_handler(CommandHandler("msite", force_join(msite_command)))
-    application.add_handler(CommandHandler("gen", force_join(gen)))
-    application.add_handler(CommandHandler("open", force_join(open_command)))
-    application.add_handler(CommandHandler("adcr", force_join(adcr_command)))
-    application.add_handler(CommandHandler("bin", force_join(bin_lookup)))
-    application.add_handler(CommandHandler("fk", force_join(fk_command)))
-    application.add_handler(CommandHandler("vbv", force_join(vbv)))
-    application.add_handler(CommandHandler("b3", force_join(b3)))
-    application.add_handler(CommandHandler("gate", force_join(gate_command)))
-    application.add_handler(CommandHandler("fl", force_join(fl_command)))
-    application.add_handler(CommandHandler("status", force_join(status_command)))
-    application.add_handler(CommandHandler("redeem", force_join(redeem_command)))
+    def add_command(cmd_name, cmd_func):
+        application.add_handler(CommandHandler(cmd_name, restricted(force_join(cmd_func))))
+
+    commands = [
+        ("close", close_command),
+        ("restart", restart_command),
+        ("start", start),
+        ("cmds", cmds_command),
+        ("info", info),
+        ("credits", credits_command),
+        ("chk", chk_command),
+        ("st", st),
+        ("mst", mst_command),
+        ("mass", mass_handler),
+        ("sh", sh_command),
+        ("hc", hc_command),
+        ("at", at_command),
+        ("seturl", seturl),
+        ("mysites", mysites),
+        ("msp", msp),
+        ("removeall", removeall),
+        ("rsite", rsite),
+        ("adurls", adurls),
+        ("sp", sp),
+        ("site", site),
+        ("msite", msite_command),
+        ("gen", gen),
+        ("open", open_command),
+        ("adcr", adcr_command),
+        ("bin", bin_lookup),
+        ("fk", fk_command),
+        ("vbv", vbv),
+        ("b3", b3),
+        ("gate", gate_command),
+        ("fl", fl_command),
+        ("status", status_command),
+        ("redeem", redeem_command)
+    ]
+
+    for cmd_name, cmd_func in commands:
+        add_command(cmd_name, cmd_func)
 
 # 🎯 MAIN ENTRY POINT
 def main():
-    # Build app
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-    # 🔐 Admin Commands
+    # 🔐 Admin Commands (owner-only)
     owner_filter = filters.User(OWNER_ID)
     application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
     application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
@@ -6353,17 +6377,15 @@ def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # ✅ Register force-join first so it doesn’t get swallowed
-    register_force_join(application)
+    # ✅ Register all commands with restricted + force_join
+    register_commands(application)
 
-    # 📲 Generic Callback & Error Handlers (added after force-join)
+    # 📲 Generic Callback & Error Handlers
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
-    # 🔁 Start polling
     logger.info("🤖 Bot started and is polling for updates...")
     application.run_polling()
 
 if __name__ == '__main__':
     main()
-
