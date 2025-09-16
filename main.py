@@ -970,8 +970,8 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/vbv cc|mm|yy|cvv</code> – 3DS Lookup\n\n"
 
         "🔹 <b>𝗔𝘂𝘁𝗵𝗻𝗲𝘁</b>\n"
-        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 17$ Charge\n"
-        
+        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 17$ Charge\n\n"
+
         "🔹 <b>𝙎𝙝𝙤𝙥𝙞𝙛𝙮</b>\n"
         f"{bullet_link} <code>/sh</code> – Shopify Charge $0.98\n"
         f"{bullet_link} <code>/hc</code> – Shopify Charge $10\n"
@@ -980,10 +980,10 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/msp</code> – Mass Shopify Charged\n"
         f"{bullet_link} <code>/site &lt;url&gt;</code> – Check if Shopify site is live\n"
         f"{bullet_link} <code>/msite &lt;urls&gt;</code> – Mass Shopify site check\n"
-        f"{bullet_link} <code>/mysites</code> – Check your added sites\n\n"
-        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 shopify sites\n"
-        f"{bullet_link} <code>/removeall</code> - Remove all added sites\n"
-        f"{bullet_link} <code>/rmsite</code> - Remove specific sites from added\n"
+        f"{bullet_link} <code>/mysites</code> – Check your added sites\n"
+        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> – Set 20 Shopify sites\n"
+        f"{bullet_link} <code>/removeall</code> – Remove all added sites\n"
+        f"{bullet_link} <code>/rmsite</code> – Remove specific sites from added\n\n"
 
         "🔹 <b>𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨</b>\n"
         f"{bullet_link} <code>/gen [bin] [no. of cards]</code> – Generate cards from BIN\n"
