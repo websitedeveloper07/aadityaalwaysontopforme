@@ -6255,6 +6255,8 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
         except Exception as e:
             logger.error(f"Failed to send error message to user: {e}")
 
+# 🛑 Users banned from using the bot
+BANNED_USERS = set()
 
 
 # === REGISTERING COMMANDS AND HANDLERS ===
@@ -6276,6 +6278,9 @@ from force_join import force_join, check_joined_callback  # import decorator & c
 AUTHORIZED_CHATS = set([-1002554243871])  # Only this group
 OWNER_ID = 8493360284                     # Your Telegram user ID
 
+# 🛑 Banned users
+BANNED_USERS = set()
+
 # 🔑 Bot token
 BOT_TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
 
@@ -6291,13 +6296,18 @@ async def block_unauthorized(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "🔗 Official group: https://t.me/CARDER33"
     )
 
-# ✅ Restricted decorator (allow private chats + owner)
+# ✅ Restricted decorator (allow private chats + owner + check banned)
 def restricted(func):
     @wraps(func)
     async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
         chat_id = update.effective_chat.id
         chat_type = update.effective_chat.type
         user_id = update.effective_user.id
+
+        # Check banned users
+        if user_id in BANNED_USERS:
+            await update.message.reply_text("🚫 You are banned from using this bot.")
+            return
 
         # Allow owner, private chats, or authorized groups
         if chat_type != "private" and chat_id not in AUTHORIZED_CHATS and user_id != OWNER_ID:
@@ -6307,6 +6317,7 @@ def restricted(func):
                 "🔗 Official group: https://t.me/CARDER33"
             )
             return
+
         return await func(update, context, *args, **kwargs)
     return wrapped
 
@@ -6314,6 +6325,41 @@ def restricted(func):
 async def post_init(application):
     await init_db()
     logger.info("✅ Database initialized")
+
+# 📌 Ban / Unban commands
+async def rban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Ban a user from using the bot (owner only)."""
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("🚫 Only the bot owner can ban users.")
+        return
+
+    if not context.args:
+        await update.message.reply_text("Usage: /rban <user_id>")
+        return
+
+    try:
+        user_id = int(context.args[0])
+        BANNED_USERS.add(user_id)
+        await update.message.reply_text(f"✅ User {user_id} has been banned from using the bot.")
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID. Please provide a valid number.")
+
+async def fban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Unban a user (owner only)."""
+    if update.effective_user.id != OWNER_ID:
+        await update.message.reply_text("🚫 Only the bot owner can unban users.")
+        return
+
+    if not context.args:
+        await update.message.reply_text("Usage: /fban <user_id>")
+        return
+
+    try:
+        user_id = int(context.args[0])
+        BANNED_USERS.discard(user_id)
+        await update.message.reply_text(f"✅ User {user_id} has been unbanned and can use the bot again.")
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID. Please provide a valid number.")
 
 # 📌 Register commands (restricted + force_join)
 def register_commands(application):
@@ -6379,7 +6425,11 @@ def main():
     application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
     application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
 
-    # ✅ Register all commands with restricted + force_join
+    # 🔐 Register ban/unban commands (owner-only)
+    application.add_handler(CommandHandler("rban", rban, filters=owner_filter))
+    application.add_handler(CommandHandler("fban", fban, filters=owner_filter))
+
+    # ✅ Register all other commands with restricted + force_join
     register_commands(application)
 
     # 📲 Generic Callback & Error Handlers
