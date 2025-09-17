@@ -73,7 +73,7 @@ async def get_user(user_id):
             DEFAULT_PLAN_EXPIRY,
             DEFAULT_KEYS_REDEEMED,
             now,
-            []  # Python list is cast to JSONB
+            json.dumps([])  # ✅ must serialize to JSON string
         )
         row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
         await conn.close()
@@ -91,11 +91,11 @@ async def update_user(user_id, **kwargs):
     i = 1
     for k, v in kwargs.items():
         if k == "custom_urls":
-            # cast custom_urls to JSONB
             sets.append(f"{k} = ${i}::jsonb")
+            values.append(json.dumps(v))  # ✅ convert list/dict → JSON string
         else:
             sets.append(f"{k} = ${i}")
-        values.append(v)
+            values.append(v)
         i += 1
     values.append(user_id)
     await conn.execute(
