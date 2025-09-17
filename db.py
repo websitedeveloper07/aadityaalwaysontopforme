@@ -1,5 +1,6 @@
 import asyncpg
 import os
+import json
 from datetime import datetime
 
 # === Default constants ===
@@ -28,11 +29,23 @@ async def init_db():
             plan_expiry TEXT DEFAULT '{DEFAULT_PLAN_EXPIRY}',
             keys_redeemed INT DEFAULT {DEFAULT_KEYS_REDEEMED},
             registered_at TEXT,
-            -- store multiple sites as JSONB array
             custom_urls JSONB DEFAULT '[]'
         );
     """)
     await conn.close()
+
+# === Normalize JSONB fields ===
+def normalize_json_field(value):
+    if value is None:
+        return []
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except Exception:
+            return []
+    if isinstance(value, list):
+        return value
+    return []
 
 # === Get or create user ===
 async def get_user(user_id):
@@ -41,23 +54,17 @@ async def get_user(user_id):
     if row:
         await conn.close()
         user_data = dict(row)
-        # ensure custom_urls is always a list
-        if isinstance(user_data.get("custom_urls"), str):
-            # in case DB stored as string accidentally
-            import json
-            try:
-                user_data["custom_urls"] = json.loads(user_data["custom_urls"])
-            except Exception:
-                user_data["custom_urls"] = []
-        elif user_data.get("custom_urls") is None:
-            user_data["custom_urls"] = []
+        user_data["custom_urls"] = normalize_json_field(user_data.get("custom_urls"))
         return user_data
     else:
         now = datetime.now().strftime('%d-%m-%Y')
+        # Insert new user
         await conn.execute(
             """
-            INSERT INTO users (id, credits, plan, status, plan_expiry, keys_redeemed, registered_at, custom_urls)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO users (
+                id, credits, plan, status, plan_expiry, keys_redeemed, registered_at, custom_urls
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
             """,
             user_id,
             DEFAULT_FREE_CREDITS,
@@ -66,11 +73,13 @@ async def get_user(user_id):
             DEFAULT_PLAN_EXPIRY,
             DEFAULT_KEYS_REDEEMED,
             now,
-            []
+            []  # Python list is fine, cast to JSONB in query
         )
         row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
         await conn.close()
-        return dict(row)
+        user_data = dict(row)
+        user_data["custom_urls"] = []
+        return user_data
 
 # === Update user fields ===
 async def update_user(user_id, **kwargs):
@@ -81,7 +90,11 @@ async def update_user(user_id, **kwargs):
     values = []
     i = 1
     for k, v in kwargs.items():
-        sets.append(f"{k} = ${i}")
+        if k == "custom_urls":
+            # cast to JSONB
+            sets.append(f"{k} = ${i}::jsonb")
+        else:
+            sets.append(f"{k} = ${i}")
         values.append(v)
         i += 1
     values.append(user_id)
@@ -96,18 +109,10 @@ async def get_all_users():
     rows = await conn.fetch("SELECT id, plan, custom_urls FROM users")
     await conn.close()
     print(f"[DEBUG] Fetched {len(rows)} users from DB")
-    # ensure all rows have proper list type for custom_urls
     result = []
     for row in rows:
         r = dict(row)
-        if isinstance(r.get("custom_urls"), str):
-            import json
-            try:
-                r["custom_urls"] = json.loads(r["custom_urls"])
-            except Exception:
-                r["custom_urls"] = []
-        elif r.get("custom_urls") is None:
-            r["custom_urls"] = []
+        r["custom_urls"] = normalize_json_field(r.get("custom_urls"))
         result.append(r)
     return result
 
