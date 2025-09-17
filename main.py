@@ -6262,13 +6262,14 @@ BANNED_USERS = set()
 # === REGISTERING COMMANDS AND HANDLERS ===
 import os
 import logging
+import re
 from functools import wraps
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
-    CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
+    MessageHandler,
     filters,
 )
 from db import init_db
@@ -6292,7 +6293,7 @@ logger = logging.getLogger(__name__)
 async def block_unauthorized(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🚫 This group is not authorized to use this bot.\n\n"
-        "📩 Contact @K4linuxx to get access.\n"
+        "📩 Contact @Kalinuxxx to get access.\n"
         "🔗 Official group: https://t.me/CARDER33"
     )
 
@@ -6361,13 +6362,17 @@ async def fban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except ValueError:
         await update.message.reply_text("❌ Invalid user ID. Please provide a valid number.")
 
-# 📌 Register commands (restricted + force_join)
+# 📌 Helper: Add commands with / and .
+def add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True):
+    """Register a command that works with both /cmd and .cmd"""
+    pattern = rf"^[./]{cmd_name}(?:\s|$)"
+    handler_func = restricted(force_join(cmd_func)) if restricted_wrap else cmd_func
+    application.add_handler(MessageHandler(filters.Regex(pattern), handler_func))
+
+# 📌 Register normal user commands
 def register_commands(application):
     # Callback for "✅ I have joined"
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
-
-    def add_command(cmd_name, cmd_func):
-        application.add_handler(CommandHandler(cmd_name, restricted(force_join(cmd_func))))
 
     commands = [
         ("close", close_command),
@@ -6406,30 +6411,32 @@ def register_commands(application):
     ]
 
     for cmd_name, cmd_func in commands:
-        add_command(cmd_name, cmd_func)
+        add_dual_command(application, cmd_name, cmd_func)
 
 # 🎯 MAIN ENTRY POINT
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
     # 🔐 Admin Commands (owner-only)
-    owner_filter = filters.User(OWNER_ID)
-    application.add_handler(CommandHandler("admin", admin_command, filters=owner_filter))
-    application.add_handler(CommandHandler("give_starter", give_starter, filters=owner_filter))
-    application.add_handler(CommandHandler("give_premium", give_premium, filters=owner_filter))
-    application.add_handler(CommandHandler("give_plus", give_plus, filters=owner_filter))
-    application.add_handler(CommandHandler("give_custom", give_custom, filters=owner_filter))
-    application.add_handler(CommandHandler("take_plan", take_plan, filters=owner_filter))
-    application.add_handler(CommandHandler("au", auth_group, filters=owner_filter))
-    application.add_handler(CommandHandler("reset", reset_command))
-    application.add_handler(CommandHandler("rauth", remove_authorize_user, filters=owner_filter))
-    application.add_handler(CommandHandler("gen_codes", gen_codes_command, filters=owner_filter))
+    owner_cmds = [
+        ("admin", admin_command),
+        ("give_starter", give_starter),
+        ("give_premium", give_premium),
+        ("give_plus", give_plus),
+        ("give_custom", give_custom),
+        ("take_plan", take_plan),
+        ("au", auth_group),
+        ("reset", reset_command),
+        ("rauth", remove_authorize_user),
+        ("gen_codes", gen_codes_command),
+        ("rban", rban),
+        ("fban", fban),
+    ]
 
-    # 🔐 Register ban/unban commands (owner-only)
-    application.add_handler(CommandHandler("rban", rban, filters=owner_filter))
-    application.add_handler(CommandHandler("fban", fban, filters=owner_filter))
+    for cmd_name, cmd_func in owner_cmds:
+        add_dual_command(application, cmd_name, cmd_func, restricted_wrap=False)
 
-    # ✅ Register all other commands with restricted + force_join
+    # ✅ Register all other commands
     register_commands(application)
 
     # 📲 Generic Callback & Error Handlers
