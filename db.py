@@ -58,7 +58,7 @@ async def get_user(user_id):
         return user_data
     else:
         now = datetime.now().strftime('%d-%m-%Y')
-        # Insert new user
+        # Insert new user with JSONB casting
         await conn.execute(
             """
             INSERT INTO users (
@@ -73,7 +73,7 @@ async def get_user(user_id):
             DEFAULT_PLAN_EXPIRY,
             DEFAULT_KEYS_REDEEMED,
             now,
-            []  # Python list is fine, cast to JSONB in query
+            []  # Python list is cast to JSONB
         )
         row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
         await conn.close()
@@ -91,7 +91,7 @@ async def update_user(user_id, **kwargs):
     i = 1
     for k, v in kwargs.items():
         if k == "custom_urls":
-            # cast to JSONB
+            # cast custom_urls to JSONB
             sets.append(f"{k} = ${i}::jsonb")
         else:
             sets.append(f"{k} = ${i}")
