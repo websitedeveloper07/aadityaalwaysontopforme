@@ -6362,12 +6362,58 @@ async def fban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except ValueError:
         await update.message.reply_text("❌ Invalid user ID. Please provide a valid number.")
 
-# 📌 Helper: Add commands with / and .
-def add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True):
-    """Register a command that works with both /cmd and .cmd"""
-    pattern = rf"^[./]{cmd_name}(?:\s|$)"
-    handler_func = restricted(force_join(cmd_func)) if restricted_wrap else cmd_func
-    application.add_handler(MessageHandler(filters.Regex(pattern), handler_func))
+# --- Helper to wrap message handlers so context.args is filled ---
+def _make_message_wrapper(handler):
+    """
+    Return an async wrapper that:
+    - parses the message text and sets context.args (like CommandHandler does)
+    - then calls the provided handler (which might be restricted(force_join(func)) or plain func)
+    """
+    @wraps(handler)
+    async def _inner(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        text = ""
+        if update.effective_message and update.effective_message.text:
+            text = update.effective_message.text.strip()
+        elif update.effective_message and update.effective_message.caption:
+            text = update.effective_message.caption.strip()
+        else:
+            text = ""
+
+        # Split tokens: first token is command (e.g. "/rban" or ".rban" or "/rban@BotName")
+        tokens = text.split()
+        # context.args like CommandHandler: tokens after the first
+        context.args = tokens[1:] if len(tokens) > 1 else []
+
+        # call the actual handler
+        return await handler(update, context, *args, **kwargs)
+
+    return _inner
+
+# 📌 Helper: Add commands with / and . (supports owner-only and restricted wrapping)
+def add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True, owner_only=False):
+    """
+    Register a command that works with both /cmd and .cmd.
+
+    - restricted_wrap=True => wraps with restricted(force_join(cmd_func)) (for normal commands)
+    - owner_only=True => enforces OWNER via filter (for admin commands)
+    """
+    pattern = rf"^[./]{re.escape(cmd_name)}(?:\s|$)"
+    # select base handler (either restricted(force_join(...)) or plain function)
+    if restricted_wrap:
+        base_handler = restricted(force_join(cmd_func))
+    else:
+        base_handler = cmd_func
+
+    # wrap so context.args is populated
+    wrapped_handler = _make_message_wrapper(base_handler)
+
+    # build filters (owner-only commands limited to owner)
+    msg_filter = filters.Regex(pattern)
+    if owner_only:
+        msg_filter = msg_filter & filters.User(OWNER_ID)
+
+    application.add_handler(MessageHandler(msg_filter, wrapped_handler))
+
 
 # 📌 Register normal user commands
 def register_commands(application):
@@ -6411,13 +6457,13 @@ def register_commands(application):
     ]
 
     for cmd_name, cmd_func in commands:
-        add_dual_command(application, cmd_name, cmd_func)
+        add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True, owner_only=False)
 
 # 🎯 MAIN ENTRY POINT
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-    # 🔐 Admin Commands (owner-only)
+    # 🔐 Owner-only admin Commands
     owner_cmds = [
         ("admin", admin_command),
         ("give_starter", give_starter),
@@ -6434,7 +6480,8 @@ def main():
     ]
 
     for cmd_name, cmd_func in owner_cmds:
-        add_dual_command(application, cmd_name, cmd_func, restricted_wrap=False)
+        # owner-only and not wrapped with restricted(force_join)
+        add_dual_command(application, cmd_name, cmd_func, restricted_wrap=False, owner_only=True)
 
     # ✅ Register all other commands
     register_commands(application)
@@ -6448,3 +6495,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
