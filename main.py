@@ -805,9 +805,9 @@ async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      🏦 <b>Authnet 17$</b>\n"
+        "      🏦 <b>Authnet 2.95$</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/at</code> - <i>Check a single card on Authnet $17</i>\n"
+        "• <code>/at</code> - <i>Check a single card on Authnet $2.95</i>\n"
         "  Example:\n"
         "  <code>/at 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits.\n\n"
