@@ -671,7 +671,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         ],
         [
             InlineKeyboardButton("💵 Shopify 10$", callback_data="shopify10_gate"),
-            InlineKeyboardButton("🏦 Authnet 2.95$", callback_data="authnet36_gate")
+            InlineKeyboardButton("🏦 Authnet 0.98$", callback_data="authnet36_gate")
         ],
         [
             InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")
@@ -812,9 +812,9 @@ async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      🏦 <b>Authnet 2.95$</b>\n"
+        "      🏦 <b>Authnet 0.98$</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/at</code> - <i>Check a single card on Authnet $2.95</i>\n"
+        "• <code>/at</code> - <i>Check a single card on Authnet $0.98</i>\n"
         "  Example:\n"
         "  <code>/at 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits.\n\n"
@@ -1015,7 +1015,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/vbv cc|mm|yy|cvv</code> – 3DS Lookup\n\n"
 
         "🔹 <b>𝗔𝘂𝘁𝗵𝗻𝗲𝘁</b>\n"
-        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 2.95$ Charge\n\n"
+        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 0.98$ Charge\n\n"
 
         "🔹 <b>𝙎𝙝𝙤𝙥𝙞𝙛𝙮</b>\n"
         f"{bullet_link} <code>/sh</code> – Shopify Charge $0.98\n"
@@ -3510,7 +3510,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>𝑨𝒖𝒕𝒉𝑵𝒆𝒕</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 𝟐.𝟗𝟓$\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 𝟎.𝟗𝟖$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
