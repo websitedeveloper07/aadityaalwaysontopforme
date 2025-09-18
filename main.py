@@ -3273,12 +3273,12 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
             header_status = "✅ Approved"
         elif "INVALID CVC" in response.upper():
             header_status = "✅ Approved"
+        elif "INSUFFICIENT_FUNDS" in response.upper():
+            header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ Declined"
         else:
             header_status = "❌ Declined"
-        elif "INSUFFICIENT_FUNDS" in response.upper():
-            header_status = "✅ Approved"
 
         # --- Final formatted message ---
         final_msg = (
