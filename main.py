@@ -2794,6 +2794,8 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ Declined"
+        elif "INSUFFICIENT_FUNDS" in response.upper():
+            header_status = "✅ Approved"
 
         # --- Enhance response with emojis ---
         display_response = escape(response)
@@ -2801,16 +2803,13 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
-        elif "INVALID_CVC" in response.upper():
-            display_response = f"{escape(response)} ✅"
-        elif "CARD_DECLINED" in response.upper():
-            display_response = f"{escape(response)} ❌"
+
 
         # --- Final formatted message ---
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Shopify {price}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 {price}\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
@@ -3038,11 +3037,12 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             display_response = f"{escape(response)} 🔒"
             header_status = "✅ Approved"
         elif "INVALID CVC" in response.upper():
-            display_response = f"{escape(response)} ⚠️"
-            header_status = "⚠️ Invalid CVC"
+            display_response = f"{escape(response)} ✅"
+            header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
-            display_response = f"{escape(response)} ❌"
             header_status = "❌ Declined"
+        elif "INSUFFICIENT_FUNDS" in response.upper():
+            header_status = "✅ Approved"
 
         # --- Final formatted message ---
         final_msg = (
@@ -3277,6 +3277,8 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
             header_status = "❌ Declined"
         else:
             header_status = "❌ Declined"
+        elif "INSUFFICIENT_FUNDS" in response.upper():
+            header_status = "✅ Approved"
 
         # --- Final formatted message ---
         final_msg = (
@@ -3561,7 +3563,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "❌ Declined"
         elif "INSUFFICIENT_FUNDS" in response.upper():
             display_response += " 💳"
-            header_status = "💳 Insufficient Funds"
+            header_status = "✅ Approved"
         else:
             header_status = "❌ Declined"
 
@@ -4017,7 +4019,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
         elif "3D_AUTHENTICATION" in response_text.upper():
             header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response_text.upper():
-            header_status = "💳 Insufficient Funds"
+            header_status = "✅ Approved"
         elif "CARD_DECLINED" in response_text.upper():
             header_status = "❌ Declined"
 
