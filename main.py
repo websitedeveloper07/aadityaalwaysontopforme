@@ -651,12 +651,15 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
     """Callback handler for the 'Charge' button."""
     q = update.callback_query
     await q.answer()
+
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
         "     ⚡ <b>Charge Gate</b> ⚡\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
         "✨ Select a charge gate below:"
     )
+
+    # --- Buttons in 2 columns ---
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("💸 Shopify 0.98$", callback_data="shopify_gate"),
@@ -664,16 +667,17 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         ],
         [
             InlineKeyboardButton("💳 Stripe 1$", callback_data="stripe_gate"),
-            InlineKeyboardButton("💳 Stripe 3$", callback_data="stripe3_gate"),  # ✅ Added new button
+            InlineKeyboardButton("💳 Stripe 3$", callback_data="stripe3_gate")
         ],
         [
-            InlineKeyboardButton("💵 Shopify 10$", callback_data="shopify10_gate")
-        ],
-        [
+            InlineKeyboardButton("💵 Shopify 10$", callback_data="shopify10_gate"),
             InlineKeyboardButton("🏦 Authnet 2.95$", callback_data="authnet36_gate")
         ],
-        [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
+        [
+            InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")
+        ]
     ])
+
     try:
         # Correctly use edit_message_caption
         await q.edit_message_caption(
@@ -689,7 +693,6 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=keyboard,
             disable_web_page_preview=True
         )
-
 
 
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
