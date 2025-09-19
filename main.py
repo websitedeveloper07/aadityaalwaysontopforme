@@ -5589,7 +5589,7 @@ logger = logging.getLogger(__name__)
 
 
 # --- Cooldown and API config ---
-BASE_COOLDOWN = 13  # Base cooldown in seconds
+BASE_COOLDOWN = 30  # Base cooldown in seconds
 COOLDOWN_SECONDS = BASE_COOLDOWN
 API_URL = "https://xautob3.onrender.com/check"
 API_KEY = "XCRacker"
