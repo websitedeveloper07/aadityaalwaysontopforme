@@ -5396,44 +5396,25 @@ async def consume_credit(user_id: int) -> bool:
 # --- Shared Regex ---
 CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 
-# --- Cooldown ---
-COOLDOWN_SECONDS = 2
-user_cooldowns = {}  # user_id -> last command timestamp
+# --- Cooldown --
 
 # --- /vbv Command ---
 async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
-    now_ts = time.time()
 
-    # 1️⃣ Cooldown check (same as /b3)
-    last_ts = user_cooldowns.get(user_id, 0)
-    elapsed = now_ts - last_ts
-    if elapsed < COOLDOWN_SECONDS:
-        remaining = round(COOLDOWN_SECONDS - elapsed, 1)
-        await update.message.reply_text(
-            f"⏳ Please wait <b>{remaining}s</b> before using /vbv again.",
-            parse_mode=ParseMode.HTML
-        )
-        return
-
-    # Set cooldown
-    user_cooldowns[user_id] = now_ts
-
-    # 2️⃣ Credit check
+    # --- Credit check ---
     if not await consume_credit(user_id):
-        await update.message.reply_text(
-            "❌ You don’t have enough credits to use /vbv.",
-            parse_mode=ParseMode.HTML
-        )
+        await update.message.reply_text("❌ You don’t have enough credits to use /vbv.")
         return
 
-    # 3️⃣ Card extraction
+    # --- Card data extraction ---
     card_data = None
+
     if context.args:
-        candidate = context.args[0].strip()
-        if CARD_REGEX.fullmatch(candidate):
-            card_data = candidate
+        card_candidate = context.args[0].strip()
+        if CARD_REGEX.fullmatch(card_candidate):
+            card_data = card_candidate
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         match = CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
@@ -5448,21 +5429,21 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 4️⃣ Processing message
+    # --- Processing message ---
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>𝗩𝗕𝗩 𝗖𝗵𝗲𝗰𝗸 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 3DS Lookup\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
     )
+
     msg = await update.message.reply_text(
-        processing_text,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
+        processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
     )
 
-    # 5️⃣ Run background check
+    # --- Run async VBV check ---
     asyncio.create_task(run_vbv_check(msg, update, card_data))
+
 
 
 # --- Background worker ---
