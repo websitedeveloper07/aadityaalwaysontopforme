@@ -2612,15 +2612,8 @@ logger = logging.getLogger(__name__)
 
 async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global CURRENT_SHOPIFY_SITE
-    user = update.effective_user
 
-    # Optional: restrict to authorized users
-    AUTHORIZED_USERS = [8493360284]  # replace with your Telegram ID(s)
-    if user.id not in AUTHORIZED_USERS:
-        await update.message.reply_text("❌ You are not authorized to change the site.")
-        return
-
-    # Check if a new site was provided
+    # Get the site URL from command args
     if not context.args:
         await update.message.reply_text("⚠️ Usage: /changeshsite https://newshopifysite.com")
         return
