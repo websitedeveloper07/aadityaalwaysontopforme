@@ -7100,6 +7100,7 @@ def register_commands(application):
         ("rsite", rsite),
         ("adurls", adurls),
         ("sp", sp),
+        ("oc", oc_command),
         ("site", site),
         ("msite", msite_command),
         ("gen", gen),
