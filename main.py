@@ -3036,7 +3036,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
             header_status = "✅ Approved"
-        elif "INVALID CVC" in response.upper():
+        elif "INVALID_CVC" in response.upper():
             display_response = f"{escape(response)} ✅"
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
@@ -3271,7 +3271,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
             header_status = "✅ Approved"
-        elif "INVALID CVC" in response.upper():
+        elif "INVALID_CVC" in response.upper():
             header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response.upper():
             header_status = "✅ Approved"
@@ -3561,7 +3561,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ Declined"
-        elif "INVALID CVC" in response.upper():
+        elif "INVALID_CVC" in response.upper():
             header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response.upper():
             display_response += " 💳"
