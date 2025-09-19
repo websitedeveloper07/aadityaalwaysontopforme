@@ -5587,34 +5587,6 @@ import re
 
 logger = logging.getLogger(__name__)
 
-# --- Load proxies ---
-PROXIES_FILE = "proxies.txt"
-with open(PROXIES_FILE, "r") as f:
-    PROXIES_LIST = [line.strip() for line in f if line.strip()]
-
-proxy_index = 0
-proxy_lock = asyncio.Lock()
-
-async def get_next_proxy():
-    """
-    Rotate proxies from file.
-    Input format in proxies.txt = host:port:user:pass
-    Output format for API       = user:pass:host:port
-    """
-    global proxy_index
-    async with proxy_lock:
-        if not PROXIES_LIST:
-            return None
-        proxy_str = PROXIES_LIST[proxy_index]
-        proxy_index = (proxy_index + 1) % len(PROXIES_LIST)
-
-        parts = proxy_str.split(":")
-        if len(parts) == 4:
-            host, port, user, password = parts
-            proxy_api = f"{user}:{password}:{host}:{port}"  # reorder for API
-            return proxy_api
-        else:
-            raise ValueError(f"Invalid proxy format: {proxy_str}")
 
 # --- Cooldown and API config ---
 BASE_COOLDOWN = 13  # Base cooldown in seconds
@@ -5707,16 +5679,11 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     try:
         timeout = aiohttp.ClientTimeout(total=50)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            # Rotate proxy
-            proxy_url = await get_next_proxy()   # may be None
-
-            # Build params for new API (no cookies)
+            # Build params for new API (no cookies, no proxy)
             params = {
                 "key": API_KEY,
                 "site": SITE,
-                "cc": cc_input,
-                # API expects proxy param even if empty
-                "proxy": proxy_url or ""
+                "cc": cc_input
             }
 
             # Debug log full API call
@@ -5727,7 +5694,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
                 async with session.get(API_URL, params=params) as resp:
                     if resp.status != 200:
                         await processing_msg.edit_text(
-                            f"❌ API returned HTTP {resp.status} | Proxy: {proxy_url or 'Not provided'}",
+                            f"❌ API returned HTTP {resp.status}",
                             parse_mode=ParseMode.HTML
                         )
                         return
@@ -5737,13 +5704,13 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
                     except Exception:
                         text = await resp.text()
                         await processing_msg.edit_text(
-                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>\nProxy: {proxy_url or 'Not provided'}",
+                            f"❌ Failed parsing API response:\n<code>{escape(text)}</code>",
                             parse_mode=ParseMode.HTML
                         )
                         return
             except Exception as e:
                 await processing_msg.edit_text(
-                    f"❌ Request error:\n<code>{escape(str(e))}</code>\nProxy: {proxy_url or 'Not provided'}",
+                    f"❌ Request error:\n<code>{escape(str(e))}</code>",
                     parse_mode=ParseMode.HTML
                 )
                 return
@@ -5763,14 +5730,17 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     # --- API response expected structure ---
     # {
     #   "cc":"544...|10|27|4046",
-    #   "proxy":"Not provided",
     #   "response":"...message...",
     #   "status":"DECLINED"
     # }
     cc = data.get("cc", cc_input)
     response = data.get("response", "No response")
     status = data.get("status", "UNKNOWN").upper()
-    stylish_status = "✅ <b>𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱</b>" if status == "APPROVED" or status == "APPROVE" else "❌ <b>𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱</b>"
+    stylish_status = (
+        "✅ <b>𝗔𝗽𝗽𝗿𝗼𝘃𝗲𝗱</b>"
+        if status in ["APPROVED", "APPROVE"]
+        else "❌ <b>𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱</b>"
+    )
 
     # --- BIN lookup (if you have get_bin_info implemented; otherwise defaults) ---
     try:
@@ -5815,10 +5785,13 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         "――――――――――――――――"
     )
     try:
-        await processing_msg.edit_text(final_msg, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        await processing_msg.edit_text(
+            final_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
     except Exception as e:
         logger.exception("Error editing final message")
-
 
 
 
