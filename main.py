@@ -6918,8 +6918,8 @@ def register_commands(application):
         ("gate", gate_command),
         ("fl", fl_command),
         ("status", status_command),
-        ("redeem", redeem_command)
         ("mtxt", mtxt_command), 
+        ("redeem", redeem_command)
 
     ]
 
