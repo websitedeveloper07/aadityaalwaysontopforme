@@ -5362,13 +5362,16 @@ async def fl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import aiohttp
 import asyncio
 import logging
-from datetime import datetime, timedelta
+import time
+import html
+import re
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from bin import get_bin_info
-
-# --- Local Imports ---
 from db import get_user, update_user  # assuming you have these functions
+
+logger = logging.getLogger(__name__)
 
 # --- Constants ---
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
@@ -5379,73 +5382,58 @@ DEVELOPER_NAME = "kคli liຖนxx"
 DEVELOPER_LINK = "https://t.me/Kalinuxxx"
 developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
 
-logger = logging.getLogger(__name__)
-
-
-
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
     try:
         user_data = await get_user(user_id)
         if user_data and user_data.get("credits", 0) > 0:
-            new_credits = user_data["credits"] - 1
-            await update_user(user_id, credits=new_credits)
+            await update_user(user_id, credits=user_data["credits"] - 1)
             return True
     except Exception as e:
         logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
     return False
 
-# --- /vbv command ---
-import re
-import asyncio
-from datetime import datetime, timedelta, timezone
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-# Shared regex pattern
+# --- Shared Regex ---
 CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 
-# Cooldown settings
+# --- Cooldown ---
 COOLDOWN_SECONDS = 2
-user_cooldowns = {}  # Global dictionary for cooldown tracking
+user_cooldowns = {}  # user_id -> last command timestamp
 
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
-
-# --- Dummy consume_credit (replace with your actual one) ---
-# async def consume_credit(user_id): ...
-
+# --- /vbv Command ---
 async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
-    now = datetime.now(timezone.utc)
+    now_ts = time.time()
 
-    # 1️⃣ Cooldown check
-    last_time = user_cooldowns.get(user_id)
-    if last_time:
-        last_time_dt = (
-            datetime.fromtimestamp(last_time, tz=timezone.utc)
-            if isinstance(last_time, float) else last_time
+    # 1️⃣ Cooldown check (same as /b3)
+    last_ts = user_cooldowns.get(user_id, 0)
+    elapsed = now_ts - last_ts
+    if elapsed < COOLDOWN_SECONDS:
+        remaining = round(COOLDOWN_SECONDS - elapsed, 1)
+        await update.message.reply_text(
+            f"⏳ Please wait <b>{remaining}s</b> before using /vbv again.",
+            parse_mode=ParseMode.HTML
         )
-        if now - last_time_dt < timedelta(seconds=COOLDOWN_SECONDS):
-            remaining = COOLDOWN_SECONDS - int((now - last_time_dt).total_seconds())
-            await update.message.reply_text(
-                f"⏳ Please wait {remaining}s before using /vbv again."
-            )
-            return
+        return
+
+    # Set cooldown
+    user_cooldowns[user_id] = now_ts
 
     # 2️⃣ Credit check
     if not await consume_credit(user_id):
-        await update.message.reply_text("❌ You don’t have enough credits to use /vbv.")
+        await update.message.reply_text(
+            "❌ You don’t have enough credits to use /vbv.",
+            parse_mode=ParseMode.HTML
+        )
         return
 
-    # 3️⃣ Card data extraction (arg or reply)
+    # 3️⃣ Card extraction
     card_data = None
-
     if context.args:
-        card_candidate = context.args[0].strip()
-        if CARD_REGEX.fullmatch(card_candidate):
-            card_data = card_candidate
+        candidate = context.args[0].strip()
+        if CARD_REGEX.fullmatch(candidate):
+            card_data = candidate
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         match = CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
@@ -5460,40 +5448,24 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 4️⃣ Build bullet link HTML
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
-    # 5️⃣ Compose stylish processing message
+    # 4️⃣ Processing message
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>𝗩𝗕𝗩 𝗖𝗵𝗲𝗰𝗸 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
     )
-
-    # 6️⃣ Send stylish processing message
     msg = await update.message.reply_text(
         processing_text,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
 
-    # 7️⃣ Set cooldown
-    user_cooldowns[user_id] = now.timestamp()
-
-    # 8️⃣ Run async background task
+    # 5️⃣ Run background check
     asyncio.create_task(run_vbv_check(msg, update, card_data))
 
 
 # --- Background worker ---
-import aiohttp
-import asyncio
-import html
-import logging
-
-# Assuming bullet_link, developer_clickable, get_bin_info are already defined
-logger = logging.getLogger(__name__)
-
 async def run_vbv_check(msg, update, card_data: str):
     try:
         cc, mes, ano, cvv = card_data.split("|")
@@ -5504,7 +5476,7 @@ async def run_vbv_check(msg, update, card_data: str):
     bin_number = cc[:6]
     api_url = f"https://rocky-815m.onrender.com/gateway=bin?key=Payal&card={card_data}"
 
-    # Fetch VBV data
+    # 1️⃣ Fetch VBV data
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=50) as resp:
@@ -5516,61 +5488,46 @@ async def run_vbv_check(msg, update, card_data: str):
         await msg.edit_text("❌ API request failed: Timed out ⏳")
         return
     except aiohttp.ClientConnectorError:
-        await msg.edit_text("❌ API request failed: Cannot connect to host 🌐")
+        await msg.edit_text("❌ API request failed: Cannot connect 🌐")
         return
     except aiohttp.ContentTypeError:
-        await msg.edit_text("❌ API request failed: Invalid JSON response 📄")
+        await msg.edit_text("❌ API request failed: Invalid JSON 📄")
         return
     except Exception as e:
         await msg.edit_text(f"❌ API request failed: {type(e).__name__} → {e}")
         return
 
-    # BIN lookup
+    # 2️⃣ BIN lookup
     try:
         bin_details = await get_bin_info(bin_number)
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = bin_details.get("bank") or "N/A"
         country_name = bin_details.get("country") or "Unknown"
         country_flag = bin_details.get("country_emoji", "")
-        card_type = bin_details.get("type", "N/A")
-        card_level = bin_details.get("brand", "N/A")
-        card_length = bin_details.get("length", "N/A")
-        luhn_check = bin_details.get("luhn", "N/A")
-        bank_phone = bin_details.get("bank_phone", "N/A")
-        bank_url = bin_details.get("bank_url", "N/A")
-    except Exception as e:
-        logger.warning(f"BIN lookup failed for {bin_number}: {e}")
-        brand = issuer = card_type = card_level = card_length = luhn_check = bank_phone = bank_url = "N/A"
+    except Exception:
+        brand = issuer = "N/A"
         country_name = "Unknown"
         country_flag = ""
 
-    # Response formatting
+    # 3️⃣ Format response
     response_text = vbv_data.get("response", "N/A")
-    check_mark = "✅" if response_text.lower().find("successful") != -1 else "❌"
-
-    # Escape HTML to prevent formatting issues
-    safe_card = html.escape(card_data)
-    safe_reason = html.escape(response_text)
-    safe_brand = html.escape(brand)
-    safe_issuer = html.escape(issuer)
-    safe_country = html.escape(f"{country_name} {country_flag}".strip())
+    check_mark = "✅" if "successful" in response_text.lower() else "❌"
 
     text = (
         "◇━━〔 #𝟯𝗗𝗦 𝗟𝗼𝗼𝗸𝘂𝗽 〕━━◇\n"
-        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{safe_card}</code>\n"
+        f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(card_data)}</code>\n"
         f"{bullet_link} 𝐁𝐈𝐍 ➵ <code>{bin_number}</code>\n"
-        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{safe_reason} {check_mark}</i>\n"
+        f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{html.escape(response_text)} {check_mark}</i>\n"
         "――――――――――――――――\n"
-        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{safe_brand}</code>\n"
-        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{safe_issuer}</code>\n"
-        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{safe_country}</code>\n"
+        f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{html.escape(brand)}</code>\n"
+        f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{html.escape(issuer)}</code>\n"
+        f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{html.escape(f'{country_name} {country_flag}'.strip())}</code>\n"
         "――――――――――――――――\n"
         f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {update.effective_user.mention_html()}\n"
-        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
+        f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝗉𝗲𝗋 ➵ {developer_clickable}"
     )
 
     await msg.edit_text(text, parse_mode="HTML", disable_web_page_preview=True)
-
 
 
 import time
