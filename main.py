@@ -4686,10 +4686,11 @@ import aiohttp
 import asyncio
 from telegram import Update, InputFile
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
-from db import get_user  # fetch user data from DB
+from db import get_user  # your DB function to fetch user data
 
 PROXY = "198.23.239.134:6540:skgbsgwl:7y2hll5e4ycn"
 
+# ---------------- Background card processing ---------------- #
 async def process_cards(update: Update, file_path: str, file_name: str, site: str):
     output_lines = []
 
@@ -4697,8 +4698,7 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
         with open(file_path, "r") as f:
             cards = [line.strip() for line in f if line.strip()]
 
-        # Process cards concurrently (optional: adjust concurrency if needed)
-        sem = asyncio.Semaphore(5)  # limit concurrent requests
+        sem = asyncio.Semaphore(5)  # Limit concurrent API requests
 
         async def check_card(card):
             async with sem:
@@ -4717,12 +4717,14 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
     with open(output_file_path, "w") as f:
         f.write("\n".join(output_lines))
 
-    # Send the result file back
+    # Send result file back
     await update.message.reply_document(document=InputFile(output_file_path))
 
-async def mtxt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+# ---------------- Unified handler for command & .txt reply ---------------- #
+async def mtxt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_data = await get_user(user_id)  # fetch user data from DB
+    user_data = await get_user(user_id)
 
     if not user_data or not user_data.get("custom_urls"):
         await update.message.reply_text("You have not added any site. Please add your custom site first.")
@@ -4730,13 +4732,15 @@ async def mtxt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     site = user_data["custom_urls"]
 
-    if not update.message.document:
-        await update.message.reply_text("Please reply with a .txt file containing cards.")
-        return
+    # Get the document (supports replying to a message with a file or sending directly)
+    document = None
+    if update.message.document:
+        document = update.message.document
+    elif update.message.reply_to_message and update.message.reply_to_message.document:
+        document = update.message.reply_to_message.document
 
-    document = update.message.document
-    if not document.file_name.endswith(".txt"):
-        await update.message.reply_text("Only .txt files are supported.")
+    if not document or not document.file_name.endswith(".txt"):
+        await update.message.reply_text("Please send or reply to a .txt file containing cards.")
         return
 
     await update.message.reply_text("✅ Processing started in the background. You will get results when done!")
@@ -4745,8 +4749,10 @@ async def mtxt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_path = f"./{document.file_name}"
     await file.download_to_drive(file_path)
 
-    # Run the processing in the background
+    # Run in background
     asyncio.create_task(process_cards(update, file_path, document.file_name, site))
+
+
 
 
 
@@ -6918,7 +6924,7 @@ def register_commands(application):
         ("gate", gate_command),
         ("fl", fl_command),
         ("status", status_command),
-        ("mtxt", mtxt_command), 
+        ("mtxt", mtxt_handler), 
         ("redeem", redeem_command)
 
     ]
