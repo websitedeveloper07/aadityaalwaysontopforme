@@ -4782,6 +4782,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
         "SUCCESS": 4,
         "INSUFFICIENT_FUNDS": 4,
         "3D_AUTHENTICATION": 3,
+        "3DS_REQUIRED": 3,
         "APPROVED": 3,
         "DECLINED": 2,
         "CARD_DECLINED": 2,
