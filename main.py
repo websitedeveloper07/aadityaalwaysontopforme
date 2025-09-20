@@ -2769,7 +2769,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- Determine header status ---
         header_status = "❌ Declined"  # default
 
-        if re.search(r"\b(Thank You|approved|success|charged)\b", response, re.I):
+        if re.search(r"\b(Thank You|ORDER_PLACED|approved|success|charged)\b", response, re.I):
             header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response.upper():
             header_status = "✅ Approved"
@@ -3022,7 +3022,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         display_response = escape(response)
         header_status = "❌ Declined"  # default
 
-        if re.search(r"\b(Thank You|approved|success|charged)\b", response, re.I):
+        if re.search(r"\b(Thank You|ORDER_PLACED|approved|success|charged)\b", response, re.I):
             display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
             header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response.upper():
@@ -3270,7 +3270,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         display_response = escape(response)
         header_status = "❌ Declined"  # default
 
-        if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
+        if re.search(r"\b(Thank You|ORDER_PLACED|approved|charged|success)\b", response, re.I):
             display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
             header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response.upper():
@@ -3505,7 +3505,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Enhance response with emojis ---
         display_response = escape(response)
-        if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
+        if re.search(r"\b(Thank You|ORDER_PLACED|approved|charged|success)\b", response, re.I):
             display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
             header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response.upper():
@@ -3800,7 +3800,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Enhance response with emojis & dynamic header ---
         display_response = escape(response)
-        if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
+        if re.search(r"\b(Thank You|ORDER_PLACED|approved|charged|success)\b", response, re.I):
             display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
             header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response.upper():
@@ -4262,7 +4262,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
 
         # --- Dynamic Header Status ---
         header_status = "❌ Declined"  # default
-        if re.search(r"\b(Thank You|approved|success|charged)\b", response_text, re.I):
+        if re.search(r"\b(Thank You|ORDER_PLACED|approved|success|charged)\b", response_text, re.I):
             header_status = "🔥 Charged"
         elif "3DS_REQUIRED" in response_text.upper():
             header_status = "✅ Approved"
@@ -4771,6 +4771,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     lock = asyncio.Lock()  # Priority map
 
     PRIORITY = {
+        "ORDER_PLACED": 4,
         "CHARGED": 4,
         "THANK YOU": 4,
         "SUCCESS": 4,
