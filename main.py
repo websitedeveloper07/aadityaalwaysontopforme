@@ -4794,7 +4794,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     }
 
     async with httpx.AsyncClient() as session:
-        proxy = "qhlpirsk-5331:96zjmb7awmom@p.webshare.io:80"
+        proxy = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
 
         async def check_one(card, site):
             card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
@@ -4930,7 +4930,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.")
 
-    base_url = user_data.get("base_url", "https://autoshopify-dark.sevalla.app/index.php")
+    base_url = user_data.get("base_url", "https://autosh.arpitchk.shop/puto.php")
     sites = user_data.get("custom_urls", [])
     if not sites:
         return await update.message.reply_text("❌ No sites found in your account.")
