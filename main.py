@@ -5531,7 +5531,7 @@ BASE_COOLDOWN = 5  # Base cooldown in seconds
 COOLDOWN_SECONDS = BASE_COOLDOWN
 API_URL = "https://xautob3.onrender.com/check"
 API_KEY = "XCRacker"
-SITE = "https://Xcracker911.com"
+SITE = "https://highwayandheavyparts.com"
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
