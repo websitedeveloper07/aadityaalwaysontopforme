@@ -4759,10 +4759,11 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         data = resp.json()
         # Skip if required fields missing
         if not data.get("client_token") or not data.get("price") or not data.get("product_id"):
-            return "SKIP", data
+            return "SKIP", "false", "0", "N/A"
         return data.get("Response", "Unknown"), data.get("Status", "false"), data.get("Price", "0"), data.get("Gateway", "Shopify")
     except Exception as e:
         return f"Error: {str(e)}", "false", "0", "N/A"
+
 
 # --- Worker for a single card ---
 async def check_card_worker(card, base_url, sites, sem, session):
