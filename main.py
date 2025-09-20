@@ -5565,7 +5565,7 @@ logger = logging.getLogger(__name__)
 # --- Config ---
 API_URL = "https://xautob3.onrender.com/check"
 API_KEY = "XCRacker"
-SITE = "https://Xcracker911.com"
+SITE = "https://highwayandheavyparts.com"
 COOLDOWN_SECONDS = 5
 
 # --- Credit System ---
