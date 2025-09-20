@@ -4773,7 +4773,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     site_price = None
     gateway_used = "Self Shopify"
     results = []
-    sem = asyncio.Semaphore(5)
+    sem = asyncio.Semaphore(10)
     lock = asyncio.Lock()
 
     PRIORITY = {
@@ -4877,7 +4877,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                         await msg.edit_text(final_text, parse_mode="HTML", disable_web_page_preview=True)
                     except:
                         pass
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.5)
 
         for card in cards:
             await worker(card)
