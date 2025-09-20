@@ -625,7 +625,7 @@ async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAU
         "• <code>/b3</code> - <i>Check a single Braintree card</i>\n"
         "  Example:\n"
         "  <code>/b3 1234567890123456|12|24|123</code>\n\n"
-        "✨ <b>Status</b> - <i>OFF</i> ❌"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
     )
     keyboard = [
         [InlineKeyboardButton("◀️ Back to Auth Menu", callback_data="auth_sub_menu")],
@@ -5550,14 +5550,50 @@ CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 # cooldown tracker (per-user)
 user_last_command_time = {}
 
+import time
+import logging
+import aiohttp
+import asyncio
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from db import get_user, update_user
+import re
+
+logger = logging.getLogger(__name__)
+
+# --- Config ---
+API_URL = "https://xautob3.onrender.com/check"
+API_KEY = "XCRacker"
+SITE = "https://Xcracker911.com"
+COOLDOWN_SECONDS = 5
+
+# --- Credit System ---
+async def consume_credit(user_id: int) -> bool:
+    try:
+        user_data = await get_user(user_id)
+        if user_data and user_data.get("credits", 0) > 0:
+            await update_user(user_id, credits=user_data["credits"] - 1)
+            return True
+    except Exception as e:
+        logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
+    return False
+
+
+# --- Regex ---
+CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+
+# --- Cooldown tracker ---
+user_last_command_time = {}
+
+
 async def b3(update: Update, context):
     user = update.effective_user
     user_id = user.id
     current_time = time.time()
 
-    # Get text from /b3 message or replied message
+    # Extract CC from args or reply
     input_text = None
-
     if context.args:
         input_text = context.args[0]
     elif update.message.reply_to_message and update.message.reply_to_message.text:
@@ -5565,13 +5601,12 @@ async def b3(update: Update, context):
         if match:
             input_text = match.group()
 
-    # If no card was found
     if not input_text:
         await update.message.reply_text(
-            "Usage:\n"
-            "`/b3 1234123412341234|12|2025|123`\n"
+            "⚠️ <b>Usage:</b>\n"
+            "<code>/b3 1234123412341234|12|2025|123</code>\n\n"
             "Or reply to a message with the card in this format.",
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.HTML
         )
         return
 
@@ -5585,28 +5620,35 @@ async def b3(update: Update, context):
                 parse_mode=ParseMode.HTML
             )
             return
-
-    # Set cooldown
     user_last_command_time[user_id] = current_time
 
+    # --- Credit check BEFORE processing ---
+    credit_ok = await consume_credit(user.id)
+    if not credit_ok:
+        await update.message.reply_text(
+            "⚠️ <b>No Credits Left!</b>\n\n"
+            "Please recharge your balance to continue using <b>/b3</b>.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # Continue only if credits are available
     cc_input = input_text.strip()
     full_card = cc_input
+    bullet_link = '<a href="https://t.me/CARDER33">[⌇]</a>'
 
-    BULLET_GROUP_LINK = "https://t.me/CARDER33"
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
+    # Processing message
     processing_text = (
-        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-        f"<pre><code>{full_card}</code></pre>\n\n"
-        f"{bullet_link} <b>𝗚𝗮𝘁𝗲𝘄𝗮𝘆 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝗲𝗲 𝑷𝒓𝒆𝒎𝒊𝒖𝒎 𝑨𝒖𝒕𝗵</b>\n"
-        f"{bullet_link} <b>𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎...</b>"
+        f"◇━━〔 <b>Processing⏳</b> 〕━━◇\n"
+        f"{bullet_link} <b>Card ➵</b> <code>{full_card}</code>\n"
+        f"{bullet_link} <b>Gateway ➵</b> 𝑩𝒓𝒂𝒊𝒏𝒕𝗿𝗲𝗲 𝑷𝒓𝒆𝗺𝗶𝒖𝗺 𝑨𝒖𝒕𝗵\n"
+        f"{bullet_link} <b>Status ➵</b> Checking 🔎..."
     )
-
     processing_msg = await update.message.reply_text(
         processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
     )
 
-    # Launch checker (fire-and-forget like before)
+    # Launch checker
     asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
 
 
@@ -6671,7 +6713,7 @@ from db import init_db
 from force_join import force_join, check_joined_callback  # import decorator & callback
 
 # 🛡️ Security
-AUTHORIZED_CHATS = set([-1002554243871, -1002832894194, -1002996641591, -1002750403340])  # Only these groups
+AUTHORIZED_CHATS = set([-1002554243871, -1002832894194, -1002996641591, -1002750403340, -1003007390596])  # Only these groups
 OWNER_ID = 8493360284                     # Your Telegram user ID
 
 # 🛑 Banned users
