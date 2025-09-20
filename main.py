@@ -3988,7 +3988,7 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
             await update_user(user_id, custom_urls=current_sites)
 
         requester = f"@{user.username}" if user.username else str(user.id)
-        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if response.upper() != "CARD_DECLINED" else "❌ 𝐅𝐚𝐢𝐥𝐞𝐝"
+        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if response.upper() != "CARD_DECLINED"
 
         # --- Format final message ---
         formatted_msg = (
