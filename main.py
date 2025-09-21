@@ -570,7 +570,7 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
     
     text = (
-        "✦══🚪 AUTH GATEWAYS 🚪══✦\n\n"
+        "✦════════✦🚪 AUTH GATEWAYS 🚪✦════════✦\n\n"
         
         "🟥 <b>Stripe Auth</b>\n"
         f"{bullet_link} Single Check : <code>/chk cc|mm|yy|cvv</code>\n"
@@ -588,21 +588,26 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "✨ All gateways are fully accessible with no rate limits.\n"
         "✦════════════════════════════════✦"
     )
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
+    ])
     
     try:
-        # Edit the message caption with HTML formatting
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=None  # No buttons
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
             disable_web_page_preview=True
         )
+
 
 
 
