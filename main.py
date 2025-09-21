@@ -671,7 +671,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         ],
         [
             InlineKeyboardButton("💵 Shopify 10$", callback_data="shopify10_gate"),
-            InlineKeyboardButton("🏦 Authnet 2.5$", callback_data="authnet36_gate")
+            InlineKeyboardButton("🏦 Authnet 1.0$", callback_data="authnet36_gate")
         ],
         [
             InlineKeyboardButton("🌊 Ocean Payments 4$", callback_data="ocean_gate")
@@ -851,9 +851,9 @@ async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
     await q.answer()
     text = (
         "✦━━━━━━━━━━━━━━✦\n"
-        "      🏦 <b>Authnet 2.5$</b>\n"
+        "      🏦 <b>Authnet 1.0$</b>\n"
         "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/at</code> - <i>Check a single card on Authnet $2.5</i>\n"
+        "• <code>/at</code> - <i>Check a single card on Authnet $1.0</i>\n"
         "  Example:\n"
         "  <code>/at 1234567890123456|12|2026|123</code>\n\n"
         "⚡ Use carefully, each check deducts credits.\n\n"
@@ -1055,7 +1055,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{bullet_link} <code>/oc cc|mm|yy|cvv</code> – Ocean Payments 4$\n"
 
         "🔹 <b>𝗔𝘂𝘁𝗵𝗻𝗲𝘁</b>\n"
-        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 2.5$ Charge\n\n"
+        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 1.0$ Charge\n\n"
 
         "🔹 <b>𝙎𝙝𝙤𝙥𝙞𝙛𝙮</b>\n"
         f"{bullet_link} <code>/sh</code> – Shopify Charge $0.98\n"
@@ -3692,7 +3692,7 @@ logger = logging.getLogger(__name__)
 # --- Config ---
 AUTOSH_AT_API = "https://autoshopify-dark.sevalla.app/index.php"
 DEFAULT_PROXY = "82.29.225.78:5933:juftilus:atasaxde44jl"
-AUTHNET_DEFAULT_SITE = "https://upperlimitsupplements.com"
+AUTHNET_DEFAULT_SITE = "https://store.birkman.com"
 
 
 async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
