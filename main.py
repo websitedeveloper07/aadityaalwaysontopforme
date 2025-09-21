@@ -715,10 +715,10 @@ async def adyen_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"{bullet_link} Price   : <i>$1</i>\n"
     )
 
-    keyboard = InlineKeyboardMarkup([
+    keyboard = [
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ])
+    ]
 
     try:
         await q.edit_message_caption(
@@ -734,6 +734,7 @@ async def adyen_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
+
 
 
 
@@ -752,25 +753,27 @@ async def ocean_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"{bullet_link} Price   : <i>$4</i>\n"
     )
 
-    keyboard = InlineKeyboardMarkup([
+    # Define buttons as a list of rows
+    keyboard = [
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ])
+    ]
 
     try:
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=InlineKeyboardMarkup(keyboard)  # wrap once
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=InlineKeyboardMarkup(keyboard),  # wrap once
             disable_web_page_preview=True
         )
+
 
 
 
