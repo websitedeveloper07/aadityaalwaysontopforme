@@ -2612,7 +2612,7 @@ logger = logging.getLogger(__name__)
 
 import urllib.parse
 
-AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php/"
+AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php"
 DEFAULT_PROXY = "67.227.113.12:5552:juftilus:atasaxde44jl"
 
 async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2919,7 +2919,7 @@ logger = logging.getLogger(__name__)
 # --- HC Processor ---
 import urllib.parse
 
-AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php/"
+AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php"
 HC_PROXY = "31.59.27.148:6725:juftilus:atasaxde44jl"
 
 async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
@@ -3163,7 +3163,7 @@ logger = logging.getLogger(__name__)
 # --- HC Processor ---
 import urllib.parse
 
-AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php/"
+AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php"
 ST1_PROXY = "23.27.184.87:5688:juftilus:atasaxde44jl"
 ST1_SITE = "https://vasileandpavel.com"
 
@@ -3690,7 +3690,7 @@ from bin import get_bin_info
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-AUTOSH_AT_API = "https://autoshopify-dark.sevalla.app/index.php/"
+AUTOSH_AT_API = "https://autoshopify-dark.sevalla.app/index.php"
 DEFAULT_PROXY = "82.29.225.78:5933:juftilus:atasaxde44jl"
 AUTHNET_DEFAULT_SITE = "https://upperlimitsupplements.com"
 
@@ -3941,7 +3941,7 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
     """
     # --- API setup ---
     api_url = (
-        "https://autoshopify-dark.sevalla.app/index.php/"
+        "https://autoshopify-dark.sevalla.app/index.php"
         f"?site={site_input}"
         f"&cc={cc_input}"
         "&proxy=23.27.209.235:6254:juftilus:atasaxde44jl"
