@@ -4032,6 +4032,14 @@ ADYEN_API = "https://autoshopify-dark.sevalla.app/adyen.php"
 DEFAULT_PROXY = "82.29.225.78:5933:juftilus:atasaxde44jl"
 ADYEN_DEFAULT_SITE = "https://store.adyen.com"
 
+async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
 
 async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
@@ -4185,7 +4193,6 @@ async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
-
 
 
 # --- Main /sh command ---
