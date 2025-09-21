@@ -619,9 +619,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
     await q.answer()
 
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "     ⚡ <b>Charge Gate</b> ⚡\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
+        "✦═══💳 CHARGE GATEWAYS 💳══✦\n\n"
         "✨ Select a charge gate below:"
     )
 
@@ -641,7 +639,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         ],
         [
             InlineKeyboardButton("🌊 Ocean Payments 4$", callback_data="ocean_gate"),
-            InlineKeyboardButton("💳 Adyen 1$", callback_data="adyen_gate")  # New button in second column
+            InlineKeyboardButton("💳 Adyen 1$", callback_data="adyen_gate")  
         ],
         [
             InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")
@@ -667,29 +665,30 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
 
 
 async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Callback handler for the 'Shopify 5$' button."""
+    """Callback handler for the 'Shopify 0.98$' button."""
     q = update.callback_query
     await q.answer()
+
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      💸 <b>Shopify 0.98$</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/sh</code> - <i>Check a single card on Shopify $0.98</i>\n"
-        "  Example:\n"
-        "  <code>/sh 1234567890123456|12|2026|123</code>\n\n"
-        "⚡ Use carefully, each check deducts credits.\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✦════════✦💸 SHOPIFY GATEWAY 0.98$ ✦════════✦\n\n"
+        f"{bullet_link} <code>/sh</code>\n"
+        f"{bullet_link} Status  : <i>Active ✅</i>\n"
+        f"{bullet_link} Gateway : <i>Shopify</i>\n"
+        f"{bullet_link} Price   : <i>$0.98</i>\n"
     )
-    keyboard = [
+
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
+    ])
+
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -699,30 +698,29 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
+
 
 async def adyen_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Adyen 1$' button."""
     q = update.callback_query
     await q.answer()
 
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      💳 <b>Adyen 1$</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/ad</code> - <i>Check a single card on Adyen $1</i>\n"
-        "  Example:\n"
-        "  <code>/ad 1234567890123456|12|2026|123</code>\n\n"
-        "⚡ Use carefully, each check deducts credits.\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✦════════✦💳 ADYEN GATEWAY 1$ ✦════════✦\n\n"
+        f"{bullet_link} <code>/ad</code>\n"
+        f"{bullet_link} Status  : <i>Active ✅</i>\n"
+        f"{bullet_link} Gateway : <i>Adyen</i>\n"
+        f"{bullet_link} Price   : <i>$1</i>\n"
     )
 
-    keyboard = [
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
+    ])
 
     try:
-        # Edit the existing message caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
@@ -736,28 +734,30 @@ async def adyen_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
+
 
 
 async def ocean_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Ocean Payments 4$' button."""
     q = update.callback_query
     await q.answer()
+
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      🌊 <b>Ocean Payments 4$</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/oc</code> - <i>Check a single card on Ocean Payments $4</i>\n"
-        "  Example:\n"
-        "  <code>/oc 1234567890123456|12|2026|123</code>\n\n"
-        "⚡ Use carefully, each check deducts credits.\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✦════════✦🌊 OCEAN PAYMENTS GATEWAY 4$ ✦════════✦\n\n"
+        f"{bullet_link} <code>/oc</code>\n"
+        f"{bullet_link} Status  : <i>Active ✅</i>\n"
+        f"{bullet_link} Gateway : <i>Ocean Payments</i>\n"
+        f"{bullet_link} Price   : <i>$4</i>\n"
     )
-    keyboard = [
+
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
+    ])
+
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
@@ -773,37 +773,33 @@ async def ocean_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
 
 
+
 async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Callback handler for the 'Auto Shopify' button."""
     q = update.callback_query
     await q.answer()
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "     ⚡ <b>Auto Shopify</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "<code>/sp</code>  - <b>Auto Shopify Checker</b>\n"
-        "Example: <code>/sp 1234567890123456|12|2026|123</code>\n\n"
-        "<code>/msp</code>  - <b>Mass Auto Shopify Checker</b>\n"
-        "Example: <code>/msp 1234567890123456|12|2026|123</code>\n\n"
-        "<code>/seturl &lt;shopify site&gt;</code> - <b>Set your custom Shopify site</b>\n"
-        "Example: <code>/seturl https://yourshopify.com</code>\n\n"
-        "✨ First set your preferred Shopify site using <code>/seturl</code>.\n"
-        "Then run <code>/sp</code> to automatically check cards on that site 🚀\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✦════════✦⚡ AUTO SHOPIFY ✦════════✦\n\n"
+        f"{bullet_link} cmd          - <code>/sp</code>\n"
+        f"{bullet_link} mass         - <code>/msp</code>\n"
+        f"{bullet_link} own site     - <code>/seturl &lt;site&gt;</code>\n"
+        f"{bullet_link} multiple sites - <code>/adurls &lt;site&gt;</code>\n\n"
+        f"{bullet_link} Status   : <i>Active ✅</i>\n"
+        f"{bullet_link} Gateway  : <i>Shopify</i>\n"
+        "✦════════════════════════✦"
     )
 
-    keyboard = [
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
+    ])
 
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -819,26 +815,27 @@ async def shopify10_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
     """Callback handler for the 'Shopify 10$' button."""
     q = update.callback_query
     await q.answer()
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      💵 <b>Shopify 10$</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/hc</code> - <i>Check a single card on Shopify $10</i>\n"
-        "  Example:\n"
-        "  <code>/hc 1234567890123456|12|2026|123</code>\n\n"
-        "⚡ Use carefully, each check deducts credits.\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✦════════✦💵 SHOPIFY GATEWAY 10$ ✦════════✦\n\n"
+        f"{bullet_link} cmd   - <code>/hc</code>\n"
+        f"{bullet_link} Status - <i>Active ✅</i>\n"
+        f"{bullet_link} Gateway - <i>Shopify</i>\n"
+        f"{bullet_link} Price  - <i>$10</i>\n"
+        "✦════════════════════════✦"
     )
-    keyboard = [
+
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
+    ])
+
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -851,29 +848,30 @@ async def shopify10_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Callback handler for the 'Authnet 36$' button."""
+    """Callback handler for the 'Authnet 1.0$' button."""
     q = update.callback_query
     await q.answer()
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      🏦 <b>Authnet 1.0$</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/at</code> - <i>Check a single card on Authnet $1.0</i>\n"
-        "  Example:\n"
-        "  <code>/at 1234567890123456|12|2026|123</code>\n\n"
-        "⚡ Use carefully, each check deducts credits.\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✦════════✦🏦 AUTHNET GATEWAY 1.0$ ✦════════✦\n\n"
+        f"{bullet_link} cmd     - <code>/at</code>\n"
+        f"{bullet_link} Status  - <i>Active ✅</i>\n"
+        f"{bullet_link} Gateway - <i>Authnet</i>\n"
+        f"{bullet_link} Price   - <i>$1.0</i>\n"
+        "✦════════════════════════✦"
     )
-    keyboard = [
+
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
+    ])
+
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -886,30 +884,32 @@ async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
 
 
 
+
 async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Stripe 1$' button."""
     q = update.callback_query
     await q.answer()
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      💳 <b>Stripe 1$</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/st</code> - <i>Check a single card on Stripe $1</i>\n"
-        "  Example:\n"
-        "  <code>/st 1234567890123456|12|2026|123</code>\n\n"
-        "⚡ Each check deducts credits.\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✦════════✦💳 STRIPE GATEWAY 1$ ✦════════✦\n\n"
+        f"{bullet_link} cmd     - <code>/st</code>\n"
+        f"{bullet_link} Status  - <i>Active ✅</i>\n"
+        f"{bullet_link} Gateway - <i>Stripe</i>\n"
+        f"{bullet_link} Price   - <i>$1</i>\n"
+        "✦════════════════════════✦"
     )
-    keyboard = [
+
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
+    ])
+
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -925,26 +925,27 @@ async def stripe3_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     """Callback handler for the 'Stripe 3$' button."""
     q = update.callback_query
     await q.answer()
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      💳 <b>Stripe 3$</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/st1</code> - <i>Check a single card on Stripe $3</i>\n"
-        "  Example:\n"
-        "  <code>/st1 1234567890123456|12|2026|123</code>\n\n"
-        "⚡ Each check deducts credits.\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✦════════✦💳 STRIPE GATEWAY 3$ ✦════════✦\n\n"
+        f"{bullet_link} cmd     - <code>/st1</code>\n"
+        f"{bullet_link} Status  - <i>Active ✅</i>\n"
+        f"{bullet_link} Gateway - <i>Stripe</i>\n"
+        f"{bullet_link} Price   - <i>$3</i>\n"
+        "✦════════════════════════✦"
     )
-    keyboard = [
+
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
+    ])
+
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -960,26 +961,25 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
     """Callback handler for the '3DS Lookup' button."""
     q = update.callback_query
     await q.answer()
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      🔐 <b>3DS Lookup</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/vbv</code> <code>&lt;card|mm|yy|cvv&gt;</code>\n"
-        "  Example:\n"
-        "  <code>/vbv 4111111111111111|12|2026|123</code>\n\n"
-        "➤ Checks whether the card is <i>VBV (Verified by Visa)</i> or <i>NON-VBV</i>.\n"
-        "⚠️ Ensure you enter the card details in the correct format.\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
+        "✦════════✦🔐 3DS LOOKUP ✦════════✦\n\n"
+        f"{bullet_link} cmd     - <code>/vbv &lt;card|mm|yy|cvv&gt;</code>\n"
+        f"{bullet_link} Status  - <i>Active ✅</i>\n"
+        f"{bullet_link} Gateway - <i>3DS / VBV</i>\n"
+        "✦════════════════════════✦"
     )
-    keyboard = [
+
+    keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
+    ])
+
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=keyboard
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
@@ -989,6 +989,7 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
+
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
