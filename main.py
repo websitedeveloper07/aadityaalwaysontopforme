@@ -4030,7 +4030,7 @@ logger = logging.getLogger(__name__)
 # --- Config ---
 ADYEN_API = "https://autoshopify-dark.sevalla.app/index.php"
 DEFAULT_PROXY = "82.29.225.78:5933:juftilus:atasaxde44jl"
-ADYEN_DEFAULT_SITE = "https://store.adyen.com"
+ADYEN_DEFAULT_SITE = "https://pizazzhair.com"
 
 async def consume_credit(user_id: int) -> bool:
     """Consume 1 credit from DB user if available."""
