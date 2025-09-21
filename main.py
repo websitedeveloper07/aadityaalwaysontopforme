@@ -524,12 +524,20 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """Callback handler for the 'Gates' button."""
     q = update.callback_query
     await q.answer()
+
+    # Stylish single-line header
+    header = "✦══ 🚪 GATES MENU 🚪 ══✦\n\n"
+
+    # Bullet link for uniformity
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "     🚪 <b>Gates Menu</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "✨ Please select a feature below:"
+        f"{header}"
+        f"{bullet_link} <b>Auth Gateway</b> - Access authentication features\n"
+        f"{bullet_link} <b>Charge Gateway</b> - Access payment/charge features\n\n"
+        "<b><i>Full Help & Support available for any issue</i></b>"
     )
+
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("⚡ Auth", callback_data="auth_sub_menu"),
@@ -537,8 +545,8 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ],
         [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ])
+
     try:
-        # Correctly use edit_message_caption
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
@@ -553,105 +561,50 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             disable_web_page_preview=True
         )
 
+
 async def auth_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Auth' button."""
     q = update.callback_query
     await q.answer()
+    
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+    
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      🚪 <b>Auth Gate</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "✨ Select a platform below:"
+        "✦══🚪 AUTH GATEWAYS 🚪══✦\n\n"
+        
+        "🟥 <b>Stripe Auth</b>\n"
+        f"{bullet_link} Single Check : <code>/chk cc|mm|yy|cvv</code>\n"
+        f"{bullet_link} Mass Check   : <code>/mass cc|mm|yy|cvv</code>\n"
+        f"{bullet_link} Status       : Online ✅\n"
+        f"{bullet_link} Last Checked : 5 min ago\n"
+        "────────────────────────\n\n"
+        
+        "🟦 <b>Braintree Premium</b>\n"
+        f"{bullet_link} Single Auth  : <code>/b3 cc|mm|yy|cvv</code>\n"
+        f"{bullet_link} Status       : Online ✅\n"
+        f"{bullet_link} Last Checked : 3 min ago\n"
+        "────────────────────────\n\n"
+
+        "✨ All gateways are fully accessible with no rate limits.\n"
+        "✦════════════════════════════════✦"
     )
-    keyboard = [
-        [InlineKeyboardButton("💳 STRIPE AUTH", callback_data="stripe_examples")],
-        [InlineKeyboardButton("💎 Braintree Premium", callback_data="braintree_examples")],
-        [InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")]
-    ]
+    
     try:
-        # Correctly use edit_message_caption
+        # Edit the message caption with HTML formatting
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=None  # No buttons
         )
     except Exception as e:
         logger.warning(f"Failed to edit message, sending a new one: {e}")
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
 
-async def stripe_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Callback handler for the 'Stripe Auth' button."""
-    q = update.callback_query
-    await q.answer()
-    text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      💳 <b>Stripe Auth</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/chk</code> - <i>Check a single card</i>\n"
-        "  Example:\n"
-        "  <code>/chk 1234567890123456|12|24|123</code>\n\n"
-        "• <code>/mass</code> - <i>Check up to 30 cards at once</i>\n"
-        "  Example:\n"
-        "  <code>/mass &lt;cards&gt;</code>\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
-    )
-    keyboard = [
-        [InlineKeyboardButton("◀️ Back to Auth Menu", callback_data="auth_sub_menu")],
-        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
-    try:
-        # Correctly use edit_message_caption
-        await q.edit_message_caption(
-            caption=text,
-            parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-    except Exception as e:
-        logger.warning(f"Failed to edit message, sending a new one: {e}")
-        await q.message.reply_text(
-            text=text,
-            parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
-        )
 
-async def braintree_examples_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Callback handler for 'Braintree Premium'."""
-    q = update.callback_query
-    await q.answer()
-    text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "      💎 <b>Braintree Premium</b>\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        "• <code>/b3</code> - <i>Check a single Braintree card</i>\n"
-        "  Example:\n"
-        "  <code>/b3 1234567890123456|12|24|123</code>\n\n"
-        "✨ <b>Status</b> - <i>Active</i> ✅"
-    )
-    keyboard = [
-        [InlineKeyboardButton("◀️ Back to Auth Menu", callback_data="auth_sub_menu")],
-        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
-    ]
-    try:
-        # Correctly use edit_message_caption
-        await q.edit_message_caption(
-            caption=text,
-            parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-    except Exception as e:
-        logger.warning(f"Failed to edit message, sending a new one: {e}")
-        await q.message.reply_text(
-            text=text,
-            parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            disable_web_page_preview=True
-        )
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -1055,8 +1008,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "authnet36_gate": authnet36_gate_handler,
         "ocean_gate": ocean_gate_handler,          # ✅ Ocean Payments 4$
         "adyen_gate": adyen_gate_handler,          # ✅ Added Adyen 1$
-        "stripe_examples": stripe_examples_handler,
-        "braintree_examples": braintree_examples_handler,
         "ds_lookup": ds_lookup_menu_handler,
         "back_to_start": back_to_start_handler,
     }
