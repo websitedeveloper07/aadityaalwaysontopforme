@@ -371,7 +371,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("🚪 Gates", callback_data="gates_menu"),
-            InlineKeyboardButton("⌨️ Commands", callback_data="tools_menu")
+            InlineKeyboardButton("📦 Pricing", callback_data="tools_menu")  # Changed here
         ],
         [
             InlineKeyboardButton("💎 Owner", url=DEV_LINK),
@@ -381,6 +381,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("👥 Official Group", url=OFFICIAL_GROUP_LINK)
         ]
     ])
+
 
 async def build_start_message(user, context) -> tuple[str, InlineKeyboardMarkup]:
     """
@@ -461,45 +462,49 @@ async def back_to_start_handler(update: Update, context: ContextTypes.DEFAULT_TY
         )
 
 async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Callback handler for the 'Commands' button."""
+    """Callback handler for the 'Pricing' button showing premium plans."""
     q = update.callback_query
     await q.answer()
+
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-        "✦━━━━━━━━━━━━━━✦\n"
-        "     ⚡ <b>Available Commands</b> ⚡\n"
-        "✦━━━━━━━━━━━━━━✦\n\n"
-        f"{bullet_link} <code>/cmds</code> - Shows all commands\n"
-        f"{bullet_link} <code>/gen [bin] [no. of cards]</code> - Generate cards\n"
-        f"{bullet_link} <code>/bin &lt;bin&gt;</code> - BIN lookup\n"
-        f"{bullet_link} <code>/vbv</code> - 3DS Lookup\n"
-        f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> - Braintree Premium Auth\n"
-        f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> - Stripe Auth\n"
-        f"{bullet_link} <code>/st cc|mm|yy|cvv</code> - Stripe 1$\n"
-        f"{bullet_link} <code>/mst cc|mm|yy|cvv</code> – Mass x30 Stripe 1$\n"
-        f"{bullet_link} <code>/mass</code> - Mass Stripe Auth 2\n"
-        f"{bullet_link} <code>/gate site url</code> - Payment Gateway Checker\n"
-        f"{bullet_link} <code>/sh</code> - Shopify 0.98$\n"
-        f"{bullet_link} <code>/sh</code> – Shopify Charge $10\n"
-        f"{bullet_link} <code>/seturl &lt;site url&gt;</code> - Set a Shopify site\n"
-        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> - Set 20 shopify sites\n"
-        f"{bullet_link} <code>/removeall</code> - Remove all added sites\n"
-        f"{bullet_link} <code>/rmsite</code> - Remove specific sites from added\n"
-        f"{bullet_link} <code>/mysites</code> - View your added site\n"
-        f"{bullet_link} <code>/sp</code> - Auto Shopify Checker\n"
-        f"{bullet_link} <code>/msp</code> - Mass Auto Shopify\n"
-        f"{bullet_link} <code>/site</code> - Check Shopify site\n"
-        f"{bullet_link} <code>/msite</code> - Mass Shopify site Checking\n"
-        f"{bullet_link} <code>/fk</code> - Generate fake identity info\n"
+
+         "✦══ 💎 PREMIUM PLANS 💎 ══✦\n\n"
+        "🚀 <b>Starter Plan</b>\n"
+        f"{bullet_link} Credits   : 300\n"
+        f"{bullet_link} Duration  : 7 Days\n"
+        f"{bullet_link} Price     : 3$\n"
+        "────────────────────────\n"
+
+        "🌟 <b>Premium Plan</b>\n"
+        f"{bullet_link} Credits   : 1000\n"
+        f"{bullet_link} Duration  : 30 Days\n"
+        f"{bullet_link} Price     : 10$\n"
+        "────────────────────────\n"
+
+        "💎 <b>Plus Plan</b>\n"
+        f"{bullet_link} Credits   : 2000\n"
+        f"{bullet_link} Duration  : 60 Days\n"
+        f"{bullet_link} Price     : 19$\n"
+        "────────────────────────\n"
+
+        "⚡ <b>Custom Plan</b>\n"
+        f"{bullet_link} Credits   : 3000\n"
+        f"{bullet_link} Duration  : Custom\n"
+        f"{bullet_link} Price     : Custom\n"
+        "────────────────────────\n\n"
+
+        "<b><i>All premium users will be provided with 0.98$ sites</i></b>\n"
+        "<b><i>Full Help & Support for any issue</i></b>\n"
+        "✦━━━━━━━━━━━━━━━━━━━━✦"
     )
 
     keyboard = [
         [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ]
-    
+
     try:
-        # Correctly use edit_message_caption to update the caption of the photo message
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
@@ -513,6 +518,7 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
+
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Gates' button."""
