@@ -4028,7 +4028,7 @@ from bin import get_bin_info
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-ADYEN_API = "https://autoshopify-dark.sevalla.app/adyen.php"
+ADYEN_API = "https://autoshopify-dark.sevalla.app/index.php"
 DEFAULT_PROXY = "82.29.225.78:5933:juftilus:atasaxde44jl"
 ADYEN_DEFAULT_SITE = "https://store.adyen.com"
 
