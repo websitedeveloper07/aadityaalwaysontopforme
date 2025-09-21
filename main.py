@@ -7083,7 +7083,7 @@ from db import init_db
 from force_join import force_join, check_joined_callback  # import decorator & callback
 
 # 🛡️ Security
-AUTHORIZED_CHATS = set([-1002554243871, -1002832894194, -1002996641591, -1002750403340, -1003007390596])  # Only these groups
+AUTHORIZED_CHATS = set([-1002554243871, -1002832894194, -1002996641591, -1002750403340, -1003007390596, -1003040961439, -1002905834316])  # Only these groups
 OWNER_ID = 8493360284                     # Your Telegram user ID
 
 # 🛑 Banned users
