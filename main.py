@@ -4264,7 +4264,9 @@ async def process_card_check(user, card_input, custom_urls, msg):
         header_status = "❌ Declined"  # default
         if re.search(r"\b(Thank You|ORDER_PLACED|approved|success|charged)\b", response_text, re.I):
             header_status = "🔥 Charged"
-        elif "3DS_REQUIRED" in response_text.upper():
+        elif "3DS_AUTHENTICATION" in response_text.upper():
+            header_status = "✅ Approved"
+        elif "INVALID_CVC" in response_text.upper():
             header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response_text.upper():
             header_status = "✅ Approved"
