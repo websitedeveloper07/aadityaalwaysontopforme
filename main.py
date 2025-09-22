@@ -1072,9 +1072,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
-
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -1085,6 +1082,7 @@ from telegram.ext import (
 )
 from telegram.error import TelegramError
 import logging
+import html
 
 # Enable logging
 logging.basicConfig(
@@ -1093,121 +1091,117 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# A public group link that a user can click on
+# Public group link
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-# All command categories (full menu)
+# Escape HTML for Telegram parsing
+def escape_html(text: str) -> str:
+    return html.escape(text, quote=False)
+
+# Command categories
 COMMAND_CATEGORIES = [
     {"title": "𝗦𝘁𝗿𝗶𝗽𝗲", "commands": [
-        "/chk cc|mm|yy|cvv – Single Stripe Auth",
-        "/st cc|mm|yy|cvv – Stripe 1$",
-        "/st1 cc|mm|yy|cvv – Stripe 3$",
-        "/mst cc|mm|yy|cvv – Mass x30 Stripe 1$",
-        "/mass – Mass x30 Stripe Auth 2"]},
+        ("/chk", "Single Stripe Auth"),
+        ("/st", "Stripe 1$"),
+        ("/st1", "Stripe 3$"),
+        ("/mst", "Mass x30 Stripe 1$"),
+        ("/mass", "Mass x30 Stripe Auth 2")]},
 
     {"title": "𝗕𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲", "commands": [
-        "/b3 cc|mm|yy|cvv – Braintree Premium Auth",
-        "/vbv cc|mm|yy|cvv – 3DS Lookup"]},
+        ("/b3", "Braintree Premium Auth"),
+        ("/vbv", "3DS Lookup")]},
 
     {"title": "𝙊𝗰𝗲𝗮𝗻 𝙋𝗮𝘆𝗺𝗲𝗻𝘁𝘀", "commands": [
-        "/oc cc|mm|yy|cvv – Ocean Payments 4$"]},
+        ("/oc", "Ocean Payments 4$")]},
 
     {"title": "𝗔𝘂𝘁𝗵𝗻𝗲𝘁", "commands": [
-        "/at cc|mm|yy|cvv – Authnet 2.5$ Charge"]},
+        ("/at", "Authnet 2.5$ Charge")]},
 
     {"title": "𝗦𝗵𝗼𝗽𝗶𝗳𝘆", "commands": [
-        "/sh – Shopify Charge $0.98",
-        "/hc – Shopify Charge $10",
-        "/seturl <site url> – Set your Shopify site",
-        "/sp – Auto check on your saved Shopify site",
-        "/msp – Mass Shopify Charged",
-        "/site <url> – Check if Shopify site is live",
-        "/msite <urls> – Mass Shopify site check",
-        "/mysites – Check your added sites",
-        "/adurls <site url> – Set 20 Shopify sites",
-        "/removeall – Remove all added sites",
-        "/rmsite – Remove specific sites from added"]},
+        ("/sh", "Shopify Charge $0.98"),
+        ("/hc", "Shopify Charge $10"),
+        ("/seturl", "<site url> – Set your Shopify site"),
+        ("/sp", "Auto check on your saved Shopify site"),
+        ("/msp", "Mass Shopify Charged"),
+        ("/site", "<url> – Check if Shopify site is live"),
+        ("/msite", "<urls> – Mass Shopify site check"),
+        ("/mysites", "Check your added sites"),
+        ("/adurls", "<site url> – Set 20 Shopify sites"),
+        ("/removeall", "Remove all added sites"),
+        ("/rmsite", "Remove specific sites from added")]},
+
+    {"title": "𝗔𝗱𝘆𝗲𝗻", "commands": [
+        ("/ad", "Adyen $1")]},
 
     {"title": "𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗼𝗿𝘀", "commands": [
-        "/gen [bin] [no. of cards] – Generate cards from BIN",
-        "/gate <site url> – Payment Gateway Checker",
-        "/bin <bin> – BIN lookup (Bank, Country, Type)",
-        "/fk <country> – Fake identity generator",
-        "/fl <dump> – Extract CCs from dumps",
-        "/open – Extract cards from uploaded file"]},
+        ("/gen", "[bin] [no. of cards] – Generate cards from BIN"),
+        ("/gate", "<site url> – Payment Gateway Checker"),
+        ("/bin", "<bin> – BIN lookup (Bank, Country, Type)"),
+        ("/fk", "<country> – Fake identity generator"),
+        ("/fl", "<dump> – Extract CCs from dumps"),
+        ("/open", "Extract cards from uploaded file")]},
 
     {"title": "𝗦𝘆𝘀𝘁𝗲𝗺 & 𝗨𝘀𝗲𝗿", "commands": [
-        "/start – Welcome message",
-        "/cmds – Show all commands",
-        "/status – Bot system status",
-        "/credits – Check your remaining credits",
-        "/info – Show your user info"]}
+        ("/start", "Welcome message"),
+        ("/cmds", "Show all commands"),
+        ("/status", "Bot system status"),
+        ("/credits", "Check your remaining credits"),
+        ("/info", "Show your user info")]}
 ]
 
-# Split the commands into pages (2 categories per page)
+# Split categories into pages (2 categories per page)
 PAGES = [COMMAND_CATEGORIES[i:i + 2] for i in range(0, len(COMMAND_CATEGORIES), 2)]
 
-# Determine max number of lines per page (for uniform length)
-MAX_COMMAND_LINES = max(sum(len(cat["commands"]) for cat in page) for page in PAGES)
-
-def escape_html(text: str) -> str:
-    """Escape HTML special chars to prevent Telegram parsing errors."""
-    return text.replace("<", "&lt;").replace(">", "&gt;")
+# Maximum total number of commands in any page
+MAX_COMMANDS = max(sum(len(cat["commands"]) for cat in page) for page in PAGES)
 
 def build_page_text(page_index: int) -> str:
     """
-    Builds the text content for a specific page of commands.
-    Ensures all pages have uniform length by padding with empty lines.
+    Build text for a page with proper formatting.
+    Only the command is monospace, description in italic.
+    Pads last page with blank lines if needed.
     """
-    logger.debug(f"Building text for page {page_index}...")
+    logger.debug(f"Building page {page_index}...")
     try:
         page_categories = PAGES[page_index]
         text = ""
-        # Count total commands on this page
-        total_lines = sum(len(cat["commands"]) for cat in page_categories)
 
+        total_lines = 0
         for cat in page_categories:
-            commands_text = "\n".join(f"{bullet_link} <code>{escape_html(cmd)}</code>" for cmd in cat["commands"])
-            text += f"━━━[ 👇 <b>{cat['title']} Commands</b> ]━━━⬣\n\n{commands_text}\n\n"
+            text += f"━━━[ 👇 <b>{escape_html(cat['title'])} Commands</b> ]━━━⬣\n\n"
+            for cmd, desc in cat["commands"]:
+                text += f"{bullet_link} <code>{escape_html(cmd)}</code> – <i>{escape_html(desc)}</i>\n"
+                total_lines += 1
+            text += "\n"
 
-        # Pad remaining lines with empty commands to make all pages equal length
-        pad_lines = MAX_COMMAND_LINES - total_lines
-        if pad_lines > 0:
-            text += ("\n" * pad_lines)
+        # Pad only last page to equalize height
+        if page_index == len(PAGES) - 1:
+            pad_lines = MAX_COMMANDS - total_lines
+            if pad_lines > 0:
+                text += ("\n" * pad_lines)
 
         text += f"<i>Page {page_index + 1}/{len(PAGES)}</i>"
         return text.strip()
-    except IndexError as e:
-        logger.error(f"Page index {page_index} is out of bounds. {e}")
-        return "Error: Could not find commands for this page."
     except Exception as e:
-        logger.error(f"Unexpected error while building page text: {e}")
-        return "Error: An unexpected error occurred."
+        logger.error(f"Error building page text: {e}")
+        return "Error: Could not build page text."
 
 def build_buttons(page_index: int) -> InlineKeyboardMarkup:
-    """
-    Builds the inline keyboard with 'Back', 'Next', and 'Close' buttons.
-    Close button is always in a separate row.
-    """
-    logger.debug(f"Building buttons for page {page_index}...")
+    """Build navigation buttons: Back, Next, Close."""
+    buttons = []
     nav_buttons = []
-
     if page_index > 0:
         nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"page_{page_index - 1}"))
     if page_index < len(PAGES) - 1:
         nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{page_index + 1}"))
-
-    keyboard = []
     if nav_buttons:
-        keyboard.append(nav_buttons)  # Row 1 → Back & Next
-    keyboard.append([InlineKeyboardButton("❌ Close", callback_data="close")])  # Row 2 → Close
+        buttons.append(nav_buttons)
+    buttons.append([InlineKeyboardButton("❌ Close", callback_data="close")])
+    return InlineKeyboardMarkup(buttons)
 
-    return InlineKeyboardMarkup(keyboard)
-
-# /cmds command handler
+# /cmds handler
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info("/cmds command received.")
     text = build_page_text(0)
     buttons = build_buttons(0)
     await update.message.reply_text(
@@ -1217,22 +1211,19 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=buttons
     )
 
-# Callback query handler for pagination
+# Pagination handler
 async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    logger.info(f"Callback query received. Data: {query.data}")
     await query.answer()
     data = query.data
 
     if data == "close":
-        logger.info("'Close' button clicked. Deleting message.")
         await query.message.delete()
         return
 
     if data.startswith("page_"):
         try:
             page_index = int(data.split("_")[1])
-            logger.info(f"Parsed page index: {page_index}")
             text = build_page_text(page_index)
             buttons = build_buttons(page_index)
             await query.message.edit_text(
@@ -1242,10 +1233,9 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=buttons
             )
         except TelegramError as e:
-            logger.error(f"Failed to edit message. TelegramError: {e}")
+            logger.error(f"TelegramError: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error in cmds_pagination: {e}")
-
+            logger.error(f"Error in pagination: {e}")
 
 
 
