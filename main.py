@@ -1101,24 +1101,24 @@ def escape_html(text: str) -> str:
 
 # Command categories
 COMMAND_CATEGORIES = [
-    {"title": "𝗦𝘁𝗿𝗶𝗽𝗲", "commands": [
+    {"title": "Stripe", "commands": [
         ("/chk", "Single Stripe Auth"),
         ("/st", "Stripe 1$"),
         ("/st1", "Stripe 3$"),
         ("/mst", "Mass x30 Stripe 1$"),
         ("/mass", "Mass x30 Stripe Auth 2")]},
 
-    {"title": "𝗕𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲", "commands": [
+    {"title": "Braintree", "commands": [
         ("/b3", "Braintree Premium Auth"),
         ("/vbv", "3DS Lookup")]},
 
-    {"title": "𝙊𝗰𝗲𝗮𝗻 𝙋𝗮𝘆𝗺𝗲𝗻𝘁𝘀", "commands": [
+    {"title": "OceanPayments", "commands": [
         ("/oc", "Ocean Payments 4$")]},
 
-    {"title": "𝗔𝘂𝘁𝗵𝗻𝗲𝘁", "commands": [
+    {"title": "Authnet", "commands": [
         ("/at", "Authnet 2.5$ Charge")]},
 
-    {"title": "𝗦𝗵𝗼𝗽𝗶𝗳𝘆", "commands": [
+    {"title": "Shopify", "commands": [
         ("/sh", "Shopify Charge $0.98"),
         ("/hc", "Shopify Charge $10"),
         ("/seturl", "<site url> – Set your Shopify site"),
@@ -1131,10 +1131,10 @@ COMMAND_CATEGORIES = [
         ("/removeall", "Remove all added sites"),
         ("/rmsite", "Remove specific sites from added")]},
 
-    {"title": "𝗔𝗱𝘆𝗲𝗻", "commands": [
-        ("/ad", "Adyen $1")]},
+    {"title": "Adyen", "commands": [
+        ("/ad", "Adyen 1$")]},
 
-    {"title": "𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗼𝗿𝘀", "commands": [
+    {"title": "Generators", "commands": [
         ("/gen", "[bin] [no. of cards] – Generate cards from BIN"),
         ("/gate", "<site url> – Payment Gateway Checker"),
         ("/bin", "<bin> – BIN lookup (Bank, Country, Type)"),
@@ -1142,7 +1142,7 @@ COMMAND_CATEGORIES = [
         ("/fl", "<dump> – Extract CCs from dumps"),
         ("/open", "Extract cards from uploaded file")]},
 
-    {"title": "𝗦𝘆𝘀𝘁𝗲𝗺 & 𝗨𝘀𝗲𝗿", "commands": [
+    {"title": "System & User", "commands": [
         ("/start", "Welcome message"),
         ("/cmds", "Show all commands"),
         ("/status", "Bot system status"),
@@ -1153,14 +1153,14 @@ COMMAND_CATEGORIES = [
 # Split categories into pages (2 categories per page)
 PAGES = [COMMAND_CATEGORIES[i:i + 2] for i in range(0, len(COMMAND_CATEGORIES), 2)]
 
-# Maximum total number of commands in any page
+# Determine max number of commands per page for uniform height
 MAX_COMMANDS = max(sum(len(cat["commands"]) for cat in page) for page in PAGES)
 
 def build_page_text(page_index: int) -> str:
     """
     Build text for a page with proper formatting.
     Only the command is monospace, description in italic.
-    Pads last page with blank lines if needed.
+    Pads all pages to uniform height.
     """
     logger.debug(f"Building page {page_index}...")
     try:
@@ -1169,17 +1169,16 @@ def build_page_text(page_index: int) -> str:
 
         total_lines = 0
         for cat in page_categories:
-            text += f"━━━[ 👇 <b>{escape_html(cat['title'])} Commands</b> ]━━━⬣\n\n"
+            text += f"==== {escape_html(cat['title'])} Commands ====\n"
             for cmd, desc in cat["commands"]:
                 text += f"{bullet_link} <code>{escape_html(cmd)}</code> – <i>{escape_html(desc)}</i>\n"
                 total_lines += 1
             text += "\n"
 
-        # Pad only last page to equalize height
-        if page_index == len(PAGES) - 1:
-            pad_lines = MAX_COMMANDS - total_lines
-            if pad_lines > 0:
-                text += ("\n" * pad_lines)
+        # Pad remaining lines with blank italic lines to make uniform height
+        pad_lines = MAX_COMMANDS - total_lines
+        if pad_lines > 0:
+            text += ("\n" * pad_lines)
 
         text += f"<i>Page {page_index + 1}/{len(PAGES)}</i>"
         return text.strip()
@@ -1236,6 +1235,7 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"TelegramError: {e}")
         except Exception as e:
             logger.error(f"Error in pagination: {e}")
+
 
 
 
