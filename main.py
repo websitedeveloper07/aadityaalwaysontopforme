@@ -5158,13 +5158,9 @@ def normalize_site(site: str) -> str:
 
 # --- Fetch site info (single correct version) ---
 async def fetch_site_info(session, site_url: str):
-    """
-    Fetch site info using API_TEMPLATE and return a structured result.
-    Returns a dict with keys: site, price, status, response, gateway.
-    """
+    """ Fetch site info using API_TEMPLATE and return a structured result. Always returns a dict with keys: site, price, status, response, gateway. """
     normalized_url = normalize_site(site_url)
     api_url = API_TEMPLATE.format(site_url=normalized_url)
-
     try:
         async with session.get(api_url, timeout=60) as resp:
             raw_text = await resp.text()
@@ -5184,21 +5180,10 @@ async def fetch_site_info(session, site_url: str):
         except (ValueError, TypeError):
             price_float = 0.0
 
-        # --- Additional dead checks ---
-        dead_reasons = [
-            not data.get("ClinteToken"),
-            data.get("DelAmount") in (None, "", 0),
-            data.get("TaxAmount") in (None, "", 0),
-            not data.get("ProductID"),
-            "HCAPTCHA DETECTED" in response.upper()
-        ]
-
-        is_dead = any(dead_reasons) or price_float <= 0
-
         return {
             "site": normalized_url,
             "price": price_float,
-            "status": "dead" if is_dead else "working",
+            "status": "working" if price_float > 0 else "dead",
             "response": response,
             "gateway": gateway,
         }
@@ -5211,6 +5196,7 @@ async def fetch_site_info(session, site_url: str):
             "response": f"Error: {str(e)}",
             "gateway": "N/A",
         }
+
 
 
 # --- Mass site checker ---
