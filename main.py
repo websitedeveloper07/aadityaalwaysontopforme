@@ -1085,7 +1085,7 @@ logger = logging.getLogger(__name__)
 
 # Invisible padding character
 PAD_CHAR = "\u200A"
-LINE_WIDTH = 63  # fixed width for all lines
+LINE_WIDTH = 69  # fixed width for all lines
 
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
