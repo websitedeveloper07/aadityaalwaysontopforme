@@ -1083,7 +1083,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
 )
-
+from telegram.error import TelegramError
 
 # A public group link that a user can click on
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
@@ -1102,7 +1102,7 @@ COMMAND_CATEGORIES = [
         "/b3 cc|mm|yy|cvv – Braintree Premium Auth",
         "/vbv cc|mm|yy|cvv – 3DS Lookup"]},
 
-    {"title": "𝙊𝗰𝗲𝗮𝗻 𝙋𝗮𝘆𝗺𝙚𝗻𝘁𝘀", "commands": [
+    {"title": "𝙊𝗰𝗲𝗮𝗻 𝙋𝗮𝘆𝗺𝗲𝗻𝘁𝘀", "commands": [
         "/oc cc|mm|yy|cvv – Ocean Payments 4$"]},
 
     {"title": "𝗔𝘂𝘁𝗵𝗻𝗲𝘁", "commands": [
@@ -1145,19 +1145,29 @@ def build_page_text(page_index: int) -> str:
     """
     Builds the text content for a specific page of commands.
     """
-    page_categories = PAGES[page_index]
-    text = ""
-    for cat in page_categories:
-        commands_text = "\n".join(f"{bullet_link} <code>{cmd}</code>" for cmd in cat["commands"])
-        text += f"━━━[ 👇 <b>{cat['title']} Commands</b> ]━━━⬣\n\n{commands_text}\n\n"
-    text += f"<i>Page {page_index + 1}/{len(PAGES)}</i>"
-    return text.strip()
+    print(f"DEBUG: Building text for page {page_index}...")
+    try:
+        page_categories = PAGES[page_index]
+        text = ""
+        for cat in page_categories:
+            commands_text = "\n".join(f"{bullet_link} <code>{cmd}</code>" for cmd in cat["commands"])
+            text += f"━━━[ 👇 <b>{cat['title']} Commands</b> ]━━━⬣\n\n{commands_text}\n\n"
+        text += f"<i>Page {page_index + 1}/{len(PAGES)}</i>"
+        print(f"DEBUG: Successfully built text for page {page_index}.")
+        return text.strip()
+    except IndexError as e:
+        print(f"ERROR: Page index {page_index} is out of bounds. {e}")
+        return "Error: Could not find commands for this page."
+    except Exception as e:
+        print(f"ERROR: An unexpected error occurred while building page text. {e}")
+        return "Error: An unexpected error occurred."
 
 
 def build_buttons(page_index: int) -> InlineKeyboardMarkup:
     """
     Builds the inline keyboard with 'Back', 'Next', and 'Close' buttons.
     """
+    print(f"DEBUG: Building buttons for page {page_index}...")
     buttons = []
     # Add the 'Back' button if it's not the first page
     if page_index > 0:
@@ -1169,6 +1179,7 @@ def build_buttons(page_index: int) -> InlineKeyboardMarkup:
         
     # Always add the 'Close' button
     buttons.append(InlineKeyboardButton("❌ Close", callback_data="close"))
+    print(f"DEBUG: Buttons built: {buttons}")
     return InlineKeyboardMarkup([buttons])
 
 
@@ -1177,6 +1188,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Sends the first page of commands with pagination buttons.
     """
+    print("DEBUG: /cmds command received.")
     text = build_page_text(0)
     buttons = build_buttons(0)
     await update.message.reply_text(
@@ -1185,6 +1197,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True,
         reply_markup=buttons
     )
+    print("DEBUG: Initial message sent.")
 
 
 # Handler for the inline keyboard button clicks
@@ -1193,30 +1206,43 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Handles button clicks for pagination, editing the message with the new content.
     """
     query = update.callback_query
+    print(f"DEBUG: Callback query received. Data: {query.data}")
+    
     # Acknowledge the query to remove the loading spinner from the button
     await query.answer()
     data = query.data
 
     if data == "close":
-        # Delete the message when the 'Close' button is clicked
+        print("DEBUG: 'Close' button clicked. Deleting message.")
         await query.message.delete()
+        print("DEBUG: Message deleted.")
         return
 
     if data.startswith("page_"):
-        # Extract the page index from the callback data
-        page_index = int(data.split("_")[1])
-        text = build_page_text(page_index)
-        buttons = build_buttons(page_index)
-        # Edit the message in place with the new page's content and buttons
-        await query.message.edit_text(
-            text,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
-            reply_markup=buttons
-        )
-
-
-
+        print("DEBUG: 'Page' button clicked.")
+        try:
+            # Extract the page index from the callback data
+            page_index = int(data.split("_")[1])
+            print(f"DEBUG: Parsed page index: {page_index}")
+            text = build_page_text(page_index)
+            buttons = build_buttons(page_index)
+            
+            # Edit the message in place with the new page's content and buttons
+            print("DEBUG: Attempting to edit message...")
+            await query.message.edit_text(
+                text,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+                reply_markup=buttons
+            )
+            print("DEBUG: Message edited successfully.")
+        except TelegramError as e:
+            # Catch potential errors and log them for debugging
+            print(f"ERROR: Failed to edit message. TelegramError: {e}")
+            return
+        except Exception as e:
+            print(f"ERROR: An unexpected error occurred in cmds_pagination: {e}")
+            return
 
 
 
