@@ -1201,16 +1201,7 @@ async def handle_close(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     await query.message.delete()
 
-# Example /start command with buttons
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    buttons = [
-        [InlineKeyboardButton("Show Commands", callback_data="page_0")],
-        [InlineKeyboardButton("Close", callback_data="close")]
-    ]
-    await update.message.reply_text(
-        "Welcome! Choose an option below:",
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+
 
 
 
