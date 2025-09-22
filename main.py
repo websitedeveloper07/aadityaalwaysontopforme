@@ -1077,9 +1077,15 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
-from telegram.ext import ApplicationBuilder, ContextTypes, CallbackQueryHandler, CommandHandler
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    CallbackQueryHandler,
+    CommandHandler,
+)
 
 
+# A public group link that a user can click on
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
@@ -1096,7 +1102,7 @@ COMMAND_CATEGORIES = [
         "/b3 cc|mm|yy|cvv – Braintree Premium Auth",
         "/vbv cc|mm|yy|cvv – 3DS Lookup"]},
 
-    {"title": "𝙊𝗰𝗲𝗮𝗻 𝙋𝗮𝘆𝗺𝗲𝗻𝘁𝘀", "commands": [
+    {"title": "𝙊𝗰𝗲𝗮𝗻 𝙋𝗮𝘆𝗺𝙚𝗻𝘁𝘀", "commands": [
         "/oc cc|mm|yy|cvv – Ocean Payments 4$"]},
 
     {"title": "𝗔𝘂𝘁𝗵𝗻𝗲𝘁", "commands": [
@@ -1131,10 +1137,14 @@ COMMAND_CATEGORIES = [
         "/info – Show your user info"]}
 ]
 
-# Split into pages (2 categories per page)
+# Split the commands into pages (2 categories per page)
 PAGES = [COMMAND_CATEGORIES[i:i + 2] for i in range(0, len(COMMAND_CATEGORIES), 2)]
 
+
 def build_page_text(page_index: int) -> str:
+    """
+    Builds the text content for a specific page of commands.
+    """
     page_categories = PAGES[page_index]
     text = ""
     for cat in page_categories:
@@ -1143,17 +1153,30 @@ def build_page_text(page_index: int) -> str:
     text += f"<i>Page {page_index + 1}/{len(PAGES)}</i>"
     return text.strip()
 
+
 def build_buttons(page_index: int) -> InlineKeyboardMarkup:
+    """
+    Builds the inline keyboard with 'Back', 'Next', and 'Close' buttons.
+    """
     buttons = []
+    # Add the 'Back' button if it's not the first page
     if page_index > 0:
-        buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"page_{page_index-1}"))
+        buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"page_{page_index - 1}"))
+
+    # Add the 'Next' button if it's not the last page
     if page_index < len(PAGES) - 1:
-        buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{page_index+1}"))
+        buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{page_index + 1}"))
+        
+    # Always add the 'Close' button
     buttons.append(InlineKeyboardButton("❌ Close", callback_data="close"))
     return InlineKeyboardMarkup([buttons])
 
-# /cmds command
+
+# Handler for the /cmds command
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Sends the first page of commands with pagination buttons.
+    """
     text = build_page_text(0)
     buttons = build_buttons(0)
     await update.message.reply_text(
@@ -1163,26 +1186,35 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=buttons
     )
 
-# Callback query handler for pagination
+
+# Handler for the inline keyboard button clicks
 async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles button clicks for pagination, editing the message with the new content.
+    """
     query = update.callback_query
+    # Acknowledge the query to remove the loading spinner from the button
     await query.answer()
     data = query.data
 
     if data == "close":
+        # Delete the message when the 'Close' button is clicked
         await query.message.delete()
         return
 
     if data.startswith("page_"):
+        # Extract the page index from the callback data
         page_index = int(data.split("_")[1])
         text = build_page_text(page_index)
         buttons = build_buttons(page_index)
+        # Edit the message in place with the new page's content and buttons
         await query.message.edit_text(
             text,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
             reply_markup=buttons
         )
+
 
 
 
