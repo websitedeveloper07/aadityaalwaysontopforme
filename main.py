@@ -1084,6 +1084,14 @@ from telegram.ext import (
     CommandHandler,
 )
 from telegram.error import TelegramError
+import logging
+
+# Enable logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 # A public group link that a user can click on
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
@@ -1145,7 +1153,7 @@ def build_page_text(page_index: int) -> str:
     """
     Builds the text content for a specific page of commands.
     """
-    print(f"DEBUG: Building text for page {page_index}...")
+    logger.debug(f"Building text for page {page_index}...")
     try:
         page_categories = PAGES[page_index]
         text = ""
@@ -1153,13 +1161,12 @@ def build_page_text(page_index: int) -> str:
             commands_text = "\n".join(f"{bullet_link} <code>{cmd}</code>" for cmd in cat["commands"])
             text += f"━━━[ 👇 <b>{cat['title']} Commands</b> ]━━━⬣\n\n{commands_text}\n\n"
         text += f"<i>Page {page_index + 1}/{len(PAGES)}</i>"
-        print(f"DEBUG: Successfully built text for page {page_index}.")
         return text.strip()
     except IndexError as e:
-        print(f"ERROR: Page index {page_index} is out of bounds. {e}")
+        logger.error(f"Page index {page_index} is out of bounds. {e}")
         return "Error: Could not find commands for this page."
     except Exception as e:
-        print(f"ERROR: An unexpected error occurred while building page text. {e}")
+        logger.error(f"Unexpected error while building page text: {e}")
         return "Error: An unexpected error occurred."
 
 
@@ -1167,20 +1174,24 @@ def build_buttons(page_index: int) -> InlineKeyboardMarkup:
     """
     Builds the inline keyboard with 'Back', 'Next', and 'Close' buttons.
     """
-    print(f"DEBUG: Building buttons for page {page_index}...")
-    buttons = []
+    logger.debug(f"Building buttons for page {page_index}...")
+    nav_buttons = []
+
     # Add the 'Back' button if it's not the first page
     if page_index > 0:
-        buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"page_{page_index - 1}"))
+        nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"page_{page_index - 1}"))
 
     # Add the 'Next' button if it's not the last page
     if page_index < len(PAGES) - 1:
-        buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{page_index + 1}"))
-        
-    # Always add the 'Close' button
-    buttons.append(InlineKeyboardButton("❌ Close", callback_data="close"))
-    print(f"DEBUG: Buttons built: {buttons}")
-    return InlineKeyboardMarkup([buttons])
+        nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{page_index + 1}"))
+
+    # Keyboard layout: navigation row + close row
+    keyboard = []
+    if nav_buttons:
+        keyboard.append(nav_buttons)  # Row 1 → Back & Next
+    keyboard.append([InlineKeyboardButton("❌ Close", callback_data="close")])  # Row 2 → Close
+
+    return InlineKeyboardMarkup(keyboard)
 
 
 # Handler for the /cmds command
@@ -1188,7 +1199,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Sends the first page of commands with pagination buttons.
     """
-    print("DEBUG: /cmds command received.")
+    logger.info("/cmds command received.")
     text = build_page_text(0)
     buttons = build_buttons(0)
     await update.message.reply_text(
@@ -1197,7 +1208,6 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True,
         reply_markup=buttons
     )
-    print("DEBUG: Initial message sent.")
 
 
 # Handler for the inline keyboard button clicks
@@ -1206,43 +1216,35 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Handles button clicks for pagination, editing the message with the new content.
     """
     query = update.callback_query
-    print(f"DEBUG: Callback query received. Data: {query.data}")
-    
-    # Acknowledge the query to remove the loading spinner from the button
+    logger.info(f"Callback query received. Data: {query.data}")
+
+    # Acknowledge the query to remove the loading spinner
     await query.answer()
     data = query.data
 
     if data == "close":
-        print("DEBUG: 'Close' button clicked. Deleting message.")
+        logger.info("'Close' button clicked. Deleting message.")
         await query.message.delete()
-        print("DEBUG: Message deleted.")
         return
 
     if data.startswith("page_"):
-        print("DEBUG: 'Page' button clicked.")
         try:
-            # Extract the page index from the callback data
             page_index = int(data.split("_")[1])
-            print(f"DEBUG: Parsed page index: {page_index}")
+            logger.info(f"Parsed page index: {page_index}")
             text = build_page_text(page_index)
             buttons = build_buttons(page_index)
-            
-            # Edit the message in place with the new page's content and buttons
-            print("DEBUG: Attempting to edit message...")
+
             await query.message.edit_text(
                 text,
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True,
                 reply_markup=buttons
             )
-            print("DEBUG: Message edited successfully.")
         except TelegramError as e:
-            # Catch potential errors and log them for debugging
-            print(f"ERROR: Failed to edit message. TelegramError: {e}")
-            return
+            logger.error(f"Failed to edit message. TelegramError: {e}")
         except Exception as e:
-            print(f"ERROR: An unexpected error occurred in cmds_pagination: {e}")
-            return
+            logger.error(f"Unexpected error in cmds_pagination: {e}")
+
 
 
 
