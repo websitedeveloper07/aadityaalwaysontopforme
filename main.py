@@ -1131,11 +1131,9 @@ PAGE_SIZE = 4
 PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
 
 def pad_line(label: str, value: str) -> str:
-    """Format line with bold+italic label and italic value"""
     return f"<b><i>{label}:</i></b> <i>{value}</i>"
 
 def build_page_text(page_index: int) -> str:
-    """Build fixed-width command page with bold italic labels and italic values"""
     try:
         page_commands = PAGES[page_index]
         text = "━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -1164,7 +1162,7 @@ def build_buttons(page_index: int) -> InlineKeyboardMarkup:
     buttons.append([InlineKeyboardButton("❌ Close", callback_data="close")])
     return InlineKeyboardMarkup(buttons)
 
-# /cmds handler
+# /cmds command handler
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = build_page_text(0)
     buttons = build_buttons(0)
@@ -1175,19 +1173,11 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=buttons
     )
 
-# Pagination handler
+# Pagination handler for /cmds buttons
 async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
-
-    # Only handle /cmds pagination callbacks
-    if data not in ("close",) and not data.startswith("page_"):
-        return
-
-    if data == "close":
-        await query.message.delete()
-        return
 
     if data.startswith("page_"):
         try:
@@ -1204,6 +1194,25 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"TelegramError: {e}")
         except Exception as e:
             logger.error(f"Error in pagination: {e}")
+
+# Close button handler
+async def handle_close(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.message.delete()
+
+# Example /start command with buttons
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    buttons = [
+        [InlineKeyboardButton("Show Commands", callback_data="page_0")],
+        [InlineKeyboardButton("Close", callback_data="close")]
+    ]
+    await update.message.reply_text(
+        "Welcome! Choose an option below:",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+
 
 
 from telegram import Update
@@ -7586,7 +7595,8 @@ def main():
     register_owner_commands(application)
 
     # Pagination handler - added only once
-    application.add_handler(CallbackQueryHandler(cmds_pagination))
+    application.add_handler(CallbackQueryHandler(cmds_pagination, pattern="^page_"))
+    application.add_handler(CallbackQueryHandler(handle_close, pattern="^close$"))
 
     # Other generic callbacks
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
