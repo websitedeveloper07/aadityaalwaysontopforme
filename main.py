@@ -2715,6 +2715,11 @@ async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYP
         )
 
 
+from telegram.constants import ParseMode
+from telegram import Update
+from telegram.ext import ContextTypes
+import html
+
 async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
     Process a /sh command: check Shopify card, display response and BIN info.
@@ -2740,6 +2745,9 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         cc, mm, yy, cvv = [p.strip() for p in parts]
         full_card = f"{cc}|{mm}|{yy}|{cvv}"
 
+        # --- Escape card details for HTML ---
+        escaped_card = html.escape(full_card)
+
         # --- Clickable bullet ---
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
@@ -2747,7 +2755,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- Initial processing message ---
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-            f"<pre><code>{full_card}</code></pre>\n\n"
+            f"<pre><code>{escaped_card}</code></pre>\n\n"
             f"{bullet_link} <b>Gateway ➵ Shopify</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
@@ -2757,6 +2765,10 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
+
+    except Exception as e:
+        # Catch any unexpected errors and log
+        await update.message.reply_text(f"❌ An error occurred: {e}")
 
         # --- API request ---
         # Encode site and card so special chars like '|' don't break the query
