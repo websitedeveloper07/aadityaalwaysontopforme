@@ -2725,6 +2725,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
     Process a /sh command: check Shopify card, display response and BIN info.
     """
 
+    processing_msg = None
     try:
         user = update.effective_user
 
@@ -2744,15 +2745,13 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         cc, mm, yy, cvv = [p.strip() for p in parts]
         full_card = f"{cc}|{mm}|{yy}|{cvv}"
-
-        # --- Escape card details for HTML ---
         escaped_card = html.escape(full_card)
 
         # --- Clickable bullet ---
         BULLET_GROUP_LINK = "https://t.me/CARDER33"
         bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-        # --- Initial processing message ---
+        # --- Send initial processing message ---
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escaped_card}</code></pre>\n\n"
@@ -2766,34 +2765,25 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             disable_web_page_preview=True
         )
 
-    except Exception as e:
-        # Catch any unexpected errors and log
-        await update.message.reply_text(f"❌ An error occurred: {e}")
-
-        # --- API request ---
-        # Encode site and card so special chars like '|' don't break the query
+        # --- Prepare API request ---
         encoded_site = urllib.parse.quote_plus(CURRENT_SHOPIFY_SITE)
         encoded_cc = urllib.parse.quote_plus(full_card)
         encoded_proxy = urllib.parse.quote_plus(DEFAULT_PROXY)
 
-        api_url = (
-            f"{AUTOSH_BASE}"
-            f"?site={encoded_site}"
-            f"&cc={encoded_cc}"
-            f"&proxy={encoded_proxy}"
-        )
+        api_url = f"{AUTOSH_BASE}?site={encoded_site}&cc={encoded_cc}&proxy={encoded_proxy}"
 
+        # --- Fetch API response ---
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
                 api_response = await resp.text()
 
-        # --- Parse API response ---
+        # --- Parse API response safely ---
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
             logger.error(f"API returned invalid JSON: {api_response[:300]}")
             await processing_msg.edit_text(
-                f"❌ Invalid API response:\n<code>{escape(api_response[:500])}</code>",
+                f"❌ Invalid API response:\n<code>{html.escape(api_response[:500])}</code>",
                 parse_mode=ParseMode.HTML
             )
             return
@@ -2802,7 +2792,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         gateway = data.get("Gateway", "Shopify")
         price = data.get("Price", "0.98$")
 
-        # --- BIN lookup ---
+        # --- BIN lookup safely ---
         try:
             bin_number = cc[:6]
             bin_details = await get_bin_info(bin_number)
@@ -2816,49 +2806,39 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             country_name = "Unknown"
             country_flag = ""
 
-        # --- Requester ---
+        # --- Requester and Developer ---
         full_name = " ".join(filter(None, [user.first_name, user.last_name]))
-        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
-
-        # --- Developer Branding ---
+        requester = f'<a href="tg://user?id={user.id}">{html.escape(full_name)}</a>'
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
         # --- Determine header status ---
-        header_status = "❌ Declined"  # default
-
+        header_status = "❌ Declined"
         if re.search(r"\b(Thank You|ORDER_PLACED|approved|success|charged)\b", response, re.I):
             header_status = "🔥 Charged"
-        elif "3D_AUTHENTICATION" in response.upper():
-            header_status = "✅ Approved"
-        elif "INVALID_CVC" in response.upper():
+        elif any(x in response.upper() for x in ["3D_AUTHENTICATION", "INVALID_CVC", "INSUFFICIENT_FUNDS", "INCORRECT_ZIP"]):
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ Declined"
-        elif "INSUFFICIENT_FUNDS" in response.upper():
-            header_status = "✅ Approved"
-        elif "INCORRECT_ZIP" in response.upper():
-            header_status = "✅ Approved"
 
-        # --- Enhance response with emojis ---
-        display_response = escape(response)
+        # --- Enhance response ---
+        display_response = html.escape(response)
         if re.search(r"\b(Thank You|approved|success|charged)\b", response, re.I):
-            display_response = f"{escape(response)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+            display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
         elif "3D_AUTHENTICATION" in response.upper():
-            display_response = f"{escape(response)} 🔒"
-
+            display_response += " 🔒"
 
         # --- Final formatted message ---
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑺𝒉𝒐𝒑𝒊𝒇𝒚 𝟎.𝟗𝟖$\n"
+            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{escaped_card}</code>\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {html.escape(gateway)} {html.escape(price)}\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i>{display_response}</i>\n"
             "――――――――――――――――\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{escape(brand)}</code>\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{escape(issuer)}</code>\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{escape(country_name)} {country_flag}</code>\n"
+            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ <code>{html.escape(brand)}</code>\n"
+            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ <code>{html.escape(issuer)}</code>\n"
+            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ <code>{html.escape(country_name)} {country_flag}</code>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
@@ -2874,10 +2854,16 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
     except Exception as e:
         logger.exception("Error in processing /sh")
         try:
-            await update.message.reply_text(
-                f"❌ Error: <code>{escape(str(e))}</code>",
-                parse_mode=ParseMode.HTML
-            )
+            if processing_msg:
+                await processing_msg.edit_text(
+                    f"❌ Error: <code>{html.escape(str(e))}</code>",
+                    parse_mode=ParseMode.HTML
+                )
+            else:
+                await update.message.reply_text(
+                    f"❌ Error: <code>{html.escape(str(e))}</code>",
+                    parse_mode=ParseMode.HTML
+                )
         except Exception:
             pass
 
