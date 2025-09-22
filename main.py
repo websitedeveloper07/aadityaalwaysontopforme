@@ -7497,40 +7497,28 @@ def _make_message_wrapper(handler):
 
 # 📌 Helper: Add commands with / and . (supports owner-only and restricted wrapping)
 def add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True, owner_only=False):
-    """
-    Register a command that works with both /cmd and .cmd.
-
-    - restricted_wrap=True => wraps with restricted(force_join(cmd_func)) (for normal commands)
-    - owner_only=True => enforces OWNER via filter (for admin commands)
-    """
     pattern = rf"^[./]{re.escape(cmd_name)}(?:\s|$)"
-    # select base handler (either restricted(force_join(...)) or plain function)
     if restricted_wrap:
         base_handler = restricted(force_join(cmd_func))
     else:
         base_handler = cmd_func
-
-    # wrap so context.args is populated
     wrapped_handler = _make_message_wrapper(base_handler)
 
-    # build filters (owner-only commands limited to owner)
     msg_filter = filters.Regex(pattern)
     if owner_only:
         msg_filter = msg_filter & filters.User(OWNER_ID)
 
     application.add_handler(MessageHandler(msg_filter, wrapped_handler))
 
-
-# 📌 Register normal user commands
-def register_commands(application):
-    # Callback for "✅ I have joined"
-    application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
+# ------------------ COMMAND REGISTRATION ------------------
+def register_user_commands(application):
+    # /start first, unrestricted
     add_dual_command(application, "start", start, restricted_wrap=False, owner_only=False)
 
-    commands = [
+    # Normal user commands
+    user_commands = [
         ("close", close_command),
         ("restart", restart_command),
-        ("start", start),
         ("info", info),
         ("cmds", cmds_command),
         ("credits", credits_command),
@@ -7564,19 +7552,13 @@ def register_commands(application):
         ("fl", fl_command),
         ("status", status_command),
         ("redeem", redeem_command)
-
     ]
 
-    for cmd_name, cmd_func in commands:
-        add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True, owner_only=False)
+    for name, func in user_commands:
+        add_dual_command(application, name, func, restricted_wrap=True, owner_only=False)
 
-
-# 🎯 MAIN ENTRY POINT
-def main():
-    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
-
-    # 🔐 Owner-only admin Commands
-    owner_cmds = [
+def register_owner_commands(application):
+    owner_commands = [
         ("admin", admin_command),
         ("changeshsite", changeshsite_command),
         ("give_starter", give_starter),
@@ -7592,20 +7574,27 @@ def main():
         ("fban", fban),
     ]
 
-    for cmd_name, cmd_func in owner_cmds:
-        # owner-only and not wrapped with restricted(force_join)
-        add_dual_command(application, cmd_name, cmd_func, restricted_wrap=False, owner_only=True)
+    for name, func in owner_commands:
+        add_dual_command(application, name, func, restricted_wrap=False, owner_only=True)
 
-    # ✅ Register all other commands
-    register_commands(application)
+# ------------------ MAIN ------------------
+def main():
+    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
-    # 📲 Generic Callback & Error Handlers
+    # Register commands
+    register_user_commands(application)
+    register_owner_commands(application)
+
+    # Pagination handler - added only once
     application.add_handler(CallbackQueryHandler(cmds_pagination))
+
+    # Other generic callbacks
+    application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(error_handler)
 
     logger.info("🤖 Bot started and is polling for updates...")
     application.run_polling()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
