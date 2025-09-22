@@ -526,7 +526,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await q.answer()
 
     # Stylish single-line header
-    header = "❖━━🚪 GATES MENU 🚪━━❖\n\n"
+    header = "━━❖🚪 GATES MENU 🚪❖━━\n\n"
 
     # Bullet link for uniformity
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
@@ -1039,7 +1039,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     q = update.callback_query
     await q.answer()
-    logger.info(f"Callback received: {q.data}")
     data = q.data
 
     # Map callback data to the handler functions
@@ -1066,7 +1065,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await handler(update, context)
     else:
         await q.answer("⚠️ Unknown option selected.", show_alert=True)
-        application.add_handler(CallbackQueryHandler(handle_callback))
 
 
 
