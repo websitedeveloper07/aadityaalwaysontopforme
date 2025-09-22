@@ -7604,7 +7604,7 @@ def register_commands(application):
 
     for cmd_name, cmd_func in commands:
         add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True, owner_only=False)
-        application.add_handler(CallbackQueryHandler(cmds_pagination, pattern="^(page_|close)$"))
+        application.add_handler(CallbackQueryHandler(cmds_pagination))
 
 # 🎯 MAIN ENTRY POINT
 def main():
