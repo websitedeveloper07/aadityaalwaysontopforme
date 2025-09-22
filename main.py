@@ -1122,8 +1122,8 @@ ALL_COMMANDS = [
     ("Show your user info", "/info", "Free")
 ]
 
-# Split commands into smaller pages
-PAGE_SIZE = 3  # 3 commands per page for compact view
+# Split commands into pages
+PAGE_SIZE = 5  # 5 commands per page
 PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
 
 def build_page_text(page_index: int) -> str:
@@ -1192,6 +1192,7 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"TelegramError: {e}")
         except Exception as e:
             logger.error(f"Error in pagination: {e}")
+
 
 
 
