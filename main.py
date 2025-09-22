@@ -4842,6 +4842,8 @@ async def process_card_check(user, card_input, custom_urls, msg):
             header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response_text.upper():
             header_status = "✅ Approved"
+        elif "INCORRECT_ZIP" in response_text.upper():
+            header_status = "✅ Approved"
         elif "CARD_DECLINED" in response_text.upper():
             header_status = "❌ Declined"
 
@@ -5261,9 +5263,9 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        if len(sites) > 100:
+        if len(sites) > 200:
             await update.message.reply_text(
-                f"⚠️ You can check a maximum of 100 sites at once.\nYou provided {len(sites)}.",
+                f"⚠️ You can check a maximum of 200 sites at once.\nYou provided {len(sites)}.",
                 parse_mode=ParseMode.HTML,
             )
             sites = sites[:100]
