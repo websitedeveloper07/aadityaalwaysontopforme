@@ -1069,136 +1069,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-from telegram.ext import ApplicationBuilder, ContextTypes, CallbackQueryHandler, CommandHandler
-from telegram.error import TelegramError
-import logging
-import html
 
-# Logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
-
-# Invisible padding character
-PAD_CHAR = "\u200A"
-LINE_WIDTH = 69  # fixed width for all lines
-
-def escape_html(text: str) -> str:
-    return html.escape(text, quote=False)
-
-# All commands - Type is always "Free/Premium"
-ALL_COMMANDS = [
-    ("Stripe 1$", "/st"),
-    ("Stripe 3$", "/st1"),
-    ("Single Stripe Auth", "/chk"),
-    ("Braintree Premium Auth", "/b3"),
-    ("Mass x30 Stripe Auth 2", "/mass"),
-    ("Authnet 2.5$ Charge", "/at"),
-    ("Adyen 1.0$ Charge", "/ad"),
-    ("Paypal Payments 9$", "/pp"),
-    ("Ocean Payments 4$", "/oc"),
-    ("3DS Lookup", "/vbv"),
-    ("Shopify Charge $0.98", "/sh"),
-    ("Shopify Charge $10", "/hc"),
-    ("Set your Shopify site", "/seturl"),
-    ("Auto check on your site", "/sp"),
-    ("Mass Shopify Charged", "/msp"),
-    ("Check if Shopify site is live", "/site"),
-    ("Mass Shopify site check", "/msite"),
-    ("Check your added sites", "/mysites"),
-    ("Set 20 Shopify sites", "/adurls"),
-    ("Remove all added sites", "/removeall"),
-    ("Remove specific sites", "/rsite"),
-    ("Generate cards from BIN", "/gen"),
-    ("Payment Gateway Checker", "/gate"),
-    ("BIN lookup", "/bin"),
-    ("Fake identity generator", "/fk"),
-    ("Extract CCs from dumps", "/fl"),
-    ("Extract cards from file", "/open"),
-    ("Redeem a bot code", "/redeem"),
-    ("Welcome message", "/start"),
-    ("Show all commands", "/cmds"),
-    ("Bot system status", "/status"),
-    ("Check your remaining credits", "/credits"),
-    ("Show your user info", "/info")
-]
-
-# Split into pages (4 commands per page)
-PAGE_SIZE = 4
-PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
-
-def pad_line(label: str, value: str) -> str:
-    """Format line with bold+italic label and italic value"""
-    return f"<b><i>{label}:</i></b> <i>{value}</i>"
-
-def build_page_text(page_index: int) -> str:
-    """Build fixed-width command page with bold italic labels and italic values"""
-    try:
-        page_commands = PAGES[page_index]
-        text = "━━━━━━━━━━━━━━━━━━━━━━\n"
-        text += f"<i>◆ 𝐂𝐌𝐃𝐒 𝐏𝐀𝐆𝐄 {page_index + 1}/{len(PAGES)}</i>\n"
-        text += "━━━━━━━━━━━━━━━━━━━━━━\n"
-        for name, cmd in page_commands:
-            text += pad_line("Name", escape_html(name)) + "\n"
-            text += pad_line("Use", escape_html(cmd)) + "\n"
-            text += pad_line("Status", "Online ✅") + "\n"
-            text += pad_line("Type", "Free/Premium") + "\n"
-            text += "━━━━━━━━━━━━━━━━━━━━━━\n"
-        return text.strip()
-    except Exception as e:
-        logger.error(f"Error building page text: {e}")
-        return "Error: Could not build page text."
-
-def build_buttons(page_index: int) -> InlineKeyboardMarkup:
-    buttons = []
-    nav_buttons = []
-    if page_index > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"page_{page_index - 1}"))
-    if page_index < len(PAGES) - 1:
-        nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{page_index + 1}"))
-    if nav_buttons:
-        buttons.append(nav_buttons)
-    buttons.append([InlineKeyboardButton("❌ Close", callback_data="close")])
-    return InlineKeyboardMarkup(buttons)
-
-# /cmds handler
-async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = build_page_text(0)
-    buttons = build_buttons(0)
-    await update.message.reply_text(
-        text,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True,
-        reply_markup=buttons
-    )
-
-# Pagination handler
-async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    data = query.data
-    if data == "close":
-        await query.message.delete()
-        return
-    if data.startswith("page_"):
-        try:
-            page_index = int(data.split("_")[1])
-            text = build_page_text(page_index)
-            buttons = build_buttons(page_index)
-            await query.message.edit_text(
-                text,
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True,
-                reply_markup=buttons
-            )
-        except TelegramError as e:
-            logger.error(f"TelegramError: {e}")
-        except Exception as e:
-            logger.error(f"Error in pagination: {e}")
 
 
 
@@ -7532,7 +7403,6 @@ def register_commands(application):
         ("close", close_command),
         ("restart", restart_command),
         ("start", start),
-        ("cmds", cmds_command),
         ("info", info),
         ("credits", credits_command),
         ("chk", chk_command),
