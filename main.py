@@ -1086,78 +1086,58 @@ logger = logging.getLogger(__name__)
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
 
-# Command categories
-COMMAND_CATEGORIES = [
-    {"title": "Stripe", "commands": [
-        ("Single Stripe Auth", "/chk", "Premium"),
-        ("Stripe 1$", "/st", "Premium"),
-        ("Stripe 3$", "/st1", "Premium"),
-        ("Mass x30 Stripe 1$", "/mst", "Premium"),
-        ("Mass x30 Stripe Auth 2", "/mass", "Premium")]},
-
-    {"title": "Braintree", "commands": [
-        ("Braintree Premium Auth", "/b3", "Premium"),
-        ("3DS Lookup", "/vbv", "Free")]},
-
-    {"title": "OceanPayments", "commands": [
-        ("Ocean Payments 4$", "/oc", "Premium")]},
-
-    {"title": "Authnet", "commands": [
-        ("Authnet 2.5$ Charge", "/at", "Premium")]},
-
-    {"title": "Shopify", "commands": [
-        ("Shopify Charge $0.98", "/sh", "Premium"),
-        ("Shopify Charge $10", "/hc", "Premium"),
-        ("Set your Shopify site", "/seturl", "Free"),
-        ("Auto check on your saved Shopify site", "/sp", "Free"),
-        ("Mass Shopify Charged", "/msp", "Free"),
-        ("Check if Shopify site is live", "/site", "Free"),
-        ("Mass Shopify site check", "/msite", "Free"),
-        ("Check your added sites", "/mysites", "Free"),
-        ("Set 20 Shopify sites", "/adurls", "Free"),
-        ("Remove all added sites", "/removeall", "Free"),
-        ("Remove specific sites from added", "/rmsite", "Free")]},
-
-    {"title": "Adyen", "commands": [
-        ("Adyen 1$", "/ad", "Free")]},
-
-    {"title": "Generators", "commands": [
-        ("Generate cards from BIN", "/gen", "Premium"),
-        ("Payment Gateway Checker", "/gate", "Free"),
-        ("BIN lookup", "/bin", "Free"),
-        ("Fake identity generator", "/fk", "Free"),
-        ("Extract CCs from dumps", "/fl", "Free"),
-        ("Extract cards from uploaded file", "/open", "Free")]},
-
-    {"title": "System & User", "commands": [
-        ("Welcome message", "/start", "Free"),
-        ("Show all commands", "/cmds", "Free"),
-        ("Bot system status", "/status", "Free"),
-        ("Check your remaining credits", "/credits", "Free"),
-        ("Show your user info", "/info", "Free")]}
+# All commands with description and type
+ALL_COMMANDS = [
+    ("Single Stripe Auth", "/chk", "Premium"),
+    ("Stripe 1$", "/st", "Premium"),
+    ("Stripe 3$", "/st1", "Premium"),
+    ("Mass x30 Stripe 1$", "/mst", "Premium"),
+    ("Mass x30 Stripe Auth 2", "/mass", "Premium"),
+    ("Braintree Premium Auth", "/b3", "Premium"),
+    ("3DS Lookup", "/vbv", "Free"),
+    ("Ocean Payments 4$", "/oc", "Premium"),
+    ("Authnet 2.5$ Charge", "/at", "Premium"),
+    ("Shopify Charge $0.98", "/sh", "Premium"),
+    ("Shopify Charge $10", "/hc", "Premium"),
+    ("Set your Shopify site", "/seturl", "Free"),
+    ("Auto check on your saved Shopify site", "/sp", "Free"),
+    ("Mass Shopify Charged", "/msp", "Free"),
+    ("Check if Shopify site is live", "/site", "Free"),
+    ("Mass Shopify site check", "/msite", "Free"),
+    ("Check your added sites", "/mysites", "Free"),
+    ("Set 20 Shopify sites", "/adurls", "Free"),
+    ("Remove all added sites", "/removeall", "Free"),
+    ("Remove specific sites from added", "/rmsite", "Free"),
+    ("Adyen 1$", "/ad", "Free"),
+    ("Generate cards from BIN", "/gen", "Premium"),
+    ("Payment Gateway Checker", "/gate", "Free"),
+    ("BIN lookup", "/bin", "Free"),
+    ("Fake identity generator", "/fk", "Free"),
+    ("Extract CCs from dumps", "/fl", "Free"),
+    ("Extract cards from uploaded file", "/open", "Free"),
+    ("Welcome message", "/start", "Free"),
+    ("Show all commands", "/cmds", "Free"),
+    ("Bot system status", "/status", "Free"),
+    ("Check your remaining credits", "/credits", "Free"),
+    ("Show your user info", "/info", "Free")
 ]
 
-# Split commands into multiple pages to reduce height
-PAGE_SIZE = 5  # number of commands per page
-ALL_COMMANDS = []
-for cat in COMMAND_CATEGORIES:
-    for name, cmd, typ in cat["commands"]:
-        ALL_COMMANDS.append((name, cmd, typ))
-
+# Split into pages for small Telegram messages
+PAGE_SIZE = 6  # Commands per page
 PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
 
 def build_page_text(page_index: int) -> str:
-    """Build professional gateway-style page with Name, Use, Status, Type"""
+    """Build professional command page with uniform width and no gaps"""
     try:
         page_commands = PAGES[page_index]
-        text = f"━━━━━━━━━━━━━\n[ 🝂 ] Page {page_index + 1}\n━━━━━━━━━━━━━\n\n"
+        text = f"━━━━━━━━━━━━━\n[ 🝂 ] Page {page_index + 1}\n━━━━━━━━━━━━━\n"
         for name, cmd, typ in page_commands:
             text += (
-                f"Name: {escape_html(name)}\n"
-                f"Use ↭ <b><i>{escape_html(cmd)}</i></b>\n"
-                f"Status ↭ Online ✅\n"
-                f"Type ↭ {typ}\n"
-                "━━━━━━━━━━━━━\n\n"
+                f"<b><i>Name:</i></b> <i>{escape_html(name)}</i>\n"
+                f"<b><i>Use:</i></b> <b><i>{escape_html(cmd)}</i></b>\n"
+                f"<b><i>Status:</i></b> <i>Online ✅</i>\n"
+                f"<b><i>Type:</i></b> <i>{escape_html(typ)}</i>\n"
+                "━━━━━━━━━━━━━\n"
             )
         return text.strip()
     except Exception as e:
