@@ -7525,6 +7525,7 @@ def add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True, owne
 def register_commands(application):
     # Callback for "✅ I have joined"
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
+    add_dual_command(application, "start", start, restricted_wrap=False, owner_only=False)
 
     commands = [
         ("close", close_command),
