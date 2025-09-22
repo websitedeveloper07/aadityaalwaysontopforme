@@ -1085,22 +1085,23 @@ logger = logging.getLogger(__name__)
 
 # Invisible padding character
 PAD_CHAR = "\u200A"
-LINE_WIDTH = 60  # fixed width for all lines
+LINE_WIDTH = 63  # fixed width for all lines
 
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
 
 # All commands - Type is always "Free/Premium"
 ALL_COMMANDS = [
-    ("Single Stripe Auth", "/chk"),
     ("Stripe 1$", "/st"),
     ("Stripe 3$", "/st1"),
-    ("Mass x30 Stripe 1$", "/mst"),
-    ("Mass x30 Stripe Auth 2", "/mass"),
+    ("Single Stripe Auth", "/chk"),
     ("Braintree Premium Auth", "/b3"),
-    ("3DS Lookup", "/vbv"),
-    ("Ocean Payments 4$", "/oc"),
+    ("Mass x30 Stripe Auth 2", "/mass"),
     ("Authnet 2.5$ Charge", "/at"),
+    ("Adyen 1.0$ Charge", "/ad"),
+    ("Paypal Payments 9$", "/pp"),
+    ("Ocean Payments 4$", "/oc"),
+    ("3DS Lookup", "/vbv"),
     ("Shopify Charge $0.98", "/sh"),
     ("Shopify Charge $10", "/hc"),
     ("Set your Shopify site", "/seturl"),
@@ -1111,14 +1112,14 @@ ALL_COMMANDS = [
     ("Check your added sites", "/mysites"),
     ("Set 20 Shopify sites", "/adurls"),
     ("Remove all added sites", "/removeall"),
-    ("Remove specific sites", "/rmsite"),
-    ("Adyen 1$", "/ad"),
+    ("Remove specific sites", "/rsite"),
     ("Generate cards from BIN", "/gen"),
     ("Payment Gateway Checker", "/gate"),
     ("BIN lookup", "/bin"),
     ("Fake identity generator", "/fk"),
     ("Extract CCs from dumps", "/fl"),
     ("Extract cards from file", "/open"),
+    ("Redeem a bot code", "/redeem"),
     ("Welcome message", "/start"),
     ("Show all commands", "/cmds"),
     ("Bot system status", "/status"),
