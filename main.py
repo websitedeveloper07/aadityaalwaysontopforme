@@ -1131,7 +1131,7 @@ COMMAND_CATEGORIES = [
 
     {"title": "𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗼𝗿𝘀", "commands": [
         "/gen [bin] [no. of cards] – Generate cards from BIN",
-        "/gate site url – Payment Gateway Checker",
+        "/gate <site url> – Payment Gateway Checker",
         "/bin <bin> – BIN lookup (Bank, Country, Type)",
         "/fk <country> – Fake identity generator",
         "/fl <dump> – Extract CCs from dumps",
@@ -1148,18 +1148,34 @@ COMMAND_CATEGORIES = [
 # Split the commands into pages (2 categories per page)
 PAGES = [COMMAND_CATEGORIES[i:i + 2] for i in range(0, len(COMMAND_CATEGORIES), 2)]
 
+# Determine max number of lines per page (for uniform length)
+MAX_COMMAND_LINES = max(sum(len(cat["commands"]) for cat in page) for page in PAGES)
+
+def escape_html(text: str) -> str:
+    """Escape HTML special chars to prevent Telegram parsing errors."""
+    return text.replace("<", "&lt;").replace(">", "&gt;")
 
 def build_page_text(page_index: int) -> str:
     """
     Builds the text content for a specific page of commands.
+    Ensures all pages have uniform length by padding with empty lines.
     """
     logger.debug(f"Building text for page {page_index}...")
     try:
         page_categories = PAGES[page_index]
         text = ""
+        # Count total commands on this page
+        total_lines = sum(len(cat["commands"]) for cat in page_categories)
+
         for cat in page_categories:
-            commands_text = "\n".join(f"{bullet_link} <code>{cmd}</code>" for cmd in cat["commands"])
+            commands_text = "\n".join(f"{bullet_link} <code>{escape_html(cmd)}</code>" for cmd in cat["commands"])
             text += f"━━━[ 👇 <b>{cat['title']} Commands</b> ]━━━⬣\n\n{commands_text}\n\n"
+
+        # Pad remaining lines with empty commands to make all pages equal length
+        pad_lines = MAX_COMMAND_LINES - total_lines
+        if pad_lines > 0:
+            text += ("\n" * pad_lines)
+
         text += f"<i>Page {page_index + 1}/{len(PAGES)}</i>"
         return text.strip()
     except IndexError as e:
@@ -1169,23 +1185,19 @@ def build_page_text(page_index: int) -> str:
         logger.error(f"Unexpected error while building page text: {e}")
         return "Error: An unexpected error occurred."
 
-
 def build_buttons(page_index: int) -> InlineKeyboardMarkup:
     """
     Builds the inline keyboard with 'Back', 'Next', and 'Close' buttons.
+    Close button is always in a separate row.
     """
     logger.debug(f"Building buttons for page {page_index}...")
     nav_buttons = []
 
-    # Add the 'Back' button if it's not the first page
     if page_index > 0:
         nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"page_{page_index - 1}"))
-
-    # Add the 'Next' button if it's not the last page
     if page_index < len(PAGES) - 1:
         nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{page_index + 1}"))
 
-    # Keyboard layout: navigation row + close row
     keyboard = []
     if nav_buttons:
         keyboard.append(nav_buttons)  # Row 1 → Back & Next
@@ -1193,12 +1205,8 @@ def build_buttons(page_index: int) -> InlineKeyboardMarkup:
 
     return InlineKeyboardMarkup(keyboard)
 
-
-# Handler for the /cmds command
+# /cmds command handler
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Sends the first page of commands with pagination buttons.
-    """
     logger.info("/cmds command received.")
     text = build_page_text(0)
     buttons = build_buttons(0)
@@ -1209,16 +1217,10 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=buttons
     )
 
-
-# Handler for the inline keyboard button clicks
+# Callback query handler for pagination
 async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles button clicks for pagination, editing the message with the new content.
-    """
     query = update.callback_query
     logger.info(f"Callback query received. Data: {query.data}")
-
-    # Acknowledge the query to remove the loading spinner
     await query.answer()
     data = query.data
 
@@ -1233,7 +1235,6 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.info(f"Parsed page index: {page_index}")
             text = build_page_text(page_index)
             buttons = build_buttons(page_index)
-
             await query.message.edit_text(
                 text,
                 parse_mode=ParseMode.HTML,
@@ -1244,6 +1245,7 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Failed to edit message. TelegramError: {e}")
         except Exception as e:
             logger.error(f"Unexpected error in cmds_pagination: {e}")
+
 
 
 
