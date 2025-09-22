@@ -1082,7 +1082,7 @@ from telegram.ext import ContextTypes, CallbackQueryHandler, CommandHandler
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-# List of command pages
+# All command categories
 COMMAND_PAGES = [
     {
         "title": "𝗦𝘁𝗿𝗶𝗽𝗲",
@@ -1139,16 +1139,29 @@ COMMAND_PAGES = [
     }
 ]
 
+# Split categories into pages with 2 blocks each
+def get_command_pages():
+    pages = []
+    for i in range(0, len(COMMAND_PAGES), 2):
+        pages.append(COMMAND_PAGES[i:i+2])
+    return pages
+
 def build_page_text(page_index: int) -> str:
-    page = COMMAND_PAGES[page_index]
-    commands_text = "\n".join(f"{bullet_link} <code>{cmd}</code>" for cmd in page["commands"])
-    return f"━━━[ 👇 <b>{page['title']} Commands</b> ]━━━⬣\n\n{commands_text}"
+    pages = get_command_pages()
+    page_categories = pages[page_index]
+
+    text = ""
+    for page in page_categories:
+        commands_text = "\n".join(f"{bullet_link} <code>{cmd}</code>" for cmd in page["commands"])
+        text += f"━━━[ 👇 <b>{page['title']} Commands</b> ]━━━⬣\n\n{commands_text}\n\n"
+    return text.strip()
 
 def build_buttons(page_index: int) -> InlineKeyboardMarkup:
+    total_pages = len(get_command_pages())
     buttons = []
     if page_index > 0:
         buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"page_{page_index-1}"))
-    if page_index < len(COMMAND_PAGES) - 1:
+    if page_index < total_pages - 1:
         buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{page_index+1}"))
     buttons.append(InlineKeyboardButton("❌ Close", callback_data="close"))
     return InlineKeyboardMarkup([buttons])
@@ -1164,7 +1177,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=buttons
     )
 
-# Callback query handler
+# Callback query handler for pagination
 async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1185,8 +1198,9 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=buttons
         )
 
-# Add these handlers to your application
-pagination_handler = CallbackQueryHandler(cmds_pagination, pattern="^(page_|close)$")
+# Add these handlers to your bot
+
+
 
 
 
