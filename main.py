@@ -1085,7 +1085,7 @@ logger = logging.getLogger(__name__)
 
 # Invisible padding character
 PAD_CHAR = "\u200A"
-LINE_WIDTH = 110  # fixed width for all lines
+LINE_WIDTH = 67  # fixed width for all lines
 
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
@@ -1143,7 +1143,7 @@ def build_page_text(page_index: int) -> str:
     try:
         page_commands = PAGES[page_index]
         text = "━━━━━━━━━━━━━━━━━━━━━━\n"
-        text += f"<i>🝂 Page {page_index + 1}/{len(PAGES)}</i>\n"
+        text += f"<i>◆ 𝐏𝐀𝐆𝐄 {page_index + 1}/{len(PAGES)}</i>\n"
         text += "━━━━━━━━━━━━━━━━━━━━━━\n"
         for name, cmd, typ in page_commands:
             text += pad_line("Name", escape_html(name)) + "\n"
