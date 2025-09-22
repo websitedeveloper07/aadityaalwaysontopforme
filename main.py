@@ -7595,7 +7595,6 @@ def main():
     for cmd_name, cmd_func in owner_cmds:
         # owner-only and not wrapped with restricted(force_join)
         add_dual_command(application, cmd_name, cmd_func, restricted_wrap=False, owner_only=True)
-        application.add_handler(CallbackQueryHandler(cmds_pagination))
 
     # ✅ Register all other commands
     register_commands(application)
