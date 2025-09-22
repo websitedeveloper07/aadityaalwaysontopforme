@@ -1083,6 +1083,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+HAIR_SPACE = "\u200A"  # Invisible character for padding
+
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
 
@@ -1123,21 +1125,28 @@ ALL_COMMANDS = [
 ]
 
 # Split commands into pages
-PAGE_SIZE = 5  # 5 commands per page
+PAGE_SIZE = 5
 PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
 
+def pad_line(text: str, width: int = 40) -> str:
+    """Pad the line with invisible hair spaces to fix width."""
+    text_len = len(text)
+    if text_len < width:
+        return text + HAIR_SPACE * (width - text_len)
+    return text
+
 def build_page_text(page_index: int) -> str:
-    """Build professional command page with uniform width and compact size"""
+    """Build fixed-width professional command page"""
     try:
         page_commands = PAGES[page_index]
-        text = f"━━━━━━━━━━━━━\n[ 🝂 ] Page {page_index + 1}/{len(PAGES)}\n━━━━━━━━━━━━━\n"
+        text = f"━━━━━━━━━━━━━━━━━━━━━━\n[ 🝂 ] Page {page_index + 1}/{len(PAGES)}\n━━━━━━━━━━━━━━━━━━━━━━\n"
         for name, cmd, typ in page_commands:
             text += (
-                f"<b><i>Name:</i></b> <i>{escape_html(name)}</i>\n"
-                f"<b><i>Use:</i></b> <b><i>{escape_html(cmd)}</i></b>\n"
-                f"<b><i>Status:</i></b> <i>Online ✅</i>\n"
-                f"<b><i>Type:</i></b> <i>{escape_html(typ)}</i>\n"
-                "━━━━━━━━━━━━━\n"
+                f"{pad_line(f'Name: {escape_html(name)}')}\n"
+                f"{pad_line(f'Use ↭ {escape_html(cmd)}')}\n"
+                f"{pad_line('Status ↭ Online ✅')}\n"
+                f"{pad_line(f'Type ↭ {escape_html(typ)}')}\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n"
             )
         return text.strip()
     except Exception as e:
@@ -1192,6 +1201,7 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"TelegramError: {e}")
         except Exception as e:
             logger.error(f"Error in pagination: {e}")
+
 
 
 
