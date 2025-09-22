@@ -526,7 +526,7 @@ async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await q.answer()
 
     # Stylish single-line header
-    header = "━━❖🚪 GATES MENU 🚪❖━━\n\n"
+    header = "❖━━🚪 GATES MENU 🚪━━❖\n\n"
 
     # Bullet link for uniformity
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
@@ -3398,7 +3398,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
             header_status = "✅ Approved"
-        elif "INVALID_CVC" in response.upper():
+        elif "INCORRECT_CVC" in response.upper():
             header_status = "✅ Approved"
         elif "INCORRECT_ZIP" in response.upper():
             header_status = "✅ Approved"
@@ -3635,7 +3635,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
             header_status = "✅ Approved"
-        elif "INVALID_CVC" in response.upper():
+        elif "INCORRECT_CVC" in response.upper():
             header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response.upper():
             header_status = "✅ Approved"
@@ -3896,7 +3896,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ Declined"
-        elif "INVALID_CVC" in response.upper():
+        elif "INCORRECT_CVC" in response.upper():
             header_status = "✅ Approved"
         elif "INCORRECT_ZIP" in response.upper():
             header_status = "✅ Approved"
@@ -4155,7 +4155,7 @@ async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ Declined"
-        elif "INVALID_CVC" in response.upper():
+        elif "INCORRECT_CVC" in response.upper():
             header_status = "✅ Approved"
         elif "INCORRECT_ZIP" in response.upper():
             header_status = "✅ Approved"
@@ -4463,7 +4463,7 @@ async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ Declined"
-        elif "INVALID_CVC" in response.upper():
+        elif "INCORRECT_CVC" in response.upper():
             header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response.upper():
             display_response += " 💳"
@@ -4909,7 +4909,7 @@ async def process_card_check(user, card_input, custom_urls, msg):
             header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response_text.upper():
             header_status = "✅ Approved"
-        elif "INVALID_CVC" in response_text.upper():
+        elif "INCORRECT_CVC" in response_text.upper():
             header_status = "✅ Approved"
         elif "INSUFFICIENT_FUNDS" in response_text.upper():
             header_status = "✅ Approved"
@@ -5160,7 +5160,7 @@ def normalize_site(site: str) -> str:
 async def fetch_site_info(session, site_url: str):
     """
     Fetch site info using API_TEMPLATE and return a structured result.
-    Always returns a dict with keys: site, price, status, response, gateway.
+    Returns a dict with keys: site, price, status, response, gateway.
     """
     normalized_url = normalize_site(site_url)
     api_url = API_TEMPLATE.format(site_url=normalized_url)
@@ -5184,10 +5184,21 @@ async def fetch_site_info(session, site_url: str):
         except (ValueError, TypeError):
             price_float = 0.0
 
+        # --- Additional dead checks ---
+        dead_reasons = [
+            not data.get("ClinteToken"),
+            data.get("DelAmount") in (None, "", 0),
+            data.get("TaxAmount") in (None, "", 0),
+            not data.get("ProductID"),
+            "HCAPTCHA DETECTED" in response.upper()
+        ]
+
+        is_dead = any(dead_reasons) or price_float <= 0
+
         return {
             "site": normalized_url,
             "price": price_float,
-            "status": "working" if price_float > 0 else "dead",
+            "status": "dead" if is_dead else "working",
             "response": response,
             "gateway": gateway,
         }
