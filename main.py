@@ -1122,15 +1122,15 @@ ALL_COMMANDS = [
     ("Show your user info", "/info", "Free")
 ]
 
-# Split into pages for small Telegram messages
-PAGE_SIZE = 6  # Commands per page
+# Split commands into smaller pages
+PAGE_SIZE = 3  # 3 commands per page for compact view
 PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
 
 def build_page_text(page_index: int) -> str:
-    """Build professional command page with uniform width and no gaps"""
+    """Build professional command page with uniform width and compact size"""
     try:
         page_commands = PAGES[page_index]
-        text = f"━━━━━━━━━━━━━\n[ 🝂 ] Page {page_index + 1}\n━━━━━━━━━━━━━\n"
+        text = f"━━━━━━━━━━━━━\n[ 🝂 ] Page {page_index + 1}/{len(PAGES)}\n━━━━━━━━━━━━━\n"
         for name, cmd, typ in page_commands:
             text += (
                 f"<b><i>Name:</i></b> <i>{escape_html(name)}</i>\n"
@@ -1192,7 +1192,6 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"TelegramError: {e}")
         except Exception as e:
             logger.error(f"Error in pagination: {e}")
-
 
 
 
