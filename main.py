@@ -1077,83 +1077,62 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes, CallbackQueryHandler, CommandHandler
+from telegram.ext import ApplicationBuilder, ContextTypes, CallbackQueryHandler, CommandHandler
+
 
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
 # All command categories (full menu)
 COMMAND_CATEGORIES = [
-    {
-        "title": "𝗦𝘁𝗿𝗶𝗽𝗲",
-        "commands": [
-            "/chk cc|mm|yy|cvv – Single Stripe Auth",
-            "/st cc|mm|yy|cvv – Stripe 1$",
-            "/st1 cc|mm|yy|cvv – Stripe 3$",
-            "/mst cc|mm|yy|cvv – Mass x30 Stripe 1$",
-            "/mass – Mass x30 Stripe Auth 2"
-        ]
-    },
-    {
-        "title": "𝗕𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲",
-        "commands": [
-            "/b3 cc|mm|yy|cvv – Braintree Premium Auth",
-            "/vbv cc|mm|yy|cvv – 3DS Lookup"
-        ]
-    },
-    {
-        "title": "𝙊𝗰𝗲𝗮𝗻 𝙋𝗮𝘆𝗺𝗲𝗻𝘁𝘀",
-        "commands": [
-            "/oc cc|mm|yy|cvv – Ocean Payments 4$"
-        ]
-    },
-    {
-        "title": "𝗔𝘂𝘁𝗵𝗻𝗲𝘁",
-        "commands": [
-            "/at cc|mm|yy|cvv – Authnet 2.5$ Charge"
-        ]
-    },
-    {
-        "title": "𝗦𝗵𝗼𝗽𝗶𝗳𝘆",
-        "commands": [
-            "/sh – Shopify Charge $0.98",
-            "/hc – Shopify Charge $10",
-            "/seturl <site url> – Set your Shopify site",
-            "/sp – Auto check on your saved Shopify site",
-            "/msp – Mass Shopify Charged",
-            "/site <url> – Check if Shopify site is live",
-            "/msite <urls> – Mass Shopify site check",
-            "/mysites – Check your added sites",
-            "/adurls <site url> – Set 20 Shopify sites",
-            "/removeall – Remove all added sites",
-            "/rmsite – Remove specific sites from added"
-        ]
-    },
-    {
-        "title": "𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗼𝗿𝘀",
-        "commands": [
-            "/gen [bin] [no. of cards] – Generate cards from BIN",
-            "/gate site url – Payment Gateway Checker",
-            "/bin <bin> – BIN lookup (Bank, Country, Type)",
-            "/fk <country> – Fake identity generator",
-            "/fl <dump> – Extract CCs from dumps",
-            "/open – Extract cards from uploaded file"
-        ]
-    },
-    {
-        "title": "𝗦𝘆𝘀𝘁𝗲𝗺 & 𝗨𝘀𝗲𝗿",
-        "commands": [
-            "/start – Welcome message",
-            "/cmds – Show all commands",
-            "/status – Bot system status",
-            "/credits – Check your remaining credits",
-            "/info – Show your user info"
-        ]
-    }
+    {"title": "𝗦𝘁𝗿𝗶𝗽𝗲", "commands": [
+        "/chk cc|mm|yy|cvv – Single Stripe Auth",
+        "/st cc|mm|yy|cvv – Stripe 1$",
+        "/st1 cc|mm|yy|cvv – Stripe 3$",
+        "/mst cc|mm|yy|cvv – Mass x30 Stripe 1$",
+        "/mass – Mass x30 Stripe Auth 2"]},
+
+    {"title": "𝗕𝗿𝗮𝗶𝗻𝘁𝗿𝗲𝗲", "commands": [
+        "/b3 cc|mm|yy|cvv – Braintree Premium Auth",
+        "/vbv cc|mm|yy|cvv – 3DS Lookup"]},
+
+    {"title": "𝙊𝗰𝗲𝗮𝗻 𝙋𝗮𝘆𝗺𝗲𝗻𝘁𝘀", "commands": [
+        "/oc cc|mm|yy|cvv – Ocean Payments 4$"]},
+
+    {"title": "𝗔𝘂𝘁𝗵𝗻𝗲𝘁", "commands": [
+        "/at cc|mm|yy|cvv – Authnet 2.5$ Charge"]},
+
+    {"title": "𝗦𝗵𝗼𝗽𝗶𝗳𝘆", "commands": [
+        "/sh – Shopify Charge $0.98",
+        "/hc – Shopify Charge $10",
+        "/seturl <site url> – Set your Shopify site",
+        "/sp – Auto check on your saved Shopify site",
+        "/msp – Mass Shopify Charged",
+        "/site <url> – Check if Shopify site is live",
+        "/msite <urls> – Mass Shopify site check",
+        "/mysites – Check your added sites",
+        "/adurls <site url> – Set 20 Shopify sites",
+        "/removeall – Remove all added sites",
+        "/rmsite – Remove specific sites from added"]},
+
+    {"title": "𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗼𝗿𝘀", "commands": [
+        "/gen [bin] [no. of cards] – Generate cards from BIN",
+        "/gate site url – Payment Gateway Checker",
+        "/bin <bin> – BIN lookup (Bank, Country, Type)",
+        "/fk <country> – Fake identity generator",
+        "/fl <dump> – Extract CCs from dumps",
+        "/open – Extract cards from uploaded file"]},
+
+    {"title": "𝗦𝘆𝘀𝘁𝗲𝗺 & 𝗨𝘀𝗲𝗿", "commands": [
+        "/start – Welcome message",
+        "/cmds – Show all commands",
+        "/status – Bot system status",
+        "/credits – Check your remaining credits",
+        "/info – Show your user info"]}
 ]
 
-# Precompute pages: 2 categories per page
-PAGES = [COMMAND_CATEGORIES[i:i+2] for i in range(0, len(COMMAND_CATEGORIES), 2)]
+# Split into pages (2 categories per page)
+PAGES = [COMMAND_CATEGORIES[i:i + 2] for i in range(0, len(COMMAND_CATEGORIES), 2)]
 
 def build_page_text(page_index: int) -> str:
     page_categories = PAGES[page_index]
@@ -1184,7 +1163,7 @@ async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=buttons
     )
 
-# Callback query handler
+# Callback query handler for pagination
 async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1204,9 +1183,6 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True,
             reply_markup=buttons
         )
-
-# Handlers to add to your application
-
 
 
 
