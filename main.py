@@ -1090,40 +1090,40 @@ LINE_WIDTH = 60  # fixed width for all lines
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
 
-# All commands with explicit Free/Premium for ALL
+# All commands - Type is always "Free/Premium"
 ALL_COMMANDS = [
-    ("Single Stripe Auth", "/chk", "Premium"),
-    ("Stripe 1$", "/st", "Premium"),
-    ("Stripe 3$", "/st1", "Premium"),
-    ("Mass x30 Stripe 1$", "/mst", "Premium"),
-    ("Mass x30 Stripe Auth 2", "/mass", "Premium"),
-    ("Braintree Premium Auth", "/b3", "Premium"),
-    ("3DS Lookup", "/vbv", "Free"),
-    ("Ocean Payments 4$", "/oc", "Premium"),
-    ("Authnet 2.5$ Charge", "/at", "Premium"),
-    ("Shopify Charge $0.98", "/sh", "Premium"),
-    ("Shopify Charge $10", "/hc", "Premium"),
-    ("Set your Shopify site", "/seturl", "Free"),
-    ("Auto check on your saved Shopify site", "/sp", "Free"),
-    ("Mass Shopify Charged", "/msp", "Free"),
-    ("Check if Shopify site is live", "/site", "Free"),
-    ("Mass Shopify site check", "/msite", "Free"),
-    ("Check your added sites", "/mysites", "Free"),
-    ("Set 20 Shopify sites", "/adurls", "Free"),
-    ("Remove all added sites", "/removeall", "Free"),
-    ("Remove specific sites from added", "/rmsite", "Free"),
-    ("Adyen 1$", "/ad", "Free"),
-    ("Generate cards from BIN", "/gen", "Premium"),
-    ("Payment Gateway Checker", "/gate", "Free"),
-    ("BIN lookup", "/bin", "Free"),
-    ("Fake identity generator", "/fk", "Free"),
-    ("Extract CCs from dumps", "/fl", "Free"),
-    ("Extract cards from uploaded file", "/open", "Free"),
-    ("Welcome message", "/start", "Free"),
-    ("Show all commands", "/cmds", "Free"),
-    ("Bot system status", "/status", "Free"),
-    ("Check your remaining credits", "/credits", "Free"),
-    ("Show your user info", "/info", "Free")
+    ("Single Stripe Auth", "/chk"),
+    ("Stripe 1$", "/st"),
+    ("Stripe 3$", "/st1"),
+    ("Mass x30 Stripe 1$", "/mst"),
+    ("Mass x30 Stripe Auth 2", "/mass"),
+    ("Braintree Premium Auth", "/b3"),
+    ("3DS Lookup", "/vbv"),
+    ("Ocean Payments 4$", "/oc"),
+    ("Authnet 2.5$ Charge", "/at"),
+    ("Shopify Charge $0.98", "/sh"),
+    ("Shopify Charge $10", "/hc"),
+    ("Set your Shopify site", "/seturl"),
+    ("Auto check on your site", "/sp"),
+    ("Mass Shopify Charged", "/msp"),
+    ("Check if Shopify site is live", "/site"),
+    ("Mass Shopify site check", "/msite"),
+    ("Check your added sites", "/mysites"),
+    ("Set 20 Shopify sites", "/adurls"),
+    ("Remove all added sites", "/removeall"),
+    ("Remove specific sites", "/rmsite"),
+    ("Adyen 1$", "/ad"),
+    ("Generate cards from BIN", "/gen"),
+    ("Payment Gateway Checker", "/gate"),
+    ("BIN lookup", "/bin"),
+    ("Fake identity generator", "/fk"),
+    ("Extract CCs from dumps", "/fl"),
+    ("Extract cards from file", "/open"),
+    ("Welcome message", "/start"),
+    ("Show all commands", "/cmds"),
+    ("Bot system status", "/status"),
+    ("Check your remaining credits", "/credits"),
+    ("Show your user info", "/info")
 ]
 
 # Split into pages (4 commands per page)
@@ -1141,11 +1141,11 @@ def build_page_text(page_index: int) -> str:
         text = "━━━━━━━━━━━━━━━━━━━━━━\n"
         text += f"<i>◆ 𝐂𝐌𝐃𝐒 𝐏𝐀𝐆𝐄 {page_index + 1}/{len(PAGES)}</i>\n"
         text += "━━━━━━━━━━━━━━━━━━━━━━\n"
-        for name, cmd, typ in page_commands:
+        for name, cmd in page_commands:
             text += pad_line("Name", escape_html(name)) + "\n"
             text += pad_line("Use", escape_html(cmd)) + "\n"
             text += pad_line("Status", "Online ✅") + "\n"
-            text += pad_line("Type", escape_html(typ)) + "\n"
+            text += pad_line("Type", "Free/Premium") + "\n"
             text += "━━━━━━━━━━━━━━━━━━━━━━\n"
         return text.strip()
     except Exception as e:
