@@ -1090,7 +1090,7 @@ LINE_WIDTH = 60  # fixed width for all lines
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
 
-# All commands
+# All commands with explicit Free/Premium for ALL
 ALL_COMMANDS = [
     ("Single Stripe Auth", "/chk", "Premium"),
     ("Stripe 1$", "/st", "Premium"),
@@ -1126,24 +1126,20 @@ ALL_COMMANDS = [
     ("Show your user info", "/info", "Free")
 ]
 
-# Split into pages (5 commands per page)
+# Split into pages (4 commands per page)
 PAGE_SIZE = 4
 PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
 
 def pad_line(label: str, value: str) -> str:
-    """Format line with bold+italic label and italic value, pad to fixed width"""
-    line = f"<b><i>{label}:</i></b> <i>{value}</i>"
-    padding_needed = LINE_WIDTH - len(html.unescape(label + value)) - 2  # 2 for ': '
-    if padding_needed > 0:
-        line += PAD_CHAR * padding_needed
-    return line
+    """Format line with bold+italic label and italic value"""
+    return f"<b><i>{label}:</i></b> <i>{value}</i>"
 
 def build_page_text(page_index: int) -> str:
     """Build fixed-width command page with bold italic labels and italic values"""
     try:
         page_commands = PAGES[page_index]
         text = "━━━━━━━━━━━━━━━━━━━━━━\n"
-        text += f"<i>◆ 𝐏𝐀𝐆𝐄 {page_index + 1}/{len(PAGES)}</i>\n"
+        text += f"<i>◆ 𝐂𝐌𝐃𝐒 𝐏𝐀𝐆𝐄 {page_index + 1}/{len(PAGES)}</i>\n"
         text += "━━━━━━━━━━━━━━━━━━━━━━\n"
         for name, cmd, typ in page_commands:
             text += pad_line("Name", escape_html(name)) + "\n"
