@@ -1085,7 +1085,7 @@ logger = logging.getLogger(__name__)
 
 # Invisible padding character
 PAD_CHAR = "\u200A"
-LINE_WIDTH = 67  # fixed width for all lines
+LINE_WIDTH = 60  # fixed width for all lines
 
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
@@ -1127,7 +1127,7 @@ ALL_COMMANDS = [
 ]
 
 # Split into pages (5 commands per page)
-PAGE_SIZE = 5
+PAGE_SIZE = 4
 PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
 
 def pad_line(label: str, value: str) -> str:
