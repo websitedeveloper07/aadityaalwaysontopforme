@@ -2885,6 +2885,15 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "✅ Approved"
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ Declined"
+        elif "INCORRECT_CVC" in response.upper():
+            header_status = "✅ Approved"
+        elif "INCORRECT_ZIP" in response.upper():
+            header_status = "✅ Approved"
+        elif "3D_AUTHENTICATION" in response.upper():
+            header_status = "✅ Approved"
+        elif "INSUFFICIENT_FUNDS" in response.upper():
+            header_status = "✅ Approved"
+
 
         # --- Enhance response ---
         display_response = html.escape(response)
@@ -3139,7 +3148,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         elif "3D_AUTHENTICATION" in response.upper():
             display_response = f"{escape(response)} 🔒"
             header_status = "✅ Approved"
-        elif "INVALID_CVC" in response.upper():
+        elif "INCORRECT_CVC" in response.upper():
             display_response = f"{escape(response)} ✅"
             header_status = "✅ Approved"
         elif "INCORRECT_ZIP" in response.upper():
