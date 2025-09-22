@@ -1083,9 +1083,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Invisible character for padding
+# Invisible padding character
 PAD_CHAR = "\u200A"
-LINE_WIDTH = 45  # fixed width for all lines
+LINE_WIDTH = 50  # fixed width for all lines
 
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
@@ -1126,26 +1126,30 @@ ALL_COMMANDS = [
     ("Show your user info", "/info", "Free")
 ]
 
-# Split commands into pages
+# Split into pages (5 commands per page)
 PAGE_SIZE = 5
 PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
 
-def pad_line(text: str) -> str:
-    """Pad line to fixed width with invisible spaces."""
-    return text + PAD_CHAR * (LINE_WIDTH - len(text))
+def pad_line(label: str, value: str) -> str:
+    """Format line with bold+italic label and italic value, pad to fixed width"""
+    line = f"<b><i>{label}:</i></b> <i>{value}</i>"
+    padding_needed = LINE_WIDTH - len(html.unescape(label + value)) - 2  # 2 for ': '
+    if padding_needed > 0:
+        line += PAD_CHAR * padding_needed
+    return line
 
 def build_page_text(page_index: int) -> str:
-    """Build fixed-width professional page with all text italic + command bold+italic."""
+    """Build fixed-width command page with bold italic labels and italic values"""
     try:
         page_commands = PAGES[page_index]
         text = "━━━━━━━━━━━━━━━━━━━━━━\n"
         text += f"<i>🝂 Page {page_index + 1}/{len(PAGES)}</i>\n"
         text += "━━━━━━━━━━━━━━━━━━━━━━\n"
         for name, cmd, typ in page_commands:
-            text += pad_line(f"<i>Name: {escape_html(name)}</i>") + "\n"
-            text += pad_line(f"<b><i>Use ↭ {escape_html(cmd)}</i></b>") + "\n"
-            text += pad_line(f"<i>Status ↭ Online ✅</i>") + "\n"
-            text += pad_line(f"<i>Type ↭ {escape_html(typ)}</i>") + "\n"
+            text += pad_line("Name", escape_html(name)) + "\n"
+            text += pad_line("Use", escape_html(cmd)) + "\n"
+            text += pad_line("Status", "Online ✅") + "\n"
+            text += pad_line("Type", escape_html(typ)) + "\n"
             text += "━━━━━━━━━━━━━━━━━━━━━━\n"
         return text.strip()
     except Exception as e:
