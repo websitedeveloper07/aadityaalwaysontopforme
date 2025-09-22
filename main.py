@@ -1083,12 +1083,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-HAIR_SPACE = "\u200A"  # Invisible character for padding
+# Invisible character for padding
+PAD_CHAR = "\u200A"
+LINE_WIDTH = 45  # fixed width for all lines
 
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
 
-# All commands with description and type
+# All commands
 ALL_COMMANDS = [
     ("Single Stripe Auth", "/chk", "Premium"),
     ("Stripe 1$", "/st", "Premium"),
@@ -1128,26 +1130,23 @@ ALL_COMMANDS = [
 PAGE_SIZE = 5
 PAGES = [ALL_COMMANDS[i:i + PAGE_SIZE] for i in range(0, len(ALL_COMMANDS), PAGE_SIZE)]
 
-def pad_line(text: str, width: int = 40) -> str:
-    """Pad the line with invisible hair spaces to fix width."""
-    text_len = len(text)
-    if text_len < width:
-        return text + HAIR_SPACE * (width - text_len)
-    return text
+def pad_line(text: str) -> str:
+    """Pad line to fixed width with invisible spaces."""
+    return text + PAD_CHAR * (LINE_WIDTH - len(text))
 
 def build_page_text(page_index: int) -> str:
-    """Build fixed-width professional command page"""
+    """Build fixed-width professional page with all text italic + command bold+italic."""
     try:
         page_commands = PAGES[page_index]
-        text = f"━━━━━━━━━━━━━━━━━━━━━━\n[ 🝂 ] Page {page_index + 1}/{len(PAGES)}\n━━━━━━━━━━━━━━━━━━━━━━\n"
+        text = "━━━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"<i>🝂 Page {page_index + 1}/{len(PAGES)}</i>\n"
+        text += "━━━━━━━━━━━━━━━━━━━━━━\n"
         for name, cmd, typ in page_commands:
-            text += (
-                f"{pad_line(f'Name: {escape_html(name)}')}\n"
-                f"{pad_line(f'Use ↭ {escape_html(cmd)}')}\n"
-                f"{pad_line('Status ↭ Online ✅')}\n"
-                f"{pad_line(f'Type ↭ {escape_html(typ)}')}\n"
-                "━━━━━━━━━━━━━━━━━━━━━━\n"
-            )
+            text += pad_line(f"<i>Name: {escape_html(name)}</i>") + "\n"
+            text += pad_line(f"<b><i>Use ↭ {escape_html(cmd)}</i></b>") + "\n"
+            text += pad_line(f"<i>Status ↭ Online ✅</i>") + "\n"
+            text += pad_line(f"<i>Type ↭ {escape_html(typ)}</i>") + "\n"
+            text += "━━━━━━━━━━━━━━━━━━━━━━\n"
         return text.strip()
     except Exception as e:
         logger.error(f"Error building page text: {e}")
@@ -1181,11 +1180,9 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
-
     if data == "close":
         await query.message.delete()
         return
-
     if data.startswith("page_"):
         try:
             page_index = int(data.split("_")[1])
@@ -1201,7 +1198,6 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"TelegramError: {e}")
         except Exception as e:
             logger.error(f"Error in pagination: {e}")
-
 
 
 
