@@ -1069,22 +1069,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
-
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
-from telegram.ext import (
-    ApplicationBuilder,
-    ContextTypes,
-    CallbackQueryHandler,
-    CommandHandler,
-)
+from telegram.ext import ApplicationBuilder, ContextTypes, CallbackQueryHandler, CommandHandler
 from telegram.error import TelegramError
 import logging
 import html
 
-# Enable logging
+# Logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO
@@ -1095,99 +1087,95 @@ logger = logging.getLogger(__name__)
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
 bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-# Escape HTML for Telegram parsing
 def escape_html(text: str) -> str:
     return html.escape(text, quote=False)
 
-# Command categories
+# Command categories with type and status
 COMMAND_CATEGORIES = [
     {"title": "Stripe", "commands": [
-        ("/chk", "Single Stripe Auth"),
-        ("/st", "Stripe 1$"),
-        ("/st1", "Stripe 3$"),
-        ("/mst", "Mass x30 Stripe 1$"),
-        ("/mass", "Mass x30 Stripe Auth 2")]},
+        ("/chk", "Single Stripe Auth", "Premium"),
+        ("/st", "Stripe 1$", "Premium"),
+        ("/st1", "Stripe 3$", "Premium"),
+        ("/mst", "Mass x30 Stripe 1$", "Premium"),
+        ("/mass", "Mass x30 Stripe Auth 2", "Premium")]},
 
     {"title": "Braintree", "commands": [
-        ("/b3", "Braintree Premium Auth"),
-        ("/vbv", "3DS Lookup")]},
+        ("/b3", "Braintree Premium Auth", "Premium"),
+        ("/vbv", "3DS Lookup", "Free")]},
 
     {"title": "OceanPayments", "commands": [
-        ("/oc", "Ocean Payments 4$")]},
+        ("/oc", "Ocean Payments 4$", "Premium")]},
 
     {"title": "Authnet", "commands": [
-        ("/at", "Authnet 2.5$ Charge")]},
+        ("/at", "Authnet 2.5$ Charge", "Premium")]},
 
     {"title": "Shopify", "commands": [
-        ("/sh", "Shopify Charge $0.98"),
-        ("/hc", "Shopify Charge $10"),
-        ("/seturl", "<site url> – Set your Shopify site"),
-        ("/sp", "Auto check on your saved Shopify site"),
-        ("/msp", "Mass Shopify Charged"),
-        ("/site", "<url> – Check if Shopify site is live"),
-        ("/msite", "<urls> – Mass Shopify site check"),
-        ("/mysites", "Check your added sites"),
-        ("/adurls", "<site url> – Set 20 Shopify sites"),
-        ("/removeall", "Remove all added sites"),
-        ("/rmsite", "Remove specific sites from added")]},
+        ("/sh", "Shopify Charge $0.98", "Premium"),
+        ("/hc", "Shopify Charge $10", "Premium"),
+        ("/seturl", "Set your Shopify site", "Free"),
+        ("/sp", "Auto check on your saved Shopify site", "Free"),
+        ("/msp", "Mass Shopify Charged", "Free"),
+        ("/site", "Check if Shopify site is live", "Free"),
+        ("/msite", "Mass Shopify site check", "Free"),
+        ("/mysites", "Check your added sites", "Free"),
+        ("/adurls", "Set 20 Shopify sites", "Free"),
+        ("/removeall", "Remove all added sites", "Free"),
+        ("/rmsite", "Remove specific sites from added", "Free")]},
 
     {"title": "Adyen", "commands": [
-        ("/ad", "Adyen 1$")]},
+        ("/ad", "Adyen 1$", "Free")]},
 
     {"title": "Generators", "commands": [
-        ("/gen", "[bin] [no. of cards] – Generate cards from BIN"),
-        ("/gate", "<site url> – Payment Gateway Checker"),
-        ("/bin", "<bin> – BIN lookup (Bank, Country, Type)"),
-        ("/fk", "<country> – Fake identity generator"),
-        ("/fl", "<dump> – Extract CCs from dumps"),
-        ("/open", "Extract cards from uploaded file")]},
+        ("/gen", "Generate cards from BIN", "Premium"),
+        ("/gate", "Payment Gateway Checker", "Free"),
+        ("/bin", "BIN lookup", "Free"),
+        ("/fk", "Fake identity generator", "Free"),
+        ("/fl", "Extract CCs from dumps", "Free"),
+        ("/open", "Extract cards from uploaded file", "Free")]},
 
     {"title": "System & User", "commands": [
-        ("/start", "Welcome message"),
-        ("/cmds", "Show all commands"),
-        ("/status", "Bot system status"),
-        ("/credits", "Check your remaining credits"),
-        ("/info", "Show your user info")]}
+        ("/start", "Welcome message", "Free"),
+        ("/cmds", "Show all commands", "Free"),
+        ("/status", "Bot system status", "Free"),
+        ("/credits", "Check your remaining credits", "Free"),
+        ("/info", "Show your user info", "Free")]}
 ]
 
-# Split categories into pages (2 categories per page)
+# Split categories into pages (2 per page)
 PAGES = [COMMAND_CATEGORIES[i:i + 2] for i in range(0, len(COMMAND_CATEGORIES), 2)]
-
-# Determine max number of commands per page for uniform height
 MAX_COMMANDS = max(sum(len(cat["commands"]) for cat in page) for page in PAGES)
 
 def build_page_text(page_index: int) -> str:
-    """
-    Build text for a page with proper formatting.
-    Only the command is monospace, description in italic.
-    Pads all pages to uniform height.
-    """
-    logger.debug(f"Building page {page_index}...")
+    """Build page text in professional gateway style with status/type"""
     try:
         page_categories = PAGES[page_index]
-        text = ""
-
+        text = f"━━━━━━━━━━━━━\n[ 🝂 ] Page {page_index + 1}\n━━━━━━━━━━━━━\n\n"
         total_lines = 0
-        for cat in page_categories:
-            text += f"==== {escape_html(cat['title'])} Commands ====\n"
-            for cmd, desc in cat["commands"]:
-                text += f"{bullet_link} <code>{escape_html(cmd)}</code> – <i>{escape_html(desc)}</i>\n"
-                total_lines += 1
-            text += "\n"
 
-        # Pad remaining lines with blank italic lines to make uniform height
+        for cat in page_categories:
+            for cmd, desc, typ in cat["commands"]:
+                status = "Online ✅"
+                text += (
+                    f"{bullet_link} <b><i>{escape_html(cmd)}</i></b>\n"
+                    f"<i>{escape_html(desc)}</i>\n"
+                    f"Status ➛ {status}\n"
+                    f"Type ➛ {typ}\n"
+                    "━━━━━━━━━━━━━\n"
+                )
+                total_lines += 1
+
+        # Pad remaining lines to uniform height
         pad_lines = MAX_COMMANDS - total_lines
         if pad_lines > 0:
             text += ("\n" * pad_lines)
 
-        text += f"<i>Page {page_index + 1}/{len(PAGES)}</i>"
         return text.strip()
     except Exception as e:
         logger.error(f"Error building page text: {e}")
         return "Error: Could not build page text."
 
 def build_buttons(page_index: int) -> InlineKeyboardMarkup:
-    """Build navigation buttons: Back, Next, Close."""
+    """Navigation buttons"""
     buttons = []
     nav_buttons = []
     if page_index > 0:
@@ -1235,6 +1223,7 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"TelegramError: {e}")
         except Exception as e:
             logger.error(f"Error in pagination: {e}")
+
 
 
 
