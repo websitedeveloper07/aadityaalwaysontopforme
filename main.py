@@ -2080,22 +2080,6 @@ async def consume_credit(user_id: int) -> bool:
 import aiohttp
 import asyncio
 import json
-import logging
-import re
-from html import escape
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-
-logger = logging.getLogger(__name__)
-
-# === Your helper functions (assumed already defined elsewhere) ===
-# - consume_credit(user_id) -> bool
-# - get_bin_info(bin_number: str) -> dict
-
-import aiohttp
-import asyncio
-import json
 import re
 import logging
 from html import escape
@@ -2110,6 +2094,9 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
     Process a /st command: check Stripe charge, display response and BIN info.
     Gateway label = Stripe, Price = 1$
     """
+    import time
+    start_time = time.time()
+
     try:
         user = update.effective_user
 
@@ -2138,8 +2125,7 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escape(full_card)}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ 𝐒𝐭𝐫𝐢𝐩𝐞 1$</b>\n"
-            f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
+            f"<b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐒𝐭𝐫𝗶𝗽𝗲 1$</b>\n"
         )
 
         processing_msg = await update.message.reply_text(
@@ -2174,7 +2160,6 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         try:
             data = json.loads(api_response)
         except json.JSONDecodeError:
-            logger.error(f"API returned invalid JSON: {api_response[:300]}")
             await processing_msg.edit_text(
                 f"❌ Invalid API response:\n<code>{escape(api_response[:500])}</code>",
                 parse_mode=ParseMode.HTML
@@ -2188,13 +2173,12 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         # --- BIN lookup ---
         try:
             bin_number = cc[:6]
-            bin_details = await get_bin_info(bin_number)
+            bin_details = await get_bin_info(bin_number) or {}
             brand = (bin_details.get("scheme") or "N/A").title()
-            issuer = bin_details.get("bank") or "N/A"
-            country_name = bin_details.get("country") or "Unknown"
+            issuer = bin_details.get("bank", {}).get("name") if isinstance(bin_details.get("bank"), dict) else bin_details.get("bank", "N/A")
+            country_name = bin_details.get("country", {}).get("name") if isinstance(bin_details.get("country"), dict) else bin_details.get("country", "Unknown")
             country_flag = bin_details.get("country_emoji", "")
-        except Exception as e:
-            logger.warning(f"BIN lookup failed for {bin_number}: {e}")
+        except Exception:
             brand = issuer = "N/A"
             country_name = "Unknown"
             country_flag = ""
@@ -2208,38 +2192,35 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
-        # --- Enhance response with emojis & dynamic header ---
+        # --- Determine header/status ---
         display_response = escape(response)
+        lower_resp = response.lower()
         if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
-            display_response += " ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
-            header_status = "🔥 Charged"
+            header_status = "✅ APPROVED"
         elif "3D_AUTHENTICATION" in response.upper():
-            display_response += " 🔒"
-            header_status = "✅ Approved"
+            header_status = "🔒 3DS REQUIRED"
         elif "CARD_DECLINED" in response.upper():
-            header_status = "❌ Declined"
-        elif "INVALID_CVC" in response.upper():
-            header_status = "✅ Approved"
-        elif "INSUFFICIENT_FUNDS" in response.upper():
-            display_response += " 💳"
-            header_status = "✅ Approved"
+            header_status = "❌ DECLINED"
         else:
-            header_status = "❌ Declined"
+            header_status = "❌ DECLINED"
+
+        # --- Time elapsed ---
+        elapsed_time = round(time.time() - start_time, 2)
 
         # --- Final formatted message ---
         final_msg = (
-            f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{escape(full_card)}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
-            "────────✧────────\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-            "────────✧────────\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "────────✧────────"
+            f"<b><i>{header_status}</i></b>\n\n"
+            f"𝐂𝐚𝐫𝐝\n"
+            f"⤷ <code>{escape(full_card)}</code>\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Stripe 1$\n"
+            f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
+            f"<pre>"
+            f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
+            f"𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
+            f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}"
+            f"</pre>\n\n"
+            f"𝐃𝐄𝐕 ➵ {developer_clickable}\n"
+            f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
         )
 
         await processing_msg.edit_text(
@@ -2249,7 +2230,6 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         )
 
     except Exception as e:
-        logger.exception("Error in processing /st")
         try:
             await update.message.reply_text(
                 f"❌ Error: <code>{escape(str(e))}</code>",
@@ -2257,6 +2237,7 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
+
 
 
 
