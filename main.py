@@ -1904,7 +1904,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"<b><i>{status_text}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝  \n"
             f"⤷ <code>{html.escape(cc_normalized)}</code>\n"            
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Stripe Auth\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝙎𝙩𝙧𝙞𝙥𝙚 𝘼𝙪𝙩𝙝\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <b><code>{html.escape(api_response)}</code></b>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
@@ -2208,7 +2208,7 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"<b><i>{header_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n"
             f"⤷ <code>{escape(full_card)}</code>\n"
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Stripe 1$\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝙎𝙩𝙧𝙞𝙥𝙚 𝟭$\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -2804,7 +2804,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escaped_card}</code></pre>\n\n"
-            f"<b>Gateway ➵ Shopify 0.98$</b>\n"
+            f"<b>Gateway ➵ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝟬.𝟵𝟴$</b>\n"
         )
 
         processing_msg = await update.message.reply_text(
@@ -2893,7 +2893,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"<b><i>{header_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n"
             f"⤷ <code>{escaped_card}</code>\n"
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Shopify 0.98$\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝟬.𝟵𝟴$\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
@@ -3067,7 +3067,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escaped_card}</code></pre>\n\n"
-            f"<b>Gateway ➵ Shopify 10$</b>\n"
+            f"<b>Gateway ➵ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝟭𝟬$</b>\n"
         )
 
         processing_msg = await update.message.reply_text(
@@ -3150,7 +3150,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"<b><i>{header_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n"
             f"⤷ <code>{escaped_card}</code>\n"
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Shopify 10$\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝟭𝟬$\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
@@ -3321,7 +3321,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escaped_card}</code></pre>\n\n"
-            f"<b>Gateway ➵ Stripe 3$</b>\n"
+            f"<b>Gateway ➵ 𝙎𝙩𝙧𝙞𝙥𝙚 𝟯$</b>\n"
         )
 
         processing_msg = await update.message.reply_text(
@@ -3405,7 +3405,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
             f"<b><i>{header_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n"
             f"⤷ <code>{escaped_card}</code>\n"
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Stripe 3$\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝙎𝙩𝙧𝙞𝙥𝙚 𝟯$\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -3571,7 +3571,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escaped_card}</code></pre>\n\n"
-            f"<b>Gateway ➵ Ocean Payments $4</b>\n"
+            f"<b>Gateway ➵ 𝙊𝙘𝙚𝙖𝙣 𝙋𝙖𝙮𝙢𝙚𝙣𝙩𝙨 $𝟰</b>\n"
         )
 
         processing_msg = await update.message.reply_text(
@@ -3650,7 +3650,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"<b><i>{header_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n"
             f"⤷ <code>{escaped_card}</code>\n"
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Ocean Payments $4\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝙊𝙘𝙚𝙖𝙣 𝙋𝙖𝙮𝙢𝙚𝙣𝙩𝙨 $𝟰\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -3826,7 +3826,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escaped_card}</code></pre>\n\n"
-            f"<b>Gateway ➵ AuthNet</b>\n"
+            f"<b>Gateway ➵ 𝘼𝘶𝘵𝘩𝙉𝙚𝙩 𝟭$</b>\n"
         )
 
         processing_msg = await update.message.reply_text(
@@ -3914,7 +3914,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"<b><i>{header_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n"
             f"⤷ <code>{escaped_card}</code>\n"
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ AuthNet 1$\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝘼𝘶𝘵𝘩𝙉𝙚𝙩 𝟭$\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -4088,7 +4088,7 @@ async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escaped_card}</code></pre>\n\n"
-            f"<b>Gateway ➵ PayPal 9$</b>\n"
+            f"<b>Gateway ➵ 𝙋𝙖𝙮𝙋𝙖𝙡 𝟵$</b>\n"
         )
 
         processing_msg = await update.message.reply_text(
@@ -4179,7 +4179,7 @@ async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"<b><i>{header_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n"
             f"⤷ <code>{escaped_card}</code>\n"
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ PayPal 9$\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝙋𝙖𝙮𝙋𝙖𝙡 𝟵$\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -4358,7 +4358,7 @@ async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escaped_card}</code></pre>\n\n"
-            f"<b>Gateway ➵ Adyen 1$</b>\n"
+            f"<b>Gateway ➵ 𝘼𝙙𝙮𝙚𝙣 𝟭$</b>\n"
         )
 
         processing_msg = await update.message.reply_text(
@@ -4448,7 +4448,7 @@ async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"<b><i>{header_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n"
             f"⤷ <code>{escaped_card}</code>\n"
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Adyen 1$\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝘼𝙙𝙮𝙚𝙣 𝟭$\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -4803,8 +4803,7 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>{escape(card_input)}</code></pre>\n"
-        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
-        f"{bullet_link} 𝗦𝘁𝗮𝘁𝘂𝘀 ➵ Checking 🔎..."
+        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
     )
     msg = await update.message.reply_text(processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
@@ -6075,7 +6074,7 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>𝗩𝗕𝗩 𝗖𝗵𝗲𝗰𝗸 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
-        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 3DS Lookup\n"
+        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝟯𝐃 𝗦𝗲𝗰𝘂𝗿𝗲 / 𝗩𝗕𝗩 𝗟𝗼𝗼𝗸𝘂𝗽\n"
     )
 
     msg = await update.message.reply_text(
@@ -6297,7 +6296,7 @@ async def b3(update: Update, context):
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>{full_card}</code></pre>\n"
-        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Braintree Premium Auth\n"
+        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
     )
 
     processing_msg = await update.message.reply_text(
@@ -6400,7 +6399,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
     final_msg = (
         f"<b><i>{header_status}</i></b>\n\n"
         f"𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(full_card)}</code>\n"
-        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Braintree Premium Auth\n"
+        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
         f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(response)}</code></i>\n\n"
         f"<pre>"
         f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
