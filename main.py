@@ -1828,10 +1828,8 @@ import html
 from telegram.constants import ParseMode
 
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    # Fully clickable bullet
-    bullet_text = "[⌇]"
-    bullet_link_url = "https://t.me/CARDER33"  # replace with your actual link
-    bullet_link = f'<a href="{bullet_link_url}">{bullet_text}</a>'
+    import time
+    start_time = time.time()
 
     try:
         # BIN lookup
@@ -1869,54 +1867,51 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         api_status = (data.get("status") or "Unknown").strip()
         api_response = (data.get("response") or "No response").strip()
 
-        # Status formatting
+        # Status formatting with emoji
         lower_status = api_status.lower()
         if "approved" in lower_status:
-            status_text = "✅ 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗"
+            status_text = "✅ APPROVED"
         elif "declined" in lower_status:
-            status_text = "❌ 𝗗𝗘𝗖𝗟𝗜𝗡𝗘𝗗"
+            status_text = "❌ DECLINED"
         elif "ccn live" in lower_status:
-            status_text = "❎ 𝗖𝗖𝗡 𝗟𝗜𝗩𝗘"
+            status_text = "❎ CCN LIVE"
         elif "incorrect" in lower_status or "your number" in lower_status:
-            status_text = "⚠️ 𝗜𝗡𝗖𝗢𝗥𝗥𝗘𝗖𝗧"
+            status_text = "⚠️ INCORRECT"
         elif "3ds" in lower_status or "auth required" in lower_status:
-            status_text = "🔒 3𝗗𝗦 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗"
+            status_text = "🔒 3DS REQUIRED"
         elif "insufficient funds" in lower_status:
-            status_text = "💸 𝗜𝗡𝗦𝗨𝗙𝗙𝗜𝗖𝗜𝗘𝗡𝗧 𝗙𝗨𝗡𝗗𝗦"
+            status_text = "💸 INSUFFICIENT FUNDS"
         elif "expired" in lower_status:
-            status_text = "⌛ 𝗘𝗫𝗣𝗜𝗥𝗘𝗗"
+            status_text = "⌛ EXPIRED"
         elif "stolen" in lower_status:
-            status_text = "🚫 𝗦𝗧𝗢𝗟𝗘𝗡 𝗖𝗔𝗥𝗗"
+            status_text = "🚫 STOLEN CARD"
         elif "pickup card" in lower_status:
-            status_text = "🛑 𝗣𝗜𝗖𝗞𝗨𝗣 𝗖𝗔𝗥𝗗"
+            status_text = "🛑 PICKUP CARD"
         elif "fraudulent" in lower_status:
-            status_text = "⚠️ 𝗙𝗥𝗔𝗨𝗗 𝗖𝗔𝗥𝗗"
+            status_text = "⚠️ FRAUD CARD"
         else:
             status_text = f"ℹ️ {api_status.upper()}"
-
-        # Stylish header
-        header = f"◇━━〔 {html.escape(status_text)} 〕━━◇"
-
-        # API response italic monospace
-        formatted_response = f"<i><code>{html.escape(api_response)}</code></i>"
 
         # Handle missing first_name
         user_first = getattr(user, "first_name", None) or "User"
 
-        # Final text
+        # Time taken
+        end_time = time.time()
+        elapsed_time = round(end_time - start_time, 2)
+
+        # Final text in new style
         final_text = (
-            f"{header}\n"
-            f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(cc_normalized)}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ {formatted_response}\n"
-            f"────────✧────────\n"
-            f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
-            f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {html.escape(issuer)}\n"
-            f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {html.escape(country_name)} {html.escape(country_flag)}\n"
-            f"────────✧────────\n"
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ <a href=\"tg://user?id={user.id}\">{html.escape(user_first)}</a>\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝗋 ➵ <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"
-            f"────────✧────────"
+            f"{status_text}\n\n"
+            f"***Card:*** {html.escape(cc_normalized)}\n"
+            f"***Gateway:*** Stripe Auth\n"
+            f"***Response:*** {html.escape(api_response)}\n\n"
+            f"```"
+            f"Brand   : {html.escape(brand)}\n"
+            f"Bank    : {html.escape(issuer)}\n"
+            f"Country : {html.escape(country_name)} {html.escape(country_flag)}"
+            f"```\n\n"
+            f"Dev: <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"
+            f"Time Taken: {elapsed_time}s"
         )
 
         # Send final message
@@ -1932,6 +1927,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
         )
+
 
 
 
