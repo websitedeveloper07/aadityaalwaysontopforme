@@ -1904,7 +1904,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"<b><i>{status_text}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(cc_normalized)}</code>\n"
             f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Stripe Auth\n"
-            f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <b><i>{html.escape(api_response)}</i><b>\n\n"
+            f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <b><i>{html.escape(api_response)}</i></b>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
             f"𝐁𝐚𝐧𝐤 ➵ {html.escape(issuer)}\n"
