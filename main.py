@@ -1986,7 +1986,6 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # No card input -> send usage message
     if not card_input:
-        # Escape only the non-code parts; keep inline monospace for card
         usage_text = (
             f"{escape_markdown('🚫 Usage: /chk ', version=2)}"
             "`card|mm|yy|cvv`"
@@ -2013,20 +2012,11 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Dynamic text for message (code block does NOT need escaping)
-    bullet_text = "[⌇]"
-    bullet_link = f"[{escape_markdown(bullet_text, version=2)}]({BULLET_GROUP_LINK})"
-
-    # Static text
-    gateway_text = escape_markdown("Gateway ➵ #𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵", version=2)
-    status_text = escape_markdown("Status ➵ Checking 🔎...", version=2)
-
     # Build processing message
     processing_text = (
-        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳ ```" + "\n"
-        f"```{cc_normalized}```" + "\n\n"
-        f"{bullet_link} {gateway_text}\n"
-        f"{bullet_link} {status_text}\n"
+        "```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```" + "\n\n"
+        f"```{cc_normalized}```\n\n"
+        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵\n"
     )
 
     # Send processing message
@@ -2040,6 +2030,7 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(
         background_check(cc_normalized, [card, mm, yy, cvv], user, user_data, status_msg)
     )
+
 
 
 
