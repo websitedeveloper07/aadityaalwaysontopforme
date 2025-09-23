@@ -1902,7 +1902,8 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         # Final text formatted for Telegram HTML
         final_text = (
             f"<b><i>{status_text}</i></b>\n\n"
-            f"𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(cc_normalized)}</code>\n"
+            f"𝐂𝐚𝐫𝐝  \n"
+            f"⤷ <code>{html.escape(cc_normalized)}</code>\n"            
             f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Stripe Auth\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <b><i>{html.escape(api_response)}</i></b>\n\n"
             f"<pre>"
