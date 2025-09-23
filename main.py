@@ -1899,17 +1899,17 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         end_time = time.time()
         elapsed_time = round(end_time - start_time, 2)
 
-        # Final text in new style
+        # Final text formatted for Telegram HTML
         final_text = (
-            f"{status_text}\n\n"
-            f"***Card:*** {html.escape(cc_normalized)}\n"
-            f"***Gateway:*** Stripe Auth\n"
-            f"***Response:*** {html.escape(api_response)}\n\n"
-            f"```"
+            f"<b>{status_text}</b>\n\n"
+            f"<b><i>Card:</i></b> <code>{html.escape(cc_normalized)}</code>\n"
+            f"<b><i>Gateway:</i></b> Stripe Auth\n"
+            f"<b><i>Response:</i></b> <i><code>{html.escape(api_response)}</code></i>\n\n"
+            f"<pre>"
             f"Brand   : {html.escape(brand)}\n"
             f"Bank    : {html.escape(issuer)}\n"
             f"Country : {html.escape(country_name)} {html.escape(country_flag)}"
-            f"```\n\n"
+            f"</pre>\n\n"
             f"Dev: <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"
             f"Time Taken: {elapsed_time}s"
         )
