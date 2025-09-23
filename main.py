@@ -1901,17 +1901,17 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         # Final text formatted for Telegram HTML
         final_text = (
-            f"<b>{status_text}</b>\n\n"
-            f"<b><i>Card:</i></b> <code>{html.escape(cc_normalized)}</code>\n"
-            f"<b><i>Gateway:</i></b> Stripe Auth\n"
-            f"<b><i>Response:</i></b> <i><code>{html.escape(api_response)}</code></i>\n\n"
+            f"<b><i>{status_text}</i></b>\n\n"
+            f"𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(cc_normalized)}</code>\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Stripe Auth\n"
+            f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <b><i>{html.escape(api_response)}</i><b>\n\n"
             f"<pre>"
-            f"Brand   : {html.escape(brand)}\n"
-            f"Bank    : {html.escape(issuer)}\n"
-            f"Country : {html.escape(country_name)} {html.escape(country_flag)}"
+            f"𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
+            f"𝐁𝐚𝐧𝐤 ➵ {html.escape(issuer)}\n"
+            f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {html.escape(country_name)} {html.escape(country_flag)}"
             f"</pre>\n\n"
-            f"Dev: <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"
-            f"Time Taken: {elapsed_time}s"
+            f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
+            f"𝐌𝐚𝐬𝐭𝐞𝐫 ➵ <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"            
         )
 
         # Send final message
