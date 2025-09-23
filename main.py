@@ -1828,7 +1828,8 @@ import html
 from telegram.constants import ParseMode
 
 async def background_check(cc_normalized, parts, user, user_data, processing_msg):
-    bullet_text = "⌇"
+    # Fully clickable bullet
+    bullet_text = "[⌇]"
     bullet_link_url = "https://t.me/CARDER33"  # replace with your actual link
     bullet_link = f'<a href="{bullet_link_url}">{bullet_text}</a>'
 
@@ -1914,7 +1915,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {html.escape(country_name)} {html.escape(country_flag)}\n"
             f"――――――――――――――――\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ <a href=\"tg://user?id={user.id}\">{html.escape(user_first)}</a>\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝗋 ➵ <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"
             f"――――――――――――――――"
         )
 
@@ -1931,6 +1932,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
         )
+
 
 
 
@@ -2240,7 +2242,7 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{escape(full_card)}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐒𝐭𝐫𝐢𝐩𝐞 {escape(price)}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -2924,7 +2926,7 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{escaped_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {html.escape(gateway)} {html.escape(price)}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 0.98$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
@@ -3093,7 +3095,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ HC</b>\n"
+            f"{bullet_link} <b>Gateway ➵ 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 10$</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -3181,7 +3183,7 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {escape(gateway)} {escape(price)}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 10$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -3341,7 +3343,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ Stripe</b>\n"
+            f"{bullet_link} <b>Gateway ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 3$</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -3424,7 +3426,7 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {escape(gateway)} {escape(price)}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 3$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -3580,7 +3582,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ Ocean Payments</b>\n"
+            f"{bullet_link} <b>Gateway ➵ 𝗢𝗰𝗲𝗮𝗻 𝗣𝗮𝘆𝗺𝗲𝗻𝘁𝘀 $4</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -3658,7 +3660,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {escape(gateway)} {escape(price)}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗢𝗰𝗲𝗮𝗻 𝗣𝗮𝘆𝗺𝗲𝗻𝘁𝘀 $4\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -3824,7 +3826,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ AuthNet</b>\n"
+            f"{bullet_link} <b>Gateway ➵ 𝗔𝘂𝘁𝗵𝗻𝗲𝘁 $1</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -3911,7 +3913,7 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {gateway} {price}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗔𝘂𝘁𝗵𝗻𝗲𝘁 $1\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -4075,7 +4077,7 @@ async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ PayPal</b>\n"
+            f"{bullet_link} <b>Gateway ➵ 𝗣𝗮𝘆𝗣𝗮𝗹 $9</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -4162,7 +4164,7 @@ async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {gateway} {price}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗣𝗮𝘆𝗣𝗮𝗹 9$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
@@ -4330,7 +4332,7 @@ async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         processing_text = (
             f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{full_card}</code></pre>\n\n"
-            f"{bullet_link} <b>Gateway ➵ Adyen</b>\n"
+            f"{bullet_link} <b>Gateway ➵ 𝗔𝗱𝘆𝗲𝗻 $1</b>\n"
             f"{bullet_link} <b>Status ➵ Checking 🔎...</b>"
         )
 
@@ -4417,7 +4419,7 @@ async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         final_msg = (
             f"◇━━〔 <b>{header_status}</b> 〕━━◇\n"
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {gateway} {price}\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗔𝗱𝘆𝗲𝗻 1$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
             "――――――――――――――――\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
