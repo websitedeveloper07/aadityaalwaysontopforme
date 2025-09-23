@@ -1910,8 +1910,8 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"𝐁𝐚𝐧𝐤 ➵ {html.escape(issuer)}\n"
             f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {html.escape(country_name)} {html.escape(country_flag)}"
             f"</pre>\n\n"
-            f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
-            f"𝐌𝐚𝐬𝐭𝐞𝐫 ➵ <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"            
+            f"𝐃𝐄𝐕 ➵ <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"                   
+            f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"     
         )
 
         # Send final message
