@@ -1909,14 +1909,14 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(cc_normalized)}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 𝗔𝘂𝘁𝗵\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ {formatted_response}\n"
-            f"――――――――――――――――\n"
+            f"────────✧────────\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {html.escape(issuer)}\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {html.escape(country_name)} {html.escape(country_flag)}\n"
-            f"――――――――――――――――\n"
+            f"────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ <a href=\"tg://user?id={user.id}\">{html.escape(user_first)}</a>\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝗋 ➵ <a href=\"tg://resolve?domain=Kalinuxxx\">kคli liຖนxx</a>\n"
-            f"――――――――――――――――"
+            f"────────✧────────"
         )
 
         # Send final message
@@ -2244,14 +2244,14 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{escape(full_card)}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 1$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "――――――――――――――――"
+            "────────✧────────"
         )
 
         await processing_msg.edit_text(
@@ -2928,14 +2928,14 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{escaped_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 0.98$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {html.escape(issuer)}\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {html.escape(country_name)} {country_flag}\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "――――――――――――――――"
+            "────────✧────────"
         )
 
         await processing_msg.edit_text(
@@ -3185,14 +3185,14 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 10$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "――――――――――――――――"
+            "────────✧────────"
         )
 
         await processing_msg.edit_text(
@@ -3428,14 +3428,14 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗦𝘁𝗿𝗶𝗽𝗲 3$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "――――――――――――――――"
+            "────────✧────────"
         )
 
         await processing_msg.edit_text(
@@ -3662,14 +3662,14 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗢𝗰𝗲𝗮𝗻 𝗣𝗮𝘆𝗺𝗲𝗻𝘁𝘀 $4\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "――――――――――――――――"
+            "────────✧────────"
         )
 
         await processing_msg.edit_text(
@@ -3915,14 +3915,14 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗔𝘂𝘁𝗵𝗻𝗲𝘁 $1\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "――――――――――――――――"
+            "────────✧────────"
         )
 
         await processing_msg.edit_text(
@@ -4166,14 +4166,14 @@ async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗣𝗮𝘆𝗣𝗮𝗹 9$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "――――――――――――――――"
+            "────────✧────────"
         )
 
         await processing_msg.edit_text(
@@ -4421,14 +4421,14 @@ async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗔𝗱𝘆𝗲𝗻 1$\n"
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
             f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            "――――――――――――――――"
+            "────────✧────────"
         )
 
         await processing_msg.edit_text(
@@ -4592,10 +4592,10 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
             f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➵ {gateway}\n"
             f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➵ <i>{escape(response)}</i>\n"
             f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➵ {escape(str(price))}$ 💸\n"
-            "――――――――――――――――\n"
+            "────────✧────────\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➵ {requester}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➵ {developer_clickable}\n"
-            "――――――――――――――――"
+            "────────✧────────"
         )
 
         await processing_msg.edit_text(
@@ -4885,14 +4885,14 @@ async def process_card_check(user, card_input, custom_urls, msg):
 {bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ <i>{escape(gateway)}</i>
 {bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭 ➵ {price} 💸
 {bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>
-――――――――――――――――
+────────✧────────
 {bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {brand}
 {bullet_link} 𝐁𝐚𝐧𝐤 ➵ {issuer}
 {bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {country_flag} {country_name}
-――――――――――――――――
+────────✧────────
 {bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}
 {bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}
-――――――――――――――――
+────────✧────────
 """
         await msg.edit_text(formatted_msg.strip(), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
@@ -5029,10 +5029,10 @@ async def run_site_check(site_url: str, msg, user):
             f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ <i>{escape(response)}</i>\n"
             f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➵ {price} 💸\n"
             f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬      ➵ <b>{status}</b>\n\n"
-            f"――――――――――――――――\n"
+            f"────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}\n"
-            f"――――――――――――――――"
+            f"────────✧────────"
         )
 
         await msg.edit_text(
@@ -6116,11 +6116,11 @@ async def run_vbv_check(msg, update, card_data: str):
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(card_data)}</code>\n"
         f"{bullet_link} 𝐁𝐈𝐍 ➵ <code>{bin_number}</code>\n"
         f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{html.escape(response_text)} {check_mark}</code></i>\n"
-        "――――――――――――――――\n"
+        "────────✧────────\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {html.escape(brand)}\n"
         f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {html.escape(issuer)}\n"
         f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {html.escape(f'{country_name} {country_flag}'.strip())}\n"
-        "――――――――――――――――\n"
+        "────────✧────────\n"
         f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {update.effective_user.mention_html()}\n"
         f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝗉𝗲𝗋 ➵ {developer_clickable}"
     )
@@ -6364,14 +6364,14 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         f"{bullet_link} 𝐂𝐚𝐫𝐝 ➵ <code>{full_card}</code>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑩𝒓𝒂𝒊𝒏𝒕𝗿𝗲𝗲 𝑷𝒓𝒆𝗺𝗶𝒖𝗺 𝑨𝒖𝒕𝗵\n"
         f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(response)}</code></i>\n"
-        "――――――――――――――――\n"
+        "────────✧────────\n"
         f"{bullet_link} 𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
         f"{bullet_link} 𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
         f"{bullet_link} 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-        "――――――――――――――――\n"
+        "────────✧────────\n"
         f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
         f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝗉𝗲𝗋 ➵ {developer_clickable}\n"
-        "――――――――――――――――"
+        "────────✧────────"
     )
 
     try:
