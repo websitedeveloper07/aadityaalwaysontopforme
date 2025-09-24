@@ -5671,17 +5671,15 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
             try:
                 buttons = build_msp_buttons(card, approved, charged, declined, update.effective_user.id)
                 summary_text = (
-                    "<pre><code>"
-                    f"📊 Mass Shopify Checker\n"
+                    f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 Total Cards : {len(cards)}\n"
-                    f"✅ Approved : {approved}\n"
-                    f"🔥 Charged : {charged}\n"
-                    f"❌ Declined : {declined}\n"
-                    f"⚠️ Errors : {errors}\n"
-                    f"🔄 Checked : {checked} / {len(cards)}\n"
+                    f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 : {len(cards)}\n"
+                    f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 : {approved}\n"
+                    f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 : {charged}\n"
+                    f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 : {declined}\n"
+                    f"𝐄𝐫𝐫𝐨𝐫𝐬 : {errors}\n"
+                    f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 : {checked} / {len(cards)}\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    "</code></pre>"
                 )
                 await msg.edit_text(
                     summary_text,
@@ -5779,17 +5777,15 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     initial_summary = (
-        "<pre><code>"
-        f"📊 Mass Shopify Checker\n"
+        f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🌍 Total Cards : {len(cards)}\n"
-        f"✅ Approved : 0\n"
-        f"🔥 Charged : 0\n"
-        f"❌ Declined : 0\n"
-        f"⚠️ Errors : 0\n"
-        f"🔄 Checked : 0 / {len(cards)}\n"
+        f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 : {len(cards)}\n"
+        f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 : 0\n"
+        f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 : 0\n"
+        f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 : 0\n"
+        f"𝐄𝐫𝐫𝐨𝐫𝐬 : 0\n"
+        f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 : 0 / {len(cards)}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "</code></pre>"
     )
     buttons = build_msp_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
 
