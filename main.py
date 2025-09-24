@@ -5327,7 +5327,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# ===== Shopify check request with Buttons + TXT Export + Stop =====
+# ===== Shopify check request with Buttons + TXT Export + Stop + Sorted Results =====
 import asyncio
 import httpx
 import time
@@ -5360,7 +5360,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         site = "https://" + site
     url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
     try:
-        r = await session.get(url, timeout=30)
+        r = await session.get(url, timeout=25)
         data = r.json()
         return (
             data.get("Response", "Unknown"),
@@ -5389,14 +5389,15 @@ def build_buttons(current_card, approved, charged, declined, owner_id):
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     data = query.data
 
     if data.startswith("stop:"):
         owner_id = int(data.split(":")[1])
         if query.from_user.id != owner_id:
+            # 🚫 Not requester → deny
             return await query.answer("⚠️ Not your request!", show_alert=True)
-        # Owner clicked stop
+
+        # ✅ Requester → stop check
         context.user_data["msp_stop"] = True
         return await query.answer("⏹ Process stopped!", show_alert=True)
 
@@ -5407,7 +5408,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, base_url, sites, msg):
     approved = declined = errors = charged = checked = 0
     gateway_used = "Self Shopify"
-    file_results = []  # For final .txt export
+
+    # Separate lists for results
+    approved_results = []
+    charged_results = []
+    declined_results = []
+    error_results = []
 
     PRIORITY = {
         "ORDER_PLACED": 4,
@@ -5445,7 +5451,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
 
         async def worker(card):
             nonlocal approved, declined, errors, charged, checked, gateway_used
-
             if context.user_data.get("msp_stop"):
                 return
 
@@ -5461,25 +5466,25 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
                 if score > best_score:
                     best_resp, best_score = resp_str, score
 
-            # Classification
+            # Classification & store result
             if best_score >= 4:
                 charged += 1
                 approved += 1
-                result = f"✅ {card}\n    🔥 {best_resp}"
+                charged_results.append(f"🔥 {card}\n    {best_resp}")
             elif best_score == 3:
                 approved += 1
-                result = f"✅ {card}\n    {best_resp}"
+                approved_results.append(f"✅ {card}\n    {best_resp}")
             elif best_score == 2:
                 declined += 1
-                result = f"❌ {card}\n    {best_resp}"
+                declined_results.append(f"❌ {card}\n    {best_resp}")
             else:
                 errors += 1
-                result = f"⚠️ {card}\n    {best_resp}"
+                err_text = best_resp if best_resp else "Error: Unknown response"
+                error_results.append(f"⚠️ {card}\n    {err_text}")
 
             checked += 1
-            file_results.append(result)
 
-            # Update buttons only
+            # Update progress msg
             buttons = build_buttons(card, approved, charged, declined, update.effective_user.id)
             summary_text = (
                 "<pre><code>"
@@ -5515,8 +5520,19 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
     except:
         pass
 
-    # Send results in .txt
-    final_report = "\n\n".join(file_results)
+    # Build sorted final report
+    sections = []
+    if approved_results:
+        sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
+    if charged_results:
+        sections.append("🔥 CHARGED\n" + "\n\n".join(charged_results))
+    if declined_results:
+        sections.append("❌ DECLINED\n" + "\n\n".join(declined_results))
+    if error_results:
+        sections.append("⚠️ ERRORS\n" + "\n\n".join(error_results))
+
+    final_report = "\n\n============================\n\n".join(sections) if sections else "No results."
+
     file = io.BytesIO(final_report.encode("utf-8"))
     file.name = "shopify_results.txt"
 
