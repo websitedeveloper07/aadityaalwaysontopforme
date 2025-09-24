@@ -1165,7 +1165,7 @@ def build_cmds_buttons(page_index: int) -> InlineKeyboardMarkup:
 # /cmds command handler
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = build_page_text(0)
-    buttons = build_cmds_buttons(page_index)
+    buttons = build_cmds_buttons(0)
     await update.message.reply_text(
         text,
         parse_mode=ParseMode.HTML,
@@ -1183,7 +1183,7 @@ async def cmds_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             page_index = int(data.split("_")[1])
             text = build_page_text(page_index)
-            buttons = build_buttons(page_index)
+            buttons = build_cmds_buttons(page_index)
             await query.message.edit_text(
                 text,
                 parse_mode=ParseMode.HTML,
