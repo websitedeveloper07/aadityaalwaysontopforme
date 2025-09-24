@@ -5327,7 +5327,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# ===== Shopify check request with multi-site filtering + Buttons + TXT Export + Stop =====
+# ===== Shopify check request (clean output, all cards, multi-site) =====
 import asyncio
 import httpx
 import time
@@ -5362,7 +5362,6 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         r = await session.get(url, timeout=25)
         data = r.json()
         return {
-            "site": site,
             "response": data.get("Response", "Unknown"),
             "status": data.get("Status", "false"),
             "price": data.get("Price", "0"),
@@ -5370,7 +5369,6 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         }
     except Exception as e:
         return {
-            "site": site,
             "response": f"Error: {str(e)}",
             "status": "false",
             "price": "0",
@@ -5442,7 +5440,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
             if context.user_data.get("msp_stop"):
                 return
 
-            # Check card across all sites concurrently
             responses = await asyncio.gather(
                 *[check_card(session, base_url, site, card, proxy) for site in sites],
                 return_exceptions=False,
@@ -5459,23 +5456,21 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
                         break
                 scored.append((resp, score))
 
-            # filter out junk/error responses
+            # filter junk
             valid_responses = [
                 x for x in scored
                 if all(err not in x[0]["response"].upper() for err in ERROR_PATTERNS)
             ]
 
-            chosen = None
-            if valid_responses:
-                chosen = max(valid_responses, key=lambda x: x[1])
-            else:
-                chosen = scored[0] if scored else None
-
-            if not chosen:
-                return
+            chosen = max(valid_responses, key=lambda x: x[1]) if valid_responses else scored[0]
 
             resp, best_score = chosen
-            line_resp = f"[{resp['site']}] Response={resp['response']} | Price={resp['price']} | Gateway={resp['gateway']} | Status={resp['status']}"
+            # clean output
+            line_resp = (
+                f"Response: {resp['response']}\n"
+                f"    Price: {resp['price']}\n"
+                f"    Gateway: {resp['gateway']}"
+            )
 
             if best_score >= 4:
                 charged += 1
@@ -5493,7 +5488,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
 
             checked += 1
 
-            # Update progress msg
+            # update progress
             buttons = build_buttons(card, approved, charged, declined, update.effective_user.id)
             summary_text = (
                 "<pre><code>"
@@ -5518,18 +5513,19 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
             except:
                 pass
 
+        # run sequentially for progress updates
         for card in cards:
             if context.user_data.get("msp_stop"):
                 break
             await worker(card)
 
-    # Delete summary msg
+    # delete summary
     try:
         await msg.delete()
     except:
         pass
 
-    # Final report
+    # build report
     sections = []
     if approved_results:
         sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
@@ -5564,7 +5560,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     last_msp_usage[user_id] = now
 
     cards = []
-
     if context.args:
         cards = [m.group(0) for m in CARD_REGEX.finditer(" ".join(context.args))]
     elif update.message.reply_to_message and update.message.reply_to_message.text:
@@ -5614,7 +5609,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
-
 
 
 
