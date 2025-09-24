@@ -5327,7 +5327,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# ===== Shopify check request (clean output, all cards, multi-site) =====
+# ===== Shopify check request (final rules + clean output) =====
 import asyncio
 import httpx
 import time
@@ -5411,26 +5411,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
 
     approved_results, charged_results, declined_results, error_results = [], [], [], []
 
-    PRIORITY = {
-        "ORDER_PLACED": 4,
-        "CHARGED": 4,
-        "THANK YOU": 4,
-        "SUCCESS": 4,
-        "INSUFFICIENT_FUNDS": 4,
-        "3D_AUTHENTICATION": 3,
-        "3DS_REQUIRED": 3,
-        "APPROVED": 3,
-        "DECLINED": 2,
-        "CARD_DECLINED": 2,
-        "INCORRECT_NUMBER": 2,
-        "FRAUD_SUSPECTED": 2,
-        "EXPIRE_CARD": 2,
-        "EXPIRED_CARD": 2,
-        "ERROR": 1,
-        "UNKNOWN": 0,
-    }
-
-    ERROR_PATTERNS = ["CLINTE TOKEN", "DEL AMMOUNT EMPTY", "PRODUCT ID IS EMPTY", "INVALID_PAYMENT_ERROR"]
+    ERROR_PATTERNS = ["CLINTE TOKEN", "DEL AMMOUNT EMPTY", "PRODUCT ID IS EMPTY"]
 
     async with httpx.AsyncClient() as session:
         proxy = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
@@ -5445,15 +5426,21 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
                 return_exceptions=False,
             )
 
+            # Score responses
             scored = []
             for resp in responses:
                 resp_text = str(resp["response"]).strip()
                 resp_upper = resp_text.upper()
                 score = 0
-                for key, val in PRIORITY.items():
-                    if key in resp_upper:
-                        score = val
-                        break
+                # classification keywords
+                if any(x in resp_upper for x in ["THANK YOU", "ORDER_PLACED", "APPROVED", "SUCCESS", "CHARGED", "INSUFFICIENT_FUNDS"]):
+                    score = 4
+                elif any(x in resp_upper for x in ["3D_AUTHENTICATION", "INCORRECT_CVC", "INCORRECT_ZIP"]):
+                    score = 3
+                elif any(x in resp_upper for x in ["INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED", "EXPIRED_CARD", "EXPIRE_CARD"]):
+                    score = 2
+                elif "ERROR" in resp_upper or "UNKNOWN" in resp_upper:
+                    score = 1
                 scored.append((resp, score))
 
             # filter junk
@@ -5463,8 +5450,8 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
             ]
 
             chosen = max(valid_responses, key=lambda x: x[1]) if valid_responses else scored[0]
-
             resp, best_score = chosen
+
             # clean output
             line_resp = (
                 f"Response: {resp['response']}\n"
@@ -5472,9 +5459,9 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
                 f"    Gateway: {resp['gateway']}"
             )
 
-            if best_score >= 4:
+            # Final classification
+            if best_score == 4:
                 charged += 1
-                approved += 1
                 charged_results.append(f"🔥 {card}\n    {line_resp}")
             elif best_score == 3:
                 approved += 1
@@ -5488,7 +5475,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
 
             checked += 1
 
-            # update progress
+            # Update progress
             buttons = build_buttons(card, approved, charged, declined, update.effective_user.id)
             summary_text = (
                 "<pre><code>"
@@ -5513,7 +5500,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
             except:
                 pass
 
-        # run sequentially for progress updates
+        # sequential for progress updates
         for card in cards:
             if context.user_data.get("msp_stop"):
                 break
@@ -5525,7 +5512,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
     except:
         pass
 
-    # build report
+    # Build report
     sections = []
     if approved_results:
         sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
@@ -5537,6 +5524,18 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
         sections.append("⚠️ ERRORS\n" + "\n\n".join(error_results))
 
     final_report = "\n\n============================\n\n".join(sections) if sections else "No results."
+
+    # Add final summary
+    summary_block = (
+        "\n\n============================\n"
+        "📊 Final Summary\n"
+        f"Total Cards : {len(cards)}\n"
+        f"✅ Approved : {approved}\n"
+        f"🔥 Charged : {charged}\n"
+        f"❌ Declined : {declined}\n"
+        f"⚠️ Errors : {errors}\n"
+    )
+    final_report += summary_block
 
     file = io.BytesIO(final_report.encode("utf-8"))
     file.name = "shopify_results.txt"
@@ -5609,7 +5608,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
-
 
 
 
