@@ -5375,13 +5375,13 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
 # ===== Inline Buttons =====
 def build_buttons(current_card, approved, charged, declined, owner_id):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"💳 {current_card}", callback_data="noop")],
+        [InlineKeyboardButton(f"💳 Current: {current_card}", callback_data="noop")],
         [
-            InlineKeyboardButton(f"✅ {approved}", callback_data="noop"),
-            InlineKeyboardButton(f"🔥 {charged}", callback_data="noop"),
+            InlineKeyboardButton(f"✅ Approved: {approved}", callback_data="noop"),
+            InlineKeyboardButton(f"🔥 Charged: {charged}", callback_data="noop"),
         ],
         [
-            InlineKeyboardButton(f"❌ {declined}", callback_data="noop"),
+            InlineKeyboardButton(f"❌ Declined: {declined}", callback_data="noop"),
             InlineKeyboardButton("⏹ Stop", callback_data=f"stop:{owner_id}")
         ]
     ])
@@ -5431,13 +5431,25 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
     async with httpx.AsyncClient() as session:
         proxy = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
 
+        async def check_one(card, site):
+            resp, status, price, gateway = await check_card(session, base_url, site, card, proxy)
+            resp_str = str(resp).strip()
+            resp_upper = resp_str.upper().replace(" ", "_")
+
+            score = 0
+            for key, val in PRIORITY.items():
+                if key in resp_upper:
+                    score = val
+                    break
+            return resp_str, score
+
         async def worker(card):
             nonlocal approved, declined, errors, charged, checked, gateway_used
 
             if context.user_data.get("msp_stop"):
-                return  # skip further processing
+                return
 
-            tasks = [check_card(session, base_url, site, card, proxy) for site in sites]
+            tasks = [check_one(card, site) for site in sites]
             responses = await asyncio.gather(*tasks, return_exceptions=True)
 
             best_resp, best_score = "Unknown", 0
@@ -5453,19 +5465,15 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
             if best_score >= 4:
                 charged += 1
                 approved += 1
-                emoji = "🔥"
                 result = f"✅ {card}\n    🔥 {best_resp}"
             elif best_score == 3:
                 approved += 1
-                emoji = "✅"
                 result = f"✅ {card}\n    {best_resp}"
             elif best_score == 2:
                 declined += 1
-                emoji = "❌"
                 result = f"❌ {card}\n    {best_resp}"
             else:
                 errors += 1
-                emoji = "⚠️"
                 result = f"⚠️ {card}\n    {best_resp}"
 
             checked += 1
@@ -5547,7 +5555,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
     if len(cards) > 100:
-        cards = cards[:100]  # allow bigger batch since concurrent
+        cards = cards[:100]
 
     user_data = await get_user(user_id)
     if not user_data:
@@ -5585,6 +5593,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+
 
 
 
