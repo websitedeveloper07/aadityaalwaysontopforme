@@ -1150,7 +1150,7 @@ def build_page_text(page_index: int) -> str:
         logger.error(f"Error building page text: {e}")
         return "Error: Could not build page text."
 
-def build_buttons(page_index: int) -> InlineKeyboardMarkup:
+def build_cmds_buttons(page_index: int) -> InlineKeyboardMarkup:
     buttons = []
     nav_buttons = []
     if page_index > 0:
@@ -1165,7 +1165,7 @@ def build_buttons(page_index: int) -> InlineKeyboardMarkup:
 # /cmds command handler
 async def cmds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = build_page_text(0)
-    buttons = build_buttons(0)
+    buttons = build_cmds_buttons(page_index)
     await update.message.reply_text(
         text,
         parse_mode=ParseMode.HTML,
@@ -5400,7 +5400,7 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
-def build_buttons(current_card: str, approved: int, charged: int, declined: int, owner_id: int) -> InlineKeyboardMarkup:
+def build_msp_buttons(current_card: str, approved: int, charged: int, declined: int, owner_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(f"💳 Current: {current_card}", callback_data="noop")],
         [
@@ -5546,7 +5546,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
             checked += 1
 
             try:
-                buttons = build_buttons(card, approved, charged, declined, update.effective_user.id)
+                buttons = build_msp_buttons(card, approved, charged, declined, update.effective_user.id)
                 summary_text = (
                     "<pre><code>"
                     f"📊 Mass Shopify Checker\n"
@@ -5668,7 +5668,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
         "</code></pre>"
     )
-    buttons = build_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
+    buttons = build_msp_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
 
     msg = await update.message.reply_text(
         initial_summary,
