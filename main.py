@@ -5478,8 +5478,9 @@ last_msp_usage: Dict[int, float] = {}
 
 # Flexible regex: supports |, /, :, or spaces as separators
 CARD_REGEX = re.compile(
-    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+    r"(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})"
 )
+
 
 # Proxy placeholder
 DEFAULT_PROXY = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
@@ -5505,11 +5506,11 @@ def extract_cards_from_text(text: str) -> List[str]:
     for match in CARD_REGEX.finditer(text):
         groups = match.groups()
         if len(groups) != 4:
-            continue  # skip invalid matches
+            continue
 
         card, mm, yy, cvv = groups
         if not card or not mm or not yy or not cvv:
-            continue  # skip incomplete matches
+            continue
 
         mm = mm.zfill(2)
         yy = yy[-2:] if len(yy) == 4 else yy
