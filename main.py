@@ -6521,7 +6521,7 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not card_data:
         await update.message.reply_text(
             "⚠️ <b>Usage:</b>\n"
-            "<code>/b3 4111111111111111|07|2027|123</code>\n\n"
+            "<code>/b3 4111111111111111|07|2027|123</code>\n\n",
             parse_mode=ParseMode.HTML
         )
         return
