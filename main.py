@@ -5476,9 +5476,9 @@ logging.basicConfig(level=logging.INFO)
 # In-memory cooldowns
 last_msp_usage: Dict[int, float] = {}
 
-# Flexible regex: accept |, /, :, or spaces
+# Regex: accept |, /, :, spaces or any non-digit separator
 CARD_REGEX = re.compile(
-    r"(\d{12,19})[|/: ]+(\d{1,2})[|/: ]+(\d{2,4})[|/: ]+(\d{3,4})"
+    r"(\d{12,19})\D+(\d{1,2})\D+(\d{2,4})\D+(\d{3,4})"
 )
 
 # Proxy placeholder
@@ -5502,13 +5502,18 @@ def extract_cards_from_text(text: str) -> List[str]:
         return cards
 
     text = text.strip()
+    logger.info(f"[DEBUG] Extracting from: {text!r}")
+
     for match in CARD_REGEX.finditer(text):
-        try:
-            card, mm, yy, cvv = match.groups()
-        except Exception:
+        groups = match.groups()
+        logger.info(f"[DEBUG] Match: {groups!r}")
+        if len(groups) != 4:
             continue
+
+        card, mm, yy, cvv = groups
         if not card or not mm or not yy or not cvv:
             continue
+
         mm = mm.zfill(2)
         yy = yy[-2:] if len(yy) == 4 else yy
         normalized = f"{card}|{mm}|{yy}|{cvv}"
@@ -5722,10 +5727,13 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     last_msp_usage[user_id] = now
 
-    # always use raw message text (strip "/msp")
-    text_to_check = update.message.text.replace("/msp", "", 1).strip()
+    # Collect text from args, raw message, or reply
+    text_to_check = ""
+    if context.args:
+        text_to_check = " ".join(context.args)
+    else:
+        text_to_check = update.message.text.replace("/msp", "", 1).strip()
 
-    # if replying, include reply text or file
     if update.message.reply_to_message:
         if update.message.reply_to_message.text:
             text_to_check += " " + update.message.reply_to_message.text
@@ -5741,7 +5749,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cards = extract_cards_from_text(text_to_check)
 
     if not cards:
-        await update.message.reply_text(f"❌ No valid cards found.\n\nDEBUG: {text_to_check}")
+        await update.message.reply_text(f"❌ No valid cards found.\n\n[DEBUG] {text_to_check!r}")
         return
     if len(cards) > 100:
         cards = cards[:100]
@@ -5775,6 +5783,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     msg = await update.message.reply_text(initial_summary, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+
 
 
 
