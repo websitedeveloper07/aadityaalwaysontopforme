@@ -5496,15 +5496,28 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 # ---------- Utility ----------
 
 def extract_cards_from_text(text: str) -> List[str]:
-    """Extract and normalize cards from text into card|mm|yy|cvv"""
+    """
+    Extract and normalize cards from text.
+    Supports formats with |, /, :, or spaces.
+    Returns list of cards in normalized form: card|mm|yy|cvv
+    """
     cards: List[str] = []
     for match in CARD_REGEX.finditer(text):
-        card, mm, yy, cvv = match.groups()
+        groups = match.groups()
+        if len(groups) != 4:
+            continue  # skip invalid matches
+
+        card, mm, yy, cvv = groups
+        if not card or not mm or not yy or not cvv:
+            continue  # skip incomplete matches
+
         mm = mm.zfill(2)
         yy = yy[-2:] if len(yy) == 4 else yy
         normalized = f"{card}|{mm}|{yy}|{cvv}"
         cards.append(normalized)
+
     return cards
+
 
 
 async def consume_credit(user_id: int) -> bool:
