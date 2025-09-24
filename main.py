@@ -5673,12 +5673,12 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                 summary_text = (
                     f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 : {len(cards)}\n"
-                    f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 : {approved}\n"
-                    f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 : {charged}\n"
-                    f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 : {declined}\n"
-                    f"𝐄𝐫𝐫𝐨𝐫𝐬 : {errors}\n"
-                    f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 : {checked} / {len(cards)}\n"
+                    f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 ➵ {len(cards)}\n"
+                    f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
+                    f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ {charged}\n"
+                    f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
+                    f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ {errors}\n"
+                    f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                 )
                 await msg.edit_text(
@@ -5710,11 +5710,15 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
 
     summary_caption = (
         "📊 <b>Final Summary</b>\n"
-        f"🌍 Total Cards : <b>{len(cards)}</b>\n"
-        f"✅ Approved : <b>{approved}</b>\n"
-        f"🔥 Charged : <b>{charged}</b>\n"
-        f"❌ Declined : <b>{declined}</b>\n"
-        f"⚠️ Errors : <b>{errors}</b>"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ <b>{len(cards)}</b>\n"
+        "<pre><code>"
+        f"✅ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ <b>{approved}</b>\n"
+        f"🔥 𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ <b>{charged}</b>\n"
+        f"❌ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ <b>{declined}</b>\n"
+        f"⚠️ 𝐄𝐫𝐫𝐨𝐫𝐬 ➵ <b>{errors}</b>"
+        "</code></pre>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━"
     )
 
     await update.message.reply_document(
@@ -5779,12 +5783,12 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     initial_summary = (
         f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 : {len(cards)}\n"
-        f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 : 0\n"
-        f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 : 0\n"
-        f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 : 0\n"
-        f"𝐄𝐫𝐫𝐨𝐫𝐬 : 0\n"
-        f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 : 0 / {len(cards)}\n"
+        f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 ➵ {len(cards)}\n"
+        f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ 0\n"
+        f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ 0\n"
+        f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ 0\n"
+        f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ 0\n"
+        f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ 0 / {len(cards)}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
     )
     buttons = build_msp_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
