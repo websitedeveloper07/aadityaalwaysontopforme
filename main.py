@@ -5450,15 +5450,13 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# shopify_checker.py
+import re
 import asyncio
 import httpx
 import time
-import re
 import io
 import logging
-from typing import List, Dict, Tuple
-
+from typing import List, Dict, Any, Tuple
 from telegram import (
     Update,
     InlineKeyboardMarkup,
@@ -5476,9 +5474,9 @@ logging.basicConfig(level=logging.INFO)
 # In-memory cooldowns
 last_msp_usage: Dict[int, float] = {}
 
-# Regex: accept |, /, :, spaces or any non-digit separator
+# Flexible regex: supports |, /, :, or spaces as separators
 CARD_REGEX = re.compile(
-    r"(\d{12,19})\D+(\d{1,2})\D+(\d{2,4})\D+(\d{3,4})"
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
 )
 
 # Proxy placeholder
@@ -5496,29 +5494,18 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 # ---------- Utility ----------
 
 def extract_cards_from_text(text: str) -> List[str]:
-    """Extract and normalize cards from text into card|mm|yy|cvv format."""
+    """
+    Extract and normalize cards from text.
+    Supports formats with |, /, :, spaces.
+    Returns list of cards in normalized form: card|mm|yy|cvv
+    """
     cards: List[str] = []
-    if not text:
-        return cards
-
-    text = text.strip()
-    logger.info(f"[DEBUG] Extracting from: {text!r}")
-
     for match in CARD_REGEX.finditer(text):
-        groups = match.groups()
-        logger.info(f"[DEBUG] Match: {groups!r}")
-        if len(groups) != 4:
-            continue
-
-        card, mm, yy, cvv = groups
-        if not card or not mm or not yy or not cvv:
-            continue
-
+        card, mm, yy, cvv = match.groups()
         mm = mm.zfill(2)
         yy = yy[-2:] if len(yy) == 4 else yy
         normalized = f"{card}|{mm}|{yy}|{cvv}"
         cards.append(normalized)
-
     return cards
 
 
