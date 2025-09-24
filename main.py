@@ -5450,13 +5450,14 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-import re
 import asyncio
 import httpx
 import time
+import re
 import io
 import logging
 from typing import List, Dict, Any, Tuple
+
 from telegram import (
     Update,
     InlineKeyboardMarkup,
@@ -5493,31 +5494,20 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 
 # ---------- Utility ----------
 
-import re
-
-# Flexible regex: works with |, /, :, spaces, or mixed
-CARD_REGEX = re.compile(
-    r"(\d{12,19})\s*[\|/: ]\s*(\d{1,2})\s*[\|/: ]\s*(\d{2,4})\s*[\|/: ]\s*(\d{3,4})"
-)
-
-def extract_cards_from_text(text: str):
+def extract_cards_from_text(text: str) -> List[str]:
     """
-    Extracts and normalizes cards from text.
-    Handles separators (|, /, :, space) and extra spaces.
-    Normalizes to format: card|MM|YY|CVV
+    Extract and normalize cards from text.
+    Supports formats with |, /, :, or spaces.
+    Returns list of cards in normalized form: card|mm|yy|cvv
     """
-    cards = []
+    cards: List[str] = []
     for match in CARD_REGEX.finditer(text):
-        try:
-            card, mm, yy, cvv = match.groups()
-            mm = mm.zfill(2)                # pad month → 01–12
-            yy = yy[-2:] if len(yy) == 4 else yy  # take last 2 digits if year is 4-digit
-            normalized = f"{card}|{mm}|{yy}|{cvv}"
-            cards.append(normalized)
-        except Exception as e:
-            print(f"Skipping bad match: {e}")
+        card, mm, yy, cvv = match.groups()
+        mm = mm.zfill(2)
+        yy = yy[-2:] if len(yy) == 4 else yy
+        normalized = f"{card}|{mm}|{yy}|{cvv}"
+        cards.append(normalized)
     return cards
-
 
 
 async def consume_credit(user_id: int) -> bool:
@@ -5553,7 +5543,12 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         try:
             data = r.json()
         except Exception:
-            return {"response": r.text or "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
+            return {
+                "response": r.text or "Unknown",
+                "status": "false",
+                "price": "0",
+                "gateway": "N/A",
+            }
         return {
             "response": str(data.get("Response", "Unknown")),
             "status": str(data.get("Status", "false")),
@@ -5561,7 +5556,12 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
             "gateway": str(data.get("Gateway", "N/A")),
         }
     except Exception as e:
-        return {"response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
+        return {
+            "response": f"Error: {str(e)}",
+            "status": "false",
+            "price": "0",
+            "gateway": "N/A",
+        }
 
 
 # ---------- Buttons ----------
@@ -5725,29 +5725,24 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     last_msp_usage[user_id] = now
 
-    # Collect text from args, raw message, or reply
-    text_to_check = ""
+    cards: List[str] = []
+
     if context.args:
-        text_to_check = " ".join(context.args)
-    else:
-        text_to_check = update.message.text.replace("/msp", "", 1).strip()
-
-    if update.message.reply_to_message:
-        if update.message.reply_to_message.text:
-            text_to_check += " " + update.message.reply_to_message.text
-        elif update.message.reply_to_message.document:
-            try:
-                file_obj = await update.message.reply_to_message.document.get_file()
-                content = await file_obj.download_as_bytearray()
-                text_to_check += " " + content.decode("utf-8", errors="ignore")
-            except Exception as e:
-                await update.message.reply_text(f"❌ Failed to read the replied document. ({e})")
-                return
-
-    cards = extract_cards_from_text(text_to_check)
+        cards = extract_cards_from_text(" ".join(context.args))
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        cards = extract_cards_from_text(update.message.reply_to_message.text)
+    elif update.message.reply_to_message and update.message.reply_to_message.document:
+        try:
+            file_obj = await update.message.reply_to_message.document.get_file()
+            content = await file_obj.download_as_bytearray()
+            text = content.decode("utf-8", errors="ignore")
+            cards = extract_cards_from_text(text)
+        except Exception:
+            await update.message.reply_text("❌ Failed to read the replied document.")
+            return
 
     if not cards:
-        await update.message.reply_text(f"❌ No valid cards found.\n\n[DEBUG] {text_to_check!r}")
+        await update.message.reply_text("❌ No valid cards found.")
         return
     if len(cards) > 100:
         cards = cards[:100]
@@ -5767,19 +5762,27 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     initial_summary = (
-        f"📊 𝗠𝗮𝘀𝘀 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 𝗖𝗵𝗲𝗰𝗸𝗲𝗿\n"
+        "<pre><code>"
+        f"📊 Mass Shopify Checker\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 ➵ {len(cards)}\n"
-        f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ 0\n"
-        f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ 0\n"
-        f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ 0\n"
-        f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ 0\n"
-        f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ 0 / {len(cards)}\n"
+        f"🌍 Total Cards : {len(cards)}\n"
+        f"✅ Approved : 0\n"
+        f"🔥 Charged : 0\n"
+        f"❌ Declined : 0\n"
+        f"⚠️ Errors : 0\n"
+        f"🔄 Checked : 0 / {len(cards)}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "</code></pre>"
     )
     buttons = build_msp_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
 
-    msg = await update.message.reply_text(initial_summary, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
+    msg = await update.message.reply_text(
+        initial_summary,
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+        reply_markup=buttons
+    )
+
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
 
 
