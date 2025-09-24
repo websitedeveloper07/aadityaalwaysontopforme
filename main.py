@@ -5493,23 +5493,31 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 
 # ---------- Utility ----------
 
-def extract_cards_from_text(text: str) -> List[str]:
+import re
+
+# Flexible regex: works with |, /, :, spaces, or mixed
+CARD_REGEX = re.compile(
+    r"(\d{12,19})\s*[\|/: ]\s*(\d{1,2})\s*[\|/: ]\s*(\d{2,4})\s*[\|/: ]\s*(\d{3,4})"
+)
+
+def extract_cards_from_text(text: str):
     """
-    Extract and normalize cards from text.
-    Supports formats with |, /, :, spaces.
-    Returns list of cards in normalized form: card|mm|yy|cvv
+    Extracts and normalizes cards from text.
+    Handles separators (|, /, :, space) and extra spaces.
+    Normalizes to format: card|MM|YY|CVV
     """
-    cards: List[str] = []
+    cards = []
     for match in CARD_REGEX.finditer(text):
         try:
             card, mm, yy, cvv = match.groups()
-            mm = mm.zfill(2)
-            yy = yy[-2:] if len(yy) == 4 else yy
+            mm = mm.zfill(2)                # pad month → 01–12
+            yy = yy[-2:] if len(yy) == 4 else yy  # take last 2 digits if year is 4-digit
             normalized = f"{card}|{mm}|{yy}|{cvv}"
             cards.append(normalized)
         except Exception as e:
-            logger.warning(f"Skipping bad match: {match.group()} ({e})")
+            print(f"Skipping bad match: {e}")
     return cards
+
 
 
 async def consume_credit(user_id: int) -> bool:
