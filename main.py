@@ -2227,9 +2227,16 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
 # --- Main /sh command ---
 import re
+import asyncio
+import html
+from telegram.constants import ParseMode
+from telegram import Update
+from telegram.ext import ContextTypes
 
-# Assuming you have this regex pattern somewhere globally:
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: allows |, /, :, or spaces as separators
+ST_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -2238,20 +2245,23 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
-    payload = None
+    card_input = None
 
     # --- Check arguments ---
     if context.args:
-        payload = " ".join(context.args).strip()
+        raw_text = " ".join(context.args).strip()
+        match = ST_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
 
     # --- If no args, check reply message ---
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        match = ST_CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
-            payload = match.group().strip()
+            card_input = match.groups()
 
     # --- If still no payload ---
-    if not payload:
+    if not card_input:
         await update.message.reply_text(
             "⚠️ Usage: <code>/st card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
@@ -2259,8 +2269,15 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # --- Normalize ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)
+    yy = yy[-2:] if len(yy) == 4 else yy
+    payload = f"{card}|{mm}|{yy}|{cvv}"
+
     # --- Run in background ---
     asyncio.create_task(process_st(update, context, payload))
+
 
 
 
@@ -2918,11 +2935,16 @@ async def process_sh(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
 
 
-# --- Main /sh command ---
 import re
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# Assuming you have this regex pattern somewhere globally:
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: allows |, /, :, or spaces as separators
+SH_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -2931,26 +2953,35 @@ async def sh_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
-    payload = None
+    card_input = None
 
     # --- Check arguments ---
     if context.args:
-        payload = " ".join(context.args).strip()
-
-    # --- If no args, check if this is a reply to a message containing card data ---
-    elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        raw_text = " ".join(context.args).strip()
+        match = SH_CARD_REGEX.search(raw_text)
         if match:
-            payload = match.group().strip()
+            card_input = match.groups()
 
-    # --- If still no payload, usage message ---
-    if not payload:
+    # --- If no args, check reply message ---
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = SH_CARD_REGEX.search(update.message.reply_to_message.text)
+        if match:
+            card_input = match.groups()
+
+    # --- If still no payload ---
+    if not card_input:
         await update.message.reply_text(
             "⚠️ Usage: <code>/sh card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
             parse_mode=ParseMode.HTML
         )
         return
+
+    # --- Normalize ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)
+    yy = yy[-2:] if len(yy) == 4 else yy
+    payload = f"{card}|{mm}|{yy}|{cvv}"
 
     # --- Run in background ---
     asyncio.create_task(process_sh(update, context, payload))
@@ -3173,11 +3204,16 @@ async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
 
 
-# --- Main /sh command ---
 import re
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# Assuming you have this regex pattern somewhere globally:
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: supports |, /, :, or spaces as separators
+HC_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def hc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -3186,20 +3222,23 @@ async def hc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
-    payload = None
+    card_input = None
 
     # --- Check arguments ---
     if context.args:
-        payload = " ".join(context.args).strip()
+        raw_text = " ".join(context.args).strip()
+        match = HC_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
 
     # --- If no args, check reply message ---
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        match = HC_CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
-            payload = match.group().strip()
+            card_input = match.groups()
 
     # --- If still no payload ---
-    if not payload:
+    if not card_input:
         await update.message.reply_text(
             "⚠️ Usage: <code>/hc card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
@@ -3207,8 +3246,15 @@ async def hc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # --- Normalize ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)                   # Pad month to 2 digits
+    yy = yy[-2:] if len(yy) == 4 else yy  # Reduce YYYY → YY
+    payload = f"{card}|{mm}|{yy}|{cvv}"
+
     # --- Run in background ---
     asyncio.create_task(process_hc(update, context, payload))
+
 
 
 import aiohttp
@@ -3430,11 +3476,16 @@ async def process_st1(update: Update, context: ContextTypes.DEFAULT_TYPE, payloa
 
 
 
-# --- Main /sh command ---
 import re
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# Assuming you have this regex pattern somewhere globally:
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: supports |, /, :, or spaces as separators
+ST1_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def st1_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -3443,20 +3494,23 @@ async def st1_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
-    payload = None
+    card_input = None
 
     # --- Check arguments ---
     if context.args:
-        payload = " ".join(context.args).strip()
+        raw_text = " ".join(context.args).strip()
+        match = ST1_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
 
     # --- If no args, check reply message ---
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        match = ST1_CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
-            payload = match.group().strip()
+            card_input = match.groups()
 
     # --- If still no payload ---
-    if not payload:
+    if not card_input:
         await update.message.reply_text(
             "⚠️ Usage: <code>/st1 card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
@@ -3464,8 +3518,15 @@ async def st1_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # --- Normalize ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)                      # Pad month → 2 digits
+    yy = yy[-2:] if len(yy) == 4 else yy  # Reduce YYYY → YY
+    payload = f"{card}|{mm}|{yy}|{cvv}"
+
     # --- Run in background ---
     asyncio.create_task(process_st1(update, context, payload))
+
 
 import aiohttp
 import json
@@ -3675,11 +3736,16 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
 
 
-# --- Main /sh command ---
 import re
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# Assuming you have this regex pattern somewhere globally:
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: supports |, /, :, or spaces as separators
+OC_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def oc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -3688,20 +3754,23 @@ async def oc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
-    payload = None
+    card_input = None
 
-    # --- Check arguments ---
+    # --- Check arguments first ---
     if context.args:
-        payload = " ".join(context.args).strip()
+        raw_text = " ".join(context.args).strip()
+        match = OC_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
 
     # --- If no args, check reply message ---
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        match = OC_CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
-            payload = match.group().strip()
+            card_input = match.groups()
 
-    # --- If still no payload ---
-    if not payload:
+    # --- If still no payload, show usage ---
+    if not card_input:
         await update.message.reply_text(
             "⚠️ Usage: <code>/oc card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
@@ -3709,8 +3778,15 @@ async def oc_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # --- Normalize format ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)                      # Pad month → 2 digits
+    yy = yy[-2:] if len(yy) == 4 else yy  # Convert YYYY → YY
+    payload = f"{card}|{mm}|{yy}|{cvv}"
+
     # --- Run in background ---
     asyncio.create_task(process_oc(update, context, payload))
+
 
 
 
@@ -3938,11 +4014,16 @@ async def process_at(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
 
 
-# --- Main /sh command ---
 import re
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# Assuming you have this regex pattern somewhere globally:
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: supports |, /, :, or spaces as separators
+AT_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def at_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -3951,20 +4032,23 @@ async def at_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
-    payload = None
+    card_input = None
 
-    # --- Check arguments ---
+    # --- Check arguments first ---
     if context.args:
-        payload = " ".join(context.args).strip()
+        raw_text = " ".join(context.args).strip()
+        match = AT_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
 
     # --- If no args, check reply message ---
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        match = AT_CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
-            payload = match.group().strip()
+            card_input = match.groups()
 
     # --- If still no payload ---
-    if not payload:
+    if not card_input:
         await update.message.reply_text(
             "⚠️ Usage: <code>/at card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
@@ -3972,8 +4056,15 @@ async def at_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # --- Normalize format ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)                      # Pad month → 2 digits
+    yy = yy[-2:] if len(yy) == 4 else yy  # Convert YYYY → YY
+    payload = f"{card}|{mm}|{yy}|{cvv}"
+
     # --- Run in background ---
     asyncio.create_task(process_at(update, context, payload))
+
 
 
 
@@ -4206,11 +4297,16 @@ async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
 
 
-# --- Main /sh command ---
 import re
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# Assuming you have this regex pattern somewhere globally:
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: supports |, /, :, or spaces as separators
+PP_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def pp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -4219,20 +4315,23 @@ async def pp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
-    payload = None
+    card_input = None
 
-    # --- Check arguments ---
+    # --- Check arguments first ---
     if context.args:
-        payload = " ".join(context.args).strip()
+        raw_text = " ".join(context.args).strip()
+        match = PP_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
 
     # --- If no args, check reply message ---
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        match = PP_CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
-            payload = match.group().strip()
+            card_input = match.groups()
 
     # --- If still no payload ---
-    if not payload:
+    if not card_input:
         await update.message.reply_text(
             "⚠️ Usage: <code>/pp card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
@@ -4240,8 +4339,15 @@ async def pp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # --- Normalize format ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)                      # Ensure month is 2 digits
+    yy = yy[-2:] if len(yy) == 4 else yy  # Convert YYYY → YY
+    payload = f"{card}|{mm}|{yy}|{cvv}"
+
     # --- Run in background ---
     asyncio.create_task(process_pp(update, context, payload))
+
 
 
 
@@ -4470,11 +4576,16 @@ async def process_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             pass
 
 
-# --- Main /sh command ---
 import re
+import asyncio
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# Assuming you have this regex pattern somewhere globally:
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: supports |, /, :, or spaces as separators
+AD_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def ad_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -4483,20 +4594,23 @@ async def ad_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await enforce_cooldown(user.id, update):
         return
 
-    payload = None
+    card_input = None
 
-    # --- Check arguments ---
+    # --- Check arguments first ---
     if context.args:
-        payload = " ".join(context.args).strip()
+        raw_text = " ".join(context.args).strip()
+        match = AD_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
 
     # --- If no args, check reply message ---
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        match = AD_CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
-            payload = match.group().strip()
+            card_input = match.groups()
 
-    # --- If still no payload ---
-    if not payload:
+    # --- If still no card input ---
+    if not card_input:
         await update.message.reply_text(
             "⚠️ Usage: <code>/ad card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
@@ -4504,8 +4618,16 @@ async def ad_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # --- Normalize format ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)                      # Ensure month is 2 digits
+    yy = yy[-2:] if len(yy) == 4 else yy  # Convert YYYY → YY
+    payload = f"{card}|{mm}|{yy}|{cvv}"
+
     # --- Run in background ---
     asyncio.create_task(process_ad(update, context, payload))
+
+
 
 import asyncio
 import aiohttp
@@ -4725,57 +4847,66 @@ API_CHECK_TEMPLATE = (
 
 # ===== Main Command =====
 import re
+import asyncio
 from html import escape  # for escaping card_input safely in HTML
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
-# Global card regex pattern (assumes you've declared this elsewhere)
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: supports |, /, :, or spaces as separators
+SP_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
-    # Cooldown check
+    # --- Cooldown check ---
     if not await enforce_cooldown(user_id, update):
         return
 
     card_input = None
 
-    # 1️⃣ Check if card info provided as argument
+    # 1️⃣ Check if card info provided as arguments
     if context.args:
-        card_input = context.args[0].strip()
-
-    # 2️⃣ Else check if this is a reply to a message containing a card pattern (anywhere in message)
-    elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text.strip())
+        raw_text = " ".join(context.args).strip()
+        match = SP_CARD_REGEX.search(raw_text)
         if match:
-            card_input = match.group().strip()
+            card_input = match.groups()
 
-    # 3️⃣ If still no valid card input, send usage message
+    # 2️⃣ Else check if reply message contains card
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        raw_text = update.message.reply_to_message.text.strip()
+        match = SP_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
+
+    # 3️⃣ If no valid card input
     if not card_input:
         await update.message.reply_text(
-            "❌ Please provide card details. Example: <code>/sp card|mm|yy|cvv</code>\n"
+            "❌ Please provide card details.\n"
+            "Example: <code>/sp card|mm|yy|cvv</code>\n"
             "Or reply to a message containing card details.",
             parse_mode=ParseMode.HTML
         )
         return
 
-    # Validate card format (redundant but safe)
-    if not CARD_REGEX.fullmatch(card_input):
-        await update.message.reply_text(
-            "❌ Invalid card format. Use: <code>card|mm|yy|cvv</code>",
-            parse_mode=ParseMode.HTML
-        )
-        return
+    # --- Normalize format ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)                      # Ensure 2-digit month
+    yy = yy[-2:] if len(yy) == 4 else yy  # Convert YYYY → YY
+    normalized_card = f"{card}|{mm}|{yy}|{cvv}"
 
-    # Fetch user data
+    # --- Fetch user data ---
     user_data = await get_user(user_id)
 
-    # Consume credit
+    # --- Consume credit ---
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
         return
 
-    # Fetch user custom site URLs
+    # --- Fetch sites ---
     custom_urls = user_data.get("custom_urls")
     if not custom_urls:
         await update.message.reply_text(
@@ -4787,16 +4918,20 @@ async def sp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     BULLET_GROUP_LINK = "https://t.me/CARDER33"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
 
-    # Initial processing message
+    # --- Initial processing message ---
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-        f"<pre><code>{escape(card_input)}</code></pre>\n"
+        f"<pre><code>{escape(normalized_card)}</code></pre>\n"
         f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
     )
-    msg = await update.message.reply_text(processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
-    # Run in background
-    asyncio.create_task(process_card_check(user, card_input, custom_urls, msg))
+    msg = await update.message.reply_text(
+        processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+    )
+
+    # --- Run check in background ---
+    asyncio.create_task(process_card_check(user, normalized_card, custom_urls, msg))
+
 
 # ===== Worker =====
 async def process_card_check(user, card_input, custom_urls, msg):
@@ -5330,10 +5465,7 @@ from telegram import (
     InlineKeyboardButton,
     InputFile,
 )
-from telegram.ext import (
-    ContextTypes,
-    CallbackQueryHandler,
-)
+from telegram.ext import ContextTypes
 
 # Replace with your actual DB functions
 from db import get_user, update_user
@@ -5344,8 +5476,10 @@ logging.basicConfig(level=logging.INFO)
 # In-memory cooldowns
 last_msp_usage: Dict[int, float] = {}
 
-# Regex backup matcher
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# Flexible regex: supports |, /, :, or spaces as separators
+CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 # Proxy placeholder
 DEFAULT_PROXY = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
@@ -5363,20 +5497,17 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 
 def extract_cards_from_text(text: str) -> List[str]:
     """
-    Extract cards from text. Supports cards separated by spaces OR newlines.
-    Format: card|mm|yy|cvv OR card|mm|yyyy|cvv
+    Extract and normalize cards from text.
+    Supports formats with |, /, :, or spaces.
+    Returns list of cards in normalized form: card|mm|yy|cvv
     """
     cards: List[str] = []
-    text = text.replace(" ", "\n")
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        parts = line.split("|")
-        if len(parts) == 4 and parts[0].isdigit():
-            cards.append(line)
-    if not cards:
-        cards = [m.group(0) for m in CARD_REGEX.finditer(text)]
+    for match in CARD_REGEX.finditer(text):
+        card, mm, yy, cvv = match.groups()
+        mm = mm.zfill(2)
+        yy = yy[-2:] if len(yy) == 4 else yy
+        normalized = f"{card}|{mm}|{yy}|{cvv}"
+        cards.append(normalized)
     return cards
 
 
@@ -5536,17 +5667,15 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
             try:
                 buttons = build_msp_buttons(card, approved, charged, declined, update.effective_user.id)
                 summary_text = (
-                    "<pre><code>"
-                    f"📊 Mass Shopify Checker\n"
+                    f"📊 𝗠𝗮𝘀𝘀 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 𝗖𝗵𝗲𝗰𝗸𝗲𝗿\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"🌍 Total Cards : {len(cards)}\n"
-                    f"✅ Approved : {approved}\n"
-                    f"🔥 Charged : {charged}\n"
-                    f"❌ Declined : {declined}\n"
-                    f"⚠️ Errors : {errors}\n"
-                    f"🔄 Checked : {checked} / {len(cards)}\n"
+                    f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 ➵ {len(cards)}\n"
+                    f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
+                    f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ {charged}\n"
+                    f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
+                    f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ {errors}\n"
+                    f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    "</code></pre>"
                 )
                 await msg.edit_text(
                     summary_text,
@@ -5576,13 +5705,17 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
     file_buf.name = "shopify_results.txt"
 
     summary_caption = (
-        "📊 <b>Final Summary</b>\n"
-        f"🌍 Total Cards : <b>{len(cards)}</b>\n"
-        f"✅ Approved : <b>{approved}</b>\n"
-        f"🔥 Charged : <b>{charged}</b>\n"
-        f"❌ Declined : <b>{declined}</b>\n"
-        f"⚠️ Errors : <b>{errors}</b>"
-    )
+    "📊 <b>Final Summary</b>\n"
+    "━━━━━━━━━━━━━━━━━━━━━━━\n"
+    f"#𝑻𝒐𝒕𝒂𝒍_𝑪𝒂𝒓𝒅𝒔 → <b>{len(cards)}</b>\n\n"
+    "<pre><code>"
+    f"✅ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
+    f"🔥 𝐂𝐡𝐚𝐫𝐠𝐞𝐝  ➵ {charged}\n"
+    f"❌ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
+    f"⚠️ 𝐄𝐫𝐫𝐨𝐫𝐬   ➵ {errors}"
+    "</code></pre>\n"
+    "━━━━━━━━━━━━━━━━━━━━━━━"
+)
 
     await update.message.reply_document(
         document=InputFile(file_buf),
@@ -5597,6 +5730,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
 
 
 # ---------- /msp command ----------
+
 
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
@@ -5644,17 +5778,15 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     initial_summary = (
-        "<pre><code>"
-        f"📊 Mass Shopify Checker\n"
+        f📊 𝗠𝗮𝘀𝘀 𝗦𝗵𝗼𝗽𝗶𝗳𝘆 𝗖𝗵𝗲𝗰𝗸𝗲𝗿\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🌍 Total Cards : {len(cards)}\n"
-        f"✅ Approved : 0\n"
-        f"🔥 Charged : 0\n"
-        f"❌ Declined : 0\n"
-        f"⚠️ Errors : 0\n"
-        f"🔄 Checked : 0 / {len(cards)}\n"
+        f"𝐓𝐨𝐭𝐚𝐥 𝐂𝐚𝐫𝐝𝐬 ➵ {len(cards)}\n"
+        f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ 0\n"
+        f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ 0\n"
+        f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ 0\n"
+        f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ 0\n"
+        f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ 0 / {len(cards)}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "</code></pre>"
     )
     buttons = build_msp_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
 
@@ -6135,9 +6267,11 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 # --- Shared Regex ---
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
-
-# --- Cooldown --
+# --- Shared Regex ---
+# Supports: | / : space as separators
+FLEX_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 # --- /vbv Command ---
 async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -6152,20 +6286,25 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Card data extraction ---
     card_data = None
 
+    raw_text = ""
     if context.args:
-        card_candidate = context.args[0].strip()
-        if CARD_REGEX.fullmatch(card_candidate):
-            card_data = card_candidate
+        raw_text = " ".join(context.args).strip()
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
+        raw_text = update.message.reply_to_message.text.strip()
+
+    if raw_text:
+        match = FLEX_CARD_REGEX.search(raw_text)
         if match:
-            card_data = match.group().strip()
+            cc, mm, yy, cvv = match.groups()
+            mm = mm.zfill(2)                   # 06 not 6
+            yy = yy[-2:] if len(yy) == 4 else yy  # 2027 → 27
+            card_data = f"{cc}|{mm}|{yy}|{cvv}"
 
     if not card_data:
         await update.message.reply_text(
             "⚠️ Usage:\n"
-            "<code>/vbv 1234123412341234|12|2025|123</code>\n"
-            "Or reply to a message containing a card.",
+            "<code>/vbv 4111111111111111|07|2027|123</code>\n"
+            "Or reply to a message containing a card.\n\n"
             parse_mode=ParseMode.HTML
         )
         return
@@ -6183,6 +6322,7 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Run async VBV check ---
     asyncio.create_task(run_vbv_check(msg, update, card_data))
+
 
 
 
@@ -6335,14 +6475,35 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
-# --- Regex ---
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
+# --- Flexible Regex for multiple card formats ---
+FLEX_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
+
+def normalize_card(text: str) -> str | None:
+    """
+    Normalize card formats into cc|mm|yy|cvv
+    Supports:
+    - 4111111111111111|07|2027|123
+    - 4111111111111111|07|27|123
+    - 4111111111111111/07/27/123
+    - 4111111111111111:07:27:123
+    - 4111111111111111 07 27 123
+    """
+    match = FLEX_CARD_REGEX.search(text)
+    if not match:
+        return None
+    cc, mm, yy, cvv = match.groups()
+    mm = mm.zfill(2)                  # normalize → 2-digit month
+    yy = yy[-2:] if len(yy) == 4 else yy  # normalize YYYY → YY
+    return f"{cc}|{mm}|{yy}|{cvv}"
+
 
 # --- Cooldown tracker ---
 user_last_command_time = {}
 
 
-async def b3(update: Update, context):
+async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     current_time = time.time()
@@ -6350,17 +6511,17 @@ async def b3(update: Update, context):
     # --- Extract CC from args or reply ---
     input_text = None
     if context.args:
-        input_text = context.args[0]
+        input_text = " ".join(context.args).strip()
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = CARD_REGEX.search(update.message.reply_to_message.text)
-        if match:
-            input_text = match.group()
+        input_text = update.message.reply_to_message.text.strip()
 
-    if not input_text:
+    # --- Normalize card ---
+    card_data = normalize_card(input_text) if input_text else None
+
+    if not card_data:
         await update.message.reply_text(
             "⚠️ <b>Usage:</b>\n"
-            "<code>/b3 1234123412341234|12|2025|123</code>\n\n"
-            "Or reply to a message with the card in this format.",
+            "<code>/b3 4111111111111111|07|2027|123</code>\n\n"
             parse_mode=ParseMode.HTML
         )
         return
@@ -6387,15 +6548,10 @@ async def b3(update: Update, context):
         )
         return
 
-    # --- Prepare card input ---
-    cc_input = input_text.strip()
-    full_card = cc_input
-    bullet_link = '<a href="https://t.me/CARDER33">[⌇]</a>'
-
-    # --- Processing message (VBV-style) ---
+    # --- Processing message ---
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-        f"<pre><code>{full_card}</code></pre>\n"
+        f"<pre><code>{escape(card_data)}</code></pre>\n"
         f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
     )
 
@@ -6406,7 +6562,7 @@ async def b3(update: Update, context):
     )
 
     # --- Launch Braintree checker asynchronously ---
-    asyncio.create_task(run_braintree_check(user, cc_input, full_card, processing_msg))
+    asyncio.create_task(run_braintree_check(user, card_data, card_data, processing_msg))
 
 
 
