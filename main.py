@@ -5476,9 +5476,9 @@ logging.basicConfig(level=logging.INFO)
 # In-memory cooldowns
 last_msp_usage: Dict[int, float] = {}
 
-# Flexible regex: accept |, /, :, spaces, or any non-digit
+# Flexible regex: accept |, /, :, or spaces
 CARD_REGEX = re.compile(
-    r"(\d{12,19})\D+(\d{1,2})\D+(\d{2,4})\D+(\d{3,4})"
+    r"(\d{12,19})[|/: ]+(\d{1,2})[|/: ]+(\d{2,4})[|/: ]+(\d{3,4})"
 )
 
 # Proxy placeholder
@@ -5496,20 +5496,19 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 # ---------- Utility ----------
 
 def extract_cards_from_text(text: str) -> List[str]:
-    """
-    Extract and normalize cards from text.
-    Supports separators: | / : space or any non-digit.
-    Returns list of cards in normalized form: card|mm|yy|cvv
-    """
+    """Extract and normalize cards from text into card|mm|yy|cvv format."""
     cards: List[str] = []
+    if not text:
+        return cards
+
     text = text.strip()
-
     for match in CARD_REGEX.finditer(text):
-        groups = match.groups()
-        if len(groups) != 4:
+        try:
+            card, mm, yy, cvv = match.groups()
+        except Exception:
             continue
-        card, mm, yy, cvv = groups
-
+        if not card or not mm or not yy or not cvv:
+            continue
         mm = mm.zfill(2)
         yy = yy[-2:] if len(yy) == 4 else yy
         normalized = f"{card}|{mm}|{yy}|{cvv}"
@@ -5723,29 +5722,26 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     last_msp_usage[user_id] = now
 
-    # --- card extraction ---
-    text_to_check = None
-    if context.args:
-        text_to_check = " ".join(context.args)
-    elif update.message.reply_to_message and update.message.reply_to_message.text:
-        text_to_check = update.message.reply_to_message.text
-    elif update.message.reply_to_message and update.message.reply_to_message.document:
-        try:
-            file_obj = await update.message.reply_to_message.document.get_file()
-            content = await file_obj.download_as_bytearray()
-            text_to_check = content.decode("utf-8", errors="ignore")
-        except Exception:
-            await update.message.reply_text("❌ Failed to read the replied document.")
-            return
+    # always use raw message text (strip "/msp")
+    text_to_check = update.message.text.replace("/msp", "", 1).strip()
 
-    if not text_to_check:
-        await update.message.reply_text("❌ No valid cards found.")
-        return
+    # if replying, include reply text or file
+    if update.message.reply_to_message:
+        if update.message.reply_to_message.text:
+            text_to_check += " " + update.message.reply_to_message.text
+        elif update.message.reply_to_message.document:
+            try:
+                file_obj = await update.message.reply_to_message.document.get_file()
+                content = await file_obj.download_as_bytearray()
+                text_to_check += " " + content.decode("utf-8", errors="ignore")
+            except Exception:
+                await update.message.reply_text("❌ Failed to read the replied document.")
+                return
 
     cards = extract_cards_from_text(text_to_check)
 
     if not cards:
-        await update.message.reply_text("❌ No valid cards found.")
+        await update.message.reply_text(f"❌ No valid cards found.\n\nDEBUG: {text_to_check}")
         return
     if len(cards) > 100:
         cards = cards[:100]
