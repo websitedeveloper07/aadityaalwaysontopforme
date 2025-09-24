@@ -5501,11 +5501,14 @@ def extract_cards_from_text(text: str) -> List[str]:
     """
     cards: List[str] = []
     for match in CARD_REGEX.finditer(text):
-        card, mm, yy, cvv = match.groups()
-        mm = mm.zfill(2)
-        yy = yy[-2:] if len(yy) == 4 else yy
-        normalized = f"{card}|{mm}|{yy}|{cvv}"
-        cards.append(normalized)
+        try:
+            card, mm, yy, cvv = match.groups()
+            mm = mm.zfill(2)
+            yy = yy[-2:] if len(yy) == 4 else yy
+            normalized = f"{card}|{mm}|{yy}|{cvv}"
+            cards.append(normalized)
+        except Exception as e:
+            logger.warning(f"Skipping bad match: {match.group()} ({e})")
     return cards
 
 
@@ -5729,8 +5732,8 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 file_obj = await update.message.reply_to_message.document.get_file()
                 content = await file_obj.download_as_bytearray()
                 text_to_check += " " + content.decode("utf-8", errors="ignore")
-            except Exception:
-                await update.message.reply_text("❌ Failed to read the replied document.")
+            except Exception as e:
+                await update.message.reply_text(f"❌ Failed to read the replied document. ({e})")
                 return
 
     cards = extract_cards_from_text(text_to_check)
@@ -5770,6 +5773,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     msg = await update.message.reply_text(initial_summary, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+
 
 
 
