@@ -6304,7 +6304,7 @@ async def vbv(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "⚠️ Usage:\n"
             "<code>/vbv 4111111111111111|07|2027|123</code>\n"
-            "Or reply to a message containing a card.\n\n"
+            "Or reply to a message containing a card.\n\n",
             parse_mode=ParseMode.HTML
         )
         return
