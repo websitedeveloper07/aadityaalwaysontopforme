@@ -5327,7 +5327,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# ===== Shopify check request with Buttons + TXT Export =====
+# ===== Shopify check request with Buttons + TXT Export + Stop =====
 import asyncio
 import httpx
 import time
@@ -5396,6 +5396,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         owner_id = int(data.split(":")[1])
         if query.from_user.id != owner_id:
             return await query.answer("⚠️ Not your request!", show_alert=True)
+        # Owner clicked stop
         context.user_data["msp_stop"] = True
         return await query.answer("⏹ Process stopped!", show_alert=True)
 
@@ -5403,12 +5404,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===== Background runner =====
-async def run_msp(update: Update, cards, base_url, sites, msg):
+async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, base_url, sites, msg):
     approved = declined = errors = charged = checked = 0
     site_price = None
     gateway_used = "Self Shopify"
-    results = []  # List of lines for Telegram updates
-    file_results = []  # Detailed for txt export
+    results = []       # For Telegram updates
+    file_results = []  # For final .txt export
 
     sem = asyncio.Semaphore(5)
     lock = asyncio.Lock()
@@ -5493,11 +5494,11 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
 
                 checked += 1
 
-                # For telegram updates (short)
+                # For telegram updates
                 result_line = f"{status_icon} <code>{escape(card)}</code>\n ↳ <i>{escape(display_resp)}</i>"
                 results.append(result_line)
 
-                # For file export (detailed)
+                # For file export
                 file_results.append(f"{card}\n    {best_resp}\n")
 
                 async with lock:
@@ -5533,7 +5534,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
                 await asyncio.sleep(0.1)
 
         for card in cards:
-            if update.effective_user.id in update.user_data and update.user_data.get("msp_stop"):
+            if context.user_data.get("msp_stop"):
                 break
             await worker(card)
 
@@ -5543,7 +5544,7 @@ async def run_msp(update: Update, cards, base_url, sites, msg):
     except:
         pass
 
-    # Send all results in .txt (card + response under it)
+    # Send results as .txt (only checked so far)
     final_report = "\n".join(file_results)
     file = io.BytesIO(final_report.encode("utf-8"))
     file.name = "shopify_results.txt"
@@ -5623,7 +5624,8 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=buttons
     )
 
-    asyncio.create_task(run_msp(update, cards, base_url, sites, msg))
+    asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+
 
 
 
