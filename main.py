@@ -5379,7 +5379,6 @@ def extract_cards_from_text(text: str) -> List[str]:
     Format: card|mm|yy|cvv OR card|mm|yyyy|cvv
     """
     cards: List[str] = []
-    # normalize: replace spaces with newlines too
     text = text.replace(" ", "\n")
     for line in text.splitlines():
         line = line.strip()
@@ -5388,7 +5387,6 @@ def extract_cards_from_text(text: str) -> List[str]:
         parts = line.split("|")
         if len(parts) == 4 and parts[0].isdigit():
             cards.append(line)
-    # fallback regex
     if not cards:
         cards = [m.group(0) for m in CARD_REGEX.finditer(text)]
     return cards
@@ -5568,14 +5566,12 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     disable_web_page_preview=True,
                     reply_markup=buttons
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Edit failed: {e}")
 
-    try:
-        await msg.delete()
-    except Exception:
-        pass
+            await asyncio.sleep(0.5)  # prevent hammering
 
+    # --- final report ---
     sections = []
     if approved_results:
         sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
@@ -5602,10 +5598,14 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
 
     await update.message.reply_document(
         document=InputFile(file_buf),
-        filename="shopify_results.txt",
         caption=summary_caption,
         parse_mode="HTML"
     )
+
+    try:
+        await msg.delete()
+    except Exception:
+        pass
 
 
 # ---------- /msp command ----------
