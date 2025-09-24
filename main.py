@@ -5457,7 +5457,7 @@ import time
 import re
 import io
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Tuple
 
 from telegram import (
     Update,
@@ -5496,11 +5496,7 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 # ---------- Utility ----------
 
 def extract_cards_from_text(text: str) -> List[str]:
-    """
-    Extract and normalize cards from text.
-    Supports formats with |, /, :, or spaces.
-    Returns list of cards in normalized form: card|mm|yy|cvv
-    """
+    """Extract and normalize cards from text into card|mm|yy|cvv"""
     cards: List[str] = []
     for match in CARD_REGEX.finditer(text):
         card, mm, yy, cvv = match.groups()
@@ -5544,12 +5540,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         try:
             data = r.json()
         except Exception:
-            return {
-                "response": r.text or "Unknown",
-                "status": "false",
-                "price": "0",
-                "gateway": "N/A",
-            }
+            return {"response": r.text or "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
         return {
             "response": str(data.get("Response", "Unknown")),
             "status": str(data.get("Status", "false")),
@@ -5557,12 +5548,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
             "gateway": str(data.get("Gateway", "N/A")),
         }
     except Exception as e:
-        return {
-            "response": f"Error: {str(e)}",
-            "status": "false",
-            "price": "0",
-            "gateway": "N/A",
-        }
+        return {"response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
 
 
 # ---------- Buttons ----------
@@ -5591,7 +5577,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: List[str], base_url: str, sites: List[str], msg) -> None:
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
-
     proxy = DEFAULT_PROXY
 
     async with httpx.AsyncClient() as session:
@@ -5620,10 +5605,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     score = 0
                 scored.append((resp, score))
 
-            valid_responses = [
-                item for item in scored
-                if all(pat not in (item[0].get("response") or "").upper() for pat in ERROR_PATTERNS)
-            ]
+            valid_responses = [item for item in scored if all(pat not in (item[0].get("response") or "").upper() for pat in ERROR_PATTERNS)]
             chosen = max(valid_responses, key=lambda x: x[1]) if valid_responses else max(scored, key=lambda x: x[1])
             resp, best_score = chosen
 
@@ -5677,16 +5659,11 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                 )
-                await msg.edit_text(
-                    summary_text,
-                    parse_mode="HTML",
-                    disable_web_page_preview=True,
-                    reply_markup=buttons
-                )
+                await msg.edit_text(summary_text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
-            await asyncio.sleep(0.5)  # prevent hammering
+            await asyncio.sleep(0.5)
 
     # --- final report ---
     sections = []
@@ -5700,28 +5677,23 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
         sections.append("⚠️ ERRORS\n" + "\n\n".join(error_results))
 
     final_report = "\n\n============================\n\n".join(sections) if sections else "No results."
-
     file_buf = io.BytesIO(final_report.encode("utf-8"))
     file_buf.name = "shopify_results.txt"
 
     summary_caption = (
-    "📊 <b>Final Summary</b>\n"
-    "━━━━━━━━━━━━━━━━━━━━━━━\n"
-    f"#𝑻𝒐𝒕𝒂𝒍_𝑪𝒂𝒓𝒅𝒔 → <b>{len(cards)}</b>\n\n"
-    "<pre><code>"
-    f"✅ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
-    f"🔥 𝐂𝐡𝐚𝐫𝐠𝐞𝐝  ➵ {charged}\n"
-    f"❌ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
-    f"⚠️ 𝐄𝐫𝐫𝐨𝐫𝐬   ➵ {errors}"
-    "</code></pre>\n"
-    "━━━━━━━━━━━━━━━━━━━━━━━"
-)
-
-    await update.message.reply_document(
-        document=InputFile(file_buf),
-        caption=summary_caption,
-        parse_mode="HTML"
+        "📊 <b>Final Summary</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"#𝑻𝒐𝒕𝒂𝒍_𝑪𝒂𝒓𝒅𝒔 → <b>{len(cards)}</b>\n\n"
+        "<pre><code>"
+        f"✅ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
+        f"🔥 𝐂𝐡𝐚𝐫𝐠𝐞𝐝  ➵ {charged}\n"
+        f"❌ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
+        f"⚠️ 𝐄𝐫𝐫𝐨𝐫𝐬   ➵ {errors}"
+        "</code></pre>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━"
     )
+
+    await update.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
 
     try:
         await msg.delete()
@@ -5730,7 +5702,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
 
 
 # ---------- /msp command ----------
-
 
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
@@ -5742,7 +5713,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     last_msp_usage[user_id] = now
 
     cards: List[str] = []
-
     if context.args:
         cards = extract_cards_from_text(" ".join(context.args))
     elif update.message.reply_to_message and update.message.reply_to_message.text:
@@ -5790,14 +5760,9 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
     buttons = build_msp_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
 
-    msg = await update.message.reply_text(
-        initial_summary,
-        parse_mode="HTML",
-        disable_web_page_preview=True,
-        reply_markup=buttons
-    )
-
+    msg = await update.message.reply_text(initial_summary, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+
 
 
 
