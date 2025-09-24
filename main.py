@@ -5375,9 +5375,12 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 
 def extract_cards_from_text(text: str) -> List[str]:
     """
-    Extract cards from given text. Format: card|mm|yy|cvv OR card|mm|yyyy|cvv
+    Extract cards from text. Supports cards separated by spaces OR newlines.
+    Format: card|mm|yy|cvv OR card|mm|yyyy|cvv
     """
     cards: List[str] = []
+    # normalize: replace spaces with newlines too
+    text = text.replace(" ", "\n")
     for line in text.splitlines():
         line = line.strip()
         if not line:
@@ -5675,10 +5678,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
-
-
-def register_handlers(application) -> None:
-    application.add_handler(CallbackQueryHandler(button_handler))
 
 
 
