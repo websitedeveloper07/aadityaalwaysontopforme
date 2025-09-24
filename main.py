@@ -7559,6 +7559,7 @@ async def fban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Invalid user ID. Please provide a valid number.")
 
 # --- Helper to wrap message handlers so context.args is filled ---
+# --- Helper to wrap message handlers so context.args is filled ---
 def _make_message_wrapper(handler):
     """
     Return an async wrapper that:
@@ -7575,15 +7576,13 @@ def _make_message_wrapper(handler):
         else:
             text = ""
 
-        # Split tokens: first token is command (e.g. "/rban" or ".rban" or "/rban@BotName")
         tokens = text.split()
-        # context.args like CommandHandler: tokens after the first
         context.args = tokens[1:] if len(tokens) > 1 else []
 
-        # call the actual handler
         return await handler(update, context, *args, **kwargs)
 
     return _inner
+
 
 # 📌 Helper: Add commands with / and . (supports owner-only and restricted wrapping)
 def add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True, owner_only=False):
@@ -7600,10 +7599,13 @@ def add_dual_command(application, cmd_name, cmd_func, restricted_wrap=True, owne
 
     application.add_handler(MessageHandler(msg_filter, wrapped_handler))
 
+
 # ------------------ COMMAND REGISTRATION ------------------
 def register_user_commands(application):
-    # /start first, unrestricted
-    add_dual_command(application, "start", start, restricted_wrap=False, owner_only=False)
+    from telegram.ext import CommandHandler
+
+    # /start → must be registered as a CommandHandler
+    application.add_handler(CommandHandler("start", start))
 
     # Normal user commands
     user_commands = [
@@ -7647,6 +7649,7 @@ def register_user_commands(application):
     for name, func in user_commands:
         add_dual_command(application, name, func, restricted_wrap=True, owner_only=False)
 
+
 def register_owner_commands(application):
     owner_commands = [
         ("admin", admin_command),
@@ -7667,6 +7670,7 @@ def register_owner_commands(application):
     for name, func in owner_commands:
         add_dual_command(application, name, func, restricted_wrap=False, owner_only=True)
 
+
 # ------------------ MAIN ------------------
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
@@ -7675,18 +7679,22 @@ def main():
     register_user_commands(application)
     register_owner_commands(application)
 
-    # Pagination handler - added only once
+    # Callback handlers
     application.add_handler(CallbackQueryHandler(cmds_pagination, pattern="^page_"))
     application.add_handler(CallbackQueryHandler(handle_close, pattern="^close$"))
-    application.add_handler(CallbackQueryHandler(button_handler))
-
-    # Other generic callbacks
+    application.add_handler(CallbackQueryHandler(button_handler, pattern="^stop:"))
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
+
+    # Generic handler for all /start menu buttons
     application.add_handler(CallbackQueryHandler(handle_callback))
+
+    # Error handler
     application.add_error_handler(error_handler)
 
     logger.info("🤖 Bot started and is polling for updates...")
     application.run_polling()
 
+
 if __name__ == "__main__":
     main()
+
