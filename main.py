@@ -1929,18 +1929,17 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
             disable_web_page_preview=True,
         )
 
-
-
-
-
 import re
 import asyncio
+import html
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from telegram.helpers import escape_markdown
 
-CARD_PATTERN = re.compile(r"\b(\d{13,19})\|(\d{1,2})\|(\d{2,4})\|(\d{3,4})\b")
+# Flexible pattern: separators can be |, /, :, or spaces
+CARD_PATTERN = re.compile(
+    r"\b(\d{13,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
 
 async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -1949,18 +1948,12 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Get user data
     user_data = await get_user(user_id)
     if not user_data:
-        msg = "❌ Could not fetch your user data."
-        await update.effective_message.reply_text(
-            msg, parse_mode=ParseMode.HTML
-        )
+        await update.effective_message.reply_text("❌ Could not fetch your user data.", parse_mode=ParseMode.HTML)
         return
 
     # Check credits
     if user_data.get("credits", 0) <= 0:
-        msg = "❌ You have no credits left."
-        await update.effective_message.reply_text(
-            msg, parse_mode=ParseMode.HTML
-        )
+        await update.effective_message.reply_text("❌ You have no credits left.", parse_mode=ParseMode.HTML)
         return
 
     # Cooldown check
@@ -1969,62 +1962,57 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     card_input = None
 
-    # 1️⃣ Command argument takes priority
+    # 1️⃣ Command argument
     if context.args and len(context.args) > 0:
         raw_text = " ".join(context.args)
         match = CARD_PATTERN.search(raw_text)
         if match:
-            card_input = match.group(0)
+            card_input = match.groups()
 
-    # 2️⃣ Else check replied message
+    # 2️⃣ Reply to message
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         match = CARD_PATTERN.search(update.message.reply_to_message.text)
         if match:
-            card_input = match.group(0)
+            card_input = match.groups()
 
-    # No card input -> send usage message
+    # No card input
     if not card_input:
         usage_text = (
             "🚫 <b>Usage:</b> /chk card|mm|yy|cvv\n"
             "Or reply to a message containing a card."
         )
-        await update.effective_message.reply_text(
-            usage_text, parse_mode=ParseMode.HTML
-        )
+        await update.effective_message.reply_text(usage_text, parse_mode=ParseMode.HTML)
         return
 
-    # Normalize month and year
-    card, mm, yy, cvv = card_input.split("|")
+    # Normalize
+    card, mm, yy, cvv = card_input
     mm = mm.zfill(2)
     yy = yy[-2:] if len(yy) == 4 else yy
-    cc_normalized = "|".join([card, mm, yy, cvv])
+    cc_normalized = f"{card}|{mm}|{yy}|{cvv}"
 
     # Deduct credit
     if not await consume_credit(user_id):
-        msg = "❌ No credits left."
-        await update.effective_message.reply_text(
-            msg, parse_mode=ParseMode.HTML
-        )
+        await update.effective_message.reply_text("❌ No credits left.", parse_mode=ParseMode.HTML)
         return
 
-    # Build processing message in HTML
+    # Processing message
     processing_text = (
         "<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
         f"<pre><code>{html.escape(cc_normalized)}</code></pre>\n"
         "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ #𝗦𝘁𝗿𝗶𝗽𝗲𝗔𝘂𝘁𝗵"
     )
 
-    # Send processing message
     status_msg = await update.effective_message.reply_text(
         processing_text,
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
 
-    # Run background check asynchronously
+    # Background check
     asyncio.create_task(
         background_check(cc_normalized, [card, mm, yy, cvv], user, user_data, status_msg)
     )
+
 
 
 
