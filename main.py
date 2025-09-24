@@ -5502,11 +5502,17 @@ def extract_cards_from_text(text: str) -> List[str]:
     """
     cards: List[str] = []
     for match in CARD_REGEX.finditer(text):
-        card, mm, yy, cvv = match.groups()
-        mm = mm.zfill(2)
-        yy = yy[-2:] if len(yy) == 4 else yy
-        normalized = f"{card}|{mm}|{yy}|{cvv}"
-        cards.append(normalized)
+        try:
+            card, mm, yy, cvv = match.groups()
+            mm = mm.zfill(2)
+            # Normalize year → always 4 digits
+            if len(yy) == 2:
+                yy = "20" + yy
+            normalized = f"{card}|{mm}|{yy}|{cvv}"
+            cards.append(normalized)
+        except Exception as e:
+            logger.warning(f"[extract_cards_from_text] Skipped bad match: {e}")
+            continue
     return cards
 
 
@@ -5784,7 +5790,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
-
 
 
 
