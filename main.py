@@ -5327,7 +5327,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# ===== Shopify check request with Buttons + TXT Export + Stop + Sorted Results =====
+# ===== Shopify check request with Buttons + TXT Export + Stop + Sorted Results + File Input =====
 import asyncio
 import httpx
 import time
@@ -5394,10 +5394,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith("stop:"):
         owner_id = int(data.split(":")[1])
         if query.from_user.id != owner_id:
-            # 🚫 Not requester → deny
             return await query.answer("⚠️ Not your request!", show_alert=True)
-
-        # ✅ Requester → stop check
         context.user_data["msp_stop"] = True
         return await query.answer("⏹ Process stopped!", show_alert=True)
 
@@ -5454,8 +5451,10 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
             if context.user_data.get("msp_stop"):
                 return
 
-            tasks = [check_one(card, site) for site in sites]
-            responses = await asyncio.gather(*tasks, return_exceptions=True)
+            # Check card across all sites concurrently
+            responses = await asyncio.gather(
+                *[check_one(card, site) for site in sites], return_exceptions=True
+            )
 
             best_resp, best_score = "Unknown", 0
             for r in responses:
@@ -5484,7 +5483,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
 
             checked += 1
 
-            # Update progress msg
+            # Update progress msg right after this card
             buttons = build_buttons(card, approved, charged, declined, update.effective_user.id)
             summary_text = (
                 "<pre><code>"
@@ -5510,9 +5509,11 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
             except:
                 pass
 
-        # Run all cards concurrently for speed
-        tasks = [worker(card) for card in cards]
-        await asyncio.gather(*tasks)
+        # Process sequentially so update fires after each card
+        for card in cards:
+            if context.user_data.get("msp_stop"):
+                break
+            await worker(card)
 
     # Delete the summary msg
     try:
@@ -5555,19 +5556,25 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     last_msp_usage[user_id] = now
 
     raw_input = None
+    cards = []
+
+    # Case 1: args provided
     if context.args:
         raw_input = " ".join(context.args)
+        cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
+
+    # Case 2: replied text
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         raw_input = update.message.reply_to_message.text
+        cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
 
-    if not raw_input:
-        return await update.message.reply_text(
-            "Usage:\n<code>/msp card|mm|yy|cvv card2|mm|yy|cvv ...</code>\n"
-            "Or reply to a message containing cards.",
-            parse_mode="HTML"
-        )
+    # Case 3: replied document
+    elif update.message.reply_to_message and update.message.reply_to_message.document:
+        file = await update.message.reply_to_message.document.get_file()
+        content = await file.download_as_bytearray()
+        text = content.decode("utf-8", errors="ignore")
+        cards = [m.group(0) for m in CARD_REGEX.finditer(text)]
 
-    cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
     if not cards:
         return await update.message.reply_text("❌ No valid cards found.")
     if len(cards) > 100:
@@ -5609,6 +5616,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+
 
 
 
