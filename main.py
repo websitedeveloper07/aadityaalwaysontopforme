@@ -5476,11 +5476,10 @@ logging.basicConfig(level=logging.INFO)
 # In-memory cooldowns
 last_msp_usage: Dict[int, float] = {}
 
-# Flexible regex: supports |, /, :, or spaces as separators
+# Flexible regex: accept |, /, :, spaces, or any non-digit
 CARD_REGEX = re.compile(
-    r"(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})"
+    r"(\d{12,19})\D+(\d{1,2})\D+(\d{2,4})\D+(\d{3,4})"
 )
-
 
 # Proxy placeholder
 DEFAULT_PROXY = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
@@ -5499,18 +5498,17 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 def extract_cards_from_text(text: str) -> List[str]:
     """
     Extract and normalize cards from text.
-    Supports formats with |, /, :, or spaces.
+    Supports separators: | / : space or any non-digit.
     Returns list of cards in normalized form: card|mm|yy|cvv
     """
     cards: List[str] = []
+    text = text.strip()
+
     for match in CARD_REGEX.finditer(text):
         groups = match.groups()
         if len(groups) != 4:
             continue
-
         card, mm, yy, cvv = groups
-        if not card or not mm or not yy or not cvv:
-            continue
 
         mm = mm.zfill(2)
         yy = yy[-2:] if len(yy) == 4 else yy
@@ -5518,7 +5516,6 @@ def extract_cards_from_text(text: str) -> List[str]:
         cards.append(normalized)
 
     return cards
-
 
 
 async def consume_credit(user_id: int) -> bool:
@@ -5726,20 +5723,26 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     last_msp_usage[user_id] = now
 
-    cards: List[str] = []
+    # --- card extraction ---
+    text_to_check = None
     if context.args:
-        cards = extract_cards_from_text(" ".join(context.args))
+        text_to_check = " ".join(context.args)
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        cards = extract_cards_from_text(update.message.reply_to_message.text)
+        text_to_check = update.message.reply_to_message.text
     elif update.message.reply_to_message and update.message.reply_to_message.document:
         try:
             file_obj = await update.message.reply_to_message.document.get_file()
             content = await file_obj.download_as_bytearray()
-            text = content.decode("utf-8", errors="ignore")
-            cards = extract_cards_from_text(text)
+            text_to_check = content.decode("utf-8", errors="ignore")
         except Exception:
             await update.message.reply_text("❌ Failed to read the replied document.")
             return
+
+    if not text_to_check:
+        await update.message.reply_text("❌ No valid cards found.")
+        return
+
+    cards = extract_cards_from_text(text_to_check)
 
     if not cards:
         await update.message.reply_text("❌ No valid cards found.")
@@ -5776,6 +5779,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     msg = await update.message.reply_text(initial_summary, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
     asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+
 
 
 
