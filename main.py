@@ -5333,7 +5333,6 @@ import httpx
 import time
 import re
 import io
-from html import escape
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
 from telegram.ext import ContextTypes, CallbackQueryHandler
 
@@ -5444,46 +5443,53 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
                 if key in resp_upper:
                     score = val
                     break
-            return resp_str, score
+
+            return resp_str, score, status, price, gateway
 
         async def worker(card):
             nonlocal approved, declined, errors, charged, checked, gateway_used
             if context.user_data.get("msp_stop"):
                 return
 
-            # Check card across all sites concurrently
             responses = await asyncio.gather(
                 *[check_one(card, site) for site in sites], return_exceptions=True
             )
 
-            best_resp, best_score = "Unknown", 0
+            # pick best response
+            best_resp, best_score, best_status, best_price, best_gateway = "Unknown", 0, "false", "0", "N/A"
             for r in responses:
                 if isinstance(r, Exception):
-                    resp_str, score = f"Error: {r}", 0
+                    resp_str, score, status, price, gateway = f"Error: {r}", 0, "false", "0", "N/A"
                 else:
-                    resp_str, score = r
+                    resp_str, score, status, price, gateway = r
                 if score > best_score:
-                    best_resp, best_score = resp_str, score
+                    best_resp, best_score, best_status, best_price, best_gateway = resp_str, score, status, price, gateway
+
+            # build line to show real API info
+            line_resp = best_resp
+            if best_gateway and best_gateway != "N/A":
+                line_resp += f" | Gateway={best_gateway}"
+            if best_status and best_status != "false":
+                line_resp += f" | Status={best_status}"
 
             # Classification & store result
             if best_score >= 4:
                 charged += 1
                 approved += 1
-                charged_results.append(f"🔥 {card}\n    {best_resp}")
+                charged_results.append(f"🔥 {card}\n    {line_resp}")
             elif best_score == 3:
                 approved += 1
-                approved_results.append(f"✅ {card}\n    {best_resp}")
+                approved_results.append(f"✅ {card}\n    {line_resp}")
             elif best_score == 2:
                 declined += 1
-                declined_results.append(f"❌ {card}\n    {best_resp}")
+                declined_results.append(f"❌ {card}\n    {line_resp}")
             else:
                 errors += 1
-                err_text = best_resp if best_resp else "Error: Unknown response"
-                error_results.append(f"⚠️ {card}\n    {err_text}")
+                error_results.append(f"⚠️ {card}\n    {line_resp}")
 
             checked += 1
 
-            # Update progress msg right after this card
+            # Update progress msg each card
             buttons = build_buttons(card, approved, charged, declined, update.effective_user.id)
             summary_text = (
                 "<pre><code>"
@@ -5509,7 +5515,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards, bas
             except:
                 pass
 
-        # Process sequentially so update fires after each card
+        # sequential so update fires each card
         for card in cards:
             if context.user_data.get("msp_stop"):
                 break
