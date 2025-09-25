@@ -5491,8 +5491,8 @@ DEFAULT_PROXY = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
 ERROR_PATTERNS = ["CLINTE TOKEN", "DEL AMMOUNT EMPTY", "PRODUCT ID IS EMPTY"]
 
 # Classification keyword groups
-CHARGED_KEYWORDS = {"THANK YOU", "ORDER_PLACED", "APPROVED", "SUCCESS", "CHARGED", "INSUFFICIENT_FUNDS"}
-APPROVED_KEYWORDS = {"3D_AUTHENTICATION", "INCORRECT_CVC", "INCORRECT_ZIP"}
+CHARGED_KEYWORDS = {"THANK YOU", "ORDER_PLACED", "APPROVED", "SUCCESS", "CHARGED",}
+APPROVED_KEYWORDS = {"3D_AUTHENTICATION", "INCORRECT_CVC", "INCORRECT_ZIP", "INSUFFICIENT_FUNDS"}
 DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED", "EXPIRED_CARD", "EXPIRE_CARD"}
 
 
@@ -5627,7 +5627,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
     approved_results, charged_results, declined_results, error_results = [], [], [], []
 
     proxy = DEFAULT_PROXY
-    BATCH_SIZE = 10
+    BATCH_SIZE = 5
 
     async with httpx.AsyncClient() as session:
         for i in range(0, len(cards), BATCH_SIZE):
