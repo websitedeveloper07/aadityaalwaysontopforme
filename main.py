@@ -20,9 +20,8 @@ from config import ADMIN_IDS
 
 # === CONFIGURATION ===
 # IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
-TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
-OWNER_ID = 8493360284
-
+TOKEN = "8411634521:AAFfhZZCplkLVnQ_KgbLkwFq8EyK95ZIOVA"
+OWNER_ID = 8204296596
 
 
 # --- New Configuration ---
@@ -7442,7 +7441,7 @@ import asyncpg
 from telegram import Update
 from telegram.ext import ContextTypes
 
-ADMIN_USER_ID = 8493360284  # Replace with your admin user ID
+ADMIN_USER_ID = 8204296596  # Replace with your admin user ID
 
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -7623,13 +7622,13 @@ from force_join import force_join, check_joined_callback  # import decorator & c
 
 # 🛡️ Security
 AUTHORIZED_CHATS = set([-1002554243871, -1002832894194, -1002996641591, -1002750403340, -1003007390596, -1003040961439, -1002905834316, -1002660201006, -1002397483185, -1001988765966])  # Only these groups
-OWNER_ID = 8493360284                     # Your Telegram user ID
+OWNER_ID = 8204296596                     # Your Telegram user ID
 
 # 🛑 Banned users
 BANNED_USERS = set()
 
 # 🔑 Bot token
-BOT_TOKEN = "8058780098:AAERQ25xuPfJ74mFrCLi3kOpwYlTrpeitcg"
+BOT_TOKEN = "8411634521:AAFfhZZCplkLVnQ_KgbLkwFq8EyK95ZIOVA"
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
