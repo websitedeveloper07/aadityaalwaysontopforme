@@ -5454,7 +5454,6 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-# shopify_checker.py
 import asyncio
 import httpx
 import time
@@ -5501,10 +5500,6 @@ DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCO
 # ---------- Utility ----------
 
 def extract_cards_from_text(text: str) -> List[str]:
-    """
-    Extract cards from text. Supports cards separated by spaces OR newlines.
-    Format: card|mm|yy|cvv OR card|mm|yyyy|cvv
-    """
     cards: List[str] = []
     text = text.replace(" ", "\n")
     for line in text.splitlines():
@@ -5552,12 +5547,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
         try:
             data = r.json()
         except Exception:
-            return {
-                "response": r.text or "Unknown",
-                "status": "false",
-                "price": "0",
-                "gateway": "N/A",
-            }
+            return {"response": r.text or "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
         return {
             "response": str(data.get("Response", "Unknown")),
             "status": str(data.get("Status", "false")),
@@ -5565,12 +5555,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
             "gateway": str(data.get("Gateway", "N/A")),
         }
     except Exception as e:
-        return {
-            "response": f"Error: {str(e)}",
-            "status": "false",
-            "price": "0",
-            "gateway": "N/A",
-        }
+        return {"response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
 
 
 # ---------- Buttons ----------
@@ -5588,15 +5573,54 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         if query.from_user.id != owner_id:
             await query.answer("⚠️ Not your request!", show_alert=True)
             return
+        # mark stop + finalize trigger
         context.user_data["msp_stop"] = True
-        await query.answer("⏹ Process stopped!", show_alert=True)
+        await query.answer("⏹ Process stopped! Finalizing results...", show_alert=True)
         return
     await query.answer()
 
 
 # ---------- Runner ----------
 
-# ---------- Runner (fast parallel batching) ----------
+async def finalize_results(update: Update, msg, cards, approved, charged, declined, errors,
+                           approved_results, charged_results, declined_results, error_results):
+    """Send the final report as .txt and delete progress message"""
+    sections = []
+    if approved_results:
+        sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
+    if charged_results:
+        sections.append("🔥 CHARGED\n" + "\n\n".join(charged_results))
+    if declined_results:
+        sections.append("❌ DECLINED\n" + "\n\n".join(declined_results))
+    if error_results:
+        sections.append("⚠️ ERRORS\n" + "\n\n".join(error_results))
+
+    final_report = "\n\n============================\n\n".join(sections) if sections else "No results collected."
+
+    file_buf = io.BytesIO(final_report.encode("utf-8"))
+    file_buf.name = "shopify_results.txt"
+
+    summary_caption = (
+        "📊 <b>𝐅𝐢𝐧𝐚𝐥 𝐑𝐞𝐬𝐮𝐥𝐭𝐬</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙝𝐝𝐬 ➵ <b>{len(cards)}</b>\n"
+        "<pre><code>"
+        f"✅ Approved ➵ <b>{approved}</b>\n"
+        f"🔥 Charged ➵ <b>{charged}</b>\n"
+        f"❌ Declined ➵ <b>{declined}</b>\n"
+        f"⚠️ Errors ➵ <b>{errors}</b>"
+        "</code></pre>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+    await update.message.reply_document(document=InputFile(file_buf),
+                                        caption=summary_caption,
+                                        parse_mode="HTML")
+    try:
+        await msg.delete()
+    except Exception:
+        pass
+
 
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: List[str], base_url: str, sites: List[str], msg) -> None:
     context.user_data["msp_stop"] = False
@@ -5605,7 +5629,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
     approved_results, charged_results, declined_results, error_results = [], [], [], []
 
     proxy = DEFAULT_PROXY
-    BATCH_SIZE = 10   # process 10 cards at once, adjust as needed
+    BATCH_SIZE = 10
 
     async with httpx.AsyncClient() as session:
         for i in range(0, len(cards), BATCH_SIZE):
@@ -5613,19 +5637,18 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                 break
 
             batch = cards[i:i + BATCH_SIZE]
-
-            # run checks in parallel for this batch
             all_responses = await asyncio.gather(*[
                 asyncio.gather(*[check_card(session, base_url, site, card, proxy) for site in sites])
                 for card in batch
             ])
 
-            # process results of this batch
             for card, responses in zip(batch, all_responses):
+                if context.user_data.get("msp_stop"):
+                    break
+
                 scored: List[Tuple[Dict[str, str], int]] = []
                 for resp in responses:
-                    resp_text = (resp.get("response") or "").strip()
-                    resp_upper = resp_text.upper()
+                    resp_upper = (resp.get("response") or "").upper()
                     if any(k in resp_upper for k in CHARGED_KEYWORDS):
                         score = 4
                     elif any(k in resp_upper for k in APPROVED_KEYWORDS):
@@ -5638,54 +5661,37 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                         score = 0
                     scored.append((resp, score))
 
-                # fallback if all are errors
-                valid_responses = [
-                    item for item in scored
-                    if not any(pat in (item[0].get("response") or "").upper() for pat in ERROR_PATTERNS)
-                ]
+                valid_responses = [item for item in scored if not any(pat in (item[0].get("response") or "").upper()
+                                                                     for pat in ERROR_PATTERNS)]
                 if not valid_responses:
                     valid_responses = scored
 
                 resp, best_score = max(valid_responses, key=lambda x: x[1])
-
-                price_display = resp.get("price", "0")
-                try:
-                    price_display = str(float(price_display))
-                except Exception:
-                    pass
-                line_resp = (
-                    f"Response: {resp.get('response','Unknown')}\n"
-                    f"    Price: {price_display}\n"
-                    f"    Gateway: {resp.get('gateway','N/A')}"
-                )
-
                 resp_upper = (resp.get("response") or "").upper()
+                line_resp = f"Response: {resp.get('response','Unknown')}\n    Price: {resp.get('price','0')}\n    Gateway: {resp.get('gateway','N/A')}"
+
                 if "INSUFFICIENT_FUNDS" in resp_upper:
-                    charged += 1
-                    charged_results.append(f"🔥 {card}\n    {line_resp}")
+                    charged += 1; charged_results.append(f"🔥 {card}\n    {line_resp}")
                 elif any(k in resp_upper for k in APPROVED_KEYWORDS):
-                    approved += 1
-                    approved_results.append(f"✅ {card}\n    {line_resp}")
+                    approved += 1; approved_results.append(f"✅ {card}\n    {line_resp}")
                 elif "INVALID_PAYMENT_ERROR" in resp_upper:
-                    declined += 1
-                    declined_results.append(f"❌ {card}\n    {line_resp}")
+                    declined += 1; declined_results.append(f"❌ {card}\n    {line_resp}")
                 else:
                     if best_score == 4:
-                        charged += 1
-                        charged_results.append(f"🔥 {card}\n    {line_resp}")
+                        charged += 1; charged_results.append(f"🔥 {card}\n    {line_resp}")
                     elif best_score == 3:
-                        approved += 1
-                        approved_results.append(f"✅ {card}\n    {line_resp}")
+                        approved += 1; approved_results.append(f"✅ {card}\n    {line_resp}")
                     elif best_score == 2:
-                        declined += 1
-                        declined_results.append(f"❌ {card}\n    {line_resp}")
+                        declined += 1; declined_results.append(f"❌ {card}\n    {line_resp}")
                     else:
-                        errors += 1
-                        error_results.append(f"⚠️ {card}\n    {line_resp}")
+                        errors += 1; error_results.append(f"⚠️ {card}\n    {line_resp}")
 
                 checked += 1
 
-            # update Telegram only once per batch
+            if context.user_data.get("msp_stop"):
+                break
+
+            # progress update
             try:
                 buttons = build_msp_buttons(batch[-1], approved, charged, declined, update.effective_user.id)
                 summary_text = (
@@ -5693,70 +5699,21 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                     f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ {len(cards)}\n"
                     "<pre><code>"
-                    f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
-                    f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ {charged}\n"
-                    f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
-                    f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ {errors}\n"
-                    f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
+                    f"Approved ➵ {approved}\n"
+                    f"Charged ➵ {charged}\n"
+                    f"Declined ➵ {declined}\n"
+                    f"Errors ➵ {errors}\n"
+                    f"Checked ➵ {checked} / {len(cards)}\n"
                     "</code></pre>"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                 )
-                await msg.edit_text(
-                    summary_text,
-                    parse_mode="HTML",
-                    disable_web_page_preview=True,
-                    reply_markup=buttons
-                )
+                await msg.edit_text(summary_text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
-    if checked == 0:
-        await update.message.reply_text("❌ No cards were processed. Try again later.")
-        try:
-            await msg.delete()
-        except Exception:
-            pass
-        return
-
-    # --- final report ---
-    sections = []
-    if approved_results:
-        sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
-    if charged_results:
-        sections.append("🔥 CHARGED\n" + "\n\n".join(charged_results))
-    if declined_results:
-        sections.append("❌ DECLINED\n" + "\n\n".join(declined_results))
-    if error_results:
-        sections.append("⚠️ ERRORS\n" + "\n\n".join(error_results))
-
-    final_report = "\n\n============================\n\n".join(sections) if sections else "No classified results."
-
-    file_buf = io.BytesIO(final_report.encode("utf-8"))
-    file_buf.name = "shopify_results.txt"
-
-    summary_caption = (
-        "📊 <b>𝐂𝐡𝐞𝐜𝐤𝐞𝐝 𝐅𝐢𝐥𝐞</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ <b>{len(cards)}</b>\n"
-        "<pre><code>"
-        f"✅ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ <b>{approved}</b>\n"
-        f"🔥 𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ <b>{charged}</b>\n"
-        f"❌ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ <b>{declined}</b>\n"
-        f"⚠️ 𝐄𝐫𝐫𝐨𝐫𝐬 ➵ <b>{errors}</b>"
-        "</code></pre>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━"
-    )
-
-    await update.message.reply_document(
-        document=InputFile(file_buf),
-        caption=summary_caption,
-        parse_mode="HTML"
-    )
-
-    try:
-        await msg.delete()
-    except Exception:
-        pass
+    # Finalize results (whether stopped or finished)
+    await finalize_results(update, msg, cards, approved, charged, declined, errors,
+                           approved_results, charged_results, declined_results, error_results)
 
 
 # ---------- /msp command ----------
@@ -5771,7 +5728,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     last_msp_usage[user_id] = now
 
     cards: List[str] = []
-
     if context.args:
         cards = extract_cards_from_text(" ".join(context.args))
     elif update.message.reply_to_message and update.message.reply_to_message.text:
@@ -5807,29 +5763,25 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     initial_summary = (
-        f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
+        f"📊 Mass Shopify Checker\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ {len(cards)}\n"
+        f"#Total_Cards ➵ {len(cards)}\n"
         "<pre><code>"
-        f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ 0\n"
-        f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ 0\n"
-        f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ 0\n"
-        f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ 0\n"
-        f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ 0 / {len(cards)}\n"
+        f"Approved ➵ 0\n"
+        f"Charged ➵ 0\n"
+        f"Declined ➵ 0\n"
+        f"Errors ➵ 0\n"
+        f"Checked ➵ 0 / {len(cards)}\n"
         "</code></pre>"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
     )
     buttons = build_msp_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
+    msg = await update.message.reply_text(initial_summary, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
 
-    msg = await update.message.reply_text(
-        initial_summary,
-        parse_mode="HTML",
-        disable_web_page_preview=True,
-        reply_markup=buttons
-    )
+    # Run in background
+    task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+    task.add_done_callback(lambda t: logger.error(f"/msp crashed: {t.exception()}") if t.exception() else None)
 
-    # Run directly (ensures not skipped)
-    await run_msp(update, context, cards, base_url, sites, msg)
 
 
 
