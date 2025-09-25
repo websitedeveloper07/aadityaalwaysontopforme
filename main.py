@@ -2298,7 +2298,7 @@ from db import get_user, update_user
 # --- SETTINGS ---
 API_URL_TEMPLATE = (
     "https://darkboy-auto-stripe-y6qk.onrender.com/"
-    "gateway=autostripe/key=darkboy/site=thefloordepot.com.au/cc="
+    "gateway=autostripe/key=darkboy/site=shebrews.org/cc="
 )
 CONCURRENCY = 3
 RATE_LIMIT_SECONDS = 5
