@@ -5573,7 +5573,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         if query.from_user.id != owner_id:
             await query.answer("⚠️ Not your request!", show_alert=True)
             return
-        # mark stop + finalize trigger
         context.user_data["msp_stop"] = True
         await query.answer("⏹ Process stopped! Finalizing results...", show_alert=True)
         return
@@ -5584,7 +5583,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def finalize_results(update: Update, msg, cards, approved, charged, declined, errors,
                            approved_results, charged_results, declined_results, error_results):
-    """Send the final report as .txt and delete progress message"""
     sections = []
     if approved_results:
         sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
@@ -5647,8 +5645,12 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     break
 
                 scored: List[Tuple[Dict[str, str], int]] = []
+                valid_responses: List[Tuple[Dict[str, str], int]] = []
+
                 for resp in responses:
-                    resp_upper = (resp.get("response") or "").upper()
+                    resp_text = (resp.get("response") or "").strip()
+                    resp_upper = resp_text.upper()
+
                     if any(k in resp_upper for k in CHARGED_KEYWORDS):
                         score = 4
                     elif any(k in resp_upper for k in APPROVED_KEYWORDS):
@@ -5659,14 +5661,19 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                         score = 1
                     else:
                         score = 0
+
                     scored.append((resp, score))
 
-                valid_responses = [item for item in scored if not any(pat in (item[0].get("response") or "").upper()
-                                                                     for pat in ERROR_PATTERNS)]
-                if not valid_responses:
-                    valid_responses = scored
+                    # 🚀 filter out junk responses
+                    if not any(pat in resp_upper for pat in ERROR_PATTERNS):
+                        valid_responses.append((resp, score))
 
-                resp, best_score = max(valid_responses, key=lambda x: x[1])
+                # Prefer clean responses, fallback to junk only if all sites junk
+                if valid_responses:
+                    resp, best_score = max(valid_responses, key=lambda x: x[1])
+                else:
+                    resp, best_score = max(scored, key=lambda x: x[1])
+
                 resp_upper = (resp.get("response") or "").upper()
                 line_resp = f"Response: {resp.get('response','Unknown')}\n    Price: {resp.get('price','0')}\n    Gateway: {resp.get('gateway','N/A')}"
 
@@ -5699,11 +5706,11 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                     f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ {len(cards)}\n"
                     "<pre><code>"
-                    f"Approved ➵ {approved}\n"
-                    f"Charged ➵ {charged}\n"
-                    f"Declined ➵ {declined}\n"
-                    f"Errors ➵ {errors}\n"
-                    f"Checked ➵ {checked} / {len(cards)}\n"
+                    f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
+                    f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ {charged}\n"
+                    f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
+                    f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ {errors}\n"
+                    f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
                     "</code></pre>"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                 )
@@ -5711,7 +5718,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
-    # Finalize results (whether stopped or finished)
     await finalize_results(update, msg, cards, approved, charged, declined, errors,
                            approved_results, charged_results, declined_results, error_results)
 
@@ -5763,22 +5769,21 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     initial_summary = (
-        f"📊 Mass Shopify Checker\n"
+        f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"#Total_Cards ➵ {len(cards)}\n"
+        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙝𝐝𝐬 ➵ {len(cards)}\n"
         "<pre><code>"
-        f"Approved ➵ 0\n"
-        f"Charged ➵ 0\n"
-        f"Declined ➵ 0\n"
-        f"Errors ➵ 0\n"
-        f"Checked ➵ 0 / {len(cards)}\n"
+        f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ 0\n"
+        f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ 0\n"
+        f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ 0\n"
+        f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ 0\n"
+        f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ 0 / {len(cards)}\n"
         "</code></pre>"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
     )
     buttons = build_msp_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
     msg = await update.message.reply_text(initial_summary, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
 
-    # Run in background
     task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
     task.add_done_callback(lambda t: logger.error(f"/msp crashed: {t.exception()}") if t.exception() else None)
 
