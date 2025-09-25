@@ -2180,9 +2180,13 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         display_response = escape(response)
         lower_resp = response.lower()
         if re.search(r"\b(Thank You|approved|charged|success)\b", response, re.I):
-            header_status = "✅ APPROVED"
+            header_status = "🔥 Charged"
         elif "3D_AUTHENTICATION" in response.upper():
-            header_status = "🔒 3DS REQUIRED"
+            header_status = "✅ Approved"
+        elif "INCORRECT_CVC" in response.upper():
+            header_status = "✅ Approved"
+        elif "INCORRECT_ZIP" in response.upper():
+            header_status = "✅ Approved"            
         elif "CARD_DECLINED" in response.upper():
             header_status = "❌ DECLINED"
         else:
@@ -2294,7 +2298,7 @@ from db import get_user, update_user
 # --- SETTINGS ---
 API_URL_TEMPLATE = (
     "https://darkboy-auto-stripe-y6qk.onrender.com/"
-    "gateway=autostripe/key=darkboy/site=shebrews.org/cc="
+    "gateway=autostripe/key=darkboy/site=thefloordepot.com.au/cc="
 )
 CONCURRENCY = 3
 RATE_LIMIT_SECONDS = 5
@@ -5593,6 +5597,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # ---------- Runner ----------
 
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: List[str], base_url: str, sites: List[str], msg) -> None:
+    # Always reset stop flag
+    context.user_data["msp_stop"] = False
+
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
 
@@ -5624,11 +5631,15 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     score = 0
                 scored.append((resp, score))
 
+            # Never drop everything – fallback to scored
             valid_responses = [
                 item for item in scored
-                if all(pat not in (item[0].get("response") or "").upper() for pat in ERROR_PATTERNS)
+                if not any(pat in (item[0].get("response") or "").upper() for pat in ERROR_PATTERNS)
             ]
-            chosen = max(valid_responses, key=lambda x: x[1]) if valid_responses else max(scored, key=lambda x: x[1])
+            if not valid_responses:
+                valid_responses = scored
+
+            chosen = max(valid_responses, key=lambda x: x[1])
             resp, best_score = chosen
 
             price_display = resp.get("price", "0")
@@ -5668,6 +5679,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
 
             checked += 1
 
+            # live summary
             try:
                 buttons = build_msp_buttons(card, approved, charged, declined, update.effective_user.id)
                 summary_text = (
@@ -5694,6 +5706,15 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
 
             await asyncio.sleep(0.5)  # prevent hammering
 
+    # If nothing was processed, stop here
+    if checked == 0:
+        await update.message.reply_text("❌ No cards were processed. Try again later.")
+        try:
+            await msg.delete()
+        except Exception:
+            pass
+        return
+
     # --- final report ---
     sections = []
     if approved_results:
@@ -5705,7 +5726,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
     if error_results:
         sections.append("⚠️ ERRORS\n" + "\n\n".join(error_results))
 
-    final_report = "\n\n============================\n\n".join(sections) if sections else "No results."
+    final_report = "\n\n============================\n\n".join(sections) if sections else "No classified results."
 
     file_buf = io.BytesIO(final_report.encode("utf-8"))
     file_buf.name = "shopify_results.txt"
@@ -5804,7 +5825,9 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=buttons
     )
 
-    asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
+    # Run directly (ensures not skipped)
+    await run_msp(update, context, cards, base_url, sites, msg)
+
 
 
 
