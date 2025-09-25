@@ -5620,7 +5620,8 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
         pass
 
 
-async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: List[str], base_url: str, sites: List[str], msg) -> None:
+async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
+                  cards: List[str], base_url: str, sites: List[str], msg) -> None:
     context.user_data["msp_stop"] = False
 
     approved = declined = errors = charged = checked = 0
@@ -5635,70 +5636,74 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                 break
 
             batch = cards[i:i + BATCH_SIZE]
-            all_responses = await asyncio.gather(*[
-                asyncio.gather(*[check_card(session, base_url, site, card, proxy) for site in sites])
-                for card in batch
-            ])
 
-            for card, responses in zip(batch, all_responses):
+            for card in batch:
                 if context.user_data.get("msp_stop"):
                     break
 
-                scored: List[Tuple[Dict[str, str], int]] = []
-                valid_responses: List[Tuple[Dict[str, str], int]] = []
+                resp = None
+                best_score = 0
+                resp_upper = ""
 
-                for resp in responses:
-                    resp_text = (resp.get("response") or "").strip()
+                # 🚀 sequential failover across sites
+                for site in sites:
+                    r = await check_card(session, base_url, site, card, proxy)
+                    resp_text = (r.get("response") or "").strip()
                     resp_upper = resp_text.upper()
 
+                    # if junk → try next site
+                    if any(pat in resp_upper for pat in ERROR_PATTERNS):
+                        continue
+
+                    # classify good response
                     if any(k in resp_upper for k in CHARGED_KEYWORDS):
-                        score = 4
+                        best_score = 4
                     elif any(k in resp_upper for k in APPROVED_KEYWORDS):
-                        score = 3
+                        best_score = 3
                     elif any(k in resp_upper for k in DECLINED_KEYWORDS):
-                        score = 2
+                        best_score = 2
                     elif "ERROR" in resp_upper or "UNKNOWN" in resp_upper:
-                        score = 1
+                        best_score = 1
                     else:
-                        score = 0
+                        best_score = 0
 
-                    scored.append((resp, score))
+                    resp = r
+                    break  # ✅ stop once we got a clean response
 
-                    # 🚀 filter out junk responses
-                    if not any(pat in resp_upper for pat in ERROR_PATTERNS):
-                        valid_responses.append((resp, score))
+                # if all sites junk → take last response
+                if resp is None:
+                    resp = r  # last response in loop
+                    best_score = 0
 
-                # Prefer clean responses, fallback to junk only if all sites junk
-                if valid_responses:
-                    resp, best_score = max(valid_responses, key=lambda x: x[1])
-                else:
-                    resp, best_score = max(scored, key=lambda x: x[1])
+                line_resp = (
+                    f"Response: {resp.get('response','Unknown')}\n"
+                    f"    Price: {resp.get('price','0')}\n"
+                    f"    Gateway: {resp.get('gateway','N/A')}"
+                )
 
-                resp_upper = (resp.get("response") or "").upper()
-                line_resp = f"Response: {resp.get('response','Unknown')}\n    Price: {resp.get('price','0')}\n    Gateway: {resp.get('gateway','N/A')}"
-
+                # classify into categories
                 if "INSUFFICIENT_FUNDS" in resp_upper:
-                    charged += 1; charged_results.append(f"🔥 {card}\n    {line_resp}")
-                elif any(k in resp_upper for k in APPROVED_KEYWORDS):
-                    approved += 1; approved_results.append(f"✅ {card}\n    {line_resp}")
-                elif "INVALID_PAYMENT_ERROR" in resp_upper:
-                    declined += 1; declined_results.append(f"❌ {card}\n    {line_resp}")
+                    charged += 1
+                    charged_results.append(f"🔥 {card}\n    {line_resp}")
+                elif best_score == 3:
+                    approved += 1
+                    approved_results.append(f"✅ {card}\n    {line_resp}")
+                elif best_score == 2:
+                    declined += 1
+                    declined_results.append(f"❌ {card}\n    {line_resp}")
+                elif best_score == 4:
+                    charged += 1
+                    charged_results.append(f"🔥 {card}\n    {line_resp}")
                 else:
-                    if best_score == 4:
-                        charged += 1; charged_results.append(f"🔥 {card}\n    {line_resp}")
-                    elif best_score == 3:
-                        approved += 1; approved_results.append(f"✅ {card}\n    {line_resp}")
-                    elif best_score == 2:
-                        declined += 1; declined_results.append(f"❌ {card}\n    {line_resp}")
-                    else:
-                        errors += 1; error_results.append(f"⚠️ {card}\n    {line_resp}")
+                    errors += 1
+                    error_results.append(f"⚠️ {card}\n    {line_resp}")
 
                 checked += 1
 
             if context.user_data.get("msp_stop"):
                 break
 
-            # progress update
+            # 📊 progress update once per batch
             try:
                 buttons = build_msp_buttons(batch[-1], approved, charged, declined, update.effective_user.id)
                 summary_text = (
@@ -5714,12 +5719,20 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     "</code></pre>"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                 )
-                await msg.edit_text(summary_text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
+                await msg.edit_text(
+                    summary_text,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                    reply_markup=buttons
+                )
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
-    await finalize_results(update, msg, cards, approved, charged, declined, errors,
-                           approved_results, charged_results, declined_results, error_results)
+    # final report / file send
+    await finalize_results(
+        update, msg, cards, approved, charged, declined, errors,
+        approved_results, charged_results, declined_results, error_results
+    )
 
 
 # ---------- /msp command ----------
