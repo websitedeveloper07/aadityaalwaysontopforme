@@ -6465,8 +6465,8 @@ logger = logging.getLogger(__name__)
 # --- Config ---
 API_URL = "https://xautob3.onrender.com/check"
 API_KEY = "XCRacker"
-SITE = "https://Xcracker911.com"
-COOLDOWN_SECONDS = 5
+SITE = "https://highwayandheavyparts.com"
+COOLDOWN_SECONDS = 10
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
