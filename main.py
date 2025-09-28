@@ -639,8 +639,8 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             InlineKeyboardButton("💳 Adyen 1$", callback_data="adyen_gate")  
         ],
         [
-            InlineKeyboardButton("💰 PayPal 1$", callback_data="paypal1_gate")  # ✅ New button            
-            InlineKeyboardButton("💰 PayPal Payments 9$", callback_data="paypal_gate"),
+            InlineKeyboardButton("💰 PayPal 1$", callback_data="paypal1_gate"),  # ✅ New button            
+            InlineKeyboardButton("💰 PayPal Payments 9$", callback_data="paypal_gate")
         ],
         [
             InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")
