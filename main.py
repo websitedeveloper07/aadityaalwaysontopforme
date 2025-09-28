@@ -2136,7 +2136,7 @@ async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
         )
 
         # build API URL
-        api_url = f"https://paypal-c5g3.onrender.com/api?gateway=paypal1&key=payalismy&cc{payload}"
+        api_url = f"https://payalalwaysforme.onrender.com/api?gateway=paypal1&key=payalismy&cc={payload}"
 
         # call API
         try:
