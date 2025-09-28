@@ -4354,7 +4354,7 @@ DEFAULT_PROXY = "64.137.96.74:6641:fvbysspi:bsbh3trstb1c"
 AUTHNET_DEFAULT_SITE = "https://store.wikimedia.org"
 
 
-async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
+async def process_py(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
     """
     Process a /pp command: check PayPal-like gateway, display response and BIN info.
     Gateway label = PayPal, Price = 9$
@@ -4533,7 +4533,7 @@ PP_CARD_REGEX = re.compile(
     r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
 )
 
-async def pp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def py_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
     # --- Cooldown check ---
@@ -4558,7 +4558,7 @@ async def pp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- If still no payload ---
     if not card_input:
         await update.message.reply_text(
-            "⚠️ Usage: <code>/pp card|mm|yy|cvv</code>\n"
+            "⚠️ Usage: <code>/py card|mm|yy|cvv</code>\n"
             "Or reply to a message containing a card.",
             parse_mode=ParseMode.HTML
         )
@@ -7994,7 +7994,7 @@ def register_user_commands(application):
         ("at", at_command),
         ("seturl", seturl),
         ("mysites", mysites),
-        ("pp", pp_command),
+        ("py", py_command),
         ("msp", msp),
         ("removeall", removeall),
         ("rsite", rsite),
