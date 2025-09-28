@@ -4529,7 +4529,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 # Flexible regex: supports |, /, :, or spaces as separators
-PP_CARD_REGEX = re.compile(
+PY_CARD_REGEX = re.compile(
     r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
 )
 
@@ -4545,13 +4545,13 @@ async def py_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Check arguments first ---
     if context.args:
         raw_text = " ".join(context.args).strip()
-        match = PP_CARD_REGEX.search(raw_text)
+        match = PY_CARD_REGEX.search(raw_text)
         if match:
             card_input = match.groups()
 
     # --- If no args, check reply message ---
     elif update.message.reply_to_message and update.message.reply_to_message.text:
-        match = PP_CARD_REGEX.search(update.message.reply_to_message.text)
+        match = PY_CARD_REGEX.search(update.message.reply_to_message.text)
         if match:
             card_input = match.groups()
 
@@ -4571,7 +4571,7 @@ async def py_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     payload = f"{card}|{mm}|{yy}|{cvv}"
 
     # --- Run in background ---
-    asyncio.create_task(process_pp(update, context, payload))
+    asyncio.create_task(process_py(update, context, payload))
 
 
 
