@@ -20,9 +20,8 @@ from config import ADMIN_IDS
 
 # === CONFIGURATION ===
 # IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
-TOKEN = "8411634521:AAFfhZZCplkLVnQ_KgbLkwFq8EyK95ZIOVA"
-OWNER_ID = 8204296596
-
+TOKEN = "8138635592:AAHoDiNZ7T3uW_av13nEwtXVhRmCqenixm4"
+OWNER_ID = 8226183879
 
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@Kalinuxxx"
@@ -1549,7 +1548,7 @@ from telegram.helpers import escape_markdown as escape_markdown_v2
 async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Adds a specified number of credits to a user's account, restricted to a specific owner."""
     # Owner ID is hardcoded
-    OWNER_ID = 8493360284
+    OWNER_ID = 8226183879
 
     # Check if the user is the owner
     if update.effective_user.id != OWNER_ID:
@@ -7622,13 +7621,13 @@ from force_join import force_join, check_joined_callback  # import decorator & c
 
 # 🛡️ Security
 AUTHORIZED_CHATS = set([-1002554243871, -1002832894194, -1002996641591, -1002750403340, -1003007390596, -1003040961439, -1002905834316, -1002660201006, -1002397483185, -1001988765966])  # Only these groups
-OWNER_ID = 8204296596                     # Your Telegram user ID
+OWNER_ID =  8226183879                     # Your Telegram user ID
 
 # 🛑 Banned users
 BANNED_USERS = set()
 
 # 🔑 Bot token
-BOT_TOKEN = "8411634521:AAFfhZZCplkLVnQ_KgbLkwFq8EyK95ZIOVA"
+BOT_TOKEN = "8138635592:AAHoDiNZ7T3uW_av13nEwtXVhRmCqenixm4"
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
