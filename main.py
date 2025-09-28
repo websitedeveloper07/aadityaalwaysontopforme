@@ -2015,6 +2015,229 @@ async def chk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+import aiohttp
+import json
+import logging
+import asyncio
+from datetime import datetime
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+import re
+
+# Import DB helpers
+from db import get_user, update_user
+
+logger = logging.getLogger(__name__)
+
+# --- User cooldowns ---
+user_cooldowns = {}
+
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Prevent spam by enforcing a cooldown per user."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)}s."
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int) -> bool:
+    """Consume 1 credit from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) > 0:
+        new_credits = user_data["credits"] - 1
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+# --- HC Processor ---
+import aiohttp
+import asyncio
+import json
+import re
+import logging
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+logger = logging.getLogger(__name__)
+
+async def process_pp(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
+    """
+    Process /pp command: call PayPal gateway API and format the reply.
+    Gateway label = PayPal, Price = 1$
+    """
+    start_time = time.time()
+    try:
+        user = update.effective_user
+
+        # consume credit
+        if not await consume_credit(user.id):
+            await update.message.reply_text("❌ You don’t have enough credits left.")
+            return
+
+        # initial processing message
+        processing_text = (
+            f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
+            f"<pre><code>{escape(payload)}</code></pre>\n\n"
+            f"<b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐏𝐚𝐲𝐏𝐚𝐥 1$</b>\n"
+        )
+        processing_msg = await update.message.reply_text(
+            processing_text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+        # build API URL
+        api_url = f"https://paypal-c5g3.onrender.com/gateway=paypal1$&key=rockyalways?cc={payload}"
+
+        # call API
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
+                    api_response_text = await resp.text()
+        except asyncio.TimeoutError:
+            await processing_msg.edit_text("❌ Error: API request timed out.", parse_mode=ParseMode.HTML)
+            return
+        except Exception as e:
+            await processing_msg.edit_text(
+                f"❌ API request failed: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # parse API JSON
+        try:
+            data = json.loads(api_response_text)
+        except json.JSONDecodeError:
+            await processing_msg.edit_text(
+                f"❌ Invalid API response:\n<code>{escape(api_response_text[:500])}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # API returns both message + response_text
+        message = data.get("message", "Unknown")  # already includes emoji
+        response_text = data.get("response_text", "")
+
+        # clean response_text (strip "ERROR: ...")
+        cleaned_response = response_text
+        if isinstance(response_text, str) and ":" in response_text:
+            cleaned_response = response_text.split(":", 1)[1].strip()
+
+        # BIN lookup
+        try:
+            bin_number = payload.split("|")[0][:6]
+            bin_details = await get_bin_info(bin_number) or {}
+            brand = (bin_details.get("scheme") or "N/A").title()
+            issuer = bin_details.get("bank", {}).get("name") if isinstance(bin_details.get("bank"), dict) else bin_details.get("bank", "N/A")
+            country_name = bin_details.get("country", {}).get("name") if isinstance(bin_details.get("country"), dict) else bin_details.get("country", "Unknown")
+            country_flag = bin_details.get("country_emoji", "")
+        except Exception:
+            brand = issuer = "N/A"
+            country_name = "Unknown"
+            country_flag = ""
+
+        # developer branding
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+        developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+
+        # elapsed time
+        elapsed_time = round(time.time() - start_time, 2)
+
+        # final message: show API's `message` as-is (with emoji at front), response as cleaned
+        final_msg = (
+            f"<b><i>{escape(message)}</i></b>\n\n"
+            f"𝐂𝐚𝐫𝐝\n"
+            f"⤷ <code>{escape(payload)}</code>\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝙋𝙖𝙮𝙥𝙖𝙡 𝟭$\n"
+            f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(cleaned_response)}</code></i>\n\n"
+            f"<pre>"
+            f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
+            f"𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
+            f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}"
+            f"</pre>\n\n"
+            f"𝐃𝐄𝐕 ➵ {developer_clickable}\n"
+            f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
+        )
+
+        await processing_msg.edit_text(
+            final_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+    except Exception as e:
+        try:
+            await update.message.reply_text(
+                f"❌ Error: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception:
+            pass
+
+
+
+
+# --- Main /pp command ---
+import re
+import asyncio
+from telegram.constants import ParseMode
+from telegram import Update
+from telegram.ext import ContextTypes
+
+# Flexible regex: allows |, /, :, or spaces as separators
+PP_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
+
+async def pp_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    # --- Cooldown check ---
+    if not await enforce_cooldown(user.id, update):
+        return
+
+    card_input = None
+
+    # --- Check arguments ---
+    if context.args:
+        raw_text = " ".join(context.args).strip()
+        match = PP_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
+
+    # --- If no args, check reply message ---
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = PP_CARD_REGEX.search(update.message.reply_to_message.text)
+        if match:
+            card_input = match.groups()
+
+    # --- If still no payload ---
+    if not card_input:
+        await update.message.reply_text(
+            "⚠️ Usage: <code>/pp card|mm|yy|cvv</code>\n"
+            "Or reply to a message containing a card.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # --- Normalize ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)
+    yy = yy[-2:] if len(yy) == 4 else yy
+    payload = f"{card}|{mm}|{yy}|{cvv}"
+
+    # --- Run in background ---
+    asyncio.create_task(process_pp(update, context, payload))
+
 
 
 
@@ -7771,6 +7994,7 @@ def register_user_commands(application):
         ("at", at_command),
         ("seturl", seturl),
         ("mysites", mysites),
+        ("pp", pp_command),
         ("msp", msp),
         ("removeall", removeall),
         ("rsite", rsite),
