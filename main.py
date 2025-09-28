@@ -639,7 +639,8 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             InlineKeyboardButton("💳 Adyen 1$", callback_data="adyen_gate")  
         ],
         [
-            InlineKeyboardButton("💰 PayPal Payments 9$", callback_data="paypal_gate")
+            InlineKeyboardButton("💰 PayPal 1$", callback_data="paypal1_gate")  # ✅ New button            
+            InlineKeyboardButton("💰 PayPal Payments 9$", callback_data="paypal_gate"),
         ],
         [
             InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")
@@ -660,6 +661,7 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=keyboard,
             disable_web_page_preview=True
         )
+
 
 
 
@@ -708,7 +710,7 @@ async def paypal_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     text = (
         "✦═══ 𝑷𝒂𝒚𝑷𝒂𝒍 9$ ═══✦\n\n"
-        f"{bullet_link} 𝐂𝐌𝐃   :<code>/pp</code>\n"
+        f"{bullet_link} 𝐂𝐌𝐃   :<code>/py</code>\n"
         f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>PayPal</i>\n"
         f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞   : <i>$9.00</i>\n"
@@ -733,6 +735,43 @@ async def paypal_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
+
+
+async def paypal1_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'PayPal Payments 1$' button."""
+    q = update.callback_query
+    await q.answer()
+
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
+    text = (
+        "✦═══ 𝑷𝒂𝒚𝑷𝒂𝒍 1$ ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   :<code>/pp</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬  : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>PayPal</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞   : <i>$1.00</i>\n"
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
+    ])
+
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+            disable_web_page_preview=True
+        )
+
 
 
 
@@ -1054,6 +1093,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "ocean_gate": ocean_gate_handler,          # ✅ Ocean Payments 4$
         "adyen_gate": adyen_gate_handler,          # ✅ Added Adyen 1$
         "paypal_gate": paypal_gate_handler, 
+        "paypal1_gate": paypal1_gate_handler,
         "ds_lookup": ds_lookup_menu_handler,
         "back_to_start": back_to_start_handler,
     }
@@ -1096,7 +1136,8 @@ ALL_COMMANDS = [
     ("Mass x30 Stripe Auth 2", "/mass"),
     ("Authnet 2.5$ Charge", "/at"),
     ("Adyen 1.0$ Charge", "/ad"),
-    ("Paypal Payments 9$", "/pp"),
+    ("Paypal 1$", "/pp"),    
+    ("Paypal Payments 9$", "/py"),
     ("Ocean Payments 4$", "/oc"),
     ("3DS Lookup", "/vbv"),
     ("Shopify Charge $0.98", "/sh"),
