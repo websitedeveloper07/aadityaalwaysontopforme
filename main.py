@@ -6962,21 +6962,18 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-# CONFIG (tweak as needed)
+# CONFIG
 DORK_API_BASE = "https://rockysoon.onrender.com/gateway=dorker/masterkey=rockyog/dork="
 PAGE_SIZE = 5
-SESSION_TTL = 300          # seconds
-CLEANUP_INTERVAL = 600     # seconds between cleanup runs
-# re-uses COOLDOWN_SECONDS and user_last_command_time from your script
+SESSION_TTL = 300
+CLEANUP_INTERVAL = 600
 
-# In-memory sessions store
-# session_id -> {"query": str, "urls": [...], "total": int, "ts": epoch, "user_id": int}
+# In-memory sessions
 _DORK_SESSIONS: dict = {}
 
 def _make_session_id(query: str, user_id: int) -> str:
     s = f"{query}|{user_id}|{time.time()}"
     return hashlib.sha1(s.encode()).hexdigest()[:24]
-
 
 def _start_session_cleaner():
     async def _cleaner():
@@ -6986,12 +6983,10 @@ def _start_session_cleaner():
             for k in to_del:
                 _DORK_SESSIONS.pop(k, None)
             await asyncio.sleep(CLEANUP_INTERVAL)
-    # schedule background task in event loop
     try:
         loop = asyncio.get_event_loop()
         loop.create_task(_cleaner())
     except RuntimeError:
-        # if no event loop yet (rare), spawn a thread that will create one
         def _bg():
             import asyncio as _asyncio
             loop2 = _asyncio.new_event_loop()
@@ -7001,9 +6996,7 @@ def _start_session_cleaner():
         t = threading.Thread(target=_bg, daemon=True)
         t.start()
 
-# start cleaner once
 _start_session_cleaner()
-
 
 async def _call_dork_api(query: str, timeout: int = 20) -> dict:
     url = DORK_API_BASE + quote_plus(query)
@@ -7014,19 +7007,13 @@ async def _call_dork_api(query: str, timeout: int = 20) -> dict:
             try:
                 return await resp.json(content_type=None)
             except Exception:
-                # fallback: try parse text as JSON-ish, else return { "urls": [], "total": 0 }
                 try:
                     import json
                     return json.loads(text)
                 except Exception:
                     return {"urls": [], "total": 0}
 
-
 def _format_page_text(session: dict, page_index: int) -> str:
-    """
-    Returns HTML string: compact banner + <pre> block of numbered monospace URLs (no extra lines).
-    """
-    query = session["query"]
     urls = session["urls"]
     total = session["total"]
     start = page_index * PAGE_SIZE
@@ -7036,78 +7023,48 @@ def _format_page_text(session: dict, page_index: int) -> str:
     max_pages = (total - 1) // PAGE_SIZE + 1 if total > 0 else 1
     cur_page = page_index + 1
 
-    header = []
-    header.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    header.append(f"◈  DORKER PAGE {cur_page}/{max_pages}")
-    header.append("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    header = (
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"◈  DORKER PAGE {cur_page}/{max_pages}\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    )
 
     if page_urls:
-        pre_lines = []
-        for i, u in enumerate(page_urls, start=start+1):
-            pre_lines.append(f"{i}. {escape(u)}")
-        pre_block = "<pre>" + "\n".join(pre_lines) + "</pre>"
+        lines = [f"{i}. <code>{escape(u)}</code>" for i, u in enumerate(page_urls, start=start+1)]
+        body = "\n".join(lines)
     else:
-        pre_block = "<pre>No results on this page.</pre>"
+        body = "No results on this page."
 
-    footer = "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nUse ◀ / ▶ to navigate pages."
-    return "\n".join(header) + pre_block + footer
-
+    return header + body
 
 def _build_dork_keyboard(session_id: str, page_index: int) -> InlineKeyboardMarkup:
-    """
-    Row1: [◀ Back] [Page X/Y] [Next ▶]
-    Row2: [Open n]... for each visible URL (1..PAGE_SIZE)
-    """
     session = _DORK_SESSIONS[session_id]
     total = session["total"]
-    urls = session["urls"]
-    start = page_index * PAGE_SIZE
-    end = min(start + PAGE_SIZE, total)
-    page_urls = urls[start:end]
-
     max_pages = (total - 1) // PAGE_SIZE + 1 if total > 0 else 1
     cur_page_num = page_index + 1
 
-    row1 = []
+    row = []
     if page_index > 0:
-        row1.append(InlineKeyboardButton("◀ Back", callback_data=f"dork_nav:{session_id}:{page_index-1}"))
+        row.append(InlineKeyboardButton("◀ Back", callback_data=f"dork_nav:{session_id}:{page_index-1}"))
     else:
-        row1.append(InlineKeyboardButton("◀ Back", callback_data="dork_noop"))
+        row.append(InlineKeyboardButton("◀ Back", callback_data="dork_noop"))
 
-    row1.append(InlineKeyboardButton(f"Page {cur_page_num}/{max_pages}", callback_data="dork_noop"))
+    row.append(InlineKeyboardButton(f"Page {cur_page_num}/{max_pages}", callback_data="dork_noop"))
 
     if page_index < max_pages - 1:
-        row1.append(InlineKeyboardButton("Next ▶", callback_data=f"dork_nav:{session_id}:{page_index+1}"))
+        row.append(InlineKeyboardButton("Next ▶", callback_data=f"dork_nav:{session_id}:{page_index+1}"))
     else:
-        row1.append(InlineKeyboardButton("Next ▶", callback_data="dork_noop"))
+        row.append(InlineKeyboardButton("Next ▶", callback_data="dork_noop"))
 
-    keyboard = [row1]
+    return InlineKeyboardMarkup([row])
 
-    # Row2: clickable Open buttons (url buttons)
-    if page_urls:
-        row2 = []
-        for i, u in enumerate(page_urls, start=start+1):
-            label = f"Open {i}"
-            # url button opens link in browser
-            row2.append(InlineKeyboardButton(label, url=u))
-        keyboard.append(row2)
-
-    return InlineKeyboardMarkup(keyboard)
-
-
-# --- /dork command (async handler) ---
+# --- /dork command ---
 async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Usage:
-      /dork powered by braintree
-    """
-    # re-use user_last_command_time & COOLDOWN_SECONDS from your script
     user = update.effective_user
     user_id = user.id
     chat = update.effective_chat
     now = time.time()
 
-    # extract query
     query = None
     if context.args:
         query = " ".join(context.args).strip()
@@ -7116,12 +7073,12 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not query:
         await update.message.reply_text(
-            "⚠️ <b>Usage:</b>\n<code>/dork powered by braintree</code>\n\n",
+            "⚠️ <b>Usage:</b>\n<code>/dork powered by braintree</code>",
             parse_mode=ParseMode.HTML
         )
         return
 
-    # cooldown check (if you maintain user_last_command_time)
+    # cooldown check
     last = user_last_command_time.get(user_id)
     if last:
         elapsed = now - last
@@ -7134,22 +7091,20 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
     user_last_command_time[user_id] = now
 
-    # credit check (single consume before doing the API call)
+    # credit check
     credit_ok = await consume_credit(user_id)
     if not credit_ok:
         await update.message.reply_text(
-            "⚠️ <b>No Credits Left!</b>\n\nPlease recharge your balance to continue using <b>/dork</b>.",
+            "⚠️ <b>No Credits Left!</b>",
             parse_mode=ParseMode.HTML
         )
         return
 
-    # inform user
     working = await update.message.reply_text(
         f"🔎 Searching for <code>{escape(query)}</code> ...",
         parse_mode=ParseMode.HTML
     )
 
-    # call API
     try:
         data = await _call_dork_api(query)
     except Exception as e:
@@ -7159,17 +7114,9 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
     urls = data.get("urls") if isinstance(data.get("urls"), list) else []
     total = int(data.get("total", len(urls))) if data.get("total") is not None else len(urls)
 
-    # create session
     session_id = _make_session_id(query, user_id)
-    _DORK_SESSIONS[session_id] = {
-        "query": query,
-        "urls": urls,
-        "total": total,
-        "ts": time.time(),
-        "user_id": user_id
-    }
+    _DORK_SESSIONS[session_id] = {"query": query, "urls": urls, "total": total, "ts": time.time(), "user_id": user_id}
 
-    # first page
     page_idx = 0
     text = _format_page_text(_DORK_SESSIONS[session_id], page_idx)
     kb = _build_dork_keyboard(session_id, page_idx)
@@ -7177,19 +7124,16 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await working.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=kb)
     except Exception:
-        # fallback: send new message
         await working.delete()
         await chat.send_message(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=kb)
 
-
-# --- Callback handler for paging ---
+# --- Callback handler ---
 async def dork_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     if not q or not q.data:
         return
     data = q.data
 
-    # noop
     if data == "dork_noop":
         await q.answer()
         return
@@ -7199,8 +7143,7 @@ async def dork_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.answer("Invalid callback")
         return
 
-    action = parts[0]
-    if action != "dork_nav":
+    if parts[0] != "dork_nav":
         await q.answer("Unknown action")
         return
 
@@ -7213,17 +7156,10 @@ async def dork_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     session = _DORK_SESSIONS.get(session_id)
     if not session:
-        await q.answer("Session expired. Re-run /dork.")
-        # optionally edit message to indicate expiry
-        try:
-            await q.message.edit_text("⚠️ Session expired. Please re-run /dork.", parse_mode=ParseMode.HTML)
-        except Exception:
-            pass
+        await q.message.edit_text("⚠️ Session expired. Please re-run /dork.", parse_mode=ParseMode.HTML)
         return
 
-    # refresh TTL timestamp
     session["ts"] = time.time()
-    # produce new page
     new_text = _format_page_text(session, page_idx)
     kb = _build_dork_keyboard(session_id, page_idx)
     try:
