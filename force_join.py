@@ -7,8 +7,8 @@ from telegram.ext import ContextTypes
 GROUP_ID = -1002554243871       # numeric group ID (required)
 GROUP_USERNAME = "CARDER33"     # for join button (@username only)
 
-CHANNEL_ID = -1002945032024    # numeric channel ID (required)
-CHANNEL_USERNAME = "+SrJGzyXwm75jNGU1"  # for join button (no '+' sign)
+CHANNEL_ID = -1003119905313    # numeric channel ID (required)
+CHANNEL_USERNAME = "regretingnow"  # for join button (no '+' sign)
 
 # ✅ Updated permanent image link from ImgBB
 FORCE_JOIN_IMAGE = "https://i.ibb.co/YFDvs5fr/6190727515442629298.jpg"
