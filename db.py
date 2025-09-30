@@ -29,7 +29,8 @@ async def init_db():
             plan_expiry TEXT DEFAULT '{DEFAULT_PLAN_EXPIRY}',
             keys_redeemed INT DEFAULT {DEFAULT_KEYS_REDEEMED},
             registered_at TEXT,
-            custom_urls JSONB DEFAULT '[]'
+            custom_urls JSONB DEFAULT '[]',
+            serp_key TEXT UNIQUE   -- 👈 NEW: store per-user SERP key (unique across all users)
         );
     """)
     await conn.close()
@@ -73,7 +74,7 @@ async def get_user(user_id):
             DEFAULT_PLAN_EXPIRY,
             DEFAULT_KEYS_REDEEMED,
             now,
-            json.dumps([])  # ✅ must serialize to JSON string
+            json.dumps([])
         )
         row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
         await conn.close()
@@ -92,7 +93,7 @@ async def update_user(user_id, **kwargs):
     for k, v in kwargs.items():
         if k == "custom_urls":
             sets.append(f"{k} = ${i}::jsonb")
-            values.append(json.dumps(v))  # ✅ convert list/dict → JSON string
+            values.append(json.dumps(v))
         else:
             sets.append(f"{k} = ${i}")
             values.append(v)
@@ -106,7 +107,7 @@ async def update_user(user_id, **kwargs):
 # === Get all users ===
 async def get_all_users():
     conn = await connect()
-    rows = await conn.fetch("SELECT id, plan, custom_urls FROM users")
+    rows = await conn.fetch("SELECT id, plan, custom_urls, serp_key FROM users")
     await conn.close()
     print(f"[DEBUG] Fetched {len(rows)} users from DB")
     result = []
@@ -122,3 +123,46 @@ async def get_user_count():
     count = await conn.fetchval("SELECT COUNT(*) FROM users")
     await conn.close()
     return count
+
+# === SERP key functions ===
+async def set_serp_key(user_id: int, serp_key: str) -> bool:
+    """
+    Save a SERP key for a user.
+    Returns True if success, False if the key already belongs to another user.
+    """
+    conn = await connect()
+    try:
+        await conn.execute(
+            "UPDATE users SET serp_key = $1 WHERE id = $2",
+            serp_key, user_id
+        )
+        await conn.close()
+        return True
+    except Exception as e:
+        await conn.close()
+        if "unique" in str(e).lower():
+            return False
+        raise
+
+async def get_serp_key(user_id: int):
+    conn = await connect()
+    row = await conn.fetchrow("SELECT serp_key FROM users WHERE id = $1", user_id)
+    await conn.close()
+    return row["serp_key"] if row else None
+
+async def clear_serp_key(user_id: int):
+    conn = await connect()
+    await conn.execute("UPDATE users SET serp_key = NULL WHERE id = $1", user_id)
+    await conn.close()
+
+async def serp_key_exists(serp_key: str, exclude_user: int = None) -> bool:
+    conn = await connect()
+    if exclude_user:
+        row = await conn.fetchrow(
+            "SELECT id FROM users WHERE serp_key = $1 AND id <> $2",
+            serp_key, exclude_user
+        )
+    else:
+        row = await conn.fetchrow("SELECT id FROM users WHERE serp_key = $1", serp_key)
+    await conn.close()
+    return bool(row)
