@@ -6945,7 +6945,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 
 
 
-# /adserp handler — validate using rockysoon dorker API, store per-user SERP API key (reject duplicates)
+# /adserp handler — validate using rockysoon dorker API, store per-user SearchApi.io key (reject duplicates)
 import logging
 import aiohttp
 import asyncio
@@ -6955,6 +6955,8 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
 # DB helpers (from your project)
+# - async def set_serp_key(user_id: int, key: str) -> bool
+# - async def serp_key_exists(key: str, exclude_user: int = None) -> bool
 from db import set_serp_key, serp_key_exists
 
 logger = logging.getLogger(__name__)
@@ -6972,7 +6974,6 @@ async def _test_key_against_dorker(api_key: str, timeout: int = _TEST_TIMEOUT) -
     Expects JSON like: {"urls": [...], "total": N, ...}
     Returns (ok: bool, reason: str)
     """
-    # Build URL: note we URL-encode the dork and the key
     encoded_dork = quote_plus(_TEST_DORK)
     encoded_key = quote_plus(api_key)
     url = f"{DORKER_API_BASE}{encoded_dork}/key={encoded_key}"
@@ -6983,11 +6984,11 @@ async def _test_key_against_dorker(api_key: str, timeout: int = _TEST_TIMEOUT) -
             async with session.get(url) as resp:
                 status = resp.status
                 text = await resp.text()
-                # Try parse JSON
+
+                # try JSON parse (be permissive)
                 try:
                     j = await resp.json(content_type=None)
                 except Exception:
-                    # fallback try
                     import json
                     try:
                         j = json.loads(text)
@@ -7009,14 +7010,13 @@ async def _test_key_against_dorker(api_key: str, timeout: int = _TEST_TIMEOUT) -
                 urls = j.get("urls") if isinstance(j.get("urls"), list) else []
                 total = int(j.get("total", len(urls) if urls is not None else 0))
 
+                # blank / empty result likely indicates exhausted credits or invalid key
                 if (not urls) and total == 0:
-                    # blank response — likely exhausted credits or key invalid for this dorker
                     return False, "blank_results"
 
-                # success if we got at least one url
                 if urls and len(urls) > 0:
                     return True, ""
-                # fallback: treat as blank
+
                 return False, "blank_results"
 
         except asyncio.TimeoutError:
@@ -7025,12 +7025,13 @@ async def _test_key_against_dorker(api_key: str, timeout: int = _TEST_TIMEOUT) -
             logger.exception("Unexpected error validating key against dorker: %s", e)
             return False, "request_exception"
 
+
 async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Usage:
-      /adserp YOUR_SERP_KEY
+      /adserp YOUR_SEARCHAPI_KEY
 
-    Saves the given SERP API key to the calling user's account.
+    Saves the given SearchApi.io key to the calling user's account.
     - Rejects keys already registered to other users.
     - Validates the key by calling your rockysoon dorker API with a small test dork.
     - If validation fails (blank results / http error / timeout) informs the user.
@@ -7039,87 +7040,94 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     args = context.args or []
 
-    # Button to get your own key
+    # Button to get a key from SearchApi.io
     get_key_kb = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Get your SerpApi key → serpapi.com", url="https://www.searchapi.io/")]]
+        [[InlineKeyboardButton("🔑 𝗚𝗲𝘁 𝘆𝗼𝘂𝗿 𝗦𝗲𝗿𝗽 𝗞𝗲𝘆", url="https://www.searchapi.io/")]]
     )
 
-    # No args -> usage + button
+    # No args -> usage + button (stylish)
     if not args:
         await update.message.reply_text(
-            "⚠️ <b>Usage:</b>\n<code>/adserp YOUR_SERP_KEY</code>\n\n"
-            "<i>You cannot add another user's SerpApi key.</i>\n"
-            "Get your own key by clicking the button below.",
+            "⚠️ <b>𝐔𝐬𝐚𝐠𝐞</b>\n<code>/adserp YOUR_SEARCHAPI_KEY</code>\n\n"
+            "<i>You must use your own Serp key — adding another user's key is not allowed.</i>\n\n"
+            "Tap the button below to get a key if you don't have one:",
             parse_mode=ParseMode.HTML,
             reply_markup=get_key_kb,
             disable_web_page_preview=True
         )
         return
 
-    serp_key = args[0].strip()
+    search_key = args[0].strip()
 
-    # Basic sanity
-    if len(serp_key) < 8:
+    # Basic sanity check on length
+    if len(search_key) < 8:
         await update.message.reply_text(
-            "⚠️ That key looks too short. Please paste a valid SERP API key.",
+            "⚠️𝗧𝗵𝗮𝘁 𝗸𝗲𝘆 𝗹𝗼𝗼𝗸𝘀 𝘁𝗼𝗼 𝘀𝗵𝗼𝗿𝘁. 𝗣𝗹𝗲𝗮𝘀𝗲 𝗽𝗮𝘀𝘁𝗲 𝗮 𝘃𝗮𝗹𝗶𝗱 𝗦𝗲𝗿𝗽 𝗸𝗲𝘆.",
             parse_mode=ParseMode.HTML
         )
         return
 
     # Check duplicate (registered to someone else)
     try:
-        exists = await serp_key_exists(serp_key, exclude_user=user_id)
+        exists = await serp_key_exists(search_key, exclude_user=user_id)
         if exists:
             await update.message.reply_text(
-                "⚠️ <b>You cannot add another user's SerpApi key.</b>\n\n"
-                "That key is already registered by another user. Get your own key by clicking the button below.",
+                "⚠️ <b>𝐊𝐞𝐲 𝐈𝐧 𝐔𝐬𝐞</b>\n\n"
+                "𝗧𝗵𝗮𝘁 𝗦𝗲𝗿𝗽 𝗸𝗲𝘆 𝗶𝘀 𝗮𝗹𝗿𝗲𝗮𝗱𝘆 𝗿𝗲𝗴𝗶𝘀𝘁𝗲𝗿𝗲𝗱 𝗯𝘆 𝗮𝗻𝗼𝘁𝗵𝗲𝗿 𝘂𝘀𝗲𝗿.\n"
+                "𝗣𝗹𝗲𝗮𝘀𝗲 𝗼𝗯𝘁𝗮𝗶𝗻 𝘆𝗼𝘂𝗿 𝗼𝘄𝗻 𝗸𝗲𝘆 (𝗯𝘂𝘁𝘁𝗼𝗻 𝗯𝗲𝗹𝗼𝘄).",
                 parse_mode=ParseMode.HTML,
                 reply_markup=get_key_kb,
                 disable_web_page_preview=True
             )
             return
     except Exception as e:
-        logger.exception("Error checking serp_key existence (continuing): %s", e)
-        # continue to validation/save — DB unique constraint should still protect
+        # If DB check fails, log and continue — unique constraint on save should still protect.
+        logger.exception("Error checking search_key existence (continuing): %s", e)
 
-    # Inform user we're validating
+    # Inform user we're validating (italic + small)
     validating_msg = await update.message.reply_text(
-        "🔐 Validating your SerpApi key — testing a quick dork query on rockysoon...",
+        "🔐𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜 𝙮𝙤𝙪𝙧 𝙨𝙚𝙧𝙥 𝙠𝙚𝙮 𝙥𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩 𝙪𝙣𝙩𝙞𝙡 𝙘𝙝𝙚𝙘𝙠𝙚𝙙.",
         parse_mode=ParseMode.HTML
     )
 
-    ok, reason = await _test_key_against_dorker(serp_key)
+    ok, reason = await _test_key_against_dorker(search_key)
 
     if not ok:
         # user-friendly mapping
         if reason == "invalid_or_unauthorized":
             txt = (
-                "❌ That key appears invalid or unauthorized for the dorker API.\n\n"
-                "Make sure you pasted the correct key. Get a new key here:"
+                "❌ <b>Invalid / Unauthorized</b>\n\n"
+                "That key appears invalid or unauthorized for the dorker API.\n"
+                "Make sure you pasted the correct SearchApi.io key. Get a new key below:"
             )
         elif reason == "rate_limited":
             txt = (
-                "❌ Rate-limited / throttled. Your key may be temporarily restricted. Try again later or get a new key:"
+                "❌ <b>Rate-limited</b>\n\n"
+                "Your key may be temporarily restricted or throttled. Try again later or get a new key:"
             )
         elif reason == "blank_results":
             txt = (
-                "⚠️ The dorker responded but returned no results for the test query.\n\n"
-                "This often means the key's credits are exhausted or the key is invalid. Please check your account or get a new key:"
+                "⚠️ <b>No Results</b>\n\n"
+                "The dorker responded but returned no results for the test query.\n"
+                "This often means the key's credits are exhausted or the key is invalid. Please check your SearchApi.io account or get a new key:"
             )
         elif reason == "timeout":
             txt = (
-                "❌ Validation timed out while contacting the dorker API. Try again later."
+                "❌ <b>Timeout</b>\n\n"
+                "Validation timed out while contacting the dorker API. Try again later."
             )
         elif reason == "invalid_response":
             txt = (
-                "❌ The dorker API returned an unexpected response. Please verify the service is healthy."
+                "❌ <b>Unexpected Response</b>\n\n"
+                "The dorker API returned an unexpected payload. Please verify the service is healthy."
             )
         else:
             txt = (
-                "❌ Failed to validate the key (network or unexpected response).\n\n"
-                "Try again or get a new key:"
+                "❌ <b>Validation Failed</b>\n\n"
+                "Failed to validate the key (network or unexpected response). Try again or get a new key:"
             )
 
+        # try to edit the validating message, fallback to new reply
         try:
             await validating_msg.edit_text(txt, parse_mode=ParseMode.HTML, reply_markup=get_key_kb, disable_web_page_preview=True)
         except Exception:
@@ -7128,29 +7136,36 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Save key
     try:
-        saved = await set_serp_key(user_id, serp_key)
+        saved = await set_serp_key(user_id, search_key)
     except Exception as e:
-        logger.exception("Failed to save serp_key for %s: %s", user_id, e)
-        await validating_msg.edit_text("❌ Database error while saving your key. Please try again later.", parse_mode=ParseMode.HTML)
+        logger.exception("Failed to save search_key for %s: %s", user_id, e)
+        try:
+            await validating_msg.edit_text("❌ <b>Database Error</b>\n\nCould not save your key. Please try again later.", parse_mode=ParseMode.HTML)
+        except Exception:
+            await update.message.reply_text("❌ <b>Database Error</b>\n\nCould not save your key. Please try again later.", parse_mode=ParseMode.HTML)
         return
 
     if not saved:
         # Duplicate / unique constraint failed
         await validating_msg.edit_text(
-            "⚠️ That SerpApi key is already registered by another user. If you think this is an error contact the admin.",
+            "⚠️ <b>Already Registered</b>\n\n"
+            "That SearchApi.io key appears to be registered by another user. If you believe this is an error, contact the admin.",
             parse_mode=ParseMode.HTML
         )
         return
 
-    # Success
+    # Success — stylish final message
     await validating_msg.edit_text(
-        "✅ <b>Saved!</b>\nYour SerpApi key has been stored and will be used for future /dork queries.",
+        "✅ <b>𝐒𝐚𝐯𝐞𝐝 </b>\n\n"
+        "𝗬𝗼𝘂𝗿 𝗸𝗲𝘆 𝘄𝗶𝗹𝗹 𝗯𝗲 𝘂𝘀𝗲𝗱 𝗳𝗼𝗿 𝗳𝘂𝘁𝘂𝗿𝗲 /𝗱𝗼𝗿𝗸 𝗾𝘂𝗲𝗿𝗶𝗲𝘀 𝗼𝗻 𝘁𝗵𝗶𝘀 𝗯𝗼𝘁.\n\n"
+        "<i>To remove the key later use <code>/rserp</code>.<i/>",
         parse_mode=ParseMode.HTML
     )
 
 
 
-# /rserp handler — remove the saved SerpApi key for a user
+
+# /rserp handler — remove the saved SearchApi.io key for a user
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -7169,7 +7184,7 @@ async def rserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Usage:
       /rserp
 
-    Removes the SerpApi key saved for the calling user.
+    Removes the SearchApi.io key saved for the calling user.
     """
     user = update.effective_user
     user_id = user.id
@@ -7179,14 +7194,15 @@ async def rserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.exception("Failed to fetch serp_key for %s: %s", user_id, e)
         await update.message.reply_text(
-            "❌ Database error while checking your saved key. Please try again later.",
+            "❌ <b>𝐃𝐚𝐭𝐚𝐛𝐚𝐬𝐞 𝐄𝐫𝐫𝐨𝐫</b>\n<i>Could not check your saved key. Please try again later.</i>",
             parse_mode=ParseMode.HTML
         )
         return
 
     if not current_key:
         await update.message.reply_text(
-            "⚠️ You don’t currently have any SerpApi key saved.\n\n"
+            "⚠️ <b>No Key Found</b>\n\n"
+            "You don’t currently have any 𝗦𝗲𝗿𝗽 𝗞𝗲𝘆 key saved.\n"
             "Use <code>/adserp YOUR_KEY</code> to add one.",
             parse_mode=ParseMode.HTML
         )
@@ -7198,26 +7214,29 @@ async def rserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.exception("Failed to delete serp_key for %s: %s", user_id, e)
         await update.message.reply_text(
-            "❌ Failed to remove your SerpApi key (database error). Please try again later.",
+            "❌ <b>𝐃𝐞𝐥𝐞𝐭𝐢𝐨𝐧 𝐅𝐚𝐢𝐥𝐞𝐝</b>\n<i>Database error while removing your key. Please try again later.</i>",
             parse_mode=ParseMode.HTML
         )
         return
 
     if not ok:
         await update.message.reply_text(
-            "⚠️ Could not remove your SerpApi key (it may have already been deleted).",
+            "⚠️ <b>Key Removal Issue</b>\n\n"
+            "Could not remove your <b>SearchApi.io</b> key "
+            "(it may have already been deleted).",
             parse_mode=ParseMode.HTML
         )
         return
 
     # Success message
     kb = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Get a new SerpApi key → serpapi.com", url="https://serpapi.com/")]]
+        [[InlineKeyboardButton("🔑 𝗚𝗲𝘁 𝘆𝗼𝘂𝗿 𝗦𝗲𝗿𝗽 𝗞𝗲𝘆", url="https://www.searchapi.io/")]]
     )
     await update.message.reply_text(
-        "✅ <b>Your SerpApi key has been removed.</b>\n\n"
-        "You can always add a new one with <code>/adserp YOUR_KEY</code>.\n"
-        "Don’t have a key? Click below:",
+        "✅ <b>𝐘𝐨𝐮𝐫 𝐒𝐞𝐚𝐫𝐜𝐡𝐀𝐩𝐢.𝐢𝐨 𝐤𝐞𝐲 𝐡𝐚𝐬 𝐛𝐞𝐞𝐧 𝐫𝐞𝐦𝐨𝐯𝐞𝐝.</b>\n\n"
+        "➕ Add a new one anytime with:\n"
+        "<code>/adserp YOUR_KEY</code>\n\n"
+        "<i>Don’t have a key? Click below to grab one 👇</i>",
         parse_mode=ParseMode.HTML,
         reply_markup=kb,
         disable_web_page_preview=True
@@ -7286,7 +7305,7 @@ def _build_page_text(session_id: str, page_index: int) -> str:
     cur_page = page_index + 1
 
     header = "━━━━━━━━━━━━━━━━━━━━━━\n"
-    header += f"<i>◆ 𝐃𝐎𝐑𝐊𝐄𝐑 𝐏𝐀𝐆𝐄 {cur_page}/{max_pages}</i>\n"
+    header += f"<i>◆ 𝐃𝐎𝐑𝐊𝐄𝐑 𝐑𝐄𝐒𝐔𝐋𝐓𝐒 {cur_page}/{max_pages}</i>\n"
     header += "━━━━━━━━━━━━━━━━━━━━━━\n"
 
     lines = []
@@ -7419,8 +7438,8 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Processing message ---
     processing_text = (
         f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-        f"<pre><code>𝗩𝗕𝗩 𝗖𝗵𝗲𝗰𝗸 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
-        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ Dorker\n"
+        f"<pre><code>𝗗𝗼𝗿𝗸𝗶𝗻𝗴 𝗢𝗻𝗴𝗼𝗶𝗻𝗴</code></pre>\n"
+        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝗗𝗼𝗿𝗸𝗲𝗿\n"
     )
     try:
         working = await update.message.reply_text(
@@ -7435,11 +7454,11 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- error cases ---
     if data.get("error") == "NO_SERP_KEY":
         kb = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("🔑 Get your SerpApi key", url="https://www.searchapi.io/")]]
+            [[InlineKeyboardButton("🔑 𝗚𝗲𝘁 𝘆𝗼𝘂𝗿 𝗦𝗲𝗿𝗽 𝗞𝗲𝘆", url="https://www.searchapi.io/")]]
         )
         await working.edit_text(
             "⚠️ <b>No SERP API key found!</b>\n\n"
-            "<i>You cannot use another user's key. Get your own SerpApi key below and add it with</i> <code>/adserp YOUR_KEY</code>.",
+            "<i>Get your own SerpApi key below and add it with</i> <code>/adserp YOUR_KEY</code>.",
             parse_mode=ParseMode.HTML, reply_markup=kb, disable_web_page_preview=True
         )
         return
@@ -7460,7 +7479,7 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if (not urls) and total == 0:
         kb = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("🔑 Get new SerpApi key", url="https://www.searchapi.io/")]]
+            [[InlineKeyboardButton("🔑 𝗚𝗲𝘁 𝘆𝗼𝘂𝗿 𝗦𝗲𝗿𝗽 𝗞𝗲𝘆", url="https://www.searchapi.io/")]]
         )
         await working.edit_text(
             "⚠️ <b>Your SerpApi key returned a blank response.</b>\n\n"
@@ -7518,7 +7537,7 @@ async def dork_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=q.message.chat.id,
                 document=bio,
                 filename=bio.name,
-                caption="📥 Here’s your .txt file with all extracted URLs.",
+                caption="𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗨𝗥𝗟𝘀 (.𝘁𝘅𝘁).",
                 reply_to_message_id=q.message.reply_to_message.message_id
                 if q.message.reply_to_message
                 else q.message.message_id,
