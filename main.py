@@ -6945,41 +6945,151 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 
 
 
+# /adserp handler — store per-user SERP API key (reject duplicates)
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
-import time, hashlib, aiohttp, asyncio, html
+# import DB helpers (from your updated db.py)
+from db import set_serp_key, serp_key_exists, get_serp_key
+
+logger = logging.getLogger(__name__)
+
+async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Usage:
+      /adserp YOUR_SERP_KEY
+
+    Saves the given SERP API key to the calling user's account.
+    - Rejects keys already registered to other users.
+    - If no key provided, shows a button to get a key at searchapi.io.
+    """
+    user = update.effective_user
+    user_id = user.id
+    args = context.args or []
+
+    # If no argument given, show usage + link to get a key
+    if not args:
+        kb = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Get a key → searchapi.io", url="https://www.searchapi.io/")]]
+        )
+        await update.message.reply_text(
+            "⚠️ <b>Usage:</b>\n<code>/adserp YOUR_SERP_KEY</code>\n\n"
+            "Don't have a key? Get one here:",
+            parse_mode=ParseMode.HTML,
+            reply_markup=kb,
+            disable_web_page_preview=True
+        )
+        return
+
+    serp_key = args[0].strip()
+
+    # Basic validation
+    if len(serp_key) < 8:
+        await update.message.reply_text(
+            "⚠️ That key looks too short. Please paste a valid SERP API key.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    try:
+        # Check if the key is already registered to another user
+        exists = await serp_key_exists(serp_key, exclude_user=user_id)
+        if exists:
+            await update.message.reply_text(
+                "⚠️ This SERP key is already registered by another user. "
+                "If you think this is a mistake contact the bot admin.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+    except Exception as e:
+        # DB check failed — log and continue to attempt save (unique constraint will protect)
+        logger.exception("Error checking serp_key existence (continuing to attempt save): %s", e)
+
+    # Save the key for this user (DB unique constraint prevents races)
+    try:
+        ok = await set_serp_key(user_id, serp_key)
+        if not ok:
+            # set_serp_key returns False when unique constraint or duplicate detected
+            await update.message.reply_text(
+                "⚠️ This SERP key is already registered by another user.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+    except Exception as e:
+        logger.exception("Failed saving serp_key for user %s: %s", user_id, e)
+        await update.message.reply_text(
+            "❌ Failed to save SERP key (database error). Please try again later.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # Success
+    await update.message.reply_text(
+        "✅ Your SERP key has been saved and will be used for your /dork queries.\n\n"
+        "Note: your key is stored securely and will not be shared with other users.",
+        parse_mode=ParseMode.HTML
+    )
+
+
+
+# /dork command + pagination (async, python-telegram-bot v20+)
+import time
+import hashlib
+import asyncio
+import aiohttp
+import html as _html
 from urllib.parse import quote_plus
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from telegram.error import TelegramError
 import logging
 
 logger = logging.getLogger(__name__)
 
+# Config
 DORK_API_BASE = "https://rockysoon.onrender.com/gateway=dorker/masterkey=rockyog/dork="
 PAGE_SIZE = 5
-SESSION_TTL = 300
+SESSION_TTL = 300        # seconds
+CLEANUP_INTERVAL = 600   # seconds
 
-# In-memory sessions: session_id -> {urls, total, ts, user_id}
+# In-memory sessions: session_id -> {"query", "urls", "total", "ts", "user_id"}
 _DORK_SESSIONS: dict = {}
 
 def _make_session_id(query: str, user_id: int) -> str:
     return hashlib.sha1(f"{query}|{user_id}|{time.time()}".encode()).hexdigest()[:24]
 
-async def _call_dork_api(query: str, timeout: int = 20) -> dict:
-    url = DORK_API_BASE + quote_plus(query)
-    timeout_cfg = aiohttp.ClientTimeout(total=timeout)
-    async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
-        async with session.get(url) as resp:
-            try:
-                return await resp.json(content_type=None)
-            except Exception:
-                return {"urls": [], "total": 0}
+# background cleaner (call once)
+def _start_session_cleaner():
+    async def _cleaner():
+        while True:
+            now = time.time()
+            expired = [k for k, v in _DORK_SESSIONS.items() if now - v.get("ts", 0) > SESSION_TTL]
+            for k in expired:
+                _DORK_SESSIONS.pop(k, None)
+            await asyncio.sleep(CLEANUP_INTERVAL)
+    try:
+        loop = asyncio.get_event_loop()
+        loop.create_task(_cleaner())
+    except RuntimeError:
+        def _bg():
+            import asyncio as _asyncio
+            loop2 = _asyncio.new_event_loop()
+            _asyncio.set_event_loop(loop2)
+            loop2.create_task(_cleaner())
+            loop2.run_forever()
+        __import__("threading").Thread(target=_bg, daemon=True).start()
 
-def build_dork_page(session_id: str, page_index: int) -> str:
-    session = _DORK_SESSIONS[session_id]
-    urls, total = session["urls"], session["total"]
-    start, end = page_index * PAGE_SIZE, min((page_index+1) * PAGE_SIZE, total)
+_start_session_cleaner()
+
+# helper: format a fixed-height page (PAGE_SIZE lines)
+def _build_page_text(session_id: str, page_index: int) -> str:
+    s = _DORK_SESSIONS[session_id]
+    urls = s.get("urls", [])
+    total = s.get("total", 0)
+    start = page_index * PAGE_SIZE
+    end = min((page_index + 1) * PAGE_SIZE, total)
     page_urls = urls[start:end]
 
     max_pages = (total - 1) // PAGE_SIZE + 1 if total else 1
@@ -6987,93 +7097,192 @@ def build_dork_page(session_id: str, page_index: int) -> str:
     header += f"<i>◆ 𝐃𝐎𝐑𝐊𝐄𝐑 𝐏𝐀𝐆𝐄 {page_index+1}/{max_pages}</i>\n"
     header += "━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    # always show PAGE_SIZE slots to keep height consistent
     lines = []
-    for idx in range(PAGE_SIZE):
-        if idx < len(page_urls):
-            url = page_urls[idx]
-            num = start + idx + 1
-            lines.append(f"{num}. <code>{html.escape(url)}</code>")
+    for i in range(PAGE_SIZE):
+        slot_index = start + i
+        if i < len(page_urls):
+            url = page_urls[i]
+            lines.append(f"{slot_index+1}. <code>{_html.escape(url)}</code>")
         else:
-            lines.append(f"{start+idx+1}. <code>{'─'*20}</code>")  # filler line
+            # filler to keep box height fixed
+            lines.append(f"{slot_index+1}. <code>{'─'*24}</code>")
 
     return header + "\n".join(lines)
 
-def build_dork_buttons(session_id: str, page_index: int) -> InlineKeyboardMarkup:
-    session = _DORK_SESSIONS[session_id]
-    total = session["total"]
+# helper: build nav inline keyboard (Back / Next only)
+from telegram import InlineKeyboardMarkup
+def _build_nav_keyboard(session_id: str, page_index: int) -> InlineKeyboardMarkup:
+    s = _DORK_SESSIONS[session_id]
+    total = s.get("total", 0)
     max_pages = (total - 1) // PAGE_SIZE + 1 if total else 1
-    buttons = []
-    nav_buttons = []
+    row = []
     if page_index > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"dork_{session_id}_{page_index-1}"))
+        row.append(InlineKeyboardButton("⬅️ Back", callback_data=f"dork_{session_id}_{page_index-1}"))
+    else:
+        row.append(InlineKeyboardButton("⬅️ Back", callback_data="dork_noop"))
+    # no middle page button as requested (we omit it)
     if page_index < max_pages - 1:
-        nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"dork_{session_id}_{page_index+1}"))
-    if nav_buttons:
-        buttons.append(nav_buttons)
-    buttons.append([InlineKeyboardButton("❌ Close", callback_data=f"dork_close_{session_id}")])
-    return InlineKeyboardMarkup(buttons)
+        row.append(InlineKeyboardButton("➡️ Next", callback_data=f"dork_{session_id}_{page_index+1}"))
+    else:
+        row.append(InlineKeyboardButton("➡️ Next", callback_data="dork_noop"))
+    return InlineKeyboardMarkup([row])
 
-# /dork command
+# API call using user's saved serp key
+async def _call_dork_api_for_user(query: str, user_id: int, timeout: int = 20) -> dict:
+    # expects get_serp_key(user_id) in your db.py
+    from db import get_serp_key
+    user_key = await get_serp_key(user_id)
+    if not user_key:
+        return {"error": "NO_SERP_KEY", "urls": [], "total": 0}
+    api_url = DORK_API_BASE + quote_plus(query) + f"/key={quote_plus(user_key)}"
+    timeout_cfg = aiohttp.ClientTimeout(total=timeout)
+    async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
+        try:
+            async with session.get(api_url) as resp:
+                text = await resp.text()
+                try:
+                    return await resp.json(content_type=None)
+                except Exception:
+                    import json
+                    try:
+                        return json.loads(text)
+                    except Exception:
+                        return {"urls": [], "total": 0}
+        except asyncio.TimeoutError:
+            return {"error": "TIMEOUT"}
+        except Exception as e:
+            logger.exception("Dork API request error: %s", e)
+            return {"error": "REQUEST_ERROR", "message": str(e)}
+
+# --- /dork command handler ---
 async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = " ".join(context.args) if context.args else None
+    user = update.effective_user
+    user_id = user.id
+    chat = update.effective_chat
+
+    # extract query (args or reply)
+    query = None
+    if context.args:
+        query = " ".join(context.args).strip()
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        query = update.message.reply_to_message.text.strip()
+
     if not query:
-        await update.message.reply_text("⚠️ Usage: /dork <query>", parse_mode=ParseMode.HTML)
+        await update.message.reply_text("⚠️ Usage: /dork <search terms>", parse_mode=ParseMode.HTML)
         return
 
-    # credit check here if needed
-    if not await consume_credit(update.effective_user.id):
-        await update.message.reply_text("⚠️ No credits left!", parse_mode=ParseMode.HTML)
+    # cooldown using your global user_last_command_time and COOLDOWN_SECONDS
+    try:
+        last = user_last_command_time.get(user_id)
+    except Exception:
+        last = None
+    now = time.time()
+    if last:
+        elapsed = now - last
+        if elapsed < COOLDOWN_SECONDS:
+            remaining = round(COOLDOWN_SECONDS - elapsed, 1)
+            await update.message.reply_text(f"⏳ Please wait <b>{remaining}s</b> before using /dork again.", parse_mode=ParseMode.HTML)
+            return
+    user_last_command_time[user_id] = now
+
+    # consume credit once at start (your consume_credit async function)
+    if not await consume_credit(user_id):
+        await update.message.reply_text("⚠️ You have no credits left. Recharge to use /dork.", parse_mode=ParseMode.HTML)
         return
 
-    msg = await update.message.reply_text(
-        f"🔎 Searching <code>{html.escape(query)}</code> ...",
-        parse_mode=ParseMode.HTML
-    )
+    # send working message
+    working = await update.message.reply_text(f"🔎 Searching <code>{_html.escape(query)}</code> ...", parse_mode=ParseMode.HTML)
+
+    # call API with user's key
+    data = await _call_dork_api_for_user(query, user_id)
+
+    # handle missing key
+    if data.get("error") == "NO_SERP_KEY":
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton("Get a key → searchapi.io", url="https://www.searchapi.io/")]])
+        await working.edit_text(
+            "⚠️ You must add your SERP API key to use /dork.\n\nUse <code>/adserp YOUR_KEY</code> to add it.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=kb,
+            disable_web_page_preview=True
+        )
+        return
+
+    if data.get("error") == "TIMEOUT":
+        await working.edit_text("❌ Dork API timed out. Try again later.", parse_mode=ParseMode.HTML)
+        return
+
+    if data.get("error") == "REQUEST_ERROR":
+        await working.edit_text(f"❌ Dork API request error:\n<code>{_html.escape(data.get('message',''))}</code>", parse_mode=ParseMode.HTML)
+        return
+
+    # parse results
+    urls = data.get("urls") if isinstance(data.get("urls"), list) else []
+    total = int(data.get("total", len(urls))) if data.get("total") is not None else len(urls)
+
+    # create a session
+    session_id = _make_session_id(query, user_id)
+    _DORK_SESSIONS[session_id] = {"query": query, "urls": urls, "total": total, "ts": time.time(), "user_id": user_id}
+
+    # first page
+    page_idx = 0
+    text = _build_page_text(session_id, page_idx)
+    kb = _build_nav_keyboard(session_id, page_idx)
 
     try:
-        data = await _call_dork_api(query)
-    except Exception as e:
-        await msg.edit_text(f"❌ API error: {html.escape(str(e))}", parse_mode=ParseMode.HTML)
-        return
+        await working.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=kb)
+    except Exception:
+        # fallback: delete and send new message
+        try:
+            await working.delete()
+        except Exception:
+            pass
+        await chat.send_message(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=kb)
 
-    urls = data.get("urls", [])
-    total = int(data.get("total", len(urls)))
-
-    session_id = _make_session_id(query, update.effective_user.id)
-    _DORK_SESSIONS[session_id] = {"urls": urls, "total": total, "ts": time.time(), "user_id": update.effective_user.id}
-
-    text = build_dork_page(session_id, 0)
-    buttons = build_dork_buttons(session_id, 0)
-    await msg.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=buttons)
-
-# Pagination + close
+# --- pagination callback handler ---
 async def dork_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
-    await q.answer()
+    if not q or not q.data:
+        return
     data = q.data
 
-    if data.startswith("dork_close_"):
-        try:
-            await q.message.delete()
-        except TelegramError:
-            pass
+    if data == "dork_noop":
+        await q.answer()
         return
 
-    if data.startswith("dork_"):
-        _, session_id, page = data.split("_", 2)
+    if not data.startswith("dork_"):
+        await q.answer()
+        return
+
+    # format: dork_{session_id}_{page_index}
+    try:
+        _, session_id, page_str = data.split("_", 2)
+        page_index = int(page_str)
+    except Exception:
+        await q.answer("Invalid callback")
+        return
+
+    session = _DORK_SESSIONS.get(session_id)
+    if not session:
         try:
-            page_index = int(page)
-        except:
-            return
-        session = _DORK_SESSIONS.get(session_id)
-        if not session:
-            await q.message.edit_text("⚠️ Session expired. Re-run /dork.")
-            return
-        session["ts"] = time.time()
-        text = build_dork_page(session_id, page_index)
-        buttons = build_dork_buttons(session_id, page_index)
-        await q.message.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=buttons)
+            await q.message.edit_text("⚠️ Session expired. Please re-run /dork.", parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
+        await q.answer()
+        return
+
+    # refresh TTL
+    session["ts"] = time.time()
+
+    # build new page and keyboard
+    new_text = _build_page_text(session_id, page_index)
+    new_kb = _build_nav_keyboard(session_id, page_index)
+    try:
+        await q.message.edit_text(new_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=new_kb)
+        await q.answer()
+    except Exception as e:
+        logger.exception("Failed to update dork page: %s", e)
+        await q.answer("Unable to update page.")
+
 
 
 
@@ -8181,6 +8390,7 @@ def register_user_commands(application):
         ("gen", gen),
         ("open", open_command),
         ("dork", dork),
+        ("adserp", adserp), 
         ("adcr", adcr_command),
         ("ad", ad_command),
         ("bin", bin_lookup),
