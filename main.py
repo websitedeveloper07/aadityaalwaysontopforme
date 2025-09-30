@@ -6946,6 +6946,296 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 
 
 
+# Example registration (where you setup dispatcher):
+# from telegram.ext import CommandHandler, CallbackQueryHandler
+# dispatcher.add_handler(CommandHandler("dork", dork)))
+# dispatcher.add_handler(CallbackQueryHandler(dork_callback, pattern="^dork_"))
+
+import time
+import hashlib
+import threading
+import aiohttp
+import asyncio
+from html import escape
+from urllib.parse import quote_plus
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+# CONFIG (tweak as needed)
+DORK_API_BASE = "https://rockysoon.onrender.com/gateway=dorker/masterkey=rockyog/dork="
+PAGE_SIZE = 5
+SESSION_TTL = 300          # seconds
+CLEANUP_INTERVAL = 600     # seconds between cleanup runs
+# re-uses COOLDOWN_SECONDS and user_last_command_time from your script
+
+# In-memory sessions store
+# session_id -> {"query": str, "urls": [...], "total": int, "ts": epoch, "user_id": int}
+_DORK_SESSIONS: dict = {}
+
+def _make_session_id(query: str, user_id: int) -> str:
+    s = f"{query}|{user_id}|{time.time()}"
+    return hashlib.sha1(s.encode()).hexdigest()[:24]
+
+
+def _start_session_cleaner():
+    async def _cleaner():
+        while True:
+            now = time.time()
+            to_del = [k for k, v in _DORK_SESSIONS.items() if now - v["ts"] > SESSION_TTL]
+            for k in to_del:
+                _DORK_SESSIONS.pop(k, None)
+            await asyncio.sleep(CLEANUP_INTERVAL)
+    # schedule background task in event loop
+    try:
+        loop = asyncio.get_event_loop()
+        loop.create_task(_cleaner())
+    except RuntimeError:
+        # if no event loop yet (rare), spawn a thread that will create one
+        def _bg():
+            import asyncio as _asyncio
+            loop2 = _asyncio.new_event_loop()
+            _asyncio.set_event_loop(loop2)
+            loop2.create_task(_cleaner())
+            loop2.run_forever()
+        t = threading.Thread(target=_bg, daemon=True)
+        t.start()
+
+# start cleaner once
+_start_session_cleaner()
+
+
+async def _call_dork_api(query: str, timeout: int = 20) -> dict:
+    url = DORK_API_BASE + quote_plus(query)
+    timeout_cfg = aiohttp.ClientTimeout(total=timeout)
+    async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
+        async with session.get(url) as resp:
+            text = await resp.text()
+            try:
+                return await resp.json(content_type=None)
+            except Exception:
+                # fallback: try parse text as JSON-ish, else return { "urls": [], "total": 0 }
+                try:
+                    import json
+                    return json.loads(text)
+                except Exception:
+                    return {"urls": [], "total": 0}
+
+
+def _format_page_text(session: dict, page_index: int) -> str:
+    """
+    Returns HTML string: compact banner + <pre> block of numbered monospace URLs (no extra lines).
+    """
+    query = session["query"]
+    urls = session["urls"]
+    total = session["total"]
+    start = page_index * PAGE_SIZE
+    end = min(start + PAGE_SIZE, total)
+    page_urls = urls[start:end]
+
+    max_pages = (total - 1) // PAGE_SIZE + 1 if total > 0 else 1
+    cur_page = page_index + 1
+
+    header = []
+    header.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    header.append(f"◈  DORKER PAGE {cur_page}/{max_pages}")
+    header.append("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+
+    if page_urls:
+        pre_lines = []
+        for i, u in enumerate(page_urls, start=start+1):
+            pre_lines.append(f"{i}. {escape(u)}")
+        pre_block = "<pre>" + "\n".join(pre_lines) + "</pre>"
+    else:
+        pre_block = "<pre>No results on this page.</pre>"
+
+    footer = "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nUse ◀ / ▶ to navigate pages."
+    return "\n".join(header) + pre_block + footer
+
+
+def _build_dork_keyboard(session_id: str, page_index: int) -> InlineKeyboardMarkup:
+    """
+    Row1: [◀ Back] [Page X/Y] [Next ▶]
+    Row2: [Open n]... for each visible URL (1..PAGE_SIZE)
+    """
+    session = _DORK_SESSIONS[session_id]
+    total = session["total"]
+    urls = session["urls"]
+    start = page_index * PAGE_SIZE
+    end = min(start + PAGE_SIZE, total)
+    page_urls = urls[start:end]
+
+    max_pages = (total - 1) // PAGE_SIZE + 1 if total > 0 else 1
+    cur_page_num = page_index + 1
+
+    row1 = []
+    if page_index > 0:
+        row1.append(InlineKeyboardButton("◀ Back", callback_data=f"dork_nav:{session_id}:{page_index-1}"))
+    else:
+        row1.append(InlineKeyboardButton("◀ Back", callback_data="dork_noop"))
+
+    row1.append(InlineKeyboardButton(f"Page {cur_page_num}/{max_pages}", callback_data="dork_noop"))
+
+    if page_index < max_pages - 1:
+        row1.append(InlineKeyboardButton("Next ▶", callback_data=f"dork_nav:{session_id}:{page_index+1}"))
+    else:
+        row1.append(InlineKeyboardButton("Next ▶", callback_data="dork_noop"))
+
+    keyboard = [row1]
+
+    # Row2: clickable Open buttons (url buttons)
+    if page_urls:
+        row2 = []
+        for i, u in enumerate(page_urls, start=start+1):
+            label = f"Open {i}"
+            # url button opens link in browser
+            row2.append(InlineKeyboardButton(label, url=u))
+        keyboard.append(row2)
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+# --- /dork command (async handler) ---
+async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Usage:
+      /dork powered by braintree
+    """
+    # re-use user_last_command_time & COOLDOWN_SECONDS from your script
+    user = update.effective_user
+    user_id = user.id
+    chat = update.effective_chat
+    now = time.time()
+
+    # extract query
+    query = None
+    if context.args:
+        query = " ".join(context.args).strip()
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        query = update.message.reply_to_message.text.strip()
+
+    if not query:
+        await update.message.reply_text(
+            "⚠️ <b>Usage:</b>\n<code>/dork powered by braintree</code>\n\n",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # cooldown check (if you maintain user_last_command_time)
+    last = user_last_command_time.get(user_id)
+    if last:
+        elapsed = now - last
+        if elapsed < COOLDOWN_SECONDS:
+            remaining = round(COOLDOWN_SECONDS - elapsed, 1)
+            await update.message.reply_text(
+                f"⏳ Please wait <b>{remaining}s</b> before using /dork again.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+    user_last_command_time[user_id] = now
+
+    # credit check (single consume before doing the API call)
+    credit_ok = await consume_credit(user_id)
+    if not credit_ok:
+        await update.message.reply_text(
+            "⚠️ <b>No Credits Left!</b>\n\nPlease recharge your balance to continue using <b>/dork</b>.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # inform user
+    working = await update.message.reply_text(
+        f"🔎 Searching for <code>{escape(query)}</code> ...",
+        parse_mode=ParseMode.HTML
+    )
+
+    # call API
+    try:
+        data = await _call_dork_api(query)
+    except Exception as e:
+        await working.edit_text(f"❌ API error:\n<code>{escape(str(e))}</code>", parse_mode=ParseMode.HTML)
+        return
+
+    urls = data.get("urls") if isinstance(data.get("urls"), list) else []
+    total = int(data.get("total", len(urls))) if data.get("total") is not None else len(urls)
+
+    # create session
+    session_id = _make_session_id(query, user_id)
+    _DORK_SESSIONS[session_id] = {
+        "query": query,
+        "urls": urls,
+        "total": total,
+        "ts": time.time(),
+        "user_id": user_id
+    }
+
+    # first page
+    page_idx = 0
+    text = _format_page_text(_DORK_SESSIONS[session_id], page_idx)
+    kb = _build_dork_keyboard(session_id, page_idx)
+
+    try:
+        await working.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=kb)
+    except Exception:
+        # fallback: send new message
+        await working.delete()
+        await chat.send_message(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=kb)
+
+
+# --- Callback handler for paging ---
+async def dork_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    if not q or not q.data:
+        return
+    data = q.data
+
+    # noop
+    if data == "dork_noop":
+        await q.answer()
+        return
+
+    parts = data.split(":")
+    if len(parts) < 3:
+        await q.answer("Invalid callback")
+        return
+
+    action = parts[0]
+    if action != "dork_nav":
+        await q.answer("Unknown action")
+        return
+
+    session_id = parts[1]
+    try:
+        page_idx = int(parts[2])
+    except ValueError:
+        await q.answer("Bad page")
+        return
+
+    session = _DORK_SESSIONS.get(session_id)
+    if not session:
+        await q.answer("Session expired. Re-run /dork.")
+        # optionally edit message to indicate expiry
+        try:
+            await q.message.edit_text("⚠️ Session expired. Please re-run /dork.", parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
+        return
+
+    # refresh TTL timestamp
+    session["ts"] = time.time()
+    # produce new page
+    new_text = _format_page_text(session, page_idx)
+    kb = _build_dork_keyboard(session_id, page_idx)
+    try:
+        await q.message.edit_text(new_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=kb)
+        await q.answer()
+    except Exception:
+        await q.answer("Unable to update page.")
+
+
+
+
+
 import re
 import aiohttp
 import asyncio
@@ -8046,6 +8336,7 @@ def register_user_commands(application):
         ("msite", msite_command),
         ("gen", gen),
         ("open", open_command),
+        ("dork", dork),
         ("adcr", adcr_command),
         ("ad", ad_command),
         ("bin", bin_lookup),
@@ -8096,6 +8387,7 @@ def main():
     application.add_handler(CallbackQueryHandler(cmds_pagination, pattern="^page_"))
     application.add_handler(CallbackQueryHandler(handle_close, pattern="^close$"))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^stop:"))
+    application.add_handler(CallbackQueryHandler(dork_callback, pattern=r"^dork_")
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
 
     # Generic handler for all /start menu buttons
