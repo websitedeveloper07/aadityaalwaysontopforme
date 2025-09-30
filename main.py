@@ -7483,7 +7483,8 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- pagination & file handler ---
 async def dork_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
-    if not q or not q.data: return
+    if not q or not q.data:
+        return
     data = q.data
 
     if data == "dork_noop":
@@ -7494,18 +7495,42 @@ async def dork_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _, _, session_id = data.partition("dork_file_")
         session = _DORK_SESSIONS.get(session_id)
         if not session:
-            await q.answer("⚠️ <b>Session expired.</b>\n<i>Re-run /dork.</i>", show_alert=True, parse_mode=ParseMode.HTML)
+            await q.answer(
+                "⚠️ <b>Session expired.</b>\n<i>Re-run /dork.</i>",
+                show_alert=True,
+                parse_mode=ParseMode.HTML,
+            )
             return
+
         urls = session.get("urls", []) or []
         if not urls:
-            await q.answer("⚠️ <i>No URLs to include in file.</i>", show_alert=True, parse_mode=ParseMode.HTML)
+            await q.answer(
+                "⚠️ <i>No URLs to include in file.</i>",
+                show_alert=True,
+                parse_mode=ParseMode.HTML,
+            )
             return
+
         bio = _build_urls_file_bytes(urls)
-        await context.bot.send_document(chat_id=q.message.chat.id, document=bio, filename=bio.name)
-        await q.answer("📥 File sent with all URLs.")
+        try:
+            # ✅ Send file in group, as reply to the original /dork message
+            await context.bot.send_document(
+                chat_id=q.message.chat.id,
+                document=bio,
+                filename=bio.name,
+                caption="📥 Here’s your .txt file with all extracted URLs.",
+                reply_to_message_id=q.message.reply_to_message.message_id
+                if q.message.reply_to_message
+                else q.message.message_id,
+            )
+            await q.answer("📥 File sent as reply.")
+        except Exception as e:
+            logger.exception("Failed to send dork file: %s", e)
+            await q.answer("❌ Failed to send file.", show_alert=True)
         return
 
-    if not data.startswith("dork_"): return
+    if not data.startswith("dork_"):
+        return
 
     try:
         _, session_id, page_str = data.split("_", 2)
@@ -7516,15 +7541,24 @@ async def dork_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     session = _DORK_SESSIONS.get(session_id)
     if not session:
-        await q.message.edit_text("⚠️ <b>Session expired.</b>\n<i>Please re-run /dork.</i>", parse_mode=ParseMode.HTML)
+        await q.message.edit_text(
+            "⚠️ <b>Session expired.</b>\n<i>Please re-run /dork.</i>",
+            parse_mode=ParseMode.HTML,
+        )
         await q.answer()
         return
 
     session["ts"] = time.time()
     new_text = _build_page_text(session_id, page_index)
     new_kb = _build_nav_keyboard(session_id, page_index)
-    await q.message.edit_text(new_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True, reply_markup=new_kb)
+    await q.message.edit_text(
+        new_text,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True,
+        reply_markup=new_kb,
+    )
     await q.answer()
+
 
 
 
