@@ -7455,12 +7455,12 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # handle missing key
     if data.get("error") == "NO_SERP_KEY":
         kb = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Get your SerpApi key → serpapi.com", url="https://www.searchapi.io/")]]
+            [[InlineKeyboardButton("Get your SerpApi key → searchapi.io", url="https://www.searchapi.io/")]]
         )
         try:
             await working.edit_text(
-                "⚠️ You cannot add others serp key — click the button below to get your own key.\n\n"
-                "After you have your key, use <code>/adserp YOUR_KEY</code> to add it to your account.",
+                "⚠️ <b>No SERP API key found for your account.</b>\n\n"
+                "You cannot add another user's key — get your own SerpApi key from the link below and then add it with <code>/adserp YOUR_KEY</code>.",
                 parse_mode=ParseMode.HTML,
                 reply_markup=kb,
                 disable_web_page_preview=True
@@ -7468,7 +7468,7 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             # fallback for clients that error on edit
             await update.message.reply_text(
-                "⚠️ You cannot add others serp key — get your own at https://serpapi.com/ and then use /adserp YOUR_KEY",
+                "⚠️ No SERP API key found for your account. Get your own at https://www.searchapi.io/ and then use /adserp YOUR_KEY",
                 parse_mode=ParseMode.HTML
             )
         return
