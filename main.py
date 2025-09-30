@@ -6608,7 +6608,7 @@ async def run_vbv_check(msg, update, card_data: str):
         return
 
     bin_number = cc[:6]
-    api_url = f"https://rocky-815m.onrender.com/gateway=bin?key=Payal&card={card_data}"
+    api_url = f"https://rocky-815m.onrender.com/gateway=bin?key=rockysoon&card={card_data}"
 
     # --- Fetch VBV data ---
     try:
