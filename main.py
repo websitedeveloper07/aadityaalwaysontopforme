@@ -6960,7 +6960,7 @@ from db import set_serp_key, serp_key_exists
 logger = logging.getLogger(__name__)
 
 # Test dork (low-noise)
-_TEST_DORK = 'intext:"Powered by Braintree" inurl:/myaccount'
+_TEST_DORK = 'intext:"Powered by Braintree"'
 
 # Use your dorker API base (the URL you provided)
 DORKER_API_BASE = "https://rockysoon.onrender.com/gateway=dorker/masterkey=rockyog/dork="
@@ -7041,7 +7041,7 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Button to get your own key
     get_key_kb = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Get your SerpApi key → serpapi.com", url="https://serpapi.com/")]]
+        [[InlineKeyboardButton("Get your SerpApi key → serpapi.com", url="https://www.searchapi.io/")]]
     )
 
     # No args -> usage + button
@@ -7148,6 +7148,80 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML
     )
 
+
+
+# /rserp handler — remove the saved SerpApi key for a user
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+
+# DB helpers you should implement:
+# - async def get_serp_key(user_id: int) -> Optional[str]
+# - async def delete_serp_key(user_id: int) -> bool
+
+from db import get_serp_key, delete_serp_key
+
+logger = logging.getLogger(__name__)
+
+async def rserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Usage:
+      /rserp
+
+    Removes the SerpApi key saved for the calling user.
+    """
+    user = update.effective_user
+    user_id = user.id
+
+    try:
+        current_key = await get_serp_key(user_id)
+    except Exception as e:
+        logger.exception("Failed to fetch serp_key for %s: %s", user_id, e)
+        await update.message.reply_text(
+            "❌ Database error while checking your saved key. Please try again later.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    if not current_key:
+        await update.message.reply_text(
+            "⚠️ You don’t currently have any SerpApi key saved.\n\n"
+            "Use <code>/adserp YOUR_KEY</code> to add one.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # Attempt deletion
+    try:
+        ok = await delete_serp_key(user_id)
+    except Exception as e:
+        logger.exception("Failed to delete serp_key for %s: %s", user_id, e)
+        await update.message.reply_text(
+            "❌ Failed to remove your SerpApi key (database error). Please try again later.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    if not ok:
+        await update.message.reply_text(
+            "⚠️ Could not remove your SerpApi key (it may have already been deleted).",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # Success message
+    kb = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Get a new SerpApi key → serpapi.com", url="https://serpapi.com/")]]
+    )
+    await update.message.reply_text(
+        "✅ <b>Your SerpApi key has been removed.</b>\n\n"
+        "You can always add a new one with <code>/adserp YOUR_KEY</code>.\n"
+        "Don’t have a key? Click below:",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb,
+        disable_web_page_preview=True
+    )
 
 
 
@@ -7381,7 +7455,7 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # handle missing key
     if data.get("error") == "NO_SERP_KEY":
         kb = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Get your SerpApi key → serpapi.com", url="https://serpapi.com/")]]
+            [[InlineKeyboardButton("Get your SerpApi key → serpapi.com", url="https://www.searchapi.io/")]]
         )
         try:
             await working.edit_text(
@@ -8646,6 +8720,7 @@ def register_user_commands(application):
         ("open", open_command),
         ("dork", dork),
         ("adserp", adserp), 
+        ("rserp", rserp),
         ("adcr", adcr_command),
         ("ad", ad_command),
         ("bin", bin_lookup),
