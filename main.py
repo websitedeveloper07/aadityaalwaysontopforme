@@ -8387,7 +8387,7 @@ def main():
     application.add_handler(CallbackQueryHandler(cmds_pagination, pattern="^page_"))
     application.add_handler(CallbackQueryHandler(handle_close, pattern="^close$"))
     application.add_handler(CallbackQueryHandler(button_handler, pattern="^stop:"))
-    application.add_handler(CallbackQueryHandler(dork_callback, pattern=r"^dork_")
+    application.add_handler(CallbackQueryHandler(dork_callback, pattern=r"^dork_"))
     application.add_handler(CallbackQueryHandler(check_joined_callback, pattern="^check_joined$"))
 
     # Generic handler for all /start menu buttons
