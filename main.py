@@ -7062,7 +7062,8 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Basic sanity check on length
     if len(search_key) < 8:
         await update.message.reply_text(
-            "⚠️𝗧𝗵𝗮𝘁 𝗸𝗲𝘆 𝗹𝗼𝗼𝗸𝘀 𝘁𝗼𝗼 𝘀𝗵𝗼𝗿𝘁. 𝗣𝗹𝗲𝗮𝘀𝗲 𝗽𝗮𝘀𝘁𝗲 𝗮 𝘃𝗮𝗹𝗶𝗱 𝗦𝗲𝗿𝗽 𝗸𝗲𝘆.",
+            "⚠️ <b>Key Too Short</b>\n\n"
+            "<i>Please paste a valid SearchApi.io key.</i>",
             parse_mode=ParseMode.HTML
         )
         return
@@ -7084,9 +7085,9 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # If DB check fails, log and continue — unique constraint on save should still protect.
         logger.exception("Error checking search_key existence (continuing): %s", e)
 
-    # Inform user we're validating (italic + small)
+    # Inform user we're validating
     validating_msg = await update.message.reply_text(
-        "🔐𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜 𝙮𝙤𝙪𝙧 𝙨𝙚𝙧𝙥 𝙠𝙚𝙮 𝙥𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩 𝙪𝙣𝙩𝙞𝙡 𝙘𝙝𝙚𝙘𝙠𝙚𝙙.",
+        "🔐 <i>Checking your Serp key, please wait...</i>",
         parse_mode=ParseMode.HTML
     )
 
@@ -7107,9 +7108,8 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         elif reason == "blank_results":
             txt = (
-                "⚠️ <b>No Results</b>\n\n"
-                "The dorker responded but returned no results for the test query.\n"
-                "This often means the key's credits are exhausted or the key is invalid. Please check your SearchApi.io account or get a new key:"
+                "❌ <b>𝗪𝗿𝗼𝗻𝗴 𝗸𝗲𝘆</b>\n\n"
+                "𝗧𝗵𝗲 𝘀𝗲𝗿𝗽 𝗸𝗲𝘆 𝘆𝗼𝘂 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗶𝘀 𝗶𝗻𝗰𝗼𝗿𝗿𝗲𝗰𝘁 𝗽𝗹𝗲𝗮𝘀𝗲 𝗿𝗲𝗰𝗵𝗲𝗰𝗸 𝗼𝗿 𝗴𝗲𝘁 𝗮 𝗻𝗲𝘄 𝗼𝗻𝗲."
             )
         elif reason == "timeout":
             txt = (
@@ -7127,7 +7127,6 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Failed to validate the key (network or unexpected response). Try again or get a new key:"
             )
 
-        # try to edit the validating message, fallback to new reply
         try:
             await validating_msg.edit_text(txt, parse_mode=ParseMode.HTML, reply_markup=get_key_kb, disable_web_page_preview=True)
         except Exception:
@@ -7146,7 +7145,6 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not saved:
-        # Duplicate / unique constraint failed
         await validating_msg.edit_text(
             "⚠️ <b>Already Registered</b>\n\n"
             "That SearchApi.io key appears to be registered by another user. If you believe this is an error, contact the admin.",
@@ -7154,11 +7152,11 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Success — stylish final message
+    # Success
     await validating_msg.edit_text(
-        "✅ <b>𝐒𝐚𝐯𝐞𝐝 </b>\n\n"
-        "𝗬𝗼𝘂𝗿 𝗸𝗲𝘆 𝘄𝗶𝗹𝗹 𝗯𝗲 𝘂𝘀𝗲𝗱 𝗳𝗼𝗿 𝗳𝘂𝘁𝘂𝗿𝗲 /𝗱𝗼𝗿𝗸 𝗾𝘂𝗲𝗿𝗶𝗲𝘀 𝗼𝗻 𝘁𝗵𝗶𝘀 𝗯𝗼𝘁.\n\n"
-        "<i>To remove the key later use <code>/rserp</code>.<i/>",
+        "✅ <b>𝐒𝐚𝐯𝐞𝐝</b>\n\n"
+        "𝗬𝗼𝘂𝗿 𝗸𝗲𝘆 𝗵𝗮𝘀 𝗯𝗲𝗲𝗻 𝘀𝗮𝘃𝗲𝗱 𝗮𝗻𝗱 𝘄𝗶𝗹𝗹 𝗯𝗲 𝘂𝘀𝗲𝗱 𝗳𝗼𝗿 𝗮𝗹𝗹 /𝗱𝗼𝗿𝗸 𝗾𝘂𝗲𝗿𝗶𝗲𝘀.\n\n"
+        "<i>To remove the key later use <code>/rserp</code>.</i>",
         parse_mode=ParseMode.HTML
     )
 
@@ -7233,7 +7231,7 @@ async def rserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [[InlineKeyboardButton("🔑 𝗚𝗲𝘁 𝘆𝗼𝘂𝗿 𝗦𝗲𝗿𝗽 𝗞𝗲𝘆", url="https://www.searchapi.io/")]]
     )
     await update.message.reply_text(
-        "✅ <b>𝐘𝐨𝐮𝐫 𝐒𝐞𝐚𝐫𝐜𝐡𝐀𝐩𝐢.𝐢𝐨 𝐤𝐞𝐲 𝐡𝐚𝐬 𝐛𝐞𝐞𝐧 𝐫𝐞𝐦𝐨𝐯𝐞𝐝.</b>\n\n"
+        "✅ <b>𝐘𝐨𝐮𝐫 𝗦𝗲𝗿𝗽 𝐤𝐞𝐲 𝐡𝐚𝐬 𝐛𝐞𝐞𝐧 𝐫𝐞𝐦𝐨𝐯𝐞𝐝.</b>\n\n"
         "➕ Add a new one anytime with:\n"
         "<code>/adserp YOUR_KEY</code>\n\n"
         "<i>Don’t have a key? Click below to grab one 👇</i>",
