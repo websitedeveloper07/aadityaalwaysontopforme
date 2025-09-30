@@ -1151,6 +1151,9 @@ ALL_COMMANDS = [
     ("Set 20 Shopify sites", "/adurls"),
     ("Remove all added sites", "/removeall"),
     ("Remove specific sites", "/rsite"),
+    ("Dork a query", "/dork"),
+    ("Add your key to dork", "/adserp"),
+    ("Remove you serp key", "/rserp"),
     ("Generate cards from BIN", "/gen"),
     ("Payment Gateway Checker", "/gate"),
     ("BIN lookup", "/bin"),
@@ -7087,7 +7090,7 @@ async def adserp(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Inform user we're validating
     validating_msg = await update.message.reply_text(
-        "🔐 <i>Checking your Serp key, please wait...</i>",
+        "🔐𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜 𝙮𝙤𝙪𝙧 𝙨𝙚𝙧𝙥 𝙠𝙚𝙮 𝙥𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩 𝙪𝙣𝙩𝙞𝙡 𝙘𝙝𝙚𝙘𝙠𝙚𝙙.",
         parse_mode=ParseMode.HTML
     )
 
