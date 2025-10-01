@@ -5621,6 +5621,7 @@ async def fetch_site_info(session, site_url: str):
         resp_upper = response.upper()
         for pattern in ERROR_PATTERNS:
             if pattern.upper() in resp_upper:
+                # Force site as dead
                 return {
                     "site": normalized_url,
                     "price": 0.0,
@@ -5629,6 +5630,7 @@ async def fetch_site_info(session, site_url: str):
                     "gateway": gateway,
                 }
 
+        # Normal flow
         return {
             "site": normalized_url,
             "price": price_float,
