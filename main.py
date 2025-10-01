@@ -5580,7 +5580,6 @@ ERROR_PATTERNS = [
 
 # --- Credit system ---
 async def consume_credit(user_id: int) -> bool:
-    """Deducts 1 credit from the user if available."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) > 0:
         new_credits = user_data["credits"] - 1
@@ -5596,16 +5595,13 @@ def normalize_site(site: str) -> str:
 
 # --- Fetch site info (with error pattern check) ---
 async def fetch_site_info(session, site_url: str):
-    """Fetch site info using API_TEMPLATE and return a structured result.
-    Always returns a dict with keys: site, price, status, response, gateway.
-    """
     normalized_url = normalize_site(site_url)
     api_url = API_TEMPLATE.format(site_url=normalized_url)
     try:
         async with session.get(api_url, timeout=60) as resp:
             raw_text = await resp.text()
 
-        # Strip HTML tags (if any)
+        # Clean and locate JSON
         clean_text = re.sub(r"<[^>]+>", "", raw_text).strip()
         json_start = clean_text.find("{")
         if json_start != -1:
@@ -5613,15 +5609,16 @@ async def fetch_site_info(session, site_url: str):
 
         data = json.loads(clean_text)
 
-        response = data.get("Response", "Unknown")
+        response = str(data.get("Response", "Unknown"))
         gateway = data.get("Gateway", "Shopify")
+
         try:
             price_float = float(data.get("Price", 0))
         except (ValueError, TypeError):
             price_float = 0.0
 
         # --- Error pattern detection ---
-        resp_upper = str(response).upper()
+        resp_upper = response.upper()
         for pattern in ERROR_PATTERNS:
             if pattern in resp_upper:
                 return {
@@ -5660,7 +5657,7 @@ async def run_msite_check(sites: list[str], msg):
 
         async def worker(idx, site):
             async with semaphore:
-                res = await fetch_site_info(session, site)  # ✅ unified call
+                res = await fetch_site_info(session, site)
                 results[idx] = res
                 counters["checked"] += 1
                 if res["status"] == "working":
@@ -5669,7 +5666,7 @@ async def run_msite_check(sites: list[str], msg):
                 else:
                     counters["dead"] += 1
 
-                # --- Summary ---
+                # --- Summary header ---
                 summary = (
                     "<pre><code>"
                     f"📊 𝑴𝒂𝒔𝒔 𝑺𝒊𝒕𝒆 𝑪𝒉𝒆𝒄𝒌𝒆𝒓\n"
@@ -5683,12 +5680,10 @@ async def run_msite_check(sites: list[str], msg):
                     "</code></pre>"
                 )
 
-                # --- Site details ---
+                # --- Working site details only ---
                 working_lines = []
-                dead_lines = []
-
                 for r in results:
-                    if not r:
+                    if not r or r["status"] != "working":
                         continue
                     display_site = (
                         r["site"]
@@ -5696,16 +5691,10 @@ async def run_msite_check(sites: list[str], msg):
                         .replace("http://", "")
                         .replace("www.", "")
                     )
-                    if r["status"] == "working":
-                        working_lines.append(
-                            f"✅ <code>{escape(display_site)}</code>\n"
-                            f"   ↪ <i><b>💲{r['price']:.1f}</b></i> ┃ <i><b>{r['gateway']}</b></i> ┃ <i><b>{r['response']}</b></i>"
-                        )
-                    else:
-                        dead_lines.append(
-                            f"❌ <code>{escape(display_site)}</code>\n"
-                            f"   ↪ <i><b>{r['gateway']}</b></i> ┃ <i><b>{r['response']}</b></i>"
-                        )
+                    working_lines.append(
+                        f"✅ <code>{escape(display_site)}</code>\n"
+                        f"   ↪ <i><b>💲{r['price']:.1f}</b></i> ┃ <i><b>{r['gateway']}</b></i> ┃ <i><b>{r['response']}</b></i>"
+                    )
 
                 details = ""
                 if working_lines:
@@ -5713,15 +5702,9 @@ async def run_msite_check(sites: list[str], msg):
                         f"\n\n📝 <b>𝑾𝒐𝒓𝒌𝒊𝒏𝒈 𝑺𝒊𝒕𝒆𝒔</b>\n"
                         f"────────────────\n" + "\n".join(working_lines) + "\n────────────────"
                     )
-                if dead_lines:
-                    details += (
-                        f"\n\n📝 <b>𝑫𝒆𝒂𝒅 𝑺𝒊𝒕𝒆𝒔</b>\n"
-                        f"────────────────\n" + "\n".join(dead_lines) + "\n────────────────"
-                    )
 
                 content = summary + details
 
-                # --- Update message ---
                 try:
                     await msg.edit_text(
                         content,
@@ -5731,11 +5714,11 @@ async def run_msite_check(sites: list[str], msg):
                 except TelegramError:
                     pass
 
-        # Launch all workers concurrently
+        # --- Run all workers concurrently ---
         tasks = [asyncio.create_task(worker(i, s)) for i, s in enumerate(sites)]
         await asyncio.gather(*tasks)
 
-        # --- Final check for no working sites ---
+        # --- Final check if no working sites ---
         if counters["working"] == 0:
             final_content = (
                 "<pre><code>"
@@ -5765,7 +5748,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         now = time.time()
 
-        # Cooldown check
+        # Cooldown
         if user_id in last_msite_usage and (now - last_msite_usage[user_id]) < MSITE_COOLDOWN:
             remaining = round(MSITE_COOLDOWN - (now - last_msite_usage[user_id]), 1)
             await update.message.reply_text(
@@ -5774,7 +5757,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         last_msite_usage[user_id] = now
 
-        # Credit check (1 credit per use)
+        # Credit check
         if not await consume_credit(user_id):
             await update.message.reply_text("❌ You don’t have enough credits to use this command.")
             return
@@ -5800,14 +5783,12 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             sites = sites[:200]
 
-        # Initial message
         msg = await update.message.reply_text(
             f"⏳ 𝐂𝐡𝐞𝐜𝐤𝐢𝐧𝐠 {len(sites)} 𝐒𝐢𝐭𝐞𝐬...",
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
         )
 
-        # Run in background
         asyncio.create_task(run_msite_check(sites, msg))
 
     except Exception as e:
@@ -5815,6 +5796,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ An unexpected error occurred. Please try again later or contact the owner."
         )
         print(f"[ERROR] /msite command failed: {e}")
+
 
 
 
