@@ -5617,7 +5617,7 @@ async def fetch_site_info(session, site_url: str):
         except (ValueError, TypeError):
             price_float = 0.0
 
-        # --- Error pattern detection (case-insensitive) ---
+        # --- Error pattern detection (case-insensitive, overrides everything) ---
         resp_upper = response.upper()
         for pattern in ERROR_PATTERNS:
             if pattern.upper() in resp_upper:
@@ -5629,7 +5629,7 @@ async def fetch_site_info(session, site_url: str):
                     "gateway": gateway,
                 }
 
-        # If price is 0, also mark as dead
+        # If no error pattern matched → decide by price
         status = "working" if price_float > 0 else "dead"
 
         return {
@@ -5686,7 +5686,13 @@ async def run_msite_check(sites: list[str], msg):
                 # --- Only Working site details ---
                 working_lines = []
                 for r in results:
-                    if not r or r["status"] != "working" or r["price"] <= 0:
+                    if not r:
+                        continue
+                    if r["status"] != "working" or r["price"] <= 0:
+                        continue
+                    # safeguard: skip if response has error pattern
+                    resp_upper = r["response"].upper()
+                    if any(pat.upper() in resp_upper for pat in ERROR_PATTERNS):
                         continue
                     display_site = (
                         r["site"]
