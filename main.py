@@ -5621,20 +5621,21 @@ async def fetch_site_info(session, site_url: str):
         resp_upper = response.upper()
         for pattern in ERROR_PATTERNS:
             if pattern.upper() in resp_upper:
-                # Force site as dead
                 return {
                     "site": normalized_url,
                     "price": 0.0,
                     "status": "dead",
-                    "response": response,  # keep original case
+                    "response": response,
                     "gateway": gateway,
                 }
 
-        # Normal flow
+        # If price is 0, also mark as dead
+        status = "working" if price_float > 0 else "dead"
+
         return {
             "site": normalized_url,
             "price": price_float,
-            "status": "working" if price_float > 0 else "dead",
+            "status": status,
             "response": response,
             "gateway": gateway,
         }
@@ -5685,7 +5686,7 @@ async def run_msite_check(sites: list[str], msg):
                 # --- Only Working site details ---
                 working_lines = []
                 for r in results:
-                    if not r or r["status"] != "working":
+                    if not r or r["status"] != "working" or r["price"] <= 0:
                         continue
                     display_site = (
                         r["site"]
