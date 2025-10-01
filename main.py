@@ -5615,7 +5615,7 @@ async def run_msite_check(sites: list[str], msg):
                     "</code></pre>"
                 )
 
-                # --- Site details (ONLY working sites) ---
+                # --- Site details (ONLY working sites, with API Response) ---
                 site_lines = []
                 for r in results:
                     if not r or r["status"] != "working":
@@ -5628,7 +5628,7 @@ async def run_msite_check(sites: list[str], msg):
                     )
                     site_lines.append(
                         f"✅ <code>{escape(display_site)}</code>\n"
-                        f"   ↳ 💲{r['price']:.1f} | {r['gateway']}"
+                        f"   ↳ 💲{r['price']:.1f} | {r['gateway']} | {r['response']}"
                     )
 
                 details = "\n".join(site_lines)
@@ -5733,6 +5733,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ An unexpected error occurred. Please try again later or contact the owner."
         )
         print(f"[ERROR] /msite command failed: {e}")
+
 
 
 
