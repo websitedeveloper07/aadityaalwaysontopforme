@@ -5503,6 +5503,13 @@ MSITE_CONCURRENCY = 3
 MSITE_COOLDOWN = 5
 last_msite_usage = {}
 
+# --- Error patterns that mark site as dead ---
+ERROR_PATTERNS = [
+    "CLINTE TOKEN",
+    "DEL AMMOUNT EMPTY",
+    "PRODUCT ID IS EMPTY"
+]
+
 # --- Credit system ---
 async def consume_credit(user_id: int) -> bool:
     """Deducts 1 credit from the user if available."""
@@ -5519,9 +5526,11 @@ def normalize_site(site: str) -> str:
         site = "https://" + site
     return site
 
-# --- Fetch site info (single correct version) ---
+# --- Fetch site info (with error pattern check) ---
 async def fetch_site_info(session, site_url: str):
-    """ Fetch site info using API_TEMPLATE and return a structured result. Always returns a dict with keys: site, price, status, response, gateway. """
+    """Fetch site info using API_TEMPLATE and return a structured result.
+    Always returns a dict with keys: site, price, status, response, gateway.
+    """
     normalized_url = normalize_site(site_url)
     api_url = API_TEMPLATE.format(site_url=normalized_url)
     try:
@@ -5543,6 +5552,18 @@ async def fetch_site_info(session, site_url: str):
         except (ValueError, TypeError):
             price_float = 0.0
 
+        # --- Error pattern detection ---
+        resp_upper = str(response).upper()
+        for pattern in ERROR_PATTERNS:
+            if pattern in resp_upper:
+                return {
+                    "site": normalized_url,
+                    "price": 0.0,
+                    "status": "dead",
+                    "response": pattern,
+                    "gateway": gateway,
+                }
+
         return {
             "site": normalized_url,
             "price": price_float,
@@ -5559,8 +5580,6 @@ async def fetch_site_info(session, site_url: str):
             "response": f"Error: {str(e)}",
             "gateway": "N/A",
         }
-
-
 
 # --- Mass site checker ---
 async def run_msite_check(sites: list[str], msg):
@@ -5596,7 +5615,7 @@ async def run_msite_check(sites: list[str], msg):
                     "</code></pre>"
                 )
 
-                # --- Site details (only working) ---
+                # --- Site details (ONLY working sites) ---
                 site_lines = []
                 for r in results:
                     if not r or r["status"] != "working":
@@ -5658,8 +5677,6 @@ async def run_msite_check(sites: list[str], msg):
             except TelegramError:
                 pass
 
-
-
 # --- /msite command handler ---
 async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -5699,7 +5716,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"⚠️ You can check a maximum of 200 sites at once.\nYou provided {len(sites)}.",
                 parse_mode=ParseMode.HTML,
             )
-            sites = sites[:100]
+            sites = sites[:200]
 
         # Initial message
         msg = await update.message.reply_text(
@@ -5716,6 +5733,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ An unexpected error occurred. Please try again later or contact the owner."
         )
         print(f"[ERROR] /msite command failed: {e}")
+
 
 
 
@@ -7263,8 +7281,8 @@ logger = logging.getLogger(__name__)
 # Config
 DORK_API_BASE = "https://rockysoon.onrender.com/gateway=dorker/masterkey=rockyog/dork="
 PAGE_SIZE = 5
-SESSION_TTL = 300
-CLEANUP_INTERVAL = 600
+# SESSION_TTL removed => sessions will not be auto-evicted
+CLEANUP_INTERVAL = 600  # kept definition only if you reuse it elsewhere
 
 # In-memory sessions
 _DORK_SESSIONS: dict = {}
@@ -7272,27 +7290,8 @@ _DORK_SESSIONS: dict = {}
 def _make_session_id(query: str, user_id: int) -> str:
     return hashlib.sha1(f"{query}|{user_id}|{time.time()}".encode()).hexdigest()[:24]
 
-# Background cleaner
-def _start_session_cleaner():
-    async def _cleaner():
-        while True:
-            now = time.time()
-            expired = [k for k, v in list(_DORK_SESSIONS.items()) if now - v.get("ts", 0) > SESSION_TTL]
-            for k in expired:
-                _DORK_SESSIONS.pop(k, None)
-            await asyncio.sleep(CLEANUP_INTERVAL)
-    try:
-        loop = asyncio.get_event_loop()
-        loop.create_task(_cleaner())
-    except RuntimeError:
-        def _bg():
-            import asyncio as _asyncio
-            loop2 = _asyncio.new_event_loop()
-            _asyncio.set_event_loop(loop2)
-            loop2.create_task(_cleaner())
-            loop2.run_forever()
-        __import__("threading").Thread(target=_bg, daemon=True).start()
-_start_session_cleaner()
+# NOTE: session cleaner removed so sessions persist until process restart.
+# If you later want to re-enable automatic expiry, reintroduce SESSION_TTL and the cleaner.
 
 # Page builder
 def _build_page_text(session_id: str, page_index: int) -> str:
@@ -7340,7 +7339,10 @@ def _build_nav_keyboard(session_id: str, page_index: int) -> InlineKeyboardMarku
     return InlineKeyboardMarkup([row, file_row])
 
 # Call API
-async def _call_dork_api_for_user(query: str, user_id: int, timeout: int = 20) -> dict:
+async def _call_dork_api_for_user(query: str, user_id: int, timeout: int = 60) -> dict:
+    """
+    Default timeout set to 60 seconds as requested.
+    """
     try:
         from db import get_serp_key
     except Exception as e:
@@ -7449,7 +7451,7 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         working = await update.message.reply_text("🔎 Processing...")
 
-    # call API
+    # call API (timeout default 60s now)
     data = await _call_dork_api_for_user(query, user_id)
 
     # --- error cases ---
@@ -7465,7 +7467,7 @@ async def dork(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data.get("error") == "TIMEOUT":
-        await working.edit_text("❌ <b>Dork API timed out.</b>\n<i>Please try again later.</i>", parse_mode=ParseMode.HTML)
+        await working.edit_text("❌ <b>Dork API timed out (60s).</b>\n<i>Please try again later.</i>", parse_mode=ParseMode.HTML)
         return
 
     if data.get("error") == "REQUEST_ERROR":
