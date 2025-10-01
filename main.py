@@ -4910,6 +4910,16 @@ from db import get_user, update_user, init_db
 # Ensure DB is initialized
 asyncio.get_event_loop().run_until_complete(init_db())
 
+# --- Error patterns marking site dead ---
+ERROR_PATTERNS = [
+    "CLINTE TOKEN",
+    "DEL AMMOUNT EMPTY",
+    "PRODUCT ID IS EMPTY",
+    "PY ID EMPTY",
+    "TAX AMMOUNT EMPTY",
+    "R4 TOKEN EMPTY"
+]
+
 
 async def seturl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Telegram command: /seturl <site_url>"""
@@ -4982,8 +4992,33 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
             return
 
         response = data.get("Response", "Unknown")
-        price = data.get("Price", "0.0")
         gateway = data.get("Gateway", "Shopify Normal")
+
+        try:
+            price_float = float(data.get("Price", 0))
+        except (ValueError, TypeError):
+            price_float = 0.0
+
+        # --- Error pattern detection ---
+        resp_upper = str(response).upper()
+        dead_reason = None
+        for pattern in ERROR_PATTERNS:
+            if pattern in resp_upper:
+                dead_reason = pattern
+                break
+
+        if dead_reason:
+            site_status = "❌ 𝐒𝐢𝐭𝐞 𝐃𝐞𝐚𝐝"
+            price_display = "<i><b>💲0.0</b></i>"
+            response_display = f"<i><b>{dead_reason}</b></i>"
+        elif price_float > 0:
+            site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝"
+            price_display = f"<i><b>💲{price_float:.1f}</b></i>"
+            response_display = f"<i><b>{escape(str(response))}</b></i>"
+        else:
+            site_status = "❌ 𝐒𝐢𝐭𝐞 𝐃𝐞𝐚𝐝"
+            price_display = "<i><b>💲0.0</b></i>"
+            response_display = f"<i><b>{escape(str(response))}</b></i>"
 
         # --- Fetch existing sites from DB ---
         user_data = await get_user(user_id)
@@ -4995,15 +5030,15 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
             await update_user(user_id, custom_urls=current_sites)
 
         requester = f"@{user.username}" if user.username else str(user.id)
-        site_status = "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝" if response.upper() != "CARD_DECLINED" else "✅ 𝐒𝐢𝐭𝐞 𝐀𝐝𝐝𝐞𝐝"
+
         # --- Format final message ---
         formatted_msg = (
             f"◇━━〔 <b>{site_status}</b> 〕━━◇\n"
             f"{bullet_link} <b>𝐒𝐢𝐭𝐞</b> ➵ <code>{escape(site_input)}</code>\n"
             f"{bullet_link} <b>𝐓𝐨𝐭𝐚𝐥 𝐒𝐢𝐭𝐞𝐬</b> ➵ {len(current_sites)}\n"
-            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➵ {gateway}\n"
-            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➵ <i>{escape(response)}</i>\n"
-            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➵ {escape(str(price))}$ 💸\n"
+            f"{bullet_link} <b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲</b> ➵ <i><b>{escape(gateway)}</b></i>\n"
+            f"{bullet_link} <b>𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞</b> ➵ {response_display}\n"
+            f"{bullet_link} <b>𝐏𝐫𝐢𝐜𝐞</b> ➵ {price_display} 💸\n"
             "────────✧────────\n"
             f"{bullet_link} <b>𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐝 𝐁𝐲</b> ➵ {requester}\n"
             f"{bullet_link} <b>𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫</b> ➵ {developer_clickable}\n"
@@ -5028,6 +5063,7 @@ async def process_seturl(user, user_id, site_input, cc_input, processing_msg):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
@@ -5355,6 +5391,16 @@ API_TEMPLATE = (
     "&proxy=142.111.67.146:5611:fvbysspi:bsbh3trstb1c"
 )
 
+# --- Error patterns marking site dead ---
+ERROR_PATTERNS = [
+    "CLINTE TOKEN",
+    "DEL AMMOUNT EMPTY",
+    "PRODUCT ID IS EMPTY",
+    "PY ID EMPTY",
+    "TAX AMMOUNT EMPTY",
+    "R4 TOKEN EMPTY"
+]
+
 # === Credit system ===
 async def consume_credit(user_id: int) -> bool:
     user_data = await get_user(user_id)
@@ -5439,8 +5485,26 @@ async def run_site_check(site_url: str, msg, user):
         except (ValueError, TypeError):
             price_float = 0.0
 
-        price = f"{price_float}$" if price_float else "0$"
-        status = "𝙒𝙤𝙧𝙠𝙞𝙣𝙜 ✅" if price_float > 0 else "𝘿𝙚𝙖𝙙 ❌"
+        # --- Error pattern check ---
+        resp_upper = str(response).upper()
+        dead_reason = None
+        for pattern in ERROR_PATTERNS:
+            if pattern in resp_upper:
+                dead_reason = pattern
+                break
+
+        if dead_reason:
+            status = "𝘿𝙚𝙖𝙙 ❌"
+            price_display = "<i><b>💲0.0</b></i>"
+            response_display = f"<i><b>{dead_reason}</b></i>"
+        elif price_float > 0:
+            status = "𝙒𝙤𝙧𝙠𝙞𝙣𝙜 ✅"
+            price_display = f"<i><b>💲{price_float:.1f}</b></i>"
+            response_display = f"<i><b>{escape(str(response))}</b></i>"
+        else:
+            status = "𝘿𝙚𝙖𝙙 ❌"
+            price_display = "<i><b>💲0.0</b></i>"
+            response_display = f"<i><b>{escape(str(response))}</b></i>"
 
         # --- Format info ---
         requester = f"@{user.username}" if user.username else str(user.id)
@@ -5453,9 +5517,9 @@ async def run_site_check(site_url: str, msg, user):
         formatted_msg = (
             f"◇━━〔 #𝘀𝗵𝗼𝗽𝗶𝗳𝘆 〕━━◇\n\n"
             f"{bullet_link} 𝐒𝐢𝐭𝐞       ➵ <code>{escape(site_url)}</code>\n"
-            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➵ {escape(gateway)}\n"
-            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ <i>{escape(response)}</i>\n"
-            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➵ {price} 💸\n"
+            f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲    ➵ <i><b>{escape(gateway)}</b></i>\n"
+            f"{bullet_link} 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞   ➵ {response_display}\n"
+            f"{bullet_link} 𝐀𝐦𝐨𝐮𝐧𝐭      ➵ {price_display} 💸\n"
             f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬      ➵ <b>{status}</b>\n\n"
             f"────────✧────────\n"
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester}\n"
@@ -5479,6 +5543,7 @@ async def run_site_check(site_url: str, msg, user):
             f"❌ Error: <code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
         )
+
 
 
 
@@ -5509,7 +5574,8 @@ ERROR_PATTERNS = [
     "DEL AMMOUNT EMPTY",
     "PRODUCT ID IS EMPTY",
     "PY ID EMPTY",
-    "TAX AMMOUNT EMPTY"
+    "TAX AMMOUNT EMPTY",
+    "R4 TOKEN EMPTY"
 ]
 
 # --- Credit system ---
@@ -5617,10 +5683,12 @@ async def run_msite_check(sites: list[str], msg):
                     "</code></pre>"
                 )
 
-                # --- Site details (ONLY working sites, with API Response) ---
-                site_lines = []
+                # --- Site details ---
+                working_lines = []
+                dead_lines = []
+
                 for r in results:
-                    if not r or r["status"] != "working":
+                    if not r:
                         continue
                     display_site = (
                         r["site"]
@@ -5628,18 +5696,30 @@ async def run_msite_check(sites: list[str], msg):
                         .replace("http://", "")
                         .replace("www.", "")
                     )
-                    site_lines.append(
-                        f"✅ <code>{escape(display_site)}</code>\n"
-                        f"   ↳ 💲{r['price']:.1f} | <i><b>{r['gateway']}</b></i> | <i><b>{r['response']}</b></i>"
+                    if r["status"] == "working":
+                        working_lines.append(
+                            f"✅ <code>{escape(display_site)}</code>\n"
+                            f"   ↪ <i><b>💲{r['price']:.1f}</b></i> ┃ <i><b>{r['gateway']}</b></i> ┃ <i><b>{r['response']}</b></i>"
+                        )
+                    else:
+                        dead_lines.append(
+                            f"❌ <code>{escape(display_site)}</code>\n"
+                            f"   ↪ <i><b>{r['gateway']}</b></i> ┃ <i><b>{r['response']}</b></i>"
+                        )
+
+                details = ""
+                if working_lines:
+                    details += (
+                        f"\n\n📝 <b>𝑾𝒐𝒓𝒌𝒊𝒏𝒈 𝑺𝒊𝒕𝒆𝒔</b>\n"
+                        f"────────────────\n" + "\n".join(working_lines) + "\n────────────────"
+                    )
+                if dead_lines:
+                    details += (
+                        f"\n\n📝 <b>𝑫𝒆𝒂𝒅 𝑺𝒊𝒕𝒆𝒔</b>\n"
+                        f"────────────────\n" + "\n".join(dead_lines) + "\n────────────────"
                     )
 
-                details = "\n".join(site_lines)
-                content = summary
-                if details:
-                    content += (
-                        f"\n\n📝 <b>𝑺𝒊𝒕𝒆 𝑫𝒆𝒕𝒂𝒊𝒍𝒔</b>\n"
-                        f"────────────────\n{details}\n────────────────"
-                    )
+                content = summary + details
 
                 # --- Update message ---
                 try:
@@ -5735,6 +5815,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ An unexpected error occurred. Please try again later or contact the owner."
         )
         print(f"[ERROR] /msite command failed: {e}")
+
 
 
 
