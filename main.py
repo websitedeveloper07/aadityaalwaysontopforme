@@ -5568,7 +5568,7 @@ MSITE_CONCURRENCY = 3
 MSITE_COOLDOWN = 5
 last_msite_usage = {}
 
-# --- Error patterns that mark site as dead ---
+# --- Error patterns that mark site as dead (case-insensitive) ---
 ERROR_PATTERNS = [
     "CLINTE TOKEN",
     "DEL AMMOUNT EMPTY",
@@ -5617,15 +5617,15 @@ async def fetch_site_info(session, site_url: str):
         except (ValueError, TypeError):
             price_float = 0.0
 
-        # --- Error pattern detection ---
+        # --- Error pattern detection (case-insensitive) ---
         resp_upper = response.upper()
         for pattern in ERROR_PATTERNS:
-            if pattern in resp_upper:
+            if pattern.upper() in resp_upper:
                 return {
                     "site": normalized_url,
                     "price": 0.0,
                     "status": "dead",
-                    "response": pattern,
+                    "response": response,  # keep original case
                     "gateway": gateway,
                 }
 
@@ -5680,7 +5680,7 @@ async def run_msite_check(sites: list[str], msg):
                     "</code></pre>"
                 )
 
-                # --- Working site details only ---
+                # --- Only Working site details ---
                 working_lines = []
                 for r in results:
                     if not r or r["status"] != "working":
@@ -5693,7 +5693,7 @@ async def run_msite_check(sites: list[str], msg):
                     )
                     working_lines.append(
                         f"✅ <code>{escape(display_site)}</code>\n"
-                        f"   ↪ <i><b>💲{r['price']:.1f}</b></i> ┃ <i><b>{r['gateway']}</b></i> ┃ <i><b>{r['response']}</b></i>"
+                        f"   ⤷ <i><b>💲{r['price']:.1f}</b></i> ┃ <i><b>{r['gateway']}</b></i> ┃ <i><b>{r['response']}</b></i>"
                     )
 
                 details = ""
