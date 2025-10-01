@@ -5507,7 +5507,9 @@ last_msite_usage = {}
 ERROR_PATTERNS = [
     "CLINTE TOKEN",
     "DEL AMMOUNT EMPTY",
-    "PRODUCT ID IS EMPTY"
+    "PRODUCT ID IS EMPTY",
+    "PY ID EMPTY",
+    "TAX AMMOUNT EMPTY"
 ]
 
 # --- Credit system ---
@@ -5628,7 +5630,7 @@ async def run_msite_check(sites: list[str], msg):
                     )
                     site_lines.append(
                         f"✅ <code>{escape(display_site)}</code>\n"
-                        f"   ↳ 💲{r['price']:.1f} | {r['gateway']} | {r['response']}"
+                        f"   ↳ 💲{r['price']:.1f} | <i><b>{r['gateway']}</b></i> | <i><b>{r['response']}</b></i>"
                     )
 
                 details = "\n".join(site_lines)
@@ -5733,6 +5735,7 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ An unexpected error occurred. Please try again later or contact the owner."
         )
         print(f"[ERROR] /msite command failed: {e}")
+
 
 
 
