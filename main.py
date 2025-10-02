@@ -5979,11 +5979,21 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
         "━━━━━━━━━━━━━━━━━━━━━━━"
     )
 
-    if update.message:
-        await update.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
-    elif update.callback_query:
-        await update.callback_query.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+    try:
+        await msg.reply_document(
+            document=InputFile(file_buf),
+            caption=summary_caption,
+            parse_mode="HTML",
+            reply_to_message_id=msg.message_id  # 👈 ensure file replies to progress msg
+        )
+    except Exception:
+        # Fallback if replying fails
+        if update.message:
+            await update.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+        elif update.callback_query:
+            await update.callback_query.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
 
+    # ✅ delete progress message after sending final file
     try:
         await msg.delete()
     except Exception:
