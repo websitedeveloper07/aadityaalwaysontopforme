@@ -5998,6 +5998,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
     proxy = DEFAULT_PROXY
     BATCH_SIZE = 3   # process 3 cards in parallel
 
+    # Save initial state for stop/finalize
     context.user_data["msp_state"] = {
         "msg": msg,
         "cards": cards,
@@ -6026,14 +6027,26 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 resp = None
                 best_score = 0
                 resp_upper = ""
+                chosen_site = None
+                valid_found = False
 
                 for site in sites:
+                    if context.user_data.get("msp_stop"):
+                        return None
+
                     r = await check_card(session, base_url, site, card, proxy)
                     resp_text = (r.get("response") or "").strip()
                     resp_upper = resp_text.upper()
 
+                    # 🚫 Skip junk/error sites
                     if any(pat in resp_upper for pat in ERROR_PATTERNS):
-                        continue
+                        continue  
+
+                    # ✅ Found a valid site response
+                    resp = r
+                    chosen_site = site
+                    valid_found = True
+
                     if any(k in resp_upper for k in CHARGED_KEYWORDS):
                         best_score = 4
                     elif any(k in resp_upper for k in APPROVED_KEYWORDS):
@@ -6044,20 +6057,24 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                         best_score = 1
                     else:
                         best_score = 0
+                    break  # stop at first valid site
 
-                    resp = r
-                    break
+                # ❌ No valid site worked → mark error once
+                if not valid_found:
+                    errors += 1
+                    error_results.append(f"⚠️ {card}\n Response: All sites failed\n Price: 0\n Gateway: N/A")
+                    checked += 1
+                    return
 
-                if resp is None:
-                    resp = r
-                    best_score = 0
-
+                # Build line with site info
                 line_resp = (
                     f"Response: {resp.get('response','Unknown')}\n"
                     f" Price: {resp.get('price','0')}\n"
-                    f" Gateway: {resp.get('gateway','N/A')}"
+                    f" Gateway: {resp.get('gateway','N/A')}\n"
+                    f" Site: {chosen_site}"
                 )
 
+                # Final classification
                 if "INSUFFICIENT_FUNDS" in resp_upper:
                     charged += 1
                     charged_results.append(f"🔥 {card}\n {line_resp}")
