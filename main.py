@@ -5982,25 +5982,27 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
     )
 
     try:
-        # 🔑 File now replies directly to the progress message
-        await msg.reply_document(
-            document=InputFile(file_buf),
-            caption=summary_caption,
-            parse_mode="HTML",
-            reply_to_message_id=msg.message_id
-        )
-    except Exception:
-        # Fallback if replying fails
-        if update.message:
-            await update.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
-        elif update.callback_query:
-            await update.callback_query.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+        # Always reply to the original /msp command message
+        command_msg_id = context.user_data.get("msp_command_msg_id")
+        if command_msg_id:
+            await update.effective_chat.send_document(
+                document=InputFile(file_buf),
+                caption=summary_caption,
+                parse_mode="HTML",
+                reply_to_message_id=command_msg_id
+            )
+        else:
+            # fallback if no stored msg id
+            await msg.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Finalize send failed: {e}")
 
-    # ✅ Clean up progress message
+    # delete progress message
     try:
         await msg.delete()
     except Exception:
         pass
+
 
 
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
@@ -6190,6 +6192,9 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("❌ No sites found in your account.")
         return
 
+    # store command message id for later use in finalize_results
+    context.user_data["msp_command_msg_id"] = update.message.message_id
+
     initial_summary = (
         f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -6207,6 +6212,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = await update.message.reply_text(initial_summary, parse_mode="HTML",
                                           disable_web_page_preview=True, reply_markup=buttons)
 
+    # run checker
     task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
     task.add_done_callback(lambda t: logger.error(f"/msp crashed: {t.exception()}") if t.exception() else None)
 
