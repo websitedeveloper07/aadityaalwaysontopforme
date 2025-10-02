@@ -6974,9 +6974,11 @@ async def run_braintree_check(user, cc_input: str, full_card: str, processing_ms
     response_text = data.get("response", "") if isinstance(data, dict) else ""
     proxy_info = data.get("proxy", "") if isinstance(data, dict) else ""
 
-    # --- Status mapping (CCN counts as Approved) ---
-    if status_raw in ("APPROVED", "APPROVE", "CHARGED", "OK", "SUCCESS", "CCN"):
+    # --- Status mapping ---
+    if status_raw in ("APPROVED", "APPROVE", "CHARGED", "OK", "SUCCESS"):
         header_status = "✅ Approved"
+    elif status_raw == "CCN":
+        header_status = "❎CCN"
     else:
         header_status = "❌ Declined"
 
@@ -6998,7 +7000,7 @@ async def run_braintree_check(user, cc_input: str, full_card: str, processing_ms
     requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
     elapsed_time = round(time.time() - start_time, 2)
 
-    # --- final message (Gateway fixed to Braintree Premium Auth) ---
+    # --- final message ---
     final_msg = (
         f"<b><i>{header_status}</i></b>\n\n"
         f"𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(full_card)}</code>\n"
@@ -7011,6 +7013,7 @@ async def run_braintree_check(user, cc_input: str, full_card: str, processing_ms
         f"Proxy ➵ {escape(str(proxy_info))}\n"
         f"</pre>\n\n"
         f"𝐃𝐞𝐯 ➵ {developer_clickable}\n"
+        f"𝐑𝐞𝐪 ➵ {requester}\n"
         f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
     )
 
