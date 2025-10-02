@@ -5916,6 +5916,7 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
 
 
 # ---------- Buttons ----------
+# ---------- Buttons ----------
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if not query:
@@ -5938,6 +5939,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
         if "msp_state" in context.user_data:
             state = context.user_data["msp_state"]
+            # 🔑 Now the results file will reply to the progress message (`state["msg"]`)
             await finalize_results(
                 update, state["msg"], state["cards"],
                 state["approved"], state["charged"], state["declined"], state["errors"],
@@ -5980,11 +5982,12 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
     )
 
     try:
+        # 🔑 File now replies directly to the progress message
         await msg.reply_document(
             document=InputFile(file_buf),
             caption=summary_caption,
             parse_mode="HTML",
-            reply_to_message_id=msg.message_id  # 👈 ensure file replies to progress msg
+            reply_to_message_id=msg.message_id
         )
     except Exception:
         # Fallback if replying fails
@@ -5993,7 +5996,7 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
         elif update.callback_query:
             await update.callback_query.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
 
-    # ✅ delete progress message after sending final file
+    # ✅ Clean up progress message
     try:
         await msg.delete()
     except Exception:
