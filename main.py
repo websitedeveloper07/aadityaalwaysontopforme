@@ -5830,11 +5830,11 @@ from telegram import (
 from telegram.ext import (
     ContextTypes,
 )
+from html import escape
 
-# Replace with your actual DB functions
+# Replace with your actual DB + BIN functions
 from db import get_user, update_user
 from bin import get_bin_info
-from html import escape
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -5883,9 +5883,8 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
-def build_msp_buttons(current_card: str, approved: int, charged: int, declined: int, owner_id: int) -> InlineKeyboardMarkup:
+def build_msp_buttons(approved: int, charged: int, declined: int, owner_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"💳 Current: {current_card}", callback_data="noop")],
         [
             InlineKeyboardButton(f"✅ Approved: {approved}", callback_data="show_approved"),
             InlineKeyboardButton(f"🔥 Charged: {charged}", callback_data="show_charged"),
@@ -5941,7 +5940,7 @@ async def build_card_detail(card: str, resp: dict, header_status: str, elapsed_t
     display_response = resp.get("response", "Unknown")
     escaped_card = escape(card)
 
-    final_text = (
+    return (
         f"<b><i>{header_status}</i></b>\n\n"
         f"𝐂𝐚𝐫𝐝\n"
         f"⤷ <code>{escaped_card}</code>\n"
@@ -5955,7 +5954,6 @@ async def build_card_detail(card: str, resp: dict, header_status: str, elapsed_t
         f"𝐃𝐄𝐕 ➵ {developer_clickable}\n"
         f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time:.2f}s"
     )
-    return final_text
 
 
 # ---------- Buttons ----------
@@ -5978,27 +5976,50 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.answer("⏹ Process stopped! Finalizing results...", show_alert=True)
         return
 
-    # Send category results only when clicked
     if data == "show_approved":
-        for detail in context.user_data.get("approved_cards", []):
-            await query.message.reply_text(detail, parse_mode="HTML")
+        results = context.user_data.get("approved_cards", [])
+        header = "✅ Approved Cards"
     elif data == "show_charged":
-        for detail in context.user_data.get("charged_cards", []):
-            await query.message.reply_text(detail, parse_mode="HTML")
+        results = context.user_data.get("charged_cards", [])
+        header = "🔥 Charged Cards"
     elif data == "show_declined":
-        for detail in context.user_data.get("declined_cards", []):
+        results = context.user_data.get("declined_cards", [])
+        header = "❌ Declined Cards"
+    else:
+        results = []
+        header = ""
+
+    if results:
+        await query.message.reply_text(f"<b>{header}</b>\n\n", parse_mode="HTML")
+        for detail in results:
             await query.message.reply_text(detail, parse_mode="HTML")
+    else:
+        await query.message.reply_text("⚠️ No cards in this category yet.", parse_mode="HTML")
 
     await query.answer()
 
 
 # ---------- Runner ----------
 
-async def finalize_results(update: Update, msg, cards, approved, charged, declined, errors):
+async def finalize_results(update: Update, msg, cards, approved, charged, declined, errors,
+                           approved_cards, charged_cards, declined_cards):
+    # Build final TXT file
+    sections = []
+    if approved_cards:
+        sections.append("✅ APPROVED\n\n" + "\n\n".join(approved_cards))
+    if charged_cards:
+        sections.append("🔥 CHARGED\n\n" + "\n\n".join(charged_cards))
+    if declined_cards:
+        sections.append("❌ DECLINED\n\n" + "\n\n".join(declined_cards))
+
+    final_report = "\n\n============================\n\n".join(sections) if sections else "No results collected."
+    file_buf = io.BytesIO(final_report.encode("utf-8"))
+    file_buf.name = "shopify_results.txt"
+
     summary_caption = (
         "📊 <b>𝐅𝐢𝐧𝐚𝐥 𝐑𝐞𝐬𝐮𝐥𝐭𝐬</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙝𝐝𝐬 ➵ <b>{len(cards)}</b>\n"
+        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ <b>{len(cards)}</b>\n"
         "<pre><code>"
         f"✅ Approved ➵ <b>{approved}</b>\n"
         f"🔥 Charged ➵ <b>{charged}</b>\n"
@@ -6007,7 +6028,10 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
         "</code></pre>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━"
     )
-    await update.message.reply_text(summary_caption, parse_mode="HTML")
+
+    await update.message.reply_document(document=InputFile(file_buf),
+                                        caption=summary_caption,
+                                        parse_mode="HTML")
     try:
         await msg.delete()
     except Exception:
@@ -6082,7 +6106,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
             # Progress update
             try:
-                buttons = build_msp_buttons(batch[-1], approved, charged, declined, update.effective_user.id)
+                buttons = build_msp_buttons(approved, charged, declined, update.effective_user.id)
                 summary_text = (
                     f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -6100,7 +6124,10 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
-    await finalize_results(update, msg, cards, approved, charged, declined, errors)
+    await finalize_results(update, msg, cards, approved, charged, declined, errors,
+                           context.user_data["approved_cards"],
+                           context.user_data["charged_cards"],
+                           context.user_data["declined_cards"])
 
 
 # ---------- /msp command ----------
@@ -6161,7 +6188,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "</code></pre>"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
     )
-    buttons = build_msp_buttons("Waiting…", 0, 0, 0, update.effective_user.id)
+    buttons = build_msp_buttons(0, 0, 0, update.effective_user.id)
     msg = await update.message.reply_text(initial_summary, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
 
     task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
