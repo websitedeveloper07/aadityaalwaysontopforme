@@ -7010,7 +7010,6 @@ async def run_braintree_check(user, cc_input: str, full_card: str, processing_ms
         f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
         f"𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
         f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-        f"Proxy ➵ {escape(str(proxy_info))}\n"
         f"</pre>\n\n"
         f"𝐃𝐞𝐯 ➵ {developer_clickable}\n"
         f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
