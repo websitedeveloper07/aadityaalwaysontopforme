@@ -5982,7 +5982,7 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
     )
 
     try:
-        # Always reply to the original /msp command message
+        # 🔑 always reply to the original command message
         command_msg_id = context.user_data.get("msp_command_msg_id")
         if command_msg_id:
             await update.effective_chat.send_document(
@@ -5992,12 +5992,12 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
                 reply_to_message_id=command_msg_id
             )
         else:
-            # fallback if no stored msg id
+            # fallback: just reply to progress msg
             await msg.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
     except Exception as e:
         logger.error(f"Finalize send failed: {e}")
 
-    # delete progress message
+    # clean up progress message
     try:
         await msg.delete()
     except Exception:
