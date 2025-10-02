@@ -2979,7 +2979,7 @@ logger = logging.getLogger(__name__)
 
 import urllib.parse
 
-AUTOSH_BASE = "https://rockyog.onrender.com/index.php"
+AUTOSH_BASE = "https://rocks-mbs7.onrender.com/index.php"
 DEFAULT_PROXY = "142.111.48.253:7030:fvbysspi:bsbh3trstb1c"
 
 async def changeshsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5975,7 +5975,7 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
     summary_caption = (
         "📊 <b>𝐅𝐢𝐧𝐚𝐥 𝐑𝐞𝐬𝐮𝐥𝐭𝐬</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙝𝐝𝐬 ➵ <b>{len(cards)}</b>\n"
+        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ <b>{len(cards)}</b>\n"
         "<pre><code>"
         f"✅ Approved ➵ <b>{approved}</b>\n"
         f"🔥 Charged ➵ <b>{charged}</b>\n"
@@ -6003,7 +6003,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
     proxy = DEFAULT_PROXY
-    BATCH_SIZE = 5
+    BATCH_SIZE = 7
 
     # Store state for instant stop finalization
     context.user_data["msp_state"] = {
@@ -6152,7 +6152,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("❌ You have no credits left.")
         return
 
-    base_url = user_data.get("base_url", "https://rockyog.onrender.com/index.php")
+    base_url = user_data.get("base_url", "https://rocks-mbs7.onrender.com/index.php")
     sites = user_data.get("custom_urls", [])
     if not sites:
         await update.message.reply_text("❌ No sites found in your account.")
@@ -6161,7 +6161,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     initial_summary = (
         f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙝𝐝𝐬 ➵ {len(cards)}\n"
+        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ {len(cards)}\n"
         "<pre><code>"
         f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ 0\n"
         f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ 0\n"
