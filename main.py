@@ -6140,9 +6140,8 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 )
                 await msg.edit_text(summary_text, parse_mode="HTML",
                                      disable_web_page_preview=True, reply_markup=buttons)
-                except Exception:
-                    pass
-
+            except Exception as e:
+                logger.warning(f"Edit failed: {e}")
         await asyncio.gather(*(process_card(c) for c in cards))
 
     # ✅ Only finalize if not stopped manually
