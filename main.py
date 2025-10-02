@@ -6004,7 +6004,6 @@ async def finalize_results(update: Update, context: ContextTypes.DEFAULT_TYPE, m
 
 
 # ---------- Runner with Semaphore ----------
-# ---------- Runner ----------
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                   cards: List[str], base_url: str, sites: List[str], msg) -> None:
     context.user_data["msp_stop"] = False
@@ -6015,9 +6014,12 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
     semaphore = asyncio.Semaphore(MAX_PARALLEL)
 
     context.user_data["msp_state"] = {
-        "msg": msg, "cards": cards,
-        "approved": approved, "charged": charged,
-        "declined": declined, "errors": errors,
+        "msg": msg,
+        "cards": cards,
+        "approved": approved,
+        "charged": charged,
+        "declined": declined,
+        "errors": errors,
         "approved_results": approved_results,
         "charged_results": charged_results,
         "declined_results": declined_results,
@@ -6025,79 +6027,119 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
     }
 
     async with httpx.AsyncClient() as session:
+        for i in range(0, len(cards), BATCH_SIZE):
+            if context.user_data.get("msp_stop"):
+                return
 
-        async def process_card(card: str):
-            nonlocal approved, declined, errors, charged, checked
-            async with semaphore:
+            batch = cards[i:i + BATCH_SIZE]
+
+            async def process_card(card: str):
+                nonlocal approved, declined, errors, charged, checked
                 if context.user_data.get("msp_stop"):
                     return None
 
                 resp = None
-                resp_upper = ""
                 best_score = 0
+                resp_upper = ""
+                chosen_site = None
+                valid_found = False
 
-                # Sequential per site, stop at first valid
                 for site in sites:
                     if context.user_data.get("msp_stop"):
                         return None
+
                     r = await check_card(session, base_url, site, card, proxy)
                     resp_text = (r.get("response") or "").strip()
                     resp_upper = resp_text.upper()
+
+                    # 🚫 Skip junk/error sites
                     if any(pat in resp_upper for pat in ERROR_PATTERNS):
-                        continue
+                        continue  
+
+                    # ✅ Found a valid site response
                     resp = r
+                    chosen_site = site
+                    valid_found = True
+
                     if any(k in resp_upper for k in CHARGED_KEYWORDS):
-                        best_score = 4; break
+                        best_score = 4
                     elif any(k in resp_upper for k in APPROVED_KEYWORDS):
-                        best_score = 3; break
+                        best_score = 3
                     elif any(k in resp_upper for k in DECLINED_KEYWORDS):
-                        best_score = 2; break
+                        best_score = 2
+                    elif "ERROR" in resp_upper or "UNKNOWN" in resp_upper:
+                        best_score = 1
                     else:
                         best_score = 0
-                        break
+                    break  # stop at first valid site
 
-                if not resp:
+                # ❌ No valid site worked → mark error once
+                if not valid_found:
                     errors += 1
-                    error_results.append(
-                        f"⚠️ {card}\n Response: All sites failed\n Price: 0\n Gateway: N/A"
-                    )
+                    error_results.append(f"⚠️ {card}\n Response: All sites failed\n Price: 0\n Gateway: N/A")
+                    checked += 1
+                    return
+
+                # Build line with site info
+                line_resp = (
+                    f"Response: {resp.get('response','Unknown')}\n"
+                    f" Price: {resp.get('price','0')}\n"
+                    f" Gateway: {resp.get('gateway','N/A')}\n"
+                    f" Site: {chosen_site}"
+                )
+
+                # Final classification
+                if "INSUFFICIENT_FUNDS" in resp_upper:
+                    charged += 1
+                    charged_results.append(f"🔥 {card}\n {line_resp}")
+                elif best_score == 3:
+                    approved += 1
+                    approved_results.append(f"✅ {card}\n {line_resp}")
+                elif best_score == 2:
+                    declined += 1
+                    declined_results.append(f"❌ {card}\n {line_resp}")
+                elif best_score == 4:
+                    charged += 1
+                    charged_results.append(f"🔥 {card}\n {line_resp}")
                 else:
-                    line_resp = (
-                        f"Response: {resp.get('response','Unknown')}\n"
-                        f" Price: {resp.get('price','0')}\n"
-                        f" Gateway: {resp.get('gateway','N/A')}"
-                    )
-                    if "INSUFFICIENT_FUNDS" in resp_upper:
-                        charged += 1; charged_results.append(f"🔥 {card}\n {line_resp}")
-                    elif best_score == 3:
-                        approved += 1; approved_results.append(f"✅ {card}\n {line_resp}")
-                    elif best_score == 2:
-                        declined += 1; declined_results.append(f"❌ {card}\n {line_resp}")
-                    elif best_score == 4:
-                        charged += 1; charged_results.append(f"🔥 {card}\n {line_resp}")
-                    else:
-                        errors += 1; error_results.append(f"⚠️ {card}\n {line_resp}")
+                    errors += 1
+                    error_results.append(f"⚠️ {card}\n {line_resp}")
 
                 checked += 1
 
-                # Progress update
-                try:
-                    buttons = build_msp_buttons(approved, charged, declined, update.effective_user.id)
-                    summary_text = (
-                        f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ {len(cards)}\n"
-                        "<pre><code>"
-                        f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
-                        f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ {charged}\n"
-                        f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
-                        f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ {errors}\n"
-                        f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
-                        "</code></pre>"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    )
-                    await msg.edit_text(summary_text, parse_mode="HTML",
-                                         disable_web_page_preview=True, reply_markup=buttons)
+            # Run 3 cards in parallel
+            await asyncio.gather(*(process_card(c) for c in batch))
+
+            # update state after each batch
+            context.user_data["msp_state"].update({
+                "approved": approved,
+                "charged": charged,
+                "declined": declined,
+                "errors": errors,
+                "approved_results": approved_results,
+                "charged_results": charged_results,
+                "declined_results": declined_results,
+                "error_results": error_results
+            })
+
+            # Progress update
+            try:
+                buttons = build_msp_buttons(approved, charged, declined, update.effective_user.id)
+                summary_text = (
+                    f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ {len(cards)}\n"
+                    "<pre><code>"
+                    f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
+                    f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ {charged}\n"
+                    f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
+                    f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ {errors}\n"
+                    f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
+                    "</code></pre>"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                )
+                await msg.edit_text(summary_text, parse_mode="HTML",
+                                     disable_web_page_preview=True, reply_markup=buttons)
                 except Exception:
                     pass
 
