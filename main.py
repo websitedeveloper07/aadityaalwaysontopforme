@@ -5881,7 +5881,6 @@ async def consume_credit(user_id: int) -> bool:
 
 
 def build_msp_buttons(approved: int, charged: int, declined: int, owner_id: int) -> InlineKeyboardMarkup:
-    """Removed the Current button; only show stats + Stop."""
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(f"✅ Approved: {approved}", callback_data="noop"),
@@ -5916,7 +5915,6 @@ async def check_card(session: httpx.AsyncClient, base_url: str, site: str, card:
 
 
 # ---------- Buttons ----------
-# ---------- Buttons ----------
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if not query:
@@ -5939,9 +5937,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
         if "msp_state" in context.user_data:
             state = context.user_data["msp_state"]
-            # 🔑 Now the results file will reply to the progress message (`state["msg"]`)
             await finalize_results(
-                update, state["msg"], state["cards"],
+                update, context, state["msg"], state["cards"],
                 state["approved"], state["charged"], state["declined"], state["errors"],
                 state["approved_results"], state["charged_results"],
                 state["declined_results"], state["error_results"]
@@ -5951,9 +5948,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
 
 
-# ---------- Runner ----------
-async def finalize_results(update: Update, msg, cards, approved, charged, declined, errors,
-                           approved_results, charged_results, declined_results, error_results):
+# ---------- Finalize ----------
+async def finalize_results(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, cards,
+                           approved, charged, declined, errors,
+                           approved_results, charged_results,
+                           declined_results, error_results):
     sections = []
     if approved_results:
         sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
@@ -5982,9 +5981,9 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
     )
 
     try:
-        # 🔑 always reply to the original command message
         command_msg_id = context.user_data.get("msp_command_msg_id")
         if command_msg_id:
+            # ✅ always reply to the original /msp command message
             await update.effective_chat.send_document(
                 document=InputFile(file_buf),
                 caption=summary_caption,
@@ -5992,19 +5991,19 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
                 reply_to_message_id=command_msg_id
             )
         else:
-            # fallback: just reply to progress msg
-            await msg.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+            await msg.reply_document(document=InputFile(file_buf),
+                                     caption=summary_caption,
+                                     parse_mode="HTML")
     except Exception as e:
         logger.error(f"Finalize send failed: {e}")
 
-    # clean up progress message
     try:
         await msg.delete()
     except Exception:
         pass
 
 
-
+# ---------- Runner ----------
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                   cards: List[str], base_url: str, sites: List[str], msg) -> None:
     context.user_data["msp_stop"] = False
@@ -6013,7 +6012,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
     proxy = DEFAULT_PROXY
     BATCH_SIZE = 3   # process 3 cards in parallel
 
-    # Save initial state for stop/finalize
     context.user_data["msp_state"] = {
         "msg": msg,
         "cards": cards,
@@ -6053,11 +6051,9 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                     resp_text = (r.get("response") or "").strip()
                     resp_upper = resp_text.upper()
 
-                    # 🚫 Skip junk/error sites
                     if any(pat in resp_upper for pat in ERROR_PATTERNS):
                         continue  
 
-                    # ✅ Found a valid site response
                     resp = r
                     chosen_site = site
                     valid_found = True
@@ -6072,16 +6068,14 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                         best_score = 1
                     else:
                         best_score = 0
-                    break  # stop at first valid site
+                    break
 
-                # ❌ No valid site worked → mark error once
                 if not valid_found:
                     errors += 1
                     error_results.append(f"⚠️ {card}\n Response: All sites failed\n Price: 0\n Gateway: N/A")
                     checked += 1
                     return
 
-                # Build line with site info
                 line_resp = (
                     f"Response: {resp.get('response','Unknown')}\n"
                     f" Price: {resp.get('price','0')}\n"
@@ -6089,7 +6083,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                     f" Site: {chosen_site}"
                 )
 
-                # Final classification
                 if "INSUFFICIENT_FUNDS" in resp_upper:
                     charged += 1
                     charged_results.append(f"🔥 {card}\n {line_resp}")
@@ -6108,10 +6101,8 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
                 checked += 1
 
-            # Run 3 cards in parallel
             await asyncio.gather(*(process_card(c) for c in batch))
 
-            # update state after each batch
             context.user_data["msp_state"].update({
                 "approved": approved,
                 "charged": charged,
@@ -6123,7 +6114,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 "error_results": error_results
             })
 
-            # Progress update
             try:
                 buttons = build_msp_buttons(approved, charged, declined, update.effective_user.id)
                 summary_text = (
@@ -6144,11 +6134,11 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
-    await finalize_results(update, msg, cards, approved, charged, declined, errors,
+    await finalize_results(update, context, msg, cards, approved, charged, declined, errors,
                            approved_results, charged_results, declined_results, error_results)
 
 
-# ---------- /msp command ----------
+# ---------- /msp ----------
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     now = time.time()
@@ -6192,7 +6182,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("❌ No sites found in your account.")
         return
 
-    # store command message id for later use in finalize_results
     context.user_data["msp_command_msg_id"] = update.message.message_id
 
     initial_summary = (
@@ -6212,9 +6201,9 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = await update.message.reply_text(initial_summary, parse_mode="HTML",
                                           disable_web_page_preview=True, reply_markup=buttons)
 
-    # run checker
     task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
     task.add_done_callback(lambda t: logger.error(f"/msp crashed: {t.exception()}") if t.exception() else None)
+
 
 
 
