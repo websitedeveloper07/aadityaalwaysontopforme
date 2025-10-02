@@ -5956,7 +5956,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 # ---------- Runner ----------
-async def finalize_results(update: Update, msg, cards, approved, charged, declined, errors, approved_results, charged_results, declined_results, error_results):
+async def finalize_results(update: Update, msg, cards, approved, charged, declined, errors,
+                           approved_results, charged_results, declined_results, error_results):
     sections = []
     if approved_results:
         sections.append("✅ APPROVED\n" + "\n\n".join(approved_results))
@@ -5983,7 +5984,14 @@ async def finalize_results(update: Update, msg, cards, approved, charged, declin
         "</code></pre>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━"
     )
-    await update.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+
+    # ✅ handle both /msp command and button press
+    if update.message:
+        await update.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+    elif update.callback_query:
+        await update.callback_query.message.reply_document(document=InputFile(file_buf), caption=summary_caption, parse_mode="HTML")
+
+    # ✅ delete progress message
     try:
         await msg.delete()
     except Exception:
@@ -6008,7 +6016,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
     async with httpx.AsyncClient() as session:
         for i in range(0, len(cards), BATCH_SIZE):
             if context.user_data.get("msp_stop"):
-                return  # instant exit
+                return  # instant exit after stop
 
             batch = cards[i:i + BATCH_SIZE]
             for card in batch:
@@ -6065,7 +6073,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     error_results.append(f"⚠️ {card}\n {line_resp}")
                 checked += 1
 
-                # update state
+                # update state for instant stop
                 context.user_data["msp_state"].update({
                     "approved": approved, "charged": charged,
                     "declined": declined, "errors": errors,
@@ -6100,7 +6108,8 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
-    await finalize_results(update, msg, cards, approved, charged, declined, errors, approved_results, charged_results, declined_results, error_results)
+    await finalize_results(update, msg, cards, approved, charged, declined, errors,
+                           approved_results, charged_results, declined_results, error_results)
 
 
 # ---------- /msp command ----------
@@ -6152,7 +6161,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     initial_summary = (
         f"📊 𝙈𝙖𝙨𝙨 𝙎𝙝𝙤𝙥𝙞𝙛𝙮 𝘾𝙝𝙚𝙘𝙠𝙚𝙧\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝐝𝐬 ➵ {len(cards)}\n"
+        f"#𝙏𝙤𝙩𝙖𝙡_𝘾𝙖𝙧𝙝𝐝𝐬 ➵ {len(cards)}\n"
         "<pre><code>"
         f"𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➵ 0\n"
         f"𝐂𝐡𝐚𝐫𝐠𝐞𝐝 ➵ 0\n"
@@ -6167,6 +6176,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
     task.add_done_callback(lambda t: logger.error(f"/msp crashed: {t.exception()}") if t.exception() else None)
+
 
 
 
