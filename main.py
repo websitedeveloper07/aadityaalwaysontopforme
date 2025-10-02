@@ -6143,8 +6143,13 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
             except Exception as e:
                 logger.warning(f"Edit failed: {e}")
 
-    await finalize_results(update, msg, cards, approved, charged, declined, errors,
-                           approved_results, charged_results, declined_results, error_results)
+    # ✅ FIXED: call finalize_results with context so results are always sent
+    await finalize_results(
+        update, context, msg, cards,
+        approved, charged, declined, errors,
+        approved_results, charged_results,
+        declined_results, error_results
+    )
 
 # ---------- /msp ----------
 async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
