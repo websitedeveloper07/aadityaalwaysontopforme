@@ -6076,7 +6076,6 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                     f"Response: {resp.get('response','Unknown')}\n"
                     f" Price: {resp.get('price','0')}\n"
                     f" Gateway: {resp.get('gateway','N/A')}\n"
-                    f" Site: {chosen_site}"
                 )
 
                 # Final classification
