@@ -5998,7 +5998,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
     proxy = DEFAULT_PROXY
-    BATCH_SIZE = 7
+    BATCH_SIZE = 3
 
     # Store state for instant stop finalization
     context.user_data["msp_state"] = {
