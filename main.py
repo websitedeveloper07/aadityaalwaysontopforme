@@ -5931,11 +5931,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await query.answer("⚠️ Not your request!", show_alert=True)
             return
 
+        # Mark stopped
         context.user_data["msp_stop"] = True
         await query.answer("⏹ Stopped! Sending results...", show_alert=True)
 
-        if "msp_state" in context.user_data:
+        # Send results only once
+        if "msp_state" in context.user_data and not context.user_data.get("finalized", False):
             state = context.user_data["msp_state"]
+            context.user_data["finalized"] = True
             await finalize_results(
                 update, context, state["msg"], state["cards"],
                 state["approved"], state["charged"], state["declined"], state["errors"],
@@ -6001,18 +6004,18 @@ async def finalize_results(update: Update, context: ContextTypes.DEFAULT_TYPE, m
         pass
 
 
-# ---------- Runner with Semaphore ----------
 # ---------- Runner ----------
 async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                   cards: List[str], base_url: str, sites: List[str], msg) -> None:
     context.user_data["msp_stop"] = False
+    context.user_data["finalized"] = False
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
     proxy = DEFAULT_PROXY
     MAX_PARALLEL = 3  # exactly 3 cards in parallel
     semaphore = asyncio.Semaphore(MAX_PARALLEL)
 
-    # Save state for stop/finalize
+    # Save state
     context.user_data["msp_state"] = {
         "msg": msg, "cards": cards,
         "approved": approved, "charged": charged, "declined": declined, "errors": errors,
@@ -6032,7 +6035,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 resp_upper = ""
                 best_score = 0
 
-                # 🔄 Try each site until one gives a usable response
+                # 🔄 Try all sites until one gives usable response
                 for site in sites:
                     if context.user_data.get("msp_stop"):
                         return None
@@ -6041,11 +6044,9 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                     resp_text = (r.get("response") or "").strip()
                     resp_upper = resp_text.upper()
 
-                    # 🚫 Skip junk/error sites
-                    if any(pat in resp_upper for pat in ERROR_PATTERNS):
-                        continue  
+                    if not resp_text or any(pat in resp_upper for pat in ERROR_PATTERNS):
+                        continue
 
-                    # ✅ Accept this site response
                     resp = r
                     if any(k in resp_upper for k in CHARGED_KEYWORDS):
                         best_score = 4
@@ -6055,14 +6056,12 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                         best_score = 2
                     else:
                         best_score = 0
-                    break  # stop once we got a usable site response
+                    break  # stop after first usable response
 
-                # 📝 Classify results
+                # 📝 Classify
                 if not resp:
                     errors += 1
-                    error_results.append(
-                        f"⚠️ {card}\n Response: All sites failed\n Price: 0\n Gateway: N/A"
-                    )
+                    error_results.append(f"⚠️ {card}\n Response: All sites failed\n Price: 0\n Gateway: N/A")
                 else:
                     line_resp = (
                         f"Response: {resp.get('response','Unknown')}\n"
@@ -6070,20 +6069,15 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                         f" Gateway: {resp.get('gateway','N/A')}"
                     )
                     if "INSUFFICIENT_FUNDS" in resp_upper:
-                        charged += 1
-                        charged_results.append(f"🔥 {card}\n {line_resp}")
+                        charged += 1; charged_results.append(f"🔥 {card}\n {line_resp}")
                     elif best_score == 3:
-                        approved += 1
-                        approved_results.append(f"✅ {card}\n {line_resp}")
+                        approved += 1; approved_results.append(f"✅ {card}\n {line_resp}")
                     elif best_score == 2:
-                        declined += 1
-                        declined_results.append(f"❌ {card}\n {line_resp}")
+                        declined += 1; declined_results.append(f"❌ {card}\n {line_resp}")
                     elif best_score == 4:
-                        charged += 1
-                        charged_results.append(f"🔥 {card}\n {line_resp}")
+                        charged += 1; charged_results.append(f"🔥 {card}\n {line_resp}")
                     else:
-                        errors += 1
-                        error_results.append(f"⚠️ {card}\n {line_resp}")
+                        errors += 1; error_results.append(f"⚠️ {card}\n {line_resp}")
 
                 checked += 1
 
@@ -6108,16 +6102,15 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
                 except Exception:
                     pass
 
-        # 🚀 Run 3 cards in parallel until all finished
         await asyncio.gather(*(process_card(c) for c in cards))
 
-    # ✅ Only finalize if not stopped
-    if not context.user_data.get("msp_stop"):
+    # ✅ Only finalize once
+    if not context.user_data.get("msp_stop") and not context.user_data.get("finalized", False):
+        context.user_data["finalized"] = True
         await finalize_results(update, context, msg, cards,
                                approved, charged, declined, errors,
                                approved_results, charged_results,
                                declined_results, error_results)
-
 
 
 # ---------- /msp ----------
@@ -6185,7 +6178,6 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg))
     task.add_done_callback(lambda t: logger.error(f"/msp crashed: {t.exception()}") if t.exception() else None)
-
 
 
 
