@@ -6010,7 +6010,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE,
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
     proxy = DEFAULT_PROXY
-    BATCH_SIZE = 3   # process 3 cards in parallel
+    BATCH_SIZE = 5  # process 3 cards in parallel
 
     # Save initial state for stop/finalize
     context.user_data["msp_state"] = {
