@@ -21,8 +21,7 @@ from config import ADMIN_IDS
 # === CONFIGURATION ===
 # IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
 TOKEN = "8138635592:AAHoDiNZ7T3uW_av13nEwtXVhRmCqenixm4"
-OWNER_ID = 6701573974
-
+OWNER_ID = 8278658138
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@Kalinuxxx"
 OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
@@ -1592,7 +1591,7 @@ from telegram.helpers import escape_markdown as escape_markdown_v2
 async def adcr_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Adds a specified number of credits to a user's account, restricted to a specific owner."""
     # Owner ID is hardcoded
-    OWNER_ID = 6701573974
+    OWNER_ID = 8278658138
 
     # Check if the user is the owner
     if update.effective_user.id != OWNER_ID:
@@ -8441,7 +8440,7 @@ import asyncpg
 from telegram import Update
 from telegram.ext import ContextTypes
 
-ADMIN_USER_ID = 6701573974  # Replace with your admin user ID
+ADMIN_USER_ID = 8278658138  # Replace with your admin user ID
 
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -8622,7 +8621,7 @@ from force_join import force_join, check_joined_callback  # import decorator & c
 
 # 🛡️ Security
 AUTHORIZED_CHATS = set([-1002554243871, -1002832894194, -1002996641591, -1002750403340, -1003007390596, -1003040961439, -1002905834316, -1002660201006, -1002397483185, -1001988765966, -1003044358879])  # Only these groups
-OWNER_ID =  6701573974                    # Your Telegram user ID
+OWNER_ID =  8278658138                    # Your Telegram user ID
 
 # 🛑 Banned users
 BANNED_USERS = set()
