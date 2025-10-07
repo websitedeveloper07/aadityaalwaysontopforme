@@ -9069,6 +9069,7 @@ def register_user_commands(application):
         ("adcr", adcr_command),
         ("ad", ad_command),
         ("bin", bin_lookup),
+        ("rz", rz_command),
         ("fk", fk_command),
         ("vbv", vbv),
         ("pp", pp_command),
