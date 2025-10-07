@@ -2587,7 +2587,6 @@ FALLBACK_ERRORS = [
 
 COOLDOWN = 5                 # per-user cooldown seconds
 ANIM_STEP_DELAY = 0.7        # animation speed (seconds per char)
-CHECK_TIMES = 4              # how many times to check the API
 user_cooldowns = {}          # user_id -> last timestamp
 
 DEVELOPER_NAME = "kคli liຖนxx"
@@ -2662,12 +2661,6 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                 parse_mode=ParseMode.HTML
             )
             return
-        if brand_upper in ("MASTERCARD", "MASTER", "MASTER_CARD", "MASTERCARDDEBIT"):
-            await update.message.reply_text(
-                "⚠️ 𝐌𝐚𝐬𝘁𝐞𝐫𝐜𝐚𝐫𝐝 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝗂𝘀𝗮 𝙘𝙖𝙧𝙙𝙨.",
-                parse_mode=ParseMode.HTML
-            )
-            return
 
         # --- User credit pre-check ---
         user_data = await get_user(user_id)
@@ -2681,7 +2674,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Initial message ---
         try:
             msg = await update.message.reply_text(
-                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗲𝙨𝙨⏳</code></pre>\n"
+                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗚𝗲𝙨𝙨⏳</code></pre>\n"
                 "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫",
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
@@ -2696,7 +2689,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Animation ---
         async def _animate_loop(message):
             anim_texts = [
-                "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝗈𝙣 𝙄𝙨 𝙋𝗿𝗼𝙘𝗲𝙨𝙨𝗂𝗇𝗀...",
+                "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝗈𝙣 𝙄𝙨 𝙋𝗿𝗼𝗰𝗲𝙨𝙨𝗂𝗇𝗀...",
                 "𝙋𝗹𝙚𝗮𝙨𝗲 𝙬𝗮𝗶𝙩 𝙛𝗈𝗋...",
                 "𝙖 𝙬𝗵𝗂𝗹𝗲..."
             ]
@@ -2707,7 +2700,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                     for i in range(1, len(anim_text) + 1):
                         shown = anim_text[:i]
                         text = (
-                            "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗲𝙨𝙨⏳</code></pre>\n"
+                            "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝗰𝗲𝙨𝙨⏳</code></pre>\n"
                             f"<pre><code>{escape(shown)}</code></pre>\n"
                             "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫"
                         )
@@ -2766,9 +2759,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                 # ❌ Non-fallback failure
                 final_status = "❌ FAILED"
                 display_response = message_text or "Gateway returned an unrecoverable response."
-                break
-
-                await asyncio.sleep(1)
+                break  # stop trying further sites
 
         # --- Stop animation ---
         anim_task.cancel()
@@ -2818,6 +2809,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         except Exception:
             pass
         print(f"[ERROR] /kill task failed: {e}")
+
 
 
 
