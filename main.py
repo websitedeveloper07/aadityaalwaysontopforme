@@ -2733,6 +2733,8 @@ async def process_rz(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "❌ Declined (3DS Not Enabled)"
         elif "cancelled" in lower_resp or "declined" in lower_resp or "insufficient" in lower_resp:
             header_status = "❌ Declined"
+        elif "Payment processing failed" in lower_resp or "failed" in lower_resp or "insufficient" in lower_resp:
+            header_status = "❌ Declined"
         else:
             header_status = "ℹ️ Info"
 
@@ -2759,7 +2761,6 @@ async def process_rz(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
             f"𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
-            f"𝐏𝐫𝐨𝐱𝐲 ➵ {escape(proxy_ip)} ({escape(proxy_status)})"
             f"</pre>\n\n"
             f"𝐃𝐄𝐕 ➵ {developer_clickable}\n"
             f"𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐫 ➵ {requester}\n"
