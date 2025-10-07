@@ -2568,7 +2568,6 @@ COOLDOWN = 5
 ANIM_STEP_DELAY = 0.7
 user_cooldowns = {}
 
-# --- Consume credits ---
 async def consume_credit(user_id: int):
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) >= 5:
@@ -2577,7 +2576,6 @@ async def consume_credit(user_id: int):
         return True
     return False
 
-# --- /kill handler ---
 async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
@@ -2594,7 +2592,6 @@ async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(_kill_task(update, context, user_id))
 
 
-# --- Main task ---
 async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
     try:
         start_time = time.time()
@@ -2624,7 +2621,6 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             country_name = "Unknown"
             country_flag = ""
 
-        # --- Only VISA ---
         if brand.upper() in ["AMEX", "MASTERCARD"]:
             await update.message.reply_text(
                 f"⚠️ {brand} detected!\n❌ /kill only supports VISA cards.",
@@ -2632,7 +2628,6 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             )
             return
 
-        # --- Check credits ---
         user_data = await get_user(user_id)
         if not user_data or user_data.get("credits", 0) < 5:
             await update.message.reply_text(
@@ -2658,7 +2653,9 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                     "𝙋𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩 𝙛𝙤𝙧...",
                     "𝙖 𝙬𝙝𝙞𝙡𝙚..."
                 ]
-                for anim_text in anim_texts:
+                idx = 0
+                while True:
+                    anim_text = anim_texts[idx % len(anim_texts)]
                     for i in range(len(anim_text)+1):
                         shown = anim_text[:i]
                         text = (
@@ -2671,17 +2668,19 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                         except TelegramError:
                             pass
                         await asyncio.sleep(ANIM_STEP_DELAY)
+                    idx += 1
             except asyncio.CancelledError:
                 return
 
         anim_task = asyncio.create_task(_animate(msg))
 
         api_url = KILL_API.format(full_card=cc)
-        final_status = None
-        display_response = ""
+        final_status = "❌ FAILED / TIMEOUT"
+        display_response = "The card could not be killed."
 
         async with aiohttp.ClientSession() as session:
-            for attempt in range(5):  # check 5 times
+            # --- Check 5 times regardless of response ---
+            for attempt in range(5):
                 try:
                     async with session.get(api_url, timeout=55) as resp:
                         data = await resp.json()
@@ -2693,13 +2692,8 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                 if response in ("CARD_DECLINED", "FRAUD_SUSPECTED"):
                     final_status = "✅ 𝗞𝗶𝗹𝗹𝗲𝗱 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆"
                     display_response = "Your card has been killed successfully."
-                    await consume_credit(user_id)
-                    break
+                    # Do not break, continue all 5 checks
                 await asyncio.sleep(2)
-
-            if not final_status:
-                final_status = "❌ FAILED / TIMEOUT"
-                display_response = "The card could not be killed."
 
         # --- Stop animation ---
         anim_task.cancel()
@@ -2711,7 +2705,6 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
-        # --- Final message ---
         final_text = (
             f"<b><i>{final_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n⤷ <code>{escaped_card}</code>\n"
@@ -2726,6 +2719,9 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         )
 
         await msg.edit_text(final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+
+        # Consume credit after final checks
+        await consume_credit(user_id)
 
     except Exception as e:
         await update.message.reply_text(
