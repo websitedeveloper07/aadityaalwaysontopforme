@@ -2548,7 +2548,6 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 import aiohttp
 import asyncio
-import json
 import time
 from html import escape
 from telegram import Update
@@ -2567,12 +2566,12 @@ KILL_API = (
 
 MAX_BAR_LENGTH = 8
 PROGRESS_CHAR = "█"
-COOLDOWN = 5  # 5 seconds cooldown
+COOLDOWN = 5  # seconds
 user_cooldowns = {}  # user_id: timestamp
 
 
-# --- Consume credits ---
-async def consume_credit(user_id: int, amount: int = 1) -> bool:
+# --- Consume user credits ---
+async def consume_user_credit(user_id: int, amount: int = 1) -> bool:
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) >= amount:
         new_credits = user_data["credits"] - amount
@@ -2598,7 +2597,7 @@ async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- Mark cooldown ---
     user_cooldowns[user_id] = now
 
-    # --- Run the kill in background ---
+    # --- Run kill in background ---
     asyncio.create_task(_kill_task(update, context, user_id))
 
 
@@ -2635,7 +2634,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         if brand.upper() == "AMEX":
             await update.message.reply_text(
                 "⚠️ 𝐀𝐦𝐞𝐫𝐢𝐜𝐚𝐧 𝐄𝐱𝐩𝐫𝐞𝐬𝐬 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n"
-                "❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨.",
+                "❌ Only Visa cards are supported.",
                 parse_mode=ParseMode.HTML
             )
             return
@@ -2643,7 +2642,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         if brand.upper() == "MASTERCARD":
             await update.message.reply_text(
                 "⚠️ 𝐌𝐚𝐬𝐭𝐞𝐫𝐜𝐚𝐫𝐝 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n"
-                "❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨",
+                "❌ Only Visa cards are supported.",
                 parse_mode=ParseMode.HTML
             )
             return
@@ -2660,7 +2659,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Initial progress message ---
         msg = await update.message.reply_text(
             "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
-            f"[{' ' * MAX_BAR_LENGTH}] 0%\n"
+            f"[{' ' * MAX_BAR_LENGTH}]\n"
             f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫",
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
@@ -2675,22 +2674,16 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         async with aiohttp.ClientSession() as session:
             while attempt < max_attempts:
                 attempt += 1
-                percent = int((attempt / max_attempts) * 100)
+                # --- Update progress bar ---
                 bar_length = int((attempt / max_attempts) * MAX_BAR_LENGTH)
                 bar = PROGRESS_CHAR * bar_length + " " * (MAX_BAR_LENGTH - bar_length)
-
-                # --- Update progress ---
                 processing_text = (
                     f"<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
-                    f"[{bar}] {percent}%\n"
+                    f"[{bar}]\n"
                     f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫"
                 )
                 try:
-                    await msg.edit_text(
-                        processing_text,
-                        parse_mode=ParseMode.HTML,
-                        disable_web_page_preview=True
-                    )
+                    await msg.edit_text(processing_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
                 except TelegramError:
                     pass
 
@@ -2706,9 +2699,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                 if response in ("CARD_DECLINED", "FRAUD_SUSPECTED"):
                     final_status = "✅ 𝗞𝗶𝗹𝗹𝗲𝗱 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆"
                     display_response = "Your card has been killed successfully."
-
-                    # Deduct 5 credits on success
-                    await consume_credit(user_id, 5)
+                    await consume_user_credit(user_id, 5)
                     break
 
                 await asyncio.sleep(3)
@@ -2748,6 +2739,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             parse_mode=ParseMode.HTML
         )
         print(f"[ERROR] /kill task failed: {e}")
+
 
 
 
