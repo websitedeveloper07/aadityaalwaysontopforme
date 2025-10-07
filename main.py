@@ -2681,13 +2681,13 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Unsupported card check ---
         if brand_upper in ("AMEX", "AMERICANEXPRESS", "AMERICAN_EXPRESS"):
             await update.message.reply_text(
-                "⚠️ American Express detected!\n❌ /kill only supports VISA cards.",
+                "⚠️ 𝐀𝐦𝐞𝐫𝐢𝐜𝐚𝐧 𝐄𝐱𝐩𝐫𝐞𝐬𝐬 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨.",
                 parse_mode=ParseMode.HTML
             )
             return
         if brand_upper in ("MASTERCARD", "MASTER", "MASTER_CARD", "MASTERCARDDEBIT"):
             await update.message.reply_text(
-                "⚠️ Mastercard detected!\n❌ /kill only supports VISA cards.",
+                "⚠️ 𝐌𝐚𝐬𝐭𝐞𝐫𝐜𝐚𝐫𝐝 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨.",
                 parse_mode=ParseMode.HTML
             )
             return
