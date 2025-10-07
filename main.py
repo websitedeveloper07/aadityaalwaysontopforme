@@ -2604,6 +2604,7 @@ async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------------- background worker ----------------
 async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
+    anim_task = None
     try:
         start_time = time.time()
 
@@ -2638,13 +2639,13 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Unsupported card check ---
         if brand_upper in ("AMEX", "AMERICANEXPRESS", "AMERICAN_EXPRESS"):
             await update.message.reply_text(
-                "⚠️ 𝐀𝐦𝐞𝐫𝐢𝐜𝐚𝐧 𝐄𝐱𝐩𝐫𝐞𝐬𝐬 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨.",
+                "⚠️ 𝐀𝐦𝐞𝐫𝐢𝐜𝐚𝐧 𝐄𝐱𝐩𝐫𝐞𝐬𝘀 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝗂𝘀𝗮 𝙘𝙖𝙧𝙙𝙨.",
                 parse_mode=ParseMode.HTML
             )
             return
         if brand_upper in ("MASTERCARD", "MASTER", "MASTER_CARD", "MASTERCARDDEBIT"):
             await update.message.reply_text(
-                "⚠️ 𝐌𝐚𝐬𝐭𝐞𝐫𝐜𝐚𝐫𝐝 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨.",
+                "⚠️ 𝐌𝐚𝐬𝘁𝐞𝐫𝐜𝐚𝐫𝐝 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝗂𝘀𝗮 𝙘𝙖𝙧𝙙𝙨.",
                 parse_mode=ParseMode.HTML
             )
             return
@@ -2661,8 +2662,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Initial message ---
         try:
             msg = await update.message.reply_text(
-                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
-                "<pre><code></code></pre>\n"
+                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗲𝙨𝙨⏳</code></pre>\n"
                 "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫",
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
@@ -2677,9 +2677,9 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         # --- Animation ---
         async def _animate_loop(message):
             anim_texts = [
-                "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝙤𝙣 𝙄𝙨 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜...",
-                "𝙋𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩 𝙛𝙤𝙧...",
-                "𝙖 𝙬𝙝𝙞𝙡𝙚..."
+                "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝗈𝙣 𝙄𝙨 𝙋𝗿𝗼𝙘𝗲𝙨𝙨𝗂𝗇𝗀...",
+                "𝙋𝗹𝙚𝗮𝙨𝗲 𝙬𝗮𝗶𝙩 𝙛𝗈𝗋...",
+                "𝙖 𝙬𝗵𝗂𝗹𝗲..."
             ]
             idx = 0
             try:
@@ -2688,7 +2688,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                     for i in range(1, len(anim_text) + 1):
                         shown = anim_text[:i]
                         text = (
-                            "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
+                            "<pre><code>𝙆𝙞𝙡𝙡𝙞𝗇𝗀 𝙄𝙣 𝙋𝗿𝗼𝙘𝗲𝙨𝙨⏳</code></pre>\n"
                             f"<pre><code>{escape(shown)}</code></pre>\n"
                             "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫"
                         )
@@ -2730,6 +2730,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                 if response in ("CARD_DECLINED", "FRAUD_SUSPECTED"):
                     final_status = "✅ 𝗞𝗶𝗹𝗹𝗲𝗱 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆"
                     display_response = "Your card has been killed successfully."
+                    break  # stop further attempts
                 else:
                     final_status = "❌ FAILED"
                     display_response = data.get("Message") or data.get("message") or "Gateway returned an unrecoverable response."
@@ -2751,7 +2752,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
 
         # --- Final message ---
         elapsed_time = round(time.time() - start_time, 1)
-        escaped_card = escape(cc[:6] + "******" + cc[-4:])
+        escaped_card = escape(cc[:6] + "******" + cc[-3:])
         final_text = (
             f"<b><i>{final_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n⤷ <code>{escaped_card}</code>\n"
@@ -2771,10 +2772,11 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             await update.message.reply_text(final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
     except Exception as e:
-        try:
-            anim_task.cancel()
-        except Exception:
-            pass
+        if anim_task:
+            try:
+                anim_task.cancel()
+            except Exception:
+                pass
         try:
             await update.message.reply_text(
                 "❌ Unexpected error while processing /kill.",
@@ -2783,6 +2785,7 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
         except Exception:
             pass
         print(f"[ERROR] /kill task failed: {e}")
+
 
 
 
