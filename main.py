@@ -361,20 +361,22 @@ async def get_user_cached(user_id, context):
     context.user_data["profile"] = user_data
     return user_data
 
+
 def get_main_keyboard() -> InlineKeyboardMarkup:
     """
-    Creates and returns the main inline keyboard.
+    Creates and returns the main inline keyboard in two columns.
     """
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("🚪 Gates", callback_data="gates_menu"),
-            InlineKeyboardButton("📦 Pricing", callback_data="tools_menu")  # Changed here
+            InlineKeyboardButton("📦 Pricing", callback_data="tools_menu")
         ],
         [
-            InlineKeyboardButton("💎 Owner", url=DEV_LINK),
+            InlineKeyboardButton("💀 Killer", callback_data="killer_menu"),
             InlineKeyboardButton("🔐 3DS Lookup", callback_data="ds_lookup")
         ],
         [
+            InlineKeyboardButton("💎 Owner", url=DEV_LINK),
             InlineKeyboardButton("👥 Official Group", url=OFFICIAL_GROUP_LINK)
         ]
     ])
@@ -515,6 +517,45 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard),
             disable_web_page_preview=True
         )
+
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
+from telegram.ext import ContextTypes
+
+BULLET_GROUP_LINK = "https://t.me/CARDER33"  # your bullet/group link
+
+async def killer_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Killer' button."""
+    q = update.callback_query
+    await q.answer()
+
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
+    text = (
+        "✦═══ 𝐊𝐈𝐋𝐋𝐄𝐑 𝐆𝐀𝐓𝐄𝐖𝐀𝐘 ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃   : <code>/kill</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬 : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 : <i>Killer</i>\n"
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
+    ])
+
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        # fallback if edit fails
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+            disable_web_page_preview=True
+        )
+
 
 
 async def gates_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
