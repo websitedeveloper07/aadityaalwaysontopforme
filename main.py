@@ -9099,6 +9099,7 @@ def register_user_commands(application):
         ("dork", dork),
         ("adserp", adserp), 
         ("kill", kill_command), 
+        ("changekillsite", changekillsite_command),
         ("rserp", rserp),
         ("adcr", adcr_command),
         ("ad", ad_command),
