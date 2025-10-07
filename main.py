@@ -2662,7 +2662,7 @@ async def process_rz(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- Initial processing message ---
         processing_text = (
-            f"<pre><code>⏳ Processing Razorpay 1₹...</code></pre>\n"
+            f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
             f"<pre><code>{escape(full_card)}</code></pre>\n"
             f"<b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐑𝐚𝐳𝐨𝐫𝐩𝐚𝐲 1₹</b>\n"
         )
@@ -2753,7 +2753,7 @@ async def process_rz(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"<b><i>{header_status}</i></b>\n\n"
             f"𝐂𝐚𝐫𝐝\n"
             f"⤷ <code>{escape(full_card)}</code>\n"
-            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ {gateway_label}\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐑𝐚𝐳𝐨𝐫𝐩𝐚𝐲 1₹\n"
             f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(response_description)}</code></i>\n\n"
             f"<pre>"
             f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
