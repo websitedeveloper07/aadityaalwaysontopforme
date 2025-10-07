@@ -2763,7 +2763,6 @@ async def process_rz(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
             f"</pre>\n\n"
             f"𝐃𝐄𝐕 ➵ {developer_clickable}\n"
-            f"𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐫 ➵ {requester}\n"
             f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
         )
 
