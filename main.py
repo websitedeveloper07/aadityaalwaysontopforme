@@ -523,7 +523,7 @@ from telegram.ext import ContextTypes
 
 BULLET_GROUP_LINK = "https://t.me/CARDER33"  # your bullet/group link
 
-async def killer_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def killer_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Callback handler for the 'Killer' button."""
     q = update.callback_query
     await q.answer()
@@ -1135,6 +1135,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "paypal_gate": paypal_gate_handler, 
         "paypal1_gate": paypal1_gate_handler,
         "ds_lookup": ds_lookup_menu_handler,
+        "killer_menu": killer_menu_handler,
         "back_to_start": back_to_start_handler,
     }
 
@@ -1182,6 +1183,7 @@ ALL_COMMANDS = [
     ("3DS Lookup", "/vbv"),
     ("Shopify Charge $0.98", "/sh"),
     ("Shopify Charge $10", "/hc"),
+    ("Visa killer", "/kill"),
     ("Set your Shopify site", "/seturl"),
     ("Auto check on your site", "/sp"),
     ("Mass Shopify Charged", "/msp"),
