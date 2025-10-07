@@ -2735,6 +2735,8 @@ async def process_rz(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             header_status = "❌ Declined"
         elif "Payment processing failed" in lower_resp or "failed" in lower_resp or "insufficient" in lower_resp:
             header_status = "❌ Declined"
+        elif "refund" in lower_resp or "days" in lower_resp or "did not go" in lower_resp:
+            header_status = "❎ Declined"
         else:
             header_status = "ℹ️ Info"
 
