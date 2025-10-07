@@ -8988,7 +8988,7 @@ def register_user_commands(application):
         ("open", open_command),
         ("dork", dork),
         ("adserp", adserp), 
-        ("killer", killer), 
+        ("kill", kill_command), 
         ("rserp", rserp),
         ("adcr", adcr_command),
         ("ad", ad_command),
