@@ -2611,7 +2611,7 @@ KILL_API = (
 )
 
 COOLDOWN = 5                 # per-user cooldown seconds
-ANIM_STEP_DELAY = 0.7        # animation speed (seconds per char)
+ANIM_STEP_DELAY = 1        # animation speed (seconds per char)
 CHECK_TIMES = 4              # how many times to check the API
 user_cooldowns = {}          # user_id -> last timestamp
 
