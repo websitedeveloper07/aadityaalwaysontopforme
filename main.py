@@ -8003,21 +8003,16 @@ SECURITY_PATTERNS = {
     '3D Secure': r'3d_secure|threed_secure|secure_redirect',
 }
 
-# Example list of gateways (add your own)
+# Payment gateways list
 PAYMENT_GATEWAYS = [
-    # Major Global & Popular Gateways
     "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
     "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
     "Checkout.com", "Bolt", "Eway", "PayFlow", "Payeezy",
     "Paddle", "Mollie", "Viva Wallet", "Rocketgateway", "Rocketgate",
     "Rocket", "Auth.net", "Authnet", "rocketgate.com", "Recurly",
-
-    # E-commerce Platforms
     "Shopify", "WooCommerce", "BigCommerce", "Magento", "Magento Payments",
     "OpenCart", "PrestaShop", "3DCart", "Ecwid", "Shift4Shop",
     "Shopware", "VirtueMart", "CS-Cart", "X-Cart", "LemonStand",
-
-    # Additional Payment Solutions
     "Convergepay", "PaySimple", "oceanpayments", "eProcessing",
     "hipay", "cybersourse", "payjunction", "usaepay", "creo",
     "SquareUp", "ebizcharge", "cpay", "Moneris", "cardknox",
@@ -8025,40 +8020,28 @@ PAYMENT_GATEWAYS = [
     "blackbaud", "LawPay", "clover", "cardconnect", "bluepay",
     "fluidpay", "Ebiz", "chasepaymentech", "Auruspay", "sagepayments",
     "paycomet", "geomerchant", "realexpayments", "Razorpay",
-
-    # Digital Wallets & Payment Apps
-    "Apple Pay", "Google Pay", "Samsung Pay",  "Cash App",
+    "Apple Pay", "Google Pay", "Samsung Pay", "Cash App",
     "Revolut", "Zelle", "Alipay", "WeChat Pay", "PayPay", "Line Pay",
     "Skrill", "Neteller", "WebMoney", "Payoneer", "Paysafe",
     "Payeer", "GrabPay", "PayMaya", "MoMo", "TrueMoney",
     "Touch n Go", "GoPay", "JKOPay", "EasyPaisa",
-
-    # Regional & Country Specific
-    "Paytm", "UPI", "PayU", "CCAvenue",
+    "Paytm", "UPI", "PayU", "PayUBiz", "PayUMoney", "CCAvenue",
     "Mercado Pago", "PagSeguro", "Yandex.Checkout", "PayFort", "MyFatoorah",
     "Kushki", "RuPay", "BharatPe", "Midtrans", "MOLPay",
     "iPay88", "KakaoPay", "Toss Payments", "NaverPay",
     "Bizum", "Culqi", "Pagar.me", "Rapyd", "PayKun", "Instamojo",
     "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "BillDesk",
-    "Citrus Pay", "RazorpayX", "Cashfree", "PayUbiz", 
-
-    # Buy Now Pay Later
+    "Citrus Pay", "RazorpayX", "Cashfree",
     "Klarna", "Affirm", "Afterpay",
     "Splitit", "Perpay", "Quadpay", "Laybuy", "Openpay",
     "Cashalo", "Hoolah", "Pine Labs", "ChargeAfter",
-
-    # Cryptocurrency
     "BitPay", "Coinbase Commerce", "CoinGate", "CoinPayments", "Crypto.com Pay",
     "BTCPay Server", "NOWPayments", "OpenNode", "Utrust", "MoonPay",
-    "Binance Pay", "CoinsPaid", "BitGo", "Flexa", 
-
-    # Enterprise Solutions
+    "Binance Pay", "CoinsPaid", "BitGo", "Flexa",
     "ACI Worldwide", "Bank of America Merchant Services",
     "JP Morgan Payment Services", "Wells Fargo Payment Solutions",
     "Deutsche Bank Payments", "Barclaycard", "American Express Payment Gateway",
     "Discover Network", "UnionPay", "JCB Payment Gateway",
-
-
 ]
 
 from urllib.parse import urlparse
@@ -8138,7 +8121,7 @@ def detect_cms(html: str):
 
 def detect_security(html: str):
     patterns_3ds = [
-        r'3d\s*secure', 
+        r'3d\s*secure',
         r'verified\s*by\s*visa',
         r'mastercard\s*securecode',
         r'american\s*express\s*safekey',
@@ -8155,7 +8138,12 @@ def detect_security(html: str):
     return "2D (No 3D Secure Found ❌)"
 
 def detect_gateways(html: str):
-    detected = [g for g in PAYMENT_GATEWAYS if re.search(re.escape(g), html, re.IGNORECASE)]
+    detected = []
+    for gateway in PAYMENT_GATEWAYS:
+        # Use word boundaries to avoid partial matches (e.g., "PayU" in "PayUmoney")
+        pattern = r'\b' + re.escape(gateway) + r'\b'
+        if re.search(pattern, html, re.IGNORECASE):
+            detected.append(gateway)
     return ", ".join(detected) if detected else "None Detected"
 
 def detect_captcha(html: str):
@@ -8173,24 +8161,40 @@ def detect_cloudflare(html: str, headers=None, status=None):
         headers = {}
     lower_keys = [k.lower() for k in headers.keys()]
     server = headers.get('Server', '').lower()
-    if 'cf-ray' not in lower_keys and 'cloudflare' not in server:
-        return "None"
-    # Check for verification/challenge page
-    soup = BeautifulSoup(html, 'html.parser')
-    title = soup.title.string.strip().lower() if soup.title else ''
-    challenge_indicators = [
-        "just a moment",
-        "attention required",
-        "checking your browser",
-        "enable javascript and cookies to continue",
-        "ddos protection by cloudflare",
+    # Check for Cloudflare presence (CDN or protection)
+    cloudflare_indicators = [
+        r'cloudflare',
+        r'cf-ray',
+        r'cf-cache-status',
+        r'cf-browser-verification',
+        r'__cfduid',
+        r'cf_chl_',
+        r'checking your browser',
+        r'enable javascript and cookies',
+        r'ray id',
+        r'ddos protection by cloudflare',
     ]
-    if any(indicator in title for indicator in challenge_indicators):
-        return "Cloudflare Verification Detected ✅"
-    if re.search(r'cf-browser-verification|checking your browser|enable javascript and cookies|ray id', html, re.IGNORECASE):
-        return "Cloudflare Verification Detected ✅"
-    if status in (403, 503) and 'cloudflare' in html.lower():
-        return "Cloudflare Verification Detected ✅"
+    # Check headers for Cloudflare signatures
+    if 'cf-ray' in lower_keys or 'cloudflare' in server or 'cf-cache-status' in lower_keys:
+        # Parse HTML to check for verification/challenge page
+        soup = BeautifulSoup(html, 'html.parser')
+        title = soup.title.string.strip().lower() if soup.title else ''
+        challenge_indicators = [
+            "just a moment",
+            "attention required",
+            "checking your browser",
+            "enable javascript and cookies to continue",
+            "ddos protection by cloudflare",
+            "please wait while we verify",
+        ]
+        # Check for challenge page indicators
+        if any(indicator in title for indicator in challenge_indicators):
+            return "Cloudflare Verification Detected ✅"
+        if any(re.search(pattern, html, re.IGNORECASE) for pattern in cloudflare_indicators):
+            return "Cloudflare Verification Detected ✅"
+        if status in (403, 503) and 'cloudflare' in html.lower():
+            return "Cloudflare Verification Detected ✅"
+        return "Cloudflare Present (No Verification) 🔍"
     return "None"
 
 def detect_graphql(html: str):
@@ -8208,11 +8212,11 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
         )
         return
 
-    # small delay for realism & yielding
+    # Small delay for realism & yielding
     await asyncio.sleep(0)
 
     status, html, headers = await fetch_site(url)
-    await asyncio.sleep(0)  # yield after fetch
+    await asyncio.sleep(0)  # Yield after fetch
 
     if not html:
         await msg.edit_text(
