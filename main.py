@@ -7987,10 +7987,8 @@ CMS_PATTERNS = {
     'Shopify Plus': r'shopify-plus|cdn\.shopifycdn\.net/',
     'Salesforce Commerce Cloud': r'demandware\.edgesuite\.net/',
     'WordPress': r'wp-content|wp-includes/',
-    'Joomla': r'media/jui|joomla\.js',
-    'Drupal': r'sites/all/modules|drupal\.js/',
-    'Joomla': r'media/system/js|joomla\.javascript/',
-    'Drupal': r'sites/default/files|drupal\.settings\.js/',
+    'Joomla': r'media/jui|joomla\.js|media/system/js|joomla\.javascript/',
+    'Drupal': r'sites/all/modules|drupal\.js/|sites/default/files|drupal\.settings\.js/',
     'TYPO3': r'typo3temp|typo3/',
     'Concrete5': r'concrete/js|concrete5/',
     'Umbraco': r'umbraco/|umbraco\.config/',
@@ -8131,19 +8129,33 @@ async def fetch_site(url: str):
 # --- Detection functions ---
 def detect_cms(html: str):
     for cms, pattern in CMS_PATTERNS.items():
-        if re.search(pattern, html, re.IGNORECASE):
+        match = re.search(pattern, html, re.IGNORECASE)
+        if match:
+            if cms == 'Custom CMS':
+                return match.group(1) or "Custom CMS"
             return cms
     return "Unknown"
 
 def detect_security(html: str):
-    patterns_3ds = [r'3ds', r'verify', r'authentication', r'dsv', r'securecode', r'pareq', r'acs']
+    patterns_3ds = [
+        r'3d\s*secure', 
+        r'verified\s*by\s*visa',
+        r'mastercard\s*securecode',
+        r'american\s*express\s*safekey',
+        r'3ds',
+        r'3ds2',
+        r'acsurl',
+        r'pareq',
+        r'three-domain-secure',
+        r'secure_redirect',
+    ]
     for pattern in patterns_3ds:
         if re.search(pattern, html, re.IGNORECASE):
             return "3D Secure Detected ✅"
     return "2D (No 3D Secure Found ❌)"
 
 def detect_gateways(html: str):
-    detected = [g for g in PAYMENT_GATEWAYS if re.search(g, html, re.IGNORECASE)]
+    detected = [g for g in PAYMENT_GATEWAYS if re.search(re.escape(g), html, re.IGNORECASE)]
     return ", ".join(detected) if detected else "None Detected"
 
 def detect_captcha(html: str):
@@ -8156,15 +8168,35 @@ def detect_captcha(html: str):
         return "Generic Captcha Detected ✅"
     return "No Captcha Detected"
 
-def detect_cloudflare(html: str, headers=None):
-    cf_markers = ["cloudflare", "cf-browser-verification", "attention required! | cloudflare"]
-    if headers:
-        cf_headers = ["cf-ray", "server"]
-        if any(h.lower() in headers for h in cf_headers):
-            return "Cloudflare Detected ✅"
-    if any(marker.lower() in html.lower() for marker in cf_markers):
-        return "Cloudflare Detected ✅"
+def detect_cloudflare(html: str, headers=None, status=None):
+    if headers is None:
+        headers = {}
+    lower_keys = [k.lower() for k in headers.keys()]
+    server = headers.get('Server', '').lower()
+    if 'cf-ray' not in lower_keys and 'cloudflare' not in server:
+        return "None"
+    # Check for verification/challenge page
+    soup = BeautifulSoup(html, 'html.parser')
+    title = soup.title.string.strip().lower() if soup.title else ''
+    challenge_indicators = [
+        "just a moment",
+        "attention required",
+        "checking your browser",
+        "enable javascript and cookies to continue",
+        "ddos protection by cloudflare",
+    ]
+    if any(indicator in title for indicator in challenge_indicators):
+        return "Cloudflare Verification Detected ✅"
+    if re.search(r'cf-browser-verification|checking your browser|enable javascript and cookies|ray id', html, re.IGNORECASE):
+        return "Cloudflare Verification Detected ✅"
+    if status in (403, 503) and 'cloudflare' in html.lower():
+        return "Cloudflare Verification Detected ✅"
     return "None"
+
+def detect_graphql(html: str):
+    if re.search(r'/graphql|graphqlendpoint|apollo-client|query\s*\{|mutation\s*\{', html, re.IGNORECASE):
+        return "GraphQL Detected ✅"
+    return "No GraphQL Detected ❌"
 
 # --- Worker for background scanning ---
 async def gate_worker(update: Update, url: str, msg, user_id: int):
@@ -8198,7 +8230,9 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
     await asyncio.sleep(0)
     captcha = detect_captcha(html)
     await asyncio.sleep(0)
-    cloudflare = detect_cloudflare(html, headers=headers)
+    cloudflare = detect_cloudflare(html, headers=headers, status=status)
+    await asyncio.sleep(0)
+    graphql = detect_graphql(html)
     await asyncio.sleep(0)
 
     user = update.effective_user
@@ -8216,6 +8250,7 @@ async def gate_worker(update: Update, url: str, msg, user_id: int):
         f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{escape_markdown(captcha, version=2)}`\n"
         f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ `{escape_markdown(cloudflare, version=2)}`\n"
         f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `{escape_markdown(security, version=2)}`\n"
+        f"{bullet_link} 𝐆𝐫𝐚𝐩𝐡𝐐𝐋 ➵ `{escape_markdown(graphql, version=2)}`\n"
         f"――――――――――――――――\n"
         f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
         f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
