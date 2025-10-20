@@ -319,7 +319,7 @@ from db import get_user
 # --------------------
 # Links for the inline keyboard buttons
 BULLET_GROUP_LINK = "https://t.me/CARDER33"
-OFFICIAL_GROUP_LINK = "https://t.me/CARDER33"
+OFFICIAL_GROUP_LINK = "https://t.me/+H73wDmzcn4QzOThl"
 DEV_LINK = "https://t.me/Kalinuxxx"
 
 # Set up logging for better error tracking
