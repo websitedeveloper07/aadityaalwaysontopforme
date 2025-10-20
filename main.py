@@ -467,32 +467,27 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bullet_link = f"<a href='{BULLET_GROUP_LINK}'>[⌇]</a>"
 
     text = (
-
-         "✧━✧💎𝑷𝑹𝑬𝑴𝑰𝑼𝑴 𝑷𝑳𝑨𝑵𝑺💎✧━✧\n\n"
+        "✧━✧💎𝑷𝑹𝑬𝑴𝑰𝑼𝑴 𝑷𝑳𝑨𝑵𝑺💎✧━✧\n\n"
         "🚀 <b>Starter Plan</b>\n"
         f"{bullet_link} 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   : 300\n"
         f"{bullet_link} 𝐃𝐮𝐫𝐚𝐭𝐢𝐨𝐧  : 7 Days\n"
         f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞     : 3$\n"
         "────────────────────────\n"
-
         "🌟 <b>Premium Plan</b>\n"
         f"{bullet_link} 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   : 1000\n"
         f"{bullet_link} 𝐃𝐮𝐫𝐚𝐭𝐢𝐨𝐧  : 30 Days\n"
         f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞     : 10$\n"
         "────────────────────────\n"
-
         "💎 <b>Plus Plan</b>\n"
         f"{bullet_link} 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   : 2000\n"
         f"{bullet_link} 𝐃𝐮𝐫𝐚𝐭𝐢𝐨𝐧  : 60 Days\n"
         f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞     : 19$\n"
         "────────────────────────\n"
-
         "⚡ <b>Custom Plan</b>\n"
         f"{bullet_link} 𝐂𝐫𝐞𝐝𝐢𝐭𝐬   : 3000\n"
         f"{bullet_link} 𝐃𝐮𝐫𝐚𝐭𝐢𝐨𝐧  : Custom\n"
         f"{bullet_link} 𝐏𝐫𝐢𝐜𝐞     : Custom\n"
         "────────────────────────\n\n"
-
         "<b><i>💎All premium users will be provided with 0.98$ sites</i></b>\n"
         "<b><i>Full Help & Support for any issue</i></b>\n"
         "✦━━━━━━━━━━━━━━━━━━━━✦"
@@ -501,24 +496,22 @@ async def show_tools_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("◀️ Back to Menu", callback_data="back_to_start")]
     ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
     try:
         await q.edit_message_caption(
             caption=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=reply_markup
         )
     except Exception as e:
-        logger.warning(f"Failed to edit message, sending a new one: {e}")
+        logger.warning(f"Failed to edit message caption, sending a new one: {e}")
         await q.message.reply_text(
             text=text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=reply_markup,
             disable_web_page_preview=True
         )
-
-    from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
-from telegram.ext import ContextTypes
 
 
 
