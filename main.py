@@ -8275,6 +8275,89 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(gate_worker(update, url, msg, user_id))
 
 
+from db import get_all_users
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.error import Forbidden, BadRequest, TimedOut, NetworkError
+
+ADMIN_ID = 8278658138  # 🔒 Replace with your Telegram ID
+
+
+async def broad(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Broadcast a message to all bot users (admin only)."""
+
+    # --- Admin Check ---
+    if update.effective_chat.id != ADMIN_ID:
+        return await update.message.reply_text(
+            "🚫 You are not authorized to use this command."
+        )
+
+    # --- Validate input ---
+    if not context.args:
+        return await update.message.reply_text(
+            "⚙️ Usage:\n<b>/broad Your message here</b>",
+            parse_mode="HTML"
+        )
+
+    message_text = " ".join(context.args)
+
+    # --- Fetch all users ---
+    users = await get_all_users()
+    total_users = len(users)
+    await update.message.reply_text(
+        f"📢 Starting broadcast to <b>{total_users}</b> users...",
+        parse_mode="HTML"
+    )
+
+    # --- Initialize counters ---
+    sent_count = 0
+    blocked_count = 0
+    failed_count = 0
+    error_count = 0
+
+    # --- Send messages ---
+    for idx, user in enumerate(users, start=1):
+        try:
+            await context.bot.send_message(
+                chat_id=user["id"],
+                text=message_text,
+                parse_mode="HTML"
+            )
+            sent_count += 1
+
+        except Forbidden:
+            blocked_count += 1  # user blocked the bot
+
+        except BadRequest:
+            failed_count += 1  # invalid user/chat
+
+        except (TimedOut, NetworkError):
+            error_count += 1  # temporary issue (network)
+
+        except Exception as e:
+            error_count += 1
+            print(f"⚠️ Error sending to {user['id']}: {e}")
+
+        # Optional: avoid hitting rate limits
+        if idx % 25 == 0:
+            await update.message.reply_text(
+                f"⏳ Progress: {idx}/{total_users} users processed..."
+            )
+
+    # --- Summary ---
+    summary = (
+        f"✅ <b>Broadcast Completed!</b>\n\n"
+        f"👥 Total Users: <b>{total_users}</b>\n"
+        f"📬 Sent Successfully: <b>{sent_count}</b>\n"
+        f"🚫 Blocked Bot: <b>{blocked_count}</b>\n"
+        f"❌ Failed (Bad chat): <b>{failed_count}</b>\n"
+        f"⚠️ Errors: <b>{error_count}</b>\n\n"
+        f"🕒 Finished broadcast."
+    )
+
+    await context.bot.send_message(
+        chat_id=ADMIN_ID, text=summary, parse_mode="HTML"
+    )
 
 
 import psutil
@@ -9100,6 +9183,7 @@ def register_user_commands(application):
         ("adcr", adcr_command),
         ("ad", ad_command),
         ("bin", bin_lookup),
+        ("broad", broad),
         ("rz", rz_command),
         ("fk", fk_command),
         ("vbv", vbv),
