@@ -8275,99 +8275,120 @@ async def gate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(gate_worker(update, url, msg, user_id))
 
 
-from db import get_all_users
+import asyncio
+import html
+import logging
 from telegram import Update
-from telegram.ext import ContextTypes
-from telegram.error import Forbidden, BadRequest, TimedOut, NetworkError
+from telegram.ext import CommandHandler, ContextTypes
+import db  # your db.py
 
-ADMIN_ID = 8278658138  # 🔒 Replace with your Telegram ID
+# Configure logging for detailed errors
+logger = logging.getLogger(__name__)
 
+# === Broadcast Command ===
+async def broad(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Only allow you (the admin) to broadcast
+    admin_id = 8278658138  # <-- put your Telegram user ID here
+    if update.effective_user.id != admin_id:
+        await update.message.reply_text("❌ You are not authorized to use this command.")
+        return
 
-async def broad(update, context):
-    """Handle /broad command — runs broadcast in background."""
-    if update.effective_chat.id != ADMIN_ID:
-        return await update.message.reply_text("🚫 You are not authorized to use this command.")
-
+    # Extract message text
     if not context.args:
-        return await update.message.reply_text(
-            "⚙️ Usage:\n<b>/broad Your message here</b>", parse_mode="HTML"
-        )
+        await update.message.reply_text("Usage: /broad <message>")
+        return
 
-    message_text = " ".join(context.args)
+    message_text = " ".join(context.args).strip()
+    if not message_text:
+        await update.message.reply_text("⚠️ Please provide a broadcast message.")
+        return
 
-    # Start async background task
+    # Start broadcast in background
     asyncio.create_task(run_broadcast(update, context, message_text))
-    await update.message.reply_text("📢 Broadcast started in background...")
+
+    await update.message.reply_text("📢 Broadcast started... Progress will update below.")
 
 
-async def run_broadcast(update, context, message_text):
-    """Actually performs the broadcast in background (non-blocking)."""
-    users = await get_all_users()
+# === The actual background broadcast function ===
+async def run_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE, message_text: str):
+    from telegram.error import Forbidden, BadRequest, TimedOut, RetryAfter, NetworkError
+
+    users = await db.get_all_users()
     total_users = len(users)
 
-    progress_message = await context.bot.send_message(
-        chat_id=ADMIN_ID,
-        text=(
-            f"📢 <b>Broadcast Started</b>\n\n"
-            f"👥 Total Users: <b>{total_users}</b>\n"
-            f"⏳ Sending messages...\n"
-        ),
-        parse_mode="HTML",
+    sent = blocked = failed = errors = 0
+    processed = 0
+
+    # Send initial progress message
+    progress_message = await update.message.reply_text(
+        f"📢 <b>Broadcast Progress</b>\n\n"
+        f"👥 Total Users: {total_users}\n"
+        f"📬 Sent: {sent}\n🚫 Blocked: {blocked}\n❌ Failed: {failed}\n⚠️ Errors: {errors}\n\n"
+        f"⏱️ Processed: {processed}/{total_users}",
+        parse_mode="HTML"
     )
 
-    sent_count = 0
-    blocked_count = 0
-    failed_count = 0
-    error_count = 0
-    last_update_time = datetime.now()
+    last_update_time = asyncio.get_event_loop().time()
 
-    for idx, user in enumerate(users, start=1):
+    for user in users:
+        user_id = user["id"]
         try:
-            await context.bot.send_message(chat_id=user["id"], text=message_text, parse_mode="HTML")
-            sent_count += 1
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=html.escape(message_text),
+                parse_mode="HTML",
+                disable_web_page_preview=False,
+            )
+            sent += 1
+
         except Forbidden:
-            blocked_count += 1
-        except BadRequest:
-            failed_count += 1
-        except (TimedOut, NetworkError):
-            error_count += 1
-        except Exception:
-            error_count += 1
+            blocked += 1
+            # Optionally: remove blocked users from DB
+            # await db.remove_user(user_id)
+
+        except BadRequest as e:
+            failed += 1
+            logger.warning(f"BadRequest for user {user_id}: {e}")
+
+        except (TimedOut, RetryAfter, NetworkError) as e:
+            errors += 1
+            logger.warning(f"Network error for user {user_id}: {e}")
+            await asyncio.sleep(1)  # small pause
+
+        except Exception as e:
+            errors += 1
+            logger.error(f"Unexpected error for user {user_id}: {e}")
+
+        processed += 1
 
         # Update progress every 20 seconds
-        if (datetime.now() - last_update_time).total_seconds() >= 20 or idx == total_users:
-            last_update_time = datetime.now()
+        now = asyncio.get_event_loop().time()
+        if now - last_update_time >= 20:
             try:
                 await progress_message.edit_text(
                     f"📢 <b>Broadcast Progress</b>\n\n"
-                    f"👥 Total Users: <b>{total_users}</b>\n"
-                    f"📬 Sent: <b>{sent_count}</b>\n"
-                    f"🚫 Blocked: <b>{blocked_count}</b>\n"
-                    f"❌ Failed: <b>{failed_count}</b>\n"
-                    f"⚠️ Errors: <b>{error_count}</b>\n\n"
-                    f"⏱️ Processed: {idx}/{total_users}",
-                    parse_mode="HTML",
+                    f"👥 Total Users: {total_users}\n"
+                    f"📬 Sent: {sent}\n🚫 Blocked: {blocked}\n❌ Failed: {failed}\n⚠️ Errors: {errors}\n\n"
+                    f"⏱️ Processed: {processed}/{total_users}",
+                    parse_mode="HTML"
                 )
+                last_update_time = now
             except Exception:
                 pass
 
-        await asyncio.sleep(0.05)  # to avoid hitting Telegram flood limits
+        # Sleep a tiny bit between messages to avoid rate limits
+        await asyncio.sleep(0.05)
 
-    # --- Final Summary ---
-    final_text = (
+    # Final progress update
+    await progress_message.edit_text(
         f"✅ <b>Broadcast Completed!</b>\n\n"
-        f"👥 Total Users: <b>{total_users}</b>\n"
-        f"📬 Sent Successfully: <b>{sent_count}</b>\n"
-        f"🚫 Blocked Bot: <b>{blocked_count}</b>\n"
-        f"❌ Failed Chats: <b>{failed_count}</b>\n"
-        f"⚠️ Errors: <b>{error_count}</b>\n\n"
-        f"🕒 Finished at: <b>{datetime.now().strftime('%H:%M:%S')}</b>"
+        f"👥 Total Users: {total_users}\n"
+        f"📬 Sent: {sent}\n🚫 Blocked: {blocked}\n❌ Failed: {failed}\n⚠️ Errors: {errors}\n\n"
+        f"⏱️ Processed: {processed}/{total_users}",
+        parse_mode="HTML"
     )
+    logger.info(f"Broadcast finished: {sent} sent, {blocked} blocked, {failed} failed, {errors} errors.")
 
-    try:
-        await progress_message.edit_text(final_text, parse_mode="HTML")
-    except Exception:
-        await context.bot.send_message(chat_id=ADMIN_ID, text=final_text, parse_mode="HTML")
 
 import psutil
 import platform
