@@ -8553,7 +8553,7 @@ async def mgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await asyncio.sleep(0)  # Yield for responsiveness
         if isinstance(result, Exception) or result[0] is None:
             output.append(
-                f"{bullet_link} 𝐒𝐢𝐭𝐞 {i+1}: {escape_markdown(url, version=2)}\n"
+                f"{bullet_link} 𝐒𝐢𝐭𝐞 {i+1}: `{escape_markdown(url, version=2)}`\n"
                 f"{bullet_link} 𝐑𝐞𝐬𝐮𝐥𝐭 ➵ `{escape_markdown('Cannot access site', version=2)}`\n"
                 f"――――――――――――――――"
             )
@@ -8568,7 +8568,7 @@ async def mgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         graphql = detect_graphql(html)
 
         output.append(
-            f"{bullet_link} 𝐒𝐢𝐭𝐞 {i+1}: {escape_markdown(url, version=2)}\n"
+            f"{bullet_link} 𝐒𝐢𝐭𝐞 {i+1}: `{escape_markdown(url, version=2)}`\n"
             f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ _{escape_markdown(gateways, version=2)}_\n"
             f"{bullet_link} 𝐂𝐌𝐒 ➵ `{escape_markdown(cms, version=2)}`\n"
             f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{escape_markdown(captcha, version=2)}`\n"
