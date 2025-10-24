@@ -8824,6 +8824,95 @@ def detect_graphql(html: str):
         return "GraphQL Detected ✅"
     return "No GraphQL Detected ❌"
 
+# Background processing function
+async def process_sites_background(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, urls, user_id):
+    try:
+        # Process sites in batches of 5
+        await init_session()
+        batch_size = 5
+        for batch_start in range(0, len(urls), batch_size):
+            batch_urls = urls[batch_start:batch_start + batch_size]
+            tasks = [fetch_site(url) for url in batch_urls]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Process batch results
+            output = [f"◇━━〔 𝑳𝒐𝒐𝒌𝒖𝒑 𝑹𝒆𝒔𝒖𝒍𝒕𝒔 (Sites {batch_start + 1}-{min(batch_start + batch_size, len(urls))}) 〕━━◇"]
+            for i, (url, result) in enumerate(zip(batch_urls, results)):
+                site_number = batch_start + i + 1
+                await asyncio.sleep(0)  # Yield for responsiveness
+                if isinstance(result, Exception) or result[0] is None:
+                    output.append(
+                        f"[⌇] 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
+                        f"[⌇] 𝐑𝐞𝐬𝐮𝐥𝐭 ➵ <code>{html.escape('Cannot access site')}</code>\n"
+                        f"――――――――――――――――"
+                    )
+                    continue
+
+                status, html_content, headers = result
+                cms = detect_cms(html_content)
+                security = detect_security(html_content)
+                gateways = detect_gateways(html_content)
+                captcha = detect_captcha(html_content)
+                cloudflare = detect_cloudflare(html_content, headers=headers, status=status)
+                graphql = detect_graphql(html_content)
+
+                output.append(
+                    f"[⌇] 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
+                    f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ <i>{html.escape(gateways)}</i>\n"
+                    f"[⌇] 𝐂𝐌𝐒 ➵ <code>{html.escape(cms)}</code>\n"
+                    f"[⌇] 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ <code>{html.escape(captcha)}</code>\n"
+                    f"[⌇] 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ <code>{html.escape(cloudflare)}</code>\n"
+                    f"[⌇] 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ <code>{html.escape(security)}</code>\n"
+                    f"[⌇] 𝐆𝐫𝐚𝐩𝐡𝐐𝐋 ➵ <code>{html.escape(graphql)}</code>\n"
+                    f"――――――――――――――――"
+                )
+
+            # Add requester and developer info
+            user = update.effective_user
+            requester_clickable = f'<a href="tg://user?id={user.id}">{html.escape(user.first_name)}</a>'
+            developer_clickable = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
+            output.append(
+                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
+                f"[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
+            )
+
+            # Send batch results
+            final_output = "\n".join(output)
+            await update.message.reply_text(
+                final_output,
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+
+            # Update the processing message to show progress
+            progress = min(batch_start + batch_size, len(urls))
+            status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎... ({progress}/{len(urls)} completed)"
+            processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n[⌇] {html.escape(status_text)}\n"
+            await msg.edit_text(
+                processing_text,
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
+
+            # Small delay to avoid overwhelming Telegram API
+            await asyncio.sleep(1)
+
+        # Finalize processing message
+        await msg.edit_text(
+            f"✅ Completed scanning {len(urls)} site(s).",
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+    
+    except Exception as e:
+        # Handle any errors in background processing
+        error_text = f"❌ Error during processing: {html.escape(str(e))}"
+        await msg.edit_text(
+            error_text,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+
 async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Usage: /hdgate <site_url1> [site_url2] ... [site_url100]")
@@ -8851,104 +8940,26 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Processing message with proper monospace block
-    status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎..."
-    bullet = "[⌇]"
-    bullet_link = f'<a href="{BULLET_GROUP_LINK}">{html.escape(bullet)}</a>'
-    processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n{bullet_link} {html.escape(status_text)}\n"
-
-    msg = await update.message.reply_text(
-        processing_text,
-        parse_mode="HTML",
-        disable_web_page_preview=True
-    )
-
-    # Consume credits for all URLs
+    # Consume credits immediately
     if not await consume_credits(user_id, required_credits):
-        await msg.edit_text(
+        await update.message.reply_text(
             f"❌ Failed to consume {required_credits} credits.",
             parse_mode="HTML",
             disable_web_page_preview=True
         )
         return
 
-    # Process sites in batches of 5
-    await init_session()
-    batch_size = 5
-    for batch_start in range(0, len(urls), batch_size):
-        batch_urls = urls[batch_start:batch_start + batch_size]
-        tasks = [fetch_site(url) for url in batch_urls]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Process batch results
-        output = [f"◇━━〔 𝑳𝒐𝒐𝒌𝒖𝒑 𝑹𝒆𝒔𝒖𝒍𝒕𝒔 (Sites {batch_start + 1}-{min(batch_start + batch_size, len(urls))}) 〕━━◇"]
-        for i, (url, result) in enumerate(zip(batch_urls, results)):
-            site_number = batch_start + i + 1
-            await asyncio.sleep(0)  # Yield for responsiveness
-            if isinstance(result, Exception) or result[0] is None:
-                output.append(
-                    f"{bullet_link} 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
-                    f"{bullet_link} 𝐑𝐞𝐬𝐮𝐥𝐭 ➵ <code>{html.escape('Cannot access site')}</code>\n"
-                    f"――――――――――――――――"
-                )
-                continue
-
-            status, html_content, headers = result
-            cms = detect_cms(html_content)
-            security = detect_security(html_content)
-            gateways = detect_gateways(html_content)
-            captcha = detect_captcha(html_content)
-            cloudflare = detect_cloudflare(html_content, headers=headers, status=status)
-            graphql = detect_graphql(html_content)
-
-            output.append(
-                f"{bullet_link} 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
-                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ <i>{html.escape(gateways)}</i>\n"
-                f"{bullet_link} 𝐂𝐌𝐒 ➵ <code>{html.escape(cms)}</code>\n"
-                f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ <code>{html.escape(captcha)}</code>\n"
-                f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ <code>{html.escape(cloudflare)}</code>\n"
-                f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ <code>{html.escape(security)}</code>\n"
-                f"{bullet_link} 𝐆𝐫𝐚𝐩𝐡𝐐𝐋 ➵ <code>{html.escape(graphql)}</code>\n"
-                f"――――――――――――――――"
-            )
-
-        # Add requester and developer info
-        user = update.effective_user
-        requester_clickable = f'<a href="tg://user?id={user.id}">{html.escape(user.first_name)}</a>'
-        developer_clickable = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
-        output.append(
-            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
-            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
-        )
-
-        # Send batch results
-        final_output = "\n".join(output)
-        await update.message.reply_text(
-            final_output,
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-
-        # Update the processing message to show progress
-        progress = min(batch_start + batch_size, len(urls))
-        status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎... ({progress}/{len(urls)} completed)"
-        processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n{bullet_link} {html.escape(status_text)}\n"
-        await msg.edit_text(
-            processing_text,
-            parse_mode="HTML",
-            disable_web_page_preview=True
-        )
-
-        # Small delay to avoid overwhelming Telegram API
-        await asyncio.sleep(1)
-
-    # Finalize processing message
-    await msg.edit_text(
-        f"✅ Completed scanning {len(urls)} site(s).",
+    # Send initial processing message
+    status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎..."
+    processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n[⌇] {html.escape(status_text)}\n"
+    msg = await update.message.reply_text(
+        processing_text,
         parse_mode="HTML",
         disable_web_page_preview=True
     )
 
+    # Create background task for processing
+    asyncio.create_task(process_sites_background(update, context, msg, urls, user_id))
 
 import asyncio
 import html
