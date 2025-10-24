@@ -7096,124 +7096,6 @@ async def run_vbv_check(msg, update, card_data: str):
 
 
 
-import time
-import logging
-import aiohttp
-import asyncio
-import html
-from html import escape
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
-from db import get_user, update_user  # credit system
-import re
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-
-# Try to import BIN lookup helper; provide a safe fallback if absent
-try:
-    from bin import get_bin_info
-except Exception:
-    async def get_bin_info(bin_number: str) -> dict:
-        return {"scheme": None, "bank": None, "country": None, "country_emoji": ""}
-
-# --- Cooldown and API config ---
-BASE_COOLDOWN = 10  # 10 seconds global cooldown
-COOLDOWN_SECONDS = BASE_COOLDOWN
-last_command_time = 0  # Tracks last command time globally
-
-# --- New API (rocky-tjrm) config ---
-API_URL_TEMPLATE = "https://rocky-tjrm.onrender.com/gateway=b3/cc?card_details={card_details}"
-API_TIMEOUT_SECONDS = 50
-
-# --- Credit System ---
-async def consume_credit(user_id: int) -> bool:
-    try:
-        user_data = await get_user(user_id)
-        if user_data and user_data.get("credits", 0) > 0:
-            await update_user(user_id, credits=user_data["credits"] - 1)
-            return True
-    except Exception as e:
-        logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
-    return False
-
-# --- Regex for multiple card formats ---
-FLEX_CARD_REGEX = re.compile(
-    r"\b(\d{12,19})[\|/: ]+(\d{1,2})[\|/: ]+(\d{2,4})[\|/: ]+(\d{3,4})\b"
-)
-
-def normalize_card(text: str | None) -> str | None:
-    if not text:
-        return None
-    match = FLEX_CARD_REGEX.search(text)
-    if not match:
-        return None
-    cc, mm, yy, cvv = match.groups()
-    mm = mm.zfill(2)
-    yy = yy[-2:] if len(yy) == 4 else yy
-    return f"{cc}|{mm}|{yy}|{cvv}"
-
-async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global last_command_time
-    user = update.effective_user
-    user_id = user.id
-    current_time = time.time()
-
-    # --- Extract CC ---
-    input_text = None
-    if context.args:
-        input_text = " ".join(context.args).strip()
-    elif update.message.reply_to_message and update.message.reply_to_message.text:
-        input_text = update.message.reply_to_message.text.strip()
-
-    card_data = normalize_card(input_text) if input_text else None
-    if not card_data:
-        await update.message.reply_text(
-            "⚠️ <b>Usage:</b>\n"
-            "<code>/b3 4111111111111111|07|2027|123</code>\n\n",
-            parse_mode=ParseMode.HTML
-        )
-        return
-
-    # --- Global cooldown check ---
-    elapsed = current_time - last_command_time
-    if elapsed < COOLDOWN_SECONDS:
-        remaining = round(COOLDOWN_SECONDS - elapsed, 1)
-        await update.message.reply_text(
-            f"⏳ Please wait <b>{remaining}s</b> before using /b3 again.",
-            parse_mode=ParseMode.HTML
-        )
-        return
-
-    # --- Credit check ---
-    credit_ok = await consume_credit(user.id)
-    if not credit_ok:
-        await update.message.reply_text(
-            "⚠️ <b>No Credits Left!</b>\n\n"
-            "Please recharge your balance to continue using <b>/b3</b>.",
-            parse_mode=ParseMode.HTML
-        )
-        return
-
-    # --- Update last command time ---
-    last_command_time = current_time
-
-    # --- Processing message ---
-    processing_text = (
-        f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n"
-        f"<pre><code>{escape(card_data)}</code></pre>\n"
-        f"𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➵ 𝘽𝙧𝙖𝙞𝙣𝙩𝙧𝙚𝙚 𝙋𝙧𝙚𝙢𝙞𝙪𝙢 𝘼𝙪𝙩𝙝\n"
-    )
-    processing_msg = await update.message.reply_text(
-        processing_text,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
-    )
-
-    # --- Run check in background ---
-    asyncio.create_task(run_braintree_check(user, card_data, card_data, processing_msg))
-
 async def run_braintree_check(user, cc_input: str, full_card: str, processing_msg):
     start_time = time.time()
     developer_clickable = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
@@ -7224,22 +7106,33 @@ async def run_braintree_check(user, cc_input: str, full_card: str, processing_ms
             api_url = API_URL_TEMPLATE.format(card_details=cc_input)
             try:
                 async with session.get(api_url) as resp:
+                    if resp.status == 404:
+                        logger.error(f"API returned 404: {await resp.text()}")
+                        await processing_msg.edit_text(
+                            "❌ Gateway error: Payment endpoint not found. Please try again later or contact support.",
+                            parse_mode=ParseMode.HTML
+                        )
+                        return
                     if resp.status != 200:
+                        logger.error(f"API returned HTTP {resp.status}: {await resp.text()}")
                         await processing_msg.edit_text(
                             f"❌ API returned HTTP {resp.status}",
                             parse_mode=ParseMode.HTML
                         )
                         return
                     try:
-                        data = await resp.json(content_type=None)
+                        data = await resp.json(content_type=None) or {}
+                        logger.info(f"API response: {data}")  # Log full response
                     except Exception:
                         text = await resp.text()
+                        logger.error(f"Failed parsing API response: {text}")
                         await processing_msg.edit_text(
                             f"❌ Failed parsing API response:\n<code>{escape(text)}</code>",
                             parse_mode=ParseMode.HTML
                         )
                         return
             except Exception as e:
+                logger.error(f"Request error: {str(e)}")
                 await processing_msg.edit_text(
                     f"❌ Request error:\n<code>{escape(str(e))}</code>",
                     parse_mode=ParseMode.HTML
@@ -7252,6 +7145,7 @@ async def run_braintree_check(user, cc_input: str, full_card: str, processing_ms
         )
         return
     except Exception as e:
+        logger.error(f"Network/API error: {str(e)}")
         await processing_msg.edit_text(
             f"❌ Network/API error:\n<code>{escape(str(e))}</code>",
             parse_mode=ParseMode.HTML
@@ -7260,9 +7154,9 @@ async def run_braintree_check(user, cc_input: str, full_card: str, processing_ms
 
     # --- Parse response ---
     cc = cc_input
-    status_raw = str(data.get("status", "")).lower() if isinstance(data, dict) else ""
-    response_text = data.get("response", "") if isinstance(data, dict) else ""
-    time_taken = data.get("time_taken", "N/A") if isinstance(data, dict) else "N/A"
+    response_text = data.get("response", "No response from API")
+    status_raw = str(data.get("status", "")).lower()
+    time_taken = data.get("time_taken", "N/A")
 
     # --- Status mapping ---
     approved_responses = [
