@@ -7118,19 +7118,12 @@ except Exception:
     async def get_bin_info(bin_number: str) -> dict:
         return {"scheme": None, "bank": None, "country": None, "country_emoji": ""}
 
-
 # --- Cooldown and API config ---
-BASE_COOLDOWN = 5
-COOLDOWN_SECONDS = BASE_COOLDOWN
+COOLDOWN_SECONDS = 10  # Changed to 10 seconds global cooldown
 
-# --- New API (autoxmaster) config ---
-API_URL = "https://autoxmaster.onrender.com/lbt"
-API_KEY = "Xcracker911"
-API_USER = "rocky"
-API_PASS = "Rocky@10010"
-SITE = "https://disciplinedfinancialmanagement.com"
+# --- New API config ---
+API_URL = "https://rocky-tjrm.onrender.com/gateway=b3/cc?card_details="
 API_TIMEOUT_SECONDS = 50
-
 
 # --- Credit System ---
 async def consume_credit(user_id: int) -> bool:
@@ -7142,7 +7135,6 @@ async def consume_credit(user_id: int) -> bool:
     except Exception as e:
         logger.warning(f"[consume_credit] Error updating user {user_id}: {e}")
     return False
-
 
 # --- Regex for multiple card formats ---
 FLEX_CARD_REGEX = re.compile(
@@ -7160,14 +7152,11 @@ def normalize_card(text: str | None) -> str | None:
     yy = yy[-2:] if len(yy) == 4 else yy
     return f"{cc}|{mm}|{yy}|{cvv}"
 
-
-# --- Cooldown tracker ---
-user_last_command_time: dict[int, float] = {}
-
+# --- Global cooldown tracker ---
+last_command_time: float = 0  # Changed to global timestamp
 
 async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    user_id = user.id
     current_time = time.time()
 
     # --- Extract CC ---
@@ -7186,17 +7175,17 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # --- Cooldown check ---
-    if user_id in user_last_command_time:
-        elapsed = current_time - user_last_command_time[user_id]
-        if elapsed < COOLDOWN_SECONDS:
-            remaining = round(COOLDOWN_SECONDS - elapsed, 1)
-            await update.message.reply_text(
-                f"⏳ Please wait <b>{remaining}s</b> before using /b3 again.",
-                parse_mode=ParseMode.HTML
-            )
-            return
-    user_last_command_time[user_id] = current_time
+    # --- Global cooldown check ---
+    global last_command_time
+    elapsed = current_time - last_command_time
+    if elapsed < COOLDOWN_SECONDS:
+        remaining = round(COOLDOWN_SECONDS - elapsed, 1)
+        await update.message.reply_text(
+            f"⏳ Please wait <b>{remaining}s</b> before using /b3 again.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    last_command_time = current_time  # Update global cooldown timestamp
 
     # --- Credit check ---
     credit_ok = await consume_credit(user.id)
@@ -7222,23 +7211,18 @@ async def b3(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     asyncio.create_task(run_braintree_check(user, card_data, card_data, processing_msg))
 
-
 async def run_braintree_check(user, cc_input: str, full_card: str, processing_msg):
     start_time = time.time()
     developer_clickable = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
+    api_time_taken = "N/A"  # Default if not provided by API
 
     try:
         timeout = aiohttp.ClientTimeout(total=API_TIMEOUT_SECONDS)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            params = {
-                "key": API_KEY,
-                "site": SITE,
-                "cc": cc_input,
-                "username": API_USER,
-                "password": API_PASS,
-            }
             try:
-                async with session.get(API_URL, params=params) as resp:
+                # New API format with card_details in URL
+                api_url = f"{API_URL}{cc_input}"
+                async with session.get(api_url) as resp:
                     if resp.status != 200:
                         await processing_msg.edit_text(
                             f"❌ API returned HTTP {resp.status}",
@@ -7274,22 +7258,28 @@ async def run_braintree_check(user, cc_input: str, full_card: str, processing_ms
         return
 
     # --- parse response ---
-    cc = data.get("cc", cc_input) if isinstance(data, dict) else cc_input
-    status_raw = str(data.get("status", "")).upper() if isinstance(data, dict) else ""
     response_text = data.get("response", "") if isinstance(data, dict) else ""
-    proxy_info = data.get("proxy", "") if isinstance(data, dict) else ""
+    api_status = data.get("status", "") if isinstance(data, dict) else ""
+    api_time_taken = data.get("time_taken", "N/A") if isinstance(data, dict) else "N/A"
 
-    # --- Status mapping ---
-    if status_raw in ("APPROVED", "APPROVE", "CHARGED", "OK", "SUCCESS"):
+    # --- Status mapping based on response text ---
+    approved_keywords = [
+        "payment method added", 
+        "success", 
+        "nice new", 
+        "avs", 
+        "card issuer declined cvv"
+    ]
+    
+    # Check if any approved keyword is in the response text (case insensitive)
+    if any(keyword.lower() in response_text.lower() for keyword in approved_keywords):
         header_status = "✅ Approved"
-    elif status_raw == "CCN":
-        header_status = "❎CCN"
     else:
         header_status = "❌ Declined"
 
     # --- BIN lookup ---
     try:
-        bin_number = cc.split("|")[0][:6]
+        bin_number = cc_input.split("|")[0][:6]
         bin_details = await get_bin_info(bin_number) or {}
         brand = (bin_details.get("scheme") or "N/A").title()
         issuer = bin_details.get("bank") or "N/A"
@@ -7317,7 +7307,8 @@ async def run_braintree_check(user, cc_input: str, full_card: str, processing_ms
         f"𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➵ {escape(country_name)} {country_flag}\n"
         f"</pre>\n\n"
         f"𝐃𝐞𝐯 ➵ {developer_clickable}\n"
-        f"𝐄𝐥𝐚𝐩𝐬𝐞𝐝 ➵ {elapsed_time}s"
+        f"𝐀𝐏𝐈 𝐓𝐢𝐦𝐞 ➵ {api_time_taken}\n"
+        f"𝐓𝐨𝐭𝐚𝐥 𝐓𝐢𝐦𝐞 ➵ {elapsed_time}s"
     )
 
     try:
