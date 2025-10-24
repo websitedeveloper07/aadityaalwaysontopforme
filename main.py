@@ -8832,6 +8832,13 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     # Filter out leading numbers (e.g., "9.", "30.") and clean URLs
     urls = [re.sub(r'^\d+\.\s*', '', url.strip()) for url in context.args[:100]]  # Limit to 100 URLs
+    # Remove empty URLs
+    urls = [url for url in urls if url]
+    
+    if not urls:
+        await update.message.reply_text("No valid URLs provided.")
+        return
+        
     required_credits = len(urls)
 
     # Check if user has enough credits
@@ -8844,11 +8851,11 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Processing message
+    # Processing message with proper monospace block
     status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎..."
-    bullet = "[⌇]"
+    bullet = "⌇"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">{html.escape(bullet)}</a>'
-    processing_text = f"<code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code>\n{bullet_link} {html.escape(status_text)}\n"
+    processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n{bullet_link} {html.escape(status_text)}\n"
 
     msg = await update.message.reply_text(
         processing_text,
@@ -8925,7 +8932,7 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Update the processing message to show progress
         progress = min(batch_start + batch_size, len(urls))
         status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎... ({progress}/{len(urls)} completed)"
-        processing_text = f"<code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code>\n{bullet_link} {html.escape(status_text)}\n"
+        processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n{bullet_link} {html.escape(status_text)}\n"
         await msg.edit_text(
             processing_text,
             parse_mode="HTML",
