@@ -8827,6 +8827,9 @@ def detect_graphql(html: str):
 # Background processing function
 async def process_sites_background(update: Update, context: ContextTypes.DEFAULT_TYPE, msg, urls, user_id):
     try:
+        # Create bullet link
+        bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+        
         # Process sites in batches of 5
         await init_session()
         batch_size = 5
@@ -8842,8 +8845,8 @@ async def process_sites_background(update: Update, context: ContextTypes.DEFAULT
                 await asyncio.sleep(0)  # Yield for responsiveness
                 if isinstance(result, Exception) or result[0] is None:
                     output.append(
-                        f"[⌇] 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
-                        f"[⌇] 𝐑𝐞𝐬𝐮𝐥𝐭 ➵ <code>{html.escape('Cannot access site')}</code>\n"
+                        f"{bullet_link} 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
+                        f"{bullet_link} 𝐑𝐞𝐬𝐮𝐥𝐭 ➵ <code>{html.escape('Cannot access site')}</code>\n"
                         f"――――――――――――――――"
                     )
                     continue
@@ -8857,13 +8860,13 @@ async def process_sites_background(update: Update, context: ContextTypes.DEFAULT
                 graphql = detect_graphql(html_content)
 
                 output.append(
-                    f"[⌇] 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
-                    f"[⌇] 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ <i>{html.escape(gateways)}</i>\n"
-                    f"[⌇] 𝐂𝐌𝐒 ➵ <code>{html.escape(cms)}</code>\n"
-                    f"[⌇] 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ <code>{html.escape(captcha)}</code>\n"
-                    f"[⌇] 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ <code>{html.escape(cloudflare)}</code>\n"
-                    f"[⌇] 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ <code>{html.escape(security)}</code>\n"
-                    f"[⌇] 𝐆𝐫𝐚𝐩𝐡𝐐𝐋 ➵ <code>{html.escape(graphql)}</code>\n"
+                    f"{bullet_link} 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
+                    f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ <i>{html.escape(gateways)}</i>\n"
+                    f"{bullet_link} 𝐂𝐌𝐒 ➵ <code>{html.escape(cms)}</code>\n"
+                    f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ <code>{html.escape(captcha)}</code>\n"
+                    f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ <code>{html.escape(cloudflare)}</code>\n"
+                    f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ <code>{html.escape(security)}</code>\n"
+                    f"{bullet_link} 𝐆𝐫𝐚𝐩𝐡𝐐𝐋 ➵ <code>{html.escape(graphql)}</code>\n"
                     f"――――――――――――――――"
                 )
 
@@ -8872,8 +8875,8 @@ async def process_sites_background(update: Update, context: ContextTypes.DEFAULT
             requester_clickable = f'<a href="tg://user?id={user.id}">{html.escape(user.first_name)}</a>'
             developer_clickable = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
             output.append(
-                f"[⌇] 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
-                f"[⌇] 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
+                f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
+                f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
             )
 
             # Send batch results
@@ -8887,7 +8890,7 @@ async def process_sites_background(update: Update, context: ContextTypes.DEFAULT
             # Update the processing message to show progress
             progress = min(batch_start + batch_size, len(urls))
             status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎... ({progress}/{len(urls)} completed)"
-            processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n[⌇] {html.escape(status_text)}\n"
+            processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n{bullet_link} {html.escape(status_text)}\n"
             await msg.edit_text(
                 processing_text,
                 parse_mode="HTML",
@@ -8949,9 +8952,12 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Create bullet link
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">[⌇]</a>'
+    
     # Send initial processing message
     status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎..."
-    processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n[⌇] {html.escape(status_text)}\n"
+    processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n{bullet_link} {html.escape(status_text)}\n"
     msg = await update.message.reply_text(
         processing_text,
         parse_mode="HTML",
@@ -8960,6 +8966,8 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Create background task for processing
     asyncio.create_task(process_sites_background(update, context, msg, urls, user_id))
+
+
 
 import asyncio
 import html
