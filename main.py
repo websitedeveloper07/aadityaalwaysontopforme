@@ -8853,7 +8853,7 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Processing message with proper monospace block
     status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎..."
-    bullet = "⌇"
+    bullet = "[⌇]"
     bullet_link = f'<a href="{BULLET_GROUP_LINK}">{html.escape(bullet)}</a>'
     processing_text = f"<pre><code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code></pre>\n{bullet_link} {html.escape(status_text)}\n"
 
