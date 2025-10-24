@@ -8601,9 +8601,9 @@ async def mgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import re
 import aiohttp
 import asyncio
+import html
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
-from telegram.helpers import escape_markdown
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
@@ -8838,29 +8838,29 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = await get_user(user_id)
     if not user_data or user_data.get("credits", 0) < required_credits:
         await update.message.reply_text(
-            escape_markdown(f"❌ You need {required_credits} credits to scan {required_credits} site(s).", version=2),
-            parse_mode="MarkdownV2",
+            f"❌ You need {required_credits} credits to scan {required_credits} site(s).",
+            parse_mode="HTML",
             disable_web_page_preview=True
         )
         return
 
     # Processing message
-    status_text = escape_markdown(f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎...", version=2)
+    status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎..."
     bullet = "[⌇]"
-    bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
-    processing_text = f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n{bullet_link} {status_text}\n"
+    bullet_link = f'<a href="{BULLET_GROUP_LINK}">{html.escape(bullet)}</a>'
+    processing_text = f"<code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code>\n{bullet_link} {html.escape(status_text)}\n"
 
     msg = await update.message.reply_text(
         processing_text,
-        parse_mode="MarkdownV2",
+        parse_mode="HTML",
         disable_web_page_preview=True
     )
 
     # Consume credits for all URLs
     if not await consume_credits(user_id, required_credits):
         await msg.edit_text(
-            escape_markdown(f"❌ Failed to consume {required_credits} credits.", version=2),
-            parse_mode="MarkdownV2",
+            f"❌ Failed to consume {required_credits} credits.",
+            parse_mode="HTML",
             disable_web_page_preview=True
         )
         return
@@ -8880,35 +8880,35 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await asyncio.sleep(0)  # Yield for responsiveness
             if isinstance(result, Exception) or result[0] is None:
                 output.append(
-                    f"{bullet_link} 𝐒𝐢𝐭𝐞 `{site_number}: {escape_markdown(url, version=2)}`\n"
-                    f"{bullet_link} 𝐑𝐞𝐬𝐮𝐥𝐭 ➵ `{escape_markdown('Cannot access site', version=2)}`\n"
+                    f"{bullet_link} 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
+                    f"{bullet_link} 𝐑𝐞𝐬𝐮𝐥𝐭 ➵ <code>{html.escape('Cannot access site')}</code>\n"
                     f"――――――――――――――――"
                 )
                 continue
 
-            status, html, headers = result
-            cms = detect_cms(html)
-            security = detect_security(html)
-            gateways = detect_gateways(html)
-            captcha = detect_captcha(html)
-            cloudflare = detect_cloudflare(html, headers=headers, status=status)
-            graphql = detect_graphql(html)
+            status, html_content, headers = result
+            cms = detect_cms(html_content)
+            security = detect_security(html_content)
+            gateways = detect_gateways(html_content)
+            captcha = detect_captcha(html_content)
+            cloudflare = detect_cloudflare(html_content, headers=headers, status=status)
+            graphql = detect_graphql(html_content)
 
             output.append(
-                f"{bullet_link} 𝐒𝐢𝐭𝐞 `{site_number}: {escape_markdown(url, version=2)}`\n"
-                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ _{escape_markdown(gateways, version=2)}_\n"
-                f"{bullet_link} 𝐂𝐌𝐒 ➵ `{escape_markdown(cms, version=2)}`\n"
-                f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{escape_markdown(captcha, version=2)}`\n"
-                f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ `{escape_markdown(cloudflare, version=2)}`\n"
-                f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `{escape_markdown(security, version=2)}`\n"
-                f"{bullet_link} 𝐆𝐫𝐚𝐩𝐡𝐐𝐋 ➵ `{escape_markdown(graphql, version=2)}`\n"
+                f"{bullet_link} 𝐒𝐢𝐭𝐞 <code>{html.escape(str(site_number))}: {html.escape(url)}</code>\n"
+                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ <i>{html.escape(gateways)}</i>\n"
+                f"{bullet_link} 𝐂𝐌𝐒 ➵ <code>{html.escape(cms)}</code>\n"
+                f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ <code>{html.escape(captcha)}</code>\n"
+                f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ <code>{html.escape(cloudflare)}</code>\n"
+                f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ <code>{html.escape(security)}</code>\n"
+                f"{bullet_link} 𝐆𝐫𝐚𝐩𝐡𝐐𝐋 ➵ <code>{html.escape(graphql)}</code>\n"
                 f"――――――――――――――――"
             )
 
         # Add requester and developer info
         user = update.effective_user
-        requester_clickable = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
-        developer_clickable = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
+        requester_clickable = f'<a href="tg://user?id={user.id}">{html.escape(user.first_name)}</a>'
+        developer_clickable = '<a href="https://t.me/Kalinuxxx">kคli liຖนxx</a>'
         output.append(
             f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
             f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
@@ -8918,17 +8918,17 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_output = "\n".join(output)
         await update.message.reply_text(
             final_output,
-            parse_mode="MarkdownV2",
+            parse_mode="HTML",
             disable_web_page_preview=True
         )
 
         # Update the processing message to show progress
         progress = min(batch_start + batch_size, len(urls))
-        status_text = escape_markdown(f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎... ({progress}/{len(urls)} completed)", version=2)
-        processing_text = f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n{bullet_link} {status_text}\n"
+        status_text = f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎... ({progress}/{len(urls)} completed)"
+        processing_text = f"<code>𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳</code>\n{bullet_link} {html.escape(status_text)}\n"
         await msg.edit_text(
             processing_text,
-            parse_mode="MarkdownV2",
+            parse_mode="HTML",
             disable_web_page_preview=True
         )
 
@@ -8937,11 +8937,10 @@ async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Finalize processing message
     await msg.edit_text(
-        escape_markdown(f"✅ Completed scanning {len(urls)} site(s).", version=2),
-        parse_mode="MarkdownV2",
+        f"✅ Completed scanning {len(urls)} site(s).",
+        parse_mode="HTML",
         disable_web_page_preview=True
     )
-
 
 
 import asyncio
