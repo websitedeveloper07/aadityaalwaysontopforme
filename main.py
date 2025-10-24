@@ -8596,6 +8596,354 @@ async def mgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+
+
+import re
+import aiohttp
+import asyncio
+from telegram import Update
+from telegram.ext import ContextTypes, CommandHandler
+from telegram.helpers import escape_markdown
+from urllib.parse import urlparse
+from bs4 import BeautifulSoup
+
+# CMS patterns
+CMS_PATTERNS = {
+    'Shopify': r'cdn\.shopify\.com|shopify\.js',
+    'BigCommerce': r'cdn\.bigcommerce\.com|bigcommerce\.com',
+    'Wix': r'static\.parastorage\.com|wix\.com',
+    'Squarespace': r'static1\.squarespace\.com|squarespace-cdn\.com',
+    'WooCommerce': r'wp-content/plugins/woocommerce/',
+    'Magento': r'static/version\d+/frontend/|magento/',
+    'PrestaShop': r'prestashop\.js|prestashop/',
+    'OpenCart': r'catalog/view/theme|opencart/',
+    'Shopify Plus': r'shopify-plus|cdn\.shopifycdn\.net/',
+    'Salesforce Commerce Cloud': r'demandware\.edgesuite\.net/',
+    'WordPress': r'wp-content|wp-includes/',
+    'Joomla': r'media/jui|joomla\.js|media/system/js|joomla\.javascript/',
+    'Drupal': r'sites/all/modules|drupal\.js/|sites/default/files|drupal\.settings\.js/',
+    'TYPO3': r'typo3temp|typo3/',
+    'Concrete5': r'concrete/js|concrete5/',
+    'Umbraco': r'umbraco/|umbraco\.config/',
+    'Sitecore': r'sitecore/content|sitecore\.js/',
+    'Kentico': r'cms/getresource\.ashx|kentico\.js/',
+    'Episerver': r'episerver/|episerver\.js/',
+    'Custom CMS': r'(?:<meta name="generator" content="([^"]+)")'
+}
+
+# Security patterns
+SECURITY_PATTERNS = {
+    '3D Secure': r'3d_secure|threed_secure|secure_redirect',
+}
+
+# Payment gateways list
+PAYMENT_GATEWAYS = [
+    "PayPal", "Stripe", "Braintree", "Square", "Cybersource", "lemon-squeezy",
+    "Authorize.Net", "2Checkout", "Adyen", "Worldpay", "SagePay",
+    "Checkout.com", "Bolt", "Eway", "PayFlow", "Payeezy",
+    "Paddle", "Mollie", "Viva Wallet", "Rocketgateway", "Rocketgate",
+    "Rocket", "Auth.net", "Authnet", "rocketgate.com", "Recurly",
+    "Shopify", "WooCommerce", "BigCommerce", "Magento", "Magento Payments",
+    "OpenCart", "PrestaShop", "3DCart", "Ecwid", "Shift4Shop",
+    "Shopware", "VirtueMart", "CS-Cart", "X-Cart", "LemonStand",
+    "Convergepay", "PaySimple", "oceanpayments", "eProcessing",
+    "hipay", "cybersourse", "payjunction", "usaepay", "creo",
+    "SquareUp", "ebizcharge", "cpay", "Moneris", "cardknox",
+    "matt sorra", "Chargify", "Paytrace", "hostedpayments", "securepay",
+    "blackbaud", "LawPay", "clover", "cardconnect", "bluepay",
+    "fluidpay", "Ebiz", "chasepaymentech", "Auruspay", "sagepayments",
+    "paycomet", "geomerchant", "realexpayments", "Razorpay",
+    "Apple Pay", "Google Pay", "Samsung Pay", "Cash App",
+    "Revolut", "Zelle", "Alipay", "WeChat Pay", "PayPay", "Line Pay",
+    "Skrill", "Neteller", "WebMoney", "Payoneer", "Paysafe",
+    "Payeer", "GrabPay", "PayMaya", "MoMo", "TrueMoney",
+    "Touch n Go", "GoPay", "JKOPay", "EasyPaisa",
+    "Paytm", "UPI", "PayU", "PayUBiz", "PayUMoney", "CCAvenue",
+    "Mercado Pago", "PagSeguro", "Yandex.Checkout", "PayFort", "MyFatoorah",
+    "Kushki", "RuPay", "BharatPe", "Midtrans", "MOLPay",
+    "iPay88", "KakaoPay", "Toss Payments", "NaverPay",
+    "Bizum", "Culqi", "Pagar.me", "Rapyd", "PayKun", "Instamojo",
+    "PhonePe", "BharatQR", "Freecharge", "Mobikwik", "BillDesk",
+    "Citrus Pay", "RazorpayX", "Cashfree",
+    "Klarna", "Affirm", "Afterpay",
+    "Splitit", "Perpay", "Quadpay", "Laybuy", "Openpay",
+    "Cashalo", "Hoolah", "Pine Labs", "ChargeAfter",
+    "BitPay", "Coinbase Commerce", "CoinGate", "CoinPayments", "Crypto.com Pay",
+    "BTCPay Server", "NOWPayments", "OpenNode", "Utrust", "MoonPay",
+    "Binance Pay", "CoinsPaid", "BitGo", "Flexa",
+    "ACI Worldwide", "Bank of America Merchant Services",
+    "JP Morgan Payment Services", "Wells Fargo Payment Solutions",
+    "Deutsche Bank Payments", "Barclaycard", "American Express Payment Gateway",
+    "Discover Network", "UnionPay", "JCB Payment Gateway",
+]
+
+# Assuming db.py provides get_user and update_user
+from db import get_user, update_user
+
+BULLET_GROUP_LINK = "https://t.me/CARDER33"
+
+# --- Shared aiohttp session ---
+session: aiohttp.ClientSession = None
+
+async def init_session():
+    global session
+    if session is None or session.closed:
+        session = aiohttp.ClientSession()
+
+async def close_session():
+    global session
+    if session and not session.closed:
+        await session.close()
+
+# --- Credit consumption ---
+async def consume_credits(user_id: int, required_credits: int) -> bool:
+    user_data = await get_user(user_id)
+    if user_data and user_data.get("credits", 0) >= required_credits:
+        await update_user(user_id, credits=user_data["credits"] - required_credits)
+        return True
+    return False
+
+# --- Fetch site ---
+async def fetch_site(url: str):
+    await init_session()
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    domain = urlparse(url).netloc
+
+    headers = {
+        "authority": domain,
+        "scheme": "https",
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "accept-language": "en-US,en;q=0.9",
+        "cache-control": "max-age=0",
+        "sec-ch-ua": '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
+        "sec-ch-ua-mobile": "?1",
+        "sec-ch-ua-platform": '"Android"',
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+        "sec-fetch-user": "?1",
+        "upgrade-insecure-requests": "1",
+        "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/140.0.0.0 Mobile Safari/537.36",
+    }
+
+    try:
+        async with session.get(url, headers=headers, timeout=15) as resp:
+            text = await resp.text()
+            return resp.status, text, resp.headers
+    except Exception:
+        return None, None, None
+
+# --- Detection functions ---
+def detect_cms(html: str):
+    for cms, pattern in CMS_PATTERNS.items():
+        match = re.search(pattern, html, re.IGNORECASE)
+        if match:
+            if cms == 'Custom CMS':
+                return match.group(1) or "Custom CMS"
+            return cms
+    return "Unknown"
+
+def detect_security(html: str):
+    patterns_3ds = [
+        r'3d\s*secure',
+        r'verified\s*by\s*visa',
+        r'mastercard\s*securecode',
+        r'american\s*express\s*safekey',
+        r'3ds',
+        r'3ds2',
+        r'acsurl',
+        r'pareq',
+        r'three-domain-secure',
+        r'secure_redirect',
+    ]
+    for pattern in patterns_3ds:
+        if re.search(pattern, html, re.IGNORECASE):
+            return "3D Secure Detected ✅"
+    return "2D (No 3D Secure Found ❌)"
+
+def detect_gateways(html: str):
+    detected = []
+    for gateway in PAYMENT_GATEWAYS:
+        pattern = r'\b' + re.escape(gateway) + r'\b'
+        if re.search(pattern, html, re.IGNORECASE):
+            detected.append(gateway)
+    return ", ".join(detected) if detected else "None Detected"
+
+def detect_captcha(html: str):
+    html_lower = html.lower()
+    if "hcaptcha" in html_lower:
+        return "hCaptcha Detected ✅"
+    elif "recaptcha" in html_lower or "g-recaptcha" in html_lower:
+        return "reCAPTCHA Detected ✅"
+    elif "captcha" in html_lower:
+        return "Generic Captcha Detected ✅"
+    return "No Captcha Detected"
+
+def detect_cloudflare(html: str, headers=None, status=None):
+    if headers is None:
+        headers = {}
+    lower_keys = [k.lower() for k in headers.keys()]
+    server = headers.get('Server', '').lower()
+    cloudflare_indicators = [
+        r'cloudflare',
+        r'cf-ray',
+        r'cf-cache-status',
+        r'cf-browser-verification',
+        r'__cfduid',
+        r'cf_chl_',
+        r'checking your browser',
+        r'enable javascript and cookies',
+        r'ray id',
+        r'ddos protection by cloudflare',
+    ]
+    if 'cf-ray' in lower_keys or 'cloudflare' in server or 'cf-cache-status' in lower_keys:
+        soup = BeautifulSoup(html, 'html.parser')
+        title = soup.title.string.strip().lower() if soup.title else ''
+        challenge_indicators = [
+            "just a moment",
+            "attention required",
+            "checking your browser",
+            "enable javascript and cookies to continue",
+            "ddos protection by cloudflare",
+            "please wait while we verify",
+        ]
+        if any(indicator in title for indicator in challenge_indicators):
+            return "Cloudflare Verification Detected ✅"
+        if any(re.search(pattern, html, re.IGNORECASE) for pattern in cloudflare_indicators):
+            return "Cloudflare Verification Detected ✅"
+        if status in (403, 503) and 'cloudflare' in html.lower():
+            return "Cloudflare Verification Detected ✅"
+        return "Cloudflare Present (No Verification) 🔍"
+    return "None"
+
+def detect_graphql(html: str):
+    if re.search(r'/graphql|graphqlendpoint|apollo-client|query\s*\{|mutation\s*\{', html, re.IGNORECASE):
+        return "GraphQL Detected ✅"
+    return "No GraphQL Detected ❌"
+
+async def hdgate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Usage: /hdgate <site_url1> [site_url2] ... [site_url100]")
+        return
+
+    user_id = update.effective_user.id
+    # Filter out leading numbers (e.g., "9.", "30.") and clean URLs
+    urls = [re.sub(r'^\d+\.\s*', '', url.strip()) for url in context.args[:100]]  # Limit to 100 URLs
+    required_credits = len(urls)
+
+    # Check if user has enough credits
+    user_data = await get_user(user_id)
+    if not user_data or user_data.get("credits", 0) < required_credits:
+        await update.message.reply_text(
+            escape_markdown(f"❌ You need {required_credits} credits to scan {required_credits} site(s).", version=2),
+            parse_mode="MarkdownV2",
+            disable_web_page_preview=True
+        )
+        return
+
+    # Processing message
+    status_text = escape_markdown(f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎...", version=2)
+    bullet = "[⌇]"
+    bullet_link = f"[{escape_markdown(bullet, version=2)}]({BULLET_GROUP_LINK})"
+    processing_text = f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n{bullet_link} {status_text}\n"
+
+    msg = await update.message.reply_text(
+        processing_text,
+        parse_mode="MarkdownV2",
+        disable_web_page_preview=True
+    )
+
+    # Consume credits for all URLs
+    if not await consume_credits(user_id, required_credits):
+        await msg.edit_text(
+            escape_markdown(f"❌ Failed to consume {required_credits} credits.", version=2),
+            parse_mode="MarkdownV2",
+            disable_web_page_preview=True
+        )
+        return
+
+    # Process sites in batches of 5
+    await init_session()
+    batch_size = 5
+    for batch_start in range(0, len(urls), batch_size):
+        batch_urls = urls[batch_start:batch_start + batch_size]
+        tasks = [fetch_site(url) for url in batch_urls]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process batch results
+        output = [f"◇━━〔 𝑳𝒐𝒐𝒌𝒖𝒑 𝑹𝒆𝒔𝒖𝒍𝒕𝒔 (Sites {batch_start + 1}-{min(batch_start + batch_size, len(urls))}) 〕━━◇"]
+        for i, (url, result) in enumerate(zip(batch_urls, results)):
+            site_number = batch_start + i + 1
+            await asyncio.sleep(0)  # Yield for responsiveness
+            if isinstance(result, Exception) or result[0] is None:
+                output.append(
+                    f"{bullet_link} 𝐒𝐢𝐭𝐞 `{site_number}: {escape_markdown(url, version=2)}`\n"
+                    f"{bullet_link} 𝐑𝐞𝐬𝐮𝐥𝐭 ➵ `{escape_markdown('Cannot access site', version=2)}`\n"
+                    f"――――――――――――――――"
+                )
+                continue
+
+            status, html, headers = result
+            cms = detect_cms(html)
+            security = detect_security(html)
+            gateways = detect_gateways(html)
+            captcha = detect_captcha(html)
+            cloudflare = detect_cloudflare(html, headers=headers, status=status)
+            graphql = detect_graphql(html)
+
+            output.append(
+                f"{bullet_link} 𝐒𝐢𝐭𝐞 `{site_number}: {escape_markdown(url, version=2)}`\n"
+                f"{bullet_link} 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➵ _{escape_markdown(gateways, version=2)}_\n"
+                f"{bullet_link} 𝐂𝐌𝐒 ➵ `{escape_markdown(cms, version=2)}`\n"
+                f"{bullet_link} 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➵ `{escape_markdown(captcha, version=2)}`\n"
+                f"{bullet_link} 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➵ `{escape_markdown(cloudflare, version=2)}`\n"
+                f"{bullet_link} 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➵ `{escape_markdown(security, version=2)}`\n"
+                f"{bullet_link} 𝐆𝐫𝐚𝐩𝐡𝐐𝐋 ➵ `{escape_markdown(graphql, version=2)}`\n"
+                f"――――――――――――――――"
+            )
+
+        # Add requester and developer info
+        user = update.effective_user
+        requester_clickable = f"[{escape_markdown(user.first_name, version=2)}](tg://user?id={user.id})"
+        developer_clickable = "[kคli liຖนxx](https://t.me/Kalinuxxx)"
+        output.append(
+            f"{bullet_link} 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➵ {requester_clickable}\n"
+            f"{bullet_link} 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 ➵ {developer_clickable}"
+        )
+
+        # Send batch results
+        final_output = "\n".join(output)
+        await update.message.reply_text(
+            final_output,
+            parse_mode="MarkdownV2",
+            disable_web_page_preview=True
+        )
+
+        # Update the processing message to show progress
+        progress = min(batch_start + batch_size, len(urls))
+        status_text = escape_markdown(f"𝗦𝘁𝗮𝘁𝘂𝘀 ➵ 𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 {len(urls)} site(s) 🔎... ({progress}/{len(urls)} completed)", version=2)
+        processing_text = f"```𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴⏳```\n{bullet_link} {status_text}\n"
+        await msg.edit_text(
+            processing_text,
+            parse_mode="MarkdownV2",
+            disable_web_page_preview=True
+        )
+
+        # Small delay to avoid overwhelming Telegram API
+        await asyncio.sleep(1)
+
+    # Finalize processing message
+    await msg.edit_text(
+        escape_markdown(f"✅ Completed scanning {len(urls)} site(s).", version=2),
+        parse_mode="MarkdownV2",
+        disable_web_page_preview=True
+    )
+
+
+
 import asyncio
 import html
 import logging
