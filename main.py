@@ -9890,6 +9890,7 @@ def register_user_commands(application):
         ("b3", b3),
         ("gate", gate_command),
         ("mgate", mgate_command),
+        ("hdgate", hdgate_command),
         ("fl", fl_command),
         ("status", status_command),
         ("redeem", redeem_command)
