@@ -21,7 +21,7 @@ from config import ADMIN_IDS
 
 # === CONFIGURATION ===
 # IMPORTANT: Hardcoded bot token and owner ID for direct use (no environment variables required)
-TOKEN = "8089689016:AAEFInSAuin4-Syd7xYCgJ5J0INAZ2gEXA4"
+TOKEN = "8272984649:AAGMPhsZYRKSw4sFeT0ucaqzchJBmBBkTVc"
 OWNER_ID = 8278658138
 # --- New Configuration ---
 AUTHORIZATION_CONTACT = "@Kalinuxxx"
@@ -9746,7 +9746,7 @@ OWNER_ID =  8278658138                    # Your Telegram user ID
 BANNED_USERS = set()
 
 # 🔑 Bot token
-BOT_TOKEN = "8089689016:AAEFInSAuin4-Syd7xYCgJ5J0INAZ2gEXA4"
+BOT_TOKEN = "8272984649:AAGMPhsZYRKSw4sFeT0ucaqzchJBmBBkTVc"
 
 # ✅ Logging
 logging.basicConfig(level=logging.INFO)
