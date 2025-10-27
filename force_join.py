@@ -4,8 +4,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 # --- Configuration ---
-GROUP_ID = -1002554243871       # numeric group ID (required)
-GROUP_USERNAME = "+7zEqak3f4ExlNjQ9"     # for join button (@username only)
+GROUP_ID = -1003204998888     # numeric group ID (required)
+GROUP_USERNAME = "+bCOqK048pxIwZjM1"     # for join button (@username only)
 
 CHANNEL_ID = -1003119905313    # numeric channel ID (required)
 CHANNEL_USERNAME = "regretingnow"  # for join button (no '+' sign)
